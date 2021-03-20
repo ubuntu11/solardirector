@@ -1,0 +1,38 @@
+
+BLUETOOTH=yes
+DEBUG=yes
+PI=$(shell test $$(cat /proc/cpuinfo  | grep ^model | grep -c ARM) -gt 0 && echo yes)
+
+PROG=siagent
+SRCS=main.c config.c battery.c si.c
+OBJS=$(SRCS:.c=.o)
+
+include ../Makefile.inc
+
+.PHONY: all
+all: $(PROG)
+
+$(PROG): $(OBJS) $(DEPS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $(PROG) $(OBJS) $(LIBS)
+
+#$(OBJS): Makefile
+
+include ../Makefile.dep
+
+debug: $(PROG)
+	gdb ./$(PROG)
+
+install: $(PROG)
+	install -m 755 -o bin -g bin $(PROG) /usr/bin/$(PROG)
+
+clean:
+	rm -rf $(PROG) $(OBJS) $(CLEANFILES)
+
+push: clean
+	git add -A .
+	git commit -m refresh
+	git push
+
+pull: clean
+	git reset --hard
+	git pull

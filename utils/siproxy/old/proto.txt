@@ -1,0 +1,22 @@
+
+proto is as follows
+
+request:
+
+begin		uint8		D5
+opcode		uint8
+len		uint8
+data		uint8[]
+checksum	uint16
+end		uint8		96
+
+reply:
+
+begin		uint8		D5
+status		uint8		0=success,1=error
+len		uint8
+data		uint8[]
+checksum	uint16
+end		uint8		EB
+
+dont need a chksum ... 

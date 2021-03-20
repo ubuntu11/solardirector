@@ -1,0 +1,8 @@
+f="$1"
+test -z "$f" && f=l
+t=""
+while read n
+do
+	t="$t,$n"
+done < $f
+echo $t

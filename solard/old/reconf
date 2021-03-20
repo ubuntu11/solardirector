@@ -1,0 +1,3 @@
+#!/bin/bash
+pid=$(pidof mybmm)
+test -n "$pid" && kill -USR1 $pid

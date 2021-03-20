@@ -1,0 +1,85 @@
+
+#ifndef __SDCONFIG_H
+#define __SDCONFIG_H
+
+#include <stdint.h>
+#include <pthread.h>
+#include "solard.h"
+
+struct solard_inverter;
+typedef struct solard_inverter solard_inverter_t;
+
+struct solard_pack;
+typedef struct solard_pack solard_pack_t;
+
+struct mqtt_info;
+typedef struct mqtt_info mqtt_info_t;
+
+struct solard_agent_config {
+#if 0
+#ifdef MQTT
+	mqtt_info_t *mqtt;		/* MQTT info */
+#endif
+	char mqtt_broker[64];		/* MQTT Broker URL */
+	char mqtt_topic[128];		/* MQTT Base Topic */
+	char mqtt_username[32];		/* MQTT Username */
+	char mqtt_password[32];		/* MQTT Password */
+	char *filename;			/* Config filename */
+	void *logfp;			/* Log filehandle */
+	char db_name[32];		/* DB Name */
+	void *dlsym_handle;		/* Image handle */
+	list modules;			/* Modules */
+	solard_inverter_t *inverter;	/* Inverter */
+	pthread_t inverter_tid;		/* Inverter Thread ID */
+	list packs;			/* Packs */
+	pthread_t pack_tid;		/* Pack thread ID */
+	worker_pool_t *pack_pool;	/* Pack worker pool */
+	int interval;			/* Check interval */
+	int system_voltage;		/* System Voltage (defaults to 48) */
+	int battery_chem;		/* Battery type (0=Li-ion, 1=LifePO4, 2=Titanate) */
+	float battery_voltage;		/* Battery Voltage  */
+	float battery_current;		/* Total amount of power into/out of battery */
+	int cells;			/* Number of cells per battery pack */
+	float cell_low;			/* Cell discharge low cutoff */
+	float cell_crit_low;		/* Cell critical low */
+	float cell_high;		/* Cell charge high cutoff */
+	float cell_crit_high;		/* Cell critical high */
+	float capacity;			/* Total capacity, in AH (all packs) */
+	float c_rate;			/* Charge current rate */
+	float d_rate;			/* Discharge current rate */
+	float kwh;			/* Calculated kWh */
+	float soc;			/* State of Charge */
+	float soh;			/* State of Health */
+	float input_current;		/* Power from sources */
+	float output_current;		/* Power to loads/batt */
+	float capacity_remain;		/* Remaining capacity */
+	float max_charge_amps;		/* From inverter */
+	float max_discharge_amps;	/* From inverter */
+	float discharge_voltage;	/* Calculated: cell_low * cells */
+	float discharge_amps;		/* Calculated */
+	float charge_voltage;		/* Calculated: cell_high * cells */
+	float charge_amps;		/* Calculated */
+	float user_capacity;		/* User-specified capacity */
+	float user_charge_voltage;	/* User-specified charge voltage */
+	float user_charge_amps;		/* User-specified charge amps */
+	float user_discharge_voltage;	/* User-specified discharge voltage */
+	float user_discharge_amps;	/* User-specified discharge amps */
+	float user_soc;			/* Forced State of Charge */
+	void *cfg;			/* Config file handle */
+	uint16_t state;			/* States */
+	uint16_t capabilities;		/* Capabilities */
+#endif
+};
+typedef struct solard_agent_config sdagent_config_t;
+
+/* States */
+#define SOLARD_STATE_CONFIG_DIRTY	0x01		/* Config has been updated & needs written */
+
+/* Capabilities */
+#define SOLARD_CHARGE_CONTROL		0x01		/* All packs have ability to start/stop charging */
+#define SOLARD_DISCHARGE_CONTROL		0x02		/* All packs have ability to start/stop discharging */
+#define SOLARD_BALANCE_CONTROL		0x04		/* All packs have ability to start/stop balancing */
+
+sdagent_config_t *agent_init(int,char **);
+
+#endif /* __SOLARD_CONFIG_H */

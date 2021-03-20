@@ -1,0 +1,8 @@
+#!/bin/bash
+while true
+do
+	pid="$(pidof mybmm)"
+	test -n "$pid" && ls /proc/$pid/fd/* | wc -l
+#	sleep 30
+	sleep 1
+done

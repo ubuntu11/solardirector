@@ -1,0 +1,6 @@
+L=""
+while read n
+do
+	L="$L,$n"
+done < l
+echo $L

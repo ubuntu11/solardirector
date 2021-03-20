@@ -1,0 +1,34 @@
+
+DEBUG=yes
+
+NAME=solard
+LIB=lib$(NAME).a
+SRCS=init.c cfg.c list.c module.c mqtt.c inverter.c pack.c parson.c stredit.c utils.c uuid.c worker.c json.c
+OBJS=$(SRCS:.c=.o)
+
+include ../Makefile.inc
+
+.PHONY: all install
+all: $(LIB)
+
+$(LIB): $(OBJS)
+	ar cr $(LIB) $(OBJS)
+
+$(OBJS): Makefile
+
+include ../Makefile.dep
+
+install: $(LIB)
+	install -m 755 -o bin -g bin $(LIB) /usr/local/lib
+
+clean:
+	rm -rf $(LIB) $(OBJS) $(CLEANFILES)
+
+push: clean
+	git add -A .
+	git commit -m refresh
+	git push
+
+pull: clean
+	git reset --hard
+	git pull

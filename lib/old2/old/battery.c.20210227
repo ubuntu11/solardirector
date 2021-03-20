@@ -1,0 +1,542 @@
+
+#include "agent.h"
+#include "uuid.h"
+#include "json.h"
+
+int battery_init(solard_agent_t *ap) {
+	ap->bat.conf = ap;
+	return 0;
+}
+
+//solard_battery_t *battery_new(solard_agent_t *ap, ...) {
+void *battery_new(solard_agent_t *conf, ...) {
+	solard_battery_t *bp;
+        va_list ap;
+
+	bp = calloc(1,sizeof(*bp));
+	if (!bp) {
+		log_write(LOG_SYSERR,"battery_new: calloc");
+		return 0;
+	}
+
+	va_start(ap,conf);
+	bp->bms = va_arg(ap,solard_module_t *);
+	bp->bms_handle = va_arg(ap,void *);
+	va_end(ap);
+
+	return bp;
+}
+
+int battery_get_config(solard_agent_t *ap, char *agent_name) {
+	solard_battery_t *pp = &ap->bat;
+	struct cfg_proctab packtab[] = {
+		{ agent_name, "name", "Pack name", DATA_TYPE_STRING,&pp->name,sizeof(pp->name), 0 },
+		{ agent_name, "uuid", "Pack UUID", DATA_TYPE_STRING,&pp->uuid,sizeof(pp->uuid), 0 },
+		{ agent_name, "capacity", "Pack Capacity in AH", DATA_TYPE_FLOAT,&pp->capacity, 0, 0 },
+		CFG_PROCTAB_END
+	};
+
+	cfg_get_tab(ap->cfg,packtab);
+	if (!strlen(pp->name)) strcpy(pp->name,agent_name);
+	if (debug >= 3) cfg_disp_tab(packtab,0,1);
+	strcpy(ap->name,pp->name);
+
+	/* if we dont have a UUID, gen one */
+	if (!strlen(pp->uuid)) {
+		uint8_t uuid[16];
+
+		dprintf(4,"gen'ing UUID...\n");
+		uuid_generate_random(uuid);
+		my_uuid_unparse(uuid, pp->uuid);
+		dprintf(4,"pp->uuid: %s\n", pp->uuid);
+		cfg_set_item(ap->cfg,agent_name,"uuid",0,pp->uuid);
+		/* Signal conf to save the file */
+		solard_set_state(ap,SOLARD_AGENT_CONFIG_DIRTY);
+	}
+	return 0;
+}
+
+int battery_send_mqtt(solard_battery_t *pp) {
+	register int i,j;
+	char temp[256],*p;
+	unsigned long mask;
+	JSON_Value *root_value;
+	JSON_Object *root_object;
+	struct battery_states {
+		int mask;
+		char *label;
+	} states[] = {
+		{ SOLARD_PACK_STATE_CHARGING, "Charging" },
+		{ SOLARD_PACK_STATE_DISCHARGING, "Discharging" },
+		{ SOLARD_PACK_STATE_BALANCING, "Balancing" },
+	};
+#define NSTATES (sizeof(states)/sizeof(struct battery_states))
+
+	/* Create JSON data */
+	root_value = json_value_init_object();
+	root_object = json_value_get_object(root_value);
+
+	if (get_timestamp(temp,sizeof(temp),1) == 0) json_object_set_string(root_object, "timestamp", temp);
+	json_object_set_string(root_object, "name", pp->name);
+	json_object_set_string(root_object, "uuid", pp->uuid);
+	json_object_set_number(root_object, "state", pp->state);
+	json_object_set_number(root_object, "errcode", pp->error);
+	json_object_set_string(root_object, "errmsg", pp->errmsg);
+	json_object_set_number(root_object, "capacity", pp->capacity);
+	json_object_set_number(root_object, "voltage", pp->voltage);
+	json_object_set_number(root_object, "current", pp->current);
+	if (pp->ntemps) {
+		p = temp;
+		p += sprintf(p,"[ ");
+		dprintf(4,"ntemps: %d\n", pp->ntemps);
+		for(i=0; i < pp->ntemps; i++) {
+			if (i) p += sprintf(p,",");
+			p += sprintf(p, "%.1f",pp->temps[i]);
+		}
+		strcat(temp," ]");
+		dprintf(4,"temp: %s\n", temp);
+		json_object_dotset_value(root_object, "temps", json_parse_string(temp));
+	}
+	if (pp->cells) {
+		p = temp;
+		p += sprintf(p,"[ ");
+		for(i=0; i < pp->cells; i++) {
+			if (i) p += sprintf(p,",");
+			p += sprintf(p, "%.3f",pp->cellvolt[i]);
+		}
+		strcat(temp," ]");
+		dprintf(4,"temp: %s\n", temp);
+		json_object_dotset_value(root_object, "cellvolt", json_parse_string(temp));
+#if 0
+		p = temp;
+		p += sprintf(p,"[ ");
+		for(i=0; i < pp->cells; i++) {
+			if (i) p += sprintf(p,",");
+			p += sprintf(p, "%.3f",pp->cellres[i]);
+		}
+		strcat(temp," ]");
+		dprintf(4,"temp: %s\n", temp);
+		json_object_dotset_value(root_object, "cellres", json_parse_string(temp));
+#endif
+	}
+	json_object_set_number(root_object, "cell_min", pp->cell_min);
+	json_object_set_number(root_object, "cell_max", pp->cell_max);
+	json_object_set_number(root_object, "cell_diff", pp->cell_diff);
+	json_object_set_number(root_object, "cell_avg", pp->cell_avg);
+
+	/* States */
+	temp[0] = 0;
+	p = temp;
+	for(i=j=0; i < NSTATES; i++) {
+		if (solard_check_state(pp,states[i].mask)) {
+			if (j) p += sprintf(p,",");
+			p += sprintf(p,states[i].label);
+			j++;
+		}
+	}
+	json_object_set_string(root_object, "states", temp);
+
+	mask = 1;
+	for(i=0; i < pp->cells; i++) {
+		temp[i] = ((pp->balancebits & mask) != 0 ? '1' : '0');
+		mask <<= 1;
+	}
+	temp[i] = 0;
+	json_object_set_string(root_object, "balancebits", temp);
+
+	/* TODO: protection info ... already covered with 'error/errmsg?' */
+#if 0
+        struct {
+                unsigned sover: 1;              /* Single overvoltage protection */
+                unsigned sunder: 1;             /* Single undervoltage protection */
+                unsigned gover: 1;              /* Whole group overvoltage protection */
+                unsigned gunder: 1;             /* Whole group undervoltage protection */
+                unsigned chitemp: 1;            /* Charge over temperature protection */
+                unsigned clowtemp: 1;           /* Charge low temperature protection */
+                unsigned dhitemp: 1;            /* Discharge over temperature protection */
+                unsigned dlowtemp: 1;           /* Discharge low temperature protection */
+                unsigned cover: 1;              /* Charge overcurrent protection */
+                unsigned cunder: 1;             /* Discharge overcurrent protection */
+                unsigned shorted: 1;            /* Short circuit protection */
+                unsigned ic: 1;                 /* Front detection IC error */
+                unsigned mos: 1;                /* Software lock MOS */
+        } protect;
+#endif
+//	p = json_serialize_to_string_pretty(root_value);
+	p = json_serialize_to_string(root_value);
+	dprintf(2,"p: %s\n", p);
+	sprintf(temp,"/SolarD/Battery/%s/Data",pp->name);
+#if 1
+	dprintf(2,"sending mqtt data...\n");
+	if (mqtt_send(pp->conf->mqtt_handle, temp, p, 15)) {
+		dprintf(1,"mqtt send error!\n");
+		return 1;
+	}
+#else
+	mqtt_fullsend(conf->mqtt_broker,pp->name, p, temp, conf->mqtt_username, conf->mqtt_password);
+#endif
+	json_free_serialized_string(p);
+	json_value_free(root_value);
+	return 0;
+}
+
+char *battery_info(solard_agent_t *ap) {
+	solard_battery_t *pp = &ap->bat;
+	char *json;
+
+	dprintf(4,"%s: opening...\n", pp->name);
+	if (ap->funcs->open(ap->handle)) {
+		dprintf(1,"%s: open error\n",pp->name);
+		return 0;
+	}
+	dprintf(4,"%s: getting info...\n", pp->name);
+	json = ap->funcs->info(ap->handle);
+	dprintf(4,"%s: closing\n", pp->name);
+	ap->funcs->close(ap->handle);
+	return json;
+}
+
+int battery_read(solard_agent_t *ap) {
+	solard_battery_t *pp = &ap->bat;
+	int r;
+
+	dprintf(4,"%s: opening...\n", pp->name);
+	if (ap->funcs->open(ap->handle)) {
+		dprintf(1,"%s: open error\n",pp->name);
+		return 1;
+	}
+	dprintf(4,"%s: reading...\n", pp->name);
+	r = ap->funcs->read(ap->handle);
+	dprintf(4,"%s: closing\n", pp->name);
+	ap->funcs->close(ap->handle);
+	dprintf(4,"%s: returning: %d\n", pp->name, r);
+	if (!r) {
+		float total;
+		int i;
+
+		solard_set_state(pp,SOLARD_PACK_STATE_UPDATED);
+		/* Set min/max/diff/avg */
+		pp->cell_max = 0.0;
+//		pp->cell_min = pp->conf->cell_crit_high;
+		pp->cell_min = 9999999.99;
+		total = 0.0;
+		for(i=0; i < pp->cells; i++) {
+			if (pp->cellvolt[i] < pp->cell_min)
+				pp->cell_min = pp->cellvolt[i];
+			if (pp->cellvolt[i] > pp->cell_max)
+				pp->cell_max = pp->cellvolt[i];
+			total += pp->cellvolt[i];
+		}
+		pp->cell_diff = pp->cell_max - pp->cell_min;
+		pp->cell_avg = total / pp->cells;
+		if (!(int)pp->voltage) pp->voltage = total;
+		battery_send_mqtt(pp);
+	}
+	return r;
+}
+
+int battery_write(solard_agent_t *ap) {
+	return 0;
+}
+
+int battery_config(solard_agent_t *ap, char *action, char *name, char *value) {
+	solard_battery_t *pp = &ap->bat;
+	char json_string[1024];
+	void *j;
+
+	/* If we dont have config, dont bother */
+	dprintf(1,"ap->funcs: %p\n", ap->funcs);
+	if (!ap->funcs) return 1;
+	dprintf(1,"ap->funcs->config: %p\n", ap->funcs->config);
+	if (!ap->funcs->config) return 1;
+
+	j = json_create_object();
+	json_add_string(j,"action","Get");
+	json_add_string(j,"identifier","Info");
+
+	dprintf(4,"%s: opening...\n", pp->name);
+	if (ap->funcs->open(ap->handle)) {
+		dprintf(1,"%s: open error\n",pp->name);
+		return 1;
+	}
+	dprintf(4,"%s: reading...\n", pp->name);
+	/* Use the special Info config keyword */
+	json_tostring(j,json_string,sizeof(json_string)-1,1);
+	dprintf(1,"json_string: %s\n",json_string);
+	ap->funcs->config(ap->handle,json_string);
+	dprintf(4,"%s: closing\n", pp->name);
+	ap->funcs->close(ap->handle);
+	return 0;
+}
+
+int battery_control(solard_agent_t *ap) {
+	return 0;
+}
+
+
+
+
+
+
+
+
+
+
+#if 0
+
+/* this was a "no" */
+#define TIMEOUT 10
+#define STACK_SIZE 32768
+
+int run_battery_update(solard_battery_t *pp) {
+	int pid,r,status;
+	time_t start,curr,diff;
+	char *stack, *stackTop;
+
+	stack = mmap(NULL, STACK_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
+	if (stack == MAP_FAILED) {
+		perror("mmap");
+		return -1;
+	}
+	stackTop = stack + STACK_SIZE;
+
+	dprintf(1,"cloning...\n");
+//	pid = clone(_do_battery_update, stackTop, CLONE_FILES|CLONE_FS|CLONE_VM|SIGCHLD, pp);
+	pid = clone(_do_battery_update, stackTop, CLONE_VM|SIGCHLD, pp);
+	dprintf(1,"pid: %d\n", pid);
+	if (pid < 0) {
+		perror("clone");
+		munmap(stack,STACK_SIZE);
+		return -1;
+	}
+	sleep(1);
+	dprintf(1,"waiting on pid...\n");
+	time(&start);
+	while(1) {
+		r = waitpid(pid,&status,WNOHANG);
+		dprintf(1,"r: %d\n",r);
+		if (r < 0) {
+			perror("waitpid");
+			break;
+		}
+		dprintf(1,"WIFEXITED: %d\n", WIFEXITED(status));
+		if (WIFEXITED(status)) break;
+		time(&curr);
+		diff = curr - start;
+		dprintf(1,"start: %d, curr: %d, diff: %d\n", (int)start, (int)curr, (int)diff);
+		if (diff >= TIMEOUT) {
+			dprintf(1,"KILLING PID: %d\n", pid);
+			kill(SIGTERM,pid);
+//			kill(9,pid);
+			break;
+		}
+		sleep(1);
+	}
+	if (WIFEXITED(status)) dprintf(1,"WEXITSTATUS: %d\n", WEXITSTATUS(status));
+	status = (WIFEXITED(status) ? WEXITSTATUS(status) : 1);
+	dprintf(1,"status: %d\n", status);
+	if (!status) solard_set_state(pp,SOLARD_PACK_STATE_UPDATED);
+	munmap(stack,STACK_SIZE);
+	return status;
+}
+#endif
+
+#if 0
+int battery_update_all(sdagent_config_t *conf, int wait) {
+	solard_battery_t *pp;
+
+	/* main loop */
+	conf->cell_crit_high = 9.9;
+	dprintf(1,"updating...\n");
+	list_reset(conf->packs);
+	while((pp = list_get_next(conf->packs)) != 0) {
+		solard_clear_state(pp,SOLARD_PACK_STATE_UPDATED);
+		worker_exec(conf->battery_pool,(worker_func_t)battery_update,pp);
+	}
+	worker_wait(conf->battery_pool,wait);
+	worker_killbusy(conf->battery_pool);
+
+	/* Make sure all closed (in case update was killed) */
+	list_reset(conf->packs);
+	while((pp = list_get_next(conf->packs)) != 0) {
+		pp->funcs->close(ap->handle);
+		dprintf(1,"%s: updated: %d\n", pp->name, solard_check_state(pp,SOLARD_PACK_STATE_UPDATED));
+		if (solard_check_state(pp,SOLARD_PACK_STATE_UPDATED)) battery_send_mqtt(conf,pp);
+	}
+
+	return 0;
+}
+
+int battery_add(sdagent_config_t *conf, char *packname, solard_battery_t *pp) {
+	if (!strlen(pp->transport)) return 0;
+	tp = solard_load_module(conf,pp->transport,SOLARD_MODTYPE_TRANSPORT);
+	if (!tp) {
+		fprintf(stderr,"unable to load TRANSPORT module %s for %s, aborting\n",pp->transport,packname);
+		return 1;
+	}
+
+	/* Load our module */
+	mp = solard_load_module(conf,pp->type,SOLARD_MODTYPE_CELLMON);
+	if (!mp) {
+		fprintf(stderr,"unable to load CELLMON module %s for %s, aborting\n",pp->type,packname);
+		return 1;
+	}
+
+	/* Create an instance of the bms */
+	dprintf(3,"mp: %p\n",mp);
+	if (mp) {
+		pp->handle = mp->new(conf, pp, tp);
+		if (!pp->handle) {
+			fprintf(stderr,"module %s->new returned null!\n", mp->name);
+			return 1;
+		}
+	}
+
+#ifdef MQTT
+	if (strlen(conf->mqtt_broker)) {
+		char topic[192];
+		int r;
+
+		/* Create a new MQTT session and connect to the broker */
+		sprintf(topic,"%s/%s",conf->mqtt_topic,pp->name);
+		DDLOG("topic: %s\n",topic);
+		pp->mqtt_handle = mqtt_new(conf->mqtt_broker,pp->name,topic);
+
+		dprintf(4,"Connecting to Broker: %s\n",conf->mqtt_broker);
+		if (mqtt_connect(pp->mqtt_handle,20,conf->mqtt_username,conf->mqtt_password)) return 1;
+
+		/* Reconnect if lost */
+		r = mqtt_setcb(pp->mqtt_handle, pp, battery_mqtt_reconnect, 0, 0);
+		dprintf(1,"setcb rc: %d\n", r);
+	}
+#endif
+
+	/* Get capability mask */
+	dprintf(1,"capabilities: %02x\n", mp->capabilities);
+	pp->capabilities = mp->capabilities;
+
+	/* Set the convienience funcs */
+	pp->open = mp->open;
+	pp->read = mp->read;
+	pp->close = mp->close;
+	pp->control = mp->control;
+
+	/* Add the pack */
+	dprintf(3,"adding pack...\n");
+	list_add(conf->packs,pp,0);
+	pp->conf = conf;
+
+	dprintf(3,"done!\n");
+	return 0;
+}
+
+int battery_init(sdagent_config_t *conf) {
+	solard_battery_t *pp;
+	char name[32];
+	int i,c,d;
+
+	/* Read pack info */
+	for(i=0; i < SOLARD_MAX_PACKS; i++) {
+		/* Fill the section name in and read the config */
+		sprintf(name,"battery_%02d",i+1);
+		dprintf(3,"name: %s\n", name);
+
+		if (!cfg_get_item(conf->cfg,name,"type")) break;
+		pp = calloc(1,sizeof(*pp));
+		if (!pp) {
+			perror("calloc pack\n");
+			return 1;
+		}
+		if (battery_add(conf,name,pp)) {
+			free(pp);
+			return 1;
+		}
+	}
+
+	/* If no packs, return now */
+	if (list_count(conf->packs) == 0) return 0;
+
+	/* Create the pack worker pool */
+	conf->battery_pool = worker_create_pool(list_count(conf->packs));
+	if (!conf->battery_pool) return 1;
+
+	/* Go through all packs and see if all have charge/discharge control */
+	c = d = 1;
+	list_reset(conf->packs);
+	while((pp = list_get_next(conf->packs)) != 0) {
+		if (!solard_check_cap(pp,SOLARD_CHARGE_CONTROL))
+			c = 0;
+		else if (!solard_check_cap(pp,SOLARD_DISCHARGE_CONTROL))
+			d = 0;
+	}
+	if (c) {
+		dprintf(0,"all packs have charge control!\n");
+		solard_set_cap(conf,SOLARD_CHARGE_CONTROL);
+	} else {
+		dprintf(0,"warning: all packs DO NOT have charge control!\n");
+	}
+	if (d) {
+		dprintf(0,"all packs have discharge control!\n");
+		solard_set_cap(conf,SOLARD_DISCHARGE_CONTROL);
+	} else {
+		dprintf(0,"warning: all packs DO NOT have discharge control!\n");
+	}
+	dprintf(3,"done!\n");
+	return 0;
+}
+#endif
+
+#if 0
+int battery_check(sdagent_config_t *conf,solard_battery_t *pp) {
+	int cell,in_range;
+	float cell_total, cell_min, cell_max, cell_diff, cell_avg;
+
+	dprintf(1,"pp->cells: %d\n", pp->cells);
+	cell_min = conf->cell_crit_high;
+	cell_max = 0.0;
+	cell_total = 0;
+	in_range = 1;
+	for(cell=0; cell < pp->cells; cell++) {
+		dprintf(1,"pack %s cell[%d]: %.3f\n", pp->name, cell, pp->cellvolt[cell]);
+		dprintf(1,"cell_min: %.3f, cell_max: %.3f\n", cell_min, cell_max);
+		if (pp->cellvolt[cell] < cell_min) cell_min = pp->cellvolt[cell];
+		if (pp->cellvolt[cell] > cell_max) cell_max = pp->cellvolt[cell];
+		cell_total += pp->cellvolt[cell];
+		dprintf(1,"cell_crit_low: %.3f, cell_crit_high: %.3f\n",
+		conf->cell_crit_low, conf->cell_crit_high);
+		if (pp->cellvolt[cell] <= conf->cell_crit_low) {
+			/* If any cell reaches critical low, immediate shutdown */
+			solard_set_state(conf,SOLARD_CRIT_CELLVOLT);
+//			solard_emergency_shutdown(conf);
+			dprintf(1,"*** CRIT LOW VOLT ***\n");
+			in_range = 0;
+			break;
+		} else if (pp->cellvolt[cell] >= conf->cell_crit_high) {
+			/* If any cell reaches crit high, consume it ASAP */
+			solard_set_state(conf,SOLARD_CRIT_CELLVOLT);
+			/* Disable charging */
+			solard_disable_charging(conf);
+			/* Set SoC to 100% */
+			solard_force_soc(conf,100);
+			dprintf(1,"*** CRIT HIGH VOLT ***\n");
+			in_range = 0;
+			break;
+		}
+		if (!in_range) break;
+		cell_diff = cell_max - cell_min;
+		cell_avg = cell_total / conf->cells;
+		dprintf(1,"cells: total: %.3f, min: %.3f, max: %.3f, diff: %.3f, avg: %.3f\n",
+			cell_total, cell_min, cell_max, cell_diff, cell_avg);
+	}
+#if 0
+	/* Are we in a critvolt state and are all cells in range now? */
+	dprintf(1,"in_range: %d\n", in_range);
+	if (solard_is_critvolt(conf) && in_range) {
+		solard_clear_state(conf,SOLARD_CRIT_CELLVOLT);
+		if (solard_check_state(conf,SOLARD_FORCE_SOC)) solard_clear_state(conf,SOLARD_FORCE_SOC);
+		/* Close contactors? */
+	}
+#endif
+	return (in_range ? 0 : 1);
+}
+#endif

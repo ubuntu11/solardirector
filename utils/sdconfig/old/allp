@@ -1,0 +1,21 @@
+#!/bin/bash -x
+test -z "$*" && exit 0
+if test "$1" = "xDOITx"; then
+	shift
+#	pack=$1
+#	shift
+	./t2 $*
+else
+	# if worker slot is defined we're running under work - no no and no
+	test -n "$WORKER_SLOT" && exit 1
+	tmp=$(mktemp -t setp.XXXXXX)
+	trap '{ rm -f $tmp; }' EXIT
+	rl=$(which readlink); test -n "$rl" && me=`$rl -f $0`; test -z "$me" && me="$0"
+	for i in $(seq 1 14)
+	do
+		n=$(printf "%02d" $i)
+#		echo jbdtool -t ip:pack_${n} $* > /tmp/cmds
+		echo pack_${n} $* >> $tmp
+	done
+	/usr/local/bin/worker $tmp $(cat $tmp | wc -l) $me "xDOITx"
+fi

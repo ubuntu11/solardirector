@@ -1,0 +1,54 @@
+
+#TARGET=linux64
+DEBUG=yes
+DEBUG_MEM=yes
+PTHREADS=yes
+DYNAMIC=yes
+SHARED?=no
+STATIC?=no
+
+# Define SRC_ROOT
+current_makefile := $(lastword $(MAKEFILE_LIST))
+SRC_ROOT=$(shell echo $$(dirname $(current_makefile)))
+
+# Uses libsmanet? must be included before libsolard as it refs
+ifeq ($(SMANET),yes)
+	CFLAGS+=-I$(SRC_ROOT)/smanet
+	LIBS+=-L$(SRC_ROOT)/smanet -lsmanet$(SUFFIX)
+	DEPS+=$(SRC_ROOT)/smanet/libsmanet$(SUFFIX)$(LIBEXT)
+endif
+
+# Always include libsd
+CFLAGS+=-I. -I$(SRC_ROOT)/lib
+LIBS+=-L$(SRC_ROOT)/lib -lsolard$(SUFFIX) -lpaho-mqtt3c
+ifneq ($(PROGNAME),)
+DEPS+=$(SRC_ROOT)/lib/libsolard$(SUFFIX)$(LIBEXT)
+endif
+
+# Include transports
+SRCS+=$(shell IFS=","; for i in $(TRANSPORTS); do printf "%s.c " $${i}; done)
+CFLAGS+=-I$(SRC_ROOT)/transports
+vpath %.c $(SRC_ROOT)/transports
+
+ifneq "$(findstring bluetooth,$(TRANSPORTS))" ""
+BLUETOOTH=yes
+endif
+ifneq "$(findstring bt,$(TRANSPORTS))" ""
+BLUETOOTH=yes
+endif
+
+# Bluetooth
+ifeq ($(BLUETOOTH),yes)
+CFLAGS+=-DBLUETOOTH
+LIBS+=-lgattlib -lglib-2.0
+endif
+
+ifneq "$(findstring can_ip,$(TRANSPORTS))" ""
+SRCS+=dsfuncs.c
+endif
+
+ifneq "$(findstring http,$(TRANSPORTS))" ""
+LIBS+=-lcurl
+endif
+
+include $(SRC_ROOT)/Makefile.inc
