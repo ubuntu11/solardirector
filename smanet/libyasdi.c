@@ -46,6 +46,7 @@
 #include "tools.h"
 #include "copyright.h"
 
+tp_callback_t *tpcb = 0;
 cfg_info_t *cfg = 0;
 
 /**************************************************************************
@@ -60,10 +61,13 @@ cfg_info_t *cfg = 0;
                    PRUESSING, 23.12.2001, 1.0, Created
 **************************************************************************/
 //SHARED_FUNCTION int yasdiInitialize(const char * cIniFileName, DWORD * pDriverCount)
-SHARED_FUNCTION int yasdiInitialize(cfg_info_t *info) {
+SHARED_FUNCTION int yasdiInitialize(tp_callback_t *cb, cfg_info_t *info) {
    int iRes = 0;
    						   
+	dprintf(1,"cb: %p, cfg: %p\n", cb, cfg);
+	tpcb = cb;
 	cfg = info;
+
 #if 0
    if (cIniFileName) strcpy( ProgPath, cIniFileName );
    else              ProgPath[0] = 0;

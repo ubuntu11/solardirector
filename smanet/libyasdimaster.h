@@ -147,7 +147,7 @@ typedef enum { SPOTCHANNELS=0, PARAMCHANNELS, TESTCHANNELS, ALLCHANNELS } TChanT
 **************************************************************************/
 //SHARED_FUNCTION int yasdiMasterInitialize(const char * iniFile,DWORD * pDriverNum );
 #include "cfg.h"
-SHARED_FUNCTION int yasdiMasterInitialize(cfg_info_t *info);
+SHARED_FUNCTION int yasdiMasterInitialize(tp_callback_t *,cfg_info_t *);
 
 
 /**************************************************************************

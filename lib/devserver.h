@@ -9,11 +9,11 @@
 typedef struct devserver_config devserver_config_t;
 
 #define DEVSERVER_NAME_LEN 32
-#define DEVSERVER_DEVICE_LEN 64
+#define DEVSERVER_TYPE_LEN 8
 
 struct devserver_io {
-	char name[DEVSERVER_NAME_LEN+1];
-	char device[DEVSERVER_DEVICE_LEN+1];
+	char name[DEVSERVER_NAME_LEN];
+	char type[DEVSERVER_TYPE_LEN];
 	void *handle;
 	int (*open)(void *handle);
 	int (*read)(void *handle, void *buf, int buflen);
@@ -38,11 +38,9 @@ enum DEVSERVER_FUNC {
         DEVSERVER_CLOSE,
 };
 
-int devserver_send(int fd, uint8_t opcode, uint8_t unit, void *data, int datasz);
-int devserver_recv(int fd, uint8_t *opcode, uint8_t *unit, void *data, int datasz, int timeout);
-int devserver_request(int fd, uint8_t opcode, uint8_t unit, void *data, int len);
-int devserver_reply(int fd, uint8_t status, uint8_t unit ,uint8_t *data, int len);
-int devserver_error(int fd, uint8_t status);
+int devserver_send(int fd, uint8_t opcode, uint8_t unit, uint16_t control, void *data, int datasz);
+int devserver_recv(int fd, uint8_t *opcode, uint8_t *unit, uint16_t *control, void *data, int datasz, int timeout);
+int devserver_request(int fd, uint8_t opcode, uint8_t unit, uint16_t control, void *data, int len);
 int devserver_add_unit(devserver_config_t *, devserver_io_t *);
 int devserver(devserver_config_t *,int);
 

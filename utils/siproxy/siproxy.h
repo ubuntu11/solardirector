@@ -9,15 +9,13 @@
 
 struct siproxy_config {
 	cfg_info_t *cfg;
+	list modules;
+	devserver_config_t ds;
 	solard_module_t *can;
 	void *can_handle;
-	solard_module_t *tty;
-	void *tty_handle;
-	list modules;
 	pthread_t th;
-	uint32_t bitmap;
 	struct can_frame frames[16];
-	devserver_config_t ds;
+	uint32_t bitmap;
 	uint16_t state;
 };
 typedef struct siproxy_config siproxy_config_t;

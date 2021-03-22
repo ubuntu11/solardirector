@@ -754,10 +754,7 @@ SHARED_FUNCTION void TSMAData_OnFrameReceived(struct TNetPacket * frame)
 
       /* Wenn noetig mit Hilfe des Defragmentierer defragmentieren
       * (fragmente zusammenfuegen, Master Mode) */
-      DeFragFrame = TDeFrag_Defrag( &smadata,
-                                    frame,
-                                    Flags,
-                                    &Prozent );
+      DeFragFrame = TDeFrag_Defrag( &smadata, frame, Flags, &Prozent );
 
       if (req && req->OnTransfer)
          (req->OnTransfer)(req, Prozent);

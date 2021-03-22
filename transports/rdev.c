@@ -4,7 +4,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
-#include <linux/can.h>
 #include <ctype.h>
 #include <netdb.h>
 #include "devserver.h"
@@ -16,15 +15,17 @@
 
 struct rdev_session {
 	int fd;
-	char target[SOLARD_AGENT_TARGET_LEN+1];
+	char target[SOLARD_AGENT_TARGET_LEN];
 	int port;
-	char interface[16];
+	char name[DEVSERVER_NAME_LEN];
+	char type[DEVSERVER_TYPE_LEN];
 	uint8_t unit;
 };
 typedef struct rdev_session rdev_session_t;
 
 static void *rdev_new(void *conf, void *target, void *topts) {
 	rdev_session_t *s;
+	char temp[128];
 	char *p;
 
 	s = calloc(1,sizeof(*s));
@@ -34,21 +35,27 @@ static void *rdev_new(void *conf, void *target, void *topts) {
 	}
 	s->fd = -1;
 
-	/* Format is addr:port:interface:speed */
-	s->target[0] = 0;
-	strncat(s->target,strele(0,",",(char *)target),sizeof(s->target)-1);
-	p = strele(1,",",(char *)target);
+	/* Format is addr:port,name */
+	dprintf(1,"target: %s\n", target);
+	temp[0] = 0;
+	strncat(temp,strele(0,",",(char *)target),sizeof(temp)-1);
+	strncat(s->target,strele(0,":",temp),sizeof(s->target)-1);
+	dprintf(1,"s->target: %s\n", s->target);
+	p = strele(1,":",temp);
 	if (strlen(p)) s->port = atoi(p);
-	else s->port = DEFAULT_PORT;
-	p =strele(2,",",(char *)target);
-	if (!p) {
-		printf("error: rdev requires ip,port,interface,speed\n");
+	if (!s->port) s->port = DEFAULT_PORT;
+
+	if (!topts) {
+		log_write(LOG_ERROR,"rdev requires name in topts\n");
 		return 0;
 	}
-	s->interface[0] = 0;
-	strncat(s->interface,p,sizeof(s->interface)-1);
+	strncat(s->name,strele(0,",",topts),sizeof(s->name)-1);
+	if (!strlen(s->name)) {
+		log_write(LOG_ERROR,"rdev requires name in topts\n");
+		return 0;
+	}
 
-	dprintf(1,"target: %s, port: %d, interface: %s\n", s->target, s->port, s->interface);
+	dprintf(1,"target: %s, port: %d, name: %s\n", s->target, s->port, s->name);
 	return s;
 }
 
@@ -57,11 +64,11 @@ static int rdev_open(void *handle) {
 	struct sockaddr_in addr;
 	socklen_t sin_size;
 	struct hostent *he;
-	struct timeval tv;
 	uint8_t status;
 	int bytes;
 	char temp[SOLARD_AGENT_TARGET_LEN];
 	uint8_t *ptr;
+	uint16_t control;
 
 	if (s->fd >= 0) return 0;
 
@@ -97,24 +104,15 @@ static int rdev_open(void *handle) {
 		return 1;
 	}
 
-	dprintf(1,"setting timeout\n");
-	tv.tv_sec = 1;
-	tv.tv_usec = 0;
-	if (setsockopt(s->fd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv)) < 0) {
-		perror("socket_open: setsockopt SO_SNDTIMEO");
-		return 1;
-	}
-
 	dprintf(1,"sending open\n");
-	bytes = devserver_send(s->fd,DEVSERVER_OPEN,0,s->interface,strlen(s->interface)+1);
+	bytes = devserver_send(s->fd,DEVSERVER_OPEN,0,0,s->name,strlen(s->name)+1);
 	dprintf(1,"bytes: %d\n", bytes);
 
-//	usleep (2500);
-
 	/* Read the reply */
-	bytes = devserver_recv(s->fd,&status,&s->unit,0,0,0);
+	bytes = devserver_recv(s->fd,&status,&s->unit,&control,s->type,sizeof(s->type)-1,0);
 	if (bytes < 0) return -1;
-	dprintf(1,"bytes: %d, status: %d, unit: %d\n", bytes, status, s->unit);
+	dprintf(1,"bytes: %d, status: %d, unit: %d, control: %d\n", bytes, status, s->unit, control);
+	dprintf(1,"type: %s\n", s->type);
 
 	return 0;
 }
@@ -122,36 +120,45 @@ static int rdev_open(void *handle) {
 static int rdev_read(void *handle, void *buf, int buflen) {
 	rdev_session_t *s = handle;
 	uint8_t status,runit;
+	uint16_t control;
 	int bytes;
 
-	dprintf(4,"buf: %p, buflen: %d\n", buf, buflen);
+	dprintf(5,"buf: %p, buflen: %d\n", buf, buflen);
 
-	bytes = devserver_send(s->fd,DEVSERVER_READ,s->unit,buf,buflen);
+	bytes = devserver_send(s->fd,DEVSERVER_READ,s->unit,buflen,0,0);
 	dprintf(5,"bytes: %d\n", bytes);
 	if (bytes < 0) return -1;
 
 	/* Read the response */
-	bytes = devserver_recv(s->fd,&status,&runit,buf,buflen,8000);
-	dprintf(4,"bytes: %d, status: %d, runit: %d\n", bytes, status, runit);
-	if (bytes > 0 && debug >= 8) bindump("FROM SERVER",buf,buflen);
-	return bytes;
+	status = runit = control = 0;
+	bytes = devserver_recv(s->fd,&status,&runit,&control,buf,buflen,0);
+	dprintf(5,"bytes: %d, status: %d, runit: %d, control: %d\n", bytes, status, runit, control);
+	/* control has bytes read */
+	if (bytes > 0 && debug >= 7) bindump("FROM SERVER",buf,control);
+	dprintf(5,"returning: %d\n", control);
+	return control;
 }
 
 static int rdev_write(void *handle, void *buf, int buflen) {
 	rdev_session_t *s = handle;
 	uint8_t status,runit;
+	uint16_t control;
 	int bytes;
 
 	dprintf(5,"buf: %p, buflen: %d\n", buf, buflen);
 
-	bytes = devserver_send(s->fd,DEVSERVER_WRITE,s->unit,buf,buflen);
+	if (debug >= 7) bindump("TO SERVER",buf,buflen);
+	bytes = devserver_send(s->fd,DEVSERVER_WRITE,s->unit,buflen,buf,buflen);
 	dprintf(5,"bytes: %d\n", bytes);
 	if (bytes < 0) return -1;
 
 	/* Read the response */
-	bytes = devserver_recv(s->fd,&status,&runit,0,0,0);
+	status = runit = control = 0;
+	bytes = devserver_recv(s->fd,&status,&runit,&control,0,0,0);
+	/* control has bytes written */
 	dprintf(5,"bytes: %d, status: %d, runit: %d\n", bytes, status, runit);
-	return bytes;
+	dprintf(5,"returning: %d\n", control);
+	return control;
 }
 
 
@@ -159,7 +166,7 @@ static int rdev_close(void *handle) {
 	rdev_session_t *s = handle;
 
 	if (s->fd >= 0) {
-		devserver_request(s->fd,DEVSERVER_CLOSE,s->unit,0,0);
+		devserver_request(s->fd,DEVSERVER_CLOSE,s->unit,0,0,0);
 		close(s->fd);
 		s->fd = -1;
 	}

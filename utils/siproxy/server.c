@@ -15,6 +15,7 @@ int server(siproxy_config_t *conf, int port) {
 	sigaddset(&set, SIGPIPE);
 	sigprocmask(SIG_BLOCK, &set, NULL);
 
+	dprintf(1,"opening socket...\n");
 	s = socket(AF_INET, SOCK_STREAM, 0);
 	if (s < 0)  {
 		log_write(LOG_SYSERR,"socket");
@@ -32,15 +33,18 @@ int server(siproxy_config_t *conf, int port) {
 	sin.sin_addr.s_addr = htonl(INADDR_ANY);
 	sin.sin_port = htons((unsigned short)port);
 
+	dprintf(1,"binding...\n");
 	if (bind(s, (struct sockaddr *) &sin, sizeof(sin)) < 0)  {
 		log_write(LOG_SYSERR,"bind");
 		goto siproxy_server_error;
 	}
+	dprintf(1,"listening...\n");
 	if (listen(s, 5) < 0) {
 		log_write(LOG_SYSERR,"listen");
 		goto siproxy_server_error;
 	}
 	while(solard_check_state(conf,SI_STATE_RUNNING)) {
+		dprintf(1,"accepting...\n");
 		c = accept(s,(struct sockaddr *)&sin,&sin_size);
 		if (c < 0) {
 			log_write(LOG_SYSERR,"accept");

@@ -193,7 +193,7 @@ char *battery_info(void *handle) {
 	return info;
 }
 
-int battery_read(void *handle,...) {
+int battery_read(void *handle,void *buf,int buflen) {
 	battery_session_t *s = handle;
 	solard_battery_t *pp = &s->info;
 	int r;
@@ -233,7 +233,20 @@ int battery_read(void *handle,...) {
 	return r;
 }
 
-int battery_write(void *handle, ...) {
+int battery_write(void *handle, void *buf, int buflen) {
+	battery_session_t *s = handle;
+	int r;
+
+	dprintf(4,"%s: opening...\n", s->name);
+	if (s->driver->open(s->handle)) {
+		dprintf(1,"%s: open error\n",s->name);
+		return 1;
+	}
+	dprintf(4,"%s: writing...\n", s->name);
+	r = (s->driver->write ? s->driver->write(s->handle,&s->info,sizeof(s->info)) : 1);
+	dprintf(4,"%s: closing\n", s->name);
+	s->driver->close(s->handle);
+	dprintf(4,"%s: returning: %d\n", s->name, r);
 	return 1;
 }
 

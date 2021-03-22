@@ -3,12 +3,13 @@
 #define __SOLARD_SI_H
 
 #include "agent.h"
+#include <linux/can.h>
 
 struct si_session {
 	pthread_t th;
-	uint32_t bitmap;
 	/* 0x300 to 0x30F */
-	uint8_t messages[16][8];
+	struct can_frame frames[16];
+	uint32_t bitmap;
 	solard_module_t *can;
 	void *can_handle;
 	solard_module_t *serial;

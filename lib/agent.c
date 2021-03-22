@@ -319,7 +319,7 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 //			{ section_name, "uuid", "Agent UUID", DATA_TYPE_STRING,&ap->uuid,sizeof(ap->uuid), 0 },
 			{ section_name, "transport", "Transport", DATA_TYPE_STRING,&transport,sizeof(transport), 0 },
 			{ section_name, "target", "Transport address/interface/device", DATA_TYPE_STRING,&target,sizeof(target), 0 },
-			{ section_name, "opts", "Transport specific options", DATA_TYPE_STRING,&topts,sizeof(topts), 0 },
+			{ section_name, "topts", "Transport specific options", DATA_TYPE_STRING,&topts,sizeof(topts), 0 },
 			CFG_PROCTAB_END
 		};
 		transport[0] = target[0] = topts[0] = 0;

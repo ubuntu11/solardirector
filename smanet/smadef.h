@@ -79,9 +79,8 @@ typedef void*              XPOINT;
 ***************************************************************************/
 #define UNUSED_VAR(var)  (var) = (var)
 
-
+typedef int (tp_callback_t)(void *,char *,char *,char *);
 
 #endif /* ... ifdef _SMADEFINES */
 
 /*EOF*/
-

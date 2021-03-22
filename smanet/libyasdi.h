@@ -64,8 +64,9 @@ extern "C" {
                    PRUESSING, 23.12.2001, 1.0, Created
 **************************************************************************/
 //SHARED_FUNCTION int  yasdiInitialize(const char * cIniFileName, DWORD * pDriverCount);
+//SHARED_FUNCTION int  yasdiInitialize(cfg_info_t *info);
 #include "cfg.h"
-SHARED_FUNCTION int  yasdiInitialize(cfg_info_t *info);
+SHARED_FUNCTION int  yasdiInitialize(tp_callback_t *,cfg_info_t *);
 
 
 /**************************************************************************

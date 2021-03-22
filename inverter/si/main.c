@@ -184,14 +184,14 @@ int main(int argc, char **argv) {
 		OPTS_END
 	};
 	solard_agent_t *ap;
-	char *args[] = { "t2", "-d", "2", "-c", "si.conf", "-i", "5" };
-	#define nargs (sizeof(args)/sizeof(char *))
+//	char *args[] = { "t2", "-d", "2", "-c", "si.conf", "-i", "5" };
+//	#define nargs (sizeof(args)/sizeof(char *))
 
 //	si_driver.read = 0;
 //	si_driver.info = 0;
 
-//	ap = agent_init(argc,argv,opts,&si_driver);
-	ap = agent_init(nargs,args,opts,&si_driver);
+//	ap = agent_init(nargs,args,opts,&si_driver);
+	ap = agent_init(argc,argv,opts,&si_driver);
 	dprintf(1,"ap: %p\n",ap);
 	if (!ap) return 1;
 	mqtt_disconnect(ap->m,0);

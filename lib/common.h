@@ -30,6 +30,10 @@ struct solard_message {
 typedef struct solard_message solard_message_t;
 #endif
 
+#define SOLARD_TRANSPORT_LEN	32
+#define SOLARD_TARGET_LEN	64
+#define SOLARD_TOPTS_LEN	32
+
 int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_opts);
 
 #endif

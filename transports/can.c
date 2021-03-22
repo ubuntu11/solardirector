@@ -40,12 +40,15 @@ static void *can_new(void *conf, void *target, void *topts) {
 		return 0;
 	}
 	s->fd = -1;
-	s->interface[0] = 0;
 	strncat(s->interface,strele(0,",",(char *)target),sizeof(s->interface)-1);
+	if (topts) s->bitrate = atoi(topts);
+	if (!s->bitrate) s->bitrate = DEFAULT_BITRATE;
+#if 0
 	p = strele(1,",",(char *)target);
 	if (strlen(p)) s->bitrate = atoi(p);
 	else if (topts) s->bitrate = atoi(topts);
 	else s->bitrate = DEFAULT_BITRATE;
+#endif
 	dprintf(3,"interface: %s, bitrate: %d\n",s->interface,s->bitrate);
 
         return s;
@@ -867,8 +870,10 @@ static int can_read(void *handle, void *buf, int buflen) {
 	dprintf(8,"buf: %p, buflen: %d\n", buf, buflen);
 
 	frame = buf;
-	id = frame->can_id;
+	/* buflen has the ID */
+	id = buflen;
 
+	/* Buf is expected to be a can frame ... */
 	dprintf(8,"id: %03x, buf: %p, buflen: %d\n", id, buf, buflen);
 	/* Keep reading until we get our ID */
 	do {
@@ -885,49 +890,23 @@ static int can_read(void *handle, void *buf, int buflen) {
 		}
 		dprintf(8,"bytes: %d, id: %x, frame->can_id: %x\n", bytes, id, frame->can_id);
 	} while(id != 0xFFFF && frame->can_id != id);
-#if 0
-	/* If the id is 0xFFFF, return the whole frame */
-	if (id == 0x0FFFF) {
-		dprintf(8,"returning frame...\n");
-		len = buflen < sizeof(frame) ? buflen : sizeof(frame);
-		memcpy(buf,&frame,len);
-	} else {
-		len = buflen > frame.can_dlc ? frame.can_dlc : buflen;
-		dprintf(8,"len: %d, can_dlc: %d\n", len, frame.can_dlc);
-		memcpy(buf,&frame.data,len);
-	}
-#endif
-	if (bytes > 0 && debug >= 8) bindump("FROM DEVICE",buf,buflen);
+	if (bytes > 0 && debug >= 8) bindump("FROM DEVICE",buf,sizeof(struct can_frame));
 	dprintf(6,"returning: %d\n", bytes);
 	return bytes;
 }
 
 static int can_write(void *handle, void *buf, int buflen) {
 	can_session_t *s = handle;
-	struct can_frame *frame;
 	int bytes;
 
 	/* If not open, error */
 	if (s->fd < 0) return -1;
 
-	frame = buf;
-#if 0
-	id = frame->can_id;
-
-	dprintf(5,"id: %03x, buf: %p, buflen: %d\n", id, buf, buflen);
-	len = buflen > 8 ? 8 : buflen;
-	dprintf(5,"len: %d\n", len);
-	memset(&frame,0,sizeof(frame));
-	frame.can_id = id;
-	frame.can_dlc = len;
-	memcpy(&frame.data,buf,len);
-#endif
-	if (debug >= 5) bindump("TO DEVICE",frame,sizeof(struct can_frame));
-	bytes = write(s->fd, frame, sizeof(struct can_frame));
+	/* Buf is expected to be a can frame ... */
+	if (debug >= 5) bindump("TO DEVICE",buf,sizeof(struct can_frame));
+	bytes = write(s->fd, buf, sizeof(struct can_frame));
 	dprintf(5,"fd: %d, returning: %d\n", s->fd, bytes);
 	return bytes;
-//	if (bytes < 0) perror("write");
-//	return (bytes < 0 ? -1 : len);
 }
 
 static int can_close(void *handle) {

@@ -30,7 +30,8 @@ int (*transport_RegisterDevice)(TDevice * newdev);
 ***** Global Variables  ***************************************************
 ***************************************************************************/
 
-cfg_info_t *cfg;
+extern tp_callback_t *tpcb;
+extern cfg_info_t *cfg;
 static int transport_dBytesReadTotal = 0;
 
 /**************************************************************************
@@ -680,18 +681,11 @@ TDevice * transport_create(DWORD dUnit) {
       interface->Read      = transport_read;
       interface->GetMTU    = transport_GetMTU;
 
-	{
-		cfg_proctab_t tab[] = {
-			{ "smanet", "transport", "Transport", DATA_TYPE_STRING,&transport,sizeof(transport), "" },
-			{ "smanet", "target", "Transport address/interface/device", DATA_TYPE_STRING,&target,sizeof(target), "" },
-			{ "smanet", "topts", "Transport specific options", DATA_TYPE_STRING,&topts,sizeof(topts), "" },
-			CFG_PROCTAB_END
-		};
-		cfg_get_tab(cfg,tab);
-		if (debug) cfg_disp_tab(tab,"smanet",0);
-	}
+	dprintf(1,"tpcb: %p, cfg: %p\n", tpcb, cfg);
 
-//	dprintf(1,"transport: %s, target: %s, topts: %s\n", transport, target, topts);
+	if (tpcb && tpcb(cfg,transport,target,topts)) return 0;
+
+	dprintf(1,"transport: %s, target: %s, topts: %s\n", transport, target, topts);
 	if (!strlen(transport) || !strlen(target)) {
 		log_write(LOG_ERROR,"transport and target must be specified\n");
 		return 0;

@@ -8,7 +8,7 @@ void *si_recv_thread(void *handle) {
 	si_session_t *s = handle;
 	struct can_frame frame;
 	sigset_t set;
-	int r;
+	int bytes;
 
 	/* Ignore SIGPIPE */
 	sigemptyset(&set);
@@ -23,35 +23,33 @@ void *si_recv_thread(void *handle) {
 			sleep(1);
 			continue;
 		}
-		frame.can_id = 0xffff;
-		r = s->can->read(s->can_handle,&frame,sizeof(frame));
-		dprintf(7,"r: %d\n", r);
-		if (r < 0) {
+		bytes = s->can->read(s->can_handle,&frame,0xffff);
+		dprintf(7,"bytes: %d\n", bytes);
+		if (bytes < 1) {
 			memset(&s->bitmap,0,sizeof(s->bitmap));
 			sleep(1);
 			continue;
 		}
- 		if (r != sizeof(frame)) continue;
 		dprintf(7,"frame.can_id: %03x\n",frame.can_id);
-		if (frame.can_id < 0x300 || frame.can_id > 0x30a) continue;
+		if (frame.can_id < 0x300 || frame.can_id > 0x30F) continue;
 //		bindump("frame",&frame,sizeof(frame));
-		memcpy(&s->messages[frame.can_id - 0x300],&frame.data,8);
+		memcpy(&s->frames[frame.can_id - 0x300],&frame,sizeof(frame));
 		s->bitmap |= 1 << (frame.can_id - 0x300);
 	}
 	dprintf(1,"returning!\n");
 	return 0;
 }
 
-int si_get_local_can_data(si_session_t *s, int id, uint8_t *data, int len) {
+int si_get_local_can_data(si_session_t *s, int id, uint8_t *data, int datasz) {
 	char what[16];
 	uint16_t mask;
-	int idx,retries;
+	int idx,retries,len;
 
-	dprintf(5,"id: %03x, data: %p, len: %d\n", id, data, len);
-	dprintf(5,"bitmap: %04x\n", s->bitmap);
+	dprintf(5,"id: %03x, data: %p, len: %d\n", id, data, datasz);
+
 	idx = id - 0x300;
 	mask = 1 << idx;
-	dprintf(5,"mask: %04x\n", mask);
+	dprintf(5,"mask: %04x, bitmap: %04x\n", mask, s->bitmap);
 	retries=5;
 	while(retries--) {
 		if ((s->bitmap & mask) == 0) {
@@ -60,29 +58,28 @@ int si_get_local_can_data(si_session_t *s, int id, uint8_t *data, int len) {
 			continue;
 		}
 		sprintf(what,"%03x", id);
-		if (debug >= 5) bindump(what,s->messages[idx],8);
-		if (len > 8) len = 8;
-		memcpy(data,s->messages[idx],len);
+//		if (debug >= 5) bindump(what,&s->frames[idx],sizeof(struct can_frame));
+		len = (datasz > 8 ? 8 : datasz);
+		memcpy(data,s->frames[idx].data,len);
 		return 0;
 	}
 	return 1;
 }
 
 /* Func for can data that is remote (dont use thread/messages) */
-int si_get_remote_can_data(si_session_t *s, int id, uint8_t *data, int data_len) {
+int si_get_remote_can_data(si_session_t *s, int id, uint8_t *data, int datasz) {
 	int retries,bytes,len;
 	struct can_frame frame;
 
-	dprintf(5,"id: %03x, data: %p, data_len: %d\n", id, data, data_len);
+	dprintf(5,"id: %03x, data: %p, data_len: %d\n", id, data, datasz);
 
 	retries=5;
 	while(retries--) {
-		frame.can_id = id;
-		bytes = s->can->read(s->can_handle,&frame,sizeof(frame));
+		bytes = s->can->read(s->can_handle,&frame,id);
 		dprintf(5,"bytes: %d\n", bytes);
 		if (bytes < 0) return 1;
 		if (bytes == sizeof(frame)) {
-			len = (frame.can_dlc > data_len ? data_len : frame.can_dlc);
+			len = (frame.can_dlc > datasz ? datasz : frame.can_dlc);
 			memcpy(data,&frame.data,len);
 			if (debug >= 5) bindump("FROM SERVER",data,len);
 			break;

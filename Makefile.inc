@@ -275,7 +275,7 @@ install: $(PROG)
 endif
 
 clean:
-	rm -rf $(LIB) $(PROG) $(OBJS) $(CLEANFILES)
+	rm -rf $(LIB) $(PROG) $(OBJS) *.o $(CLEANFILES)
 
 
 ##.SUFFIXES: .c .o$(SUFFIX)
