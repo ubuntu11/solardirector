@@ -22,6 +22,19 @@ typedef struct json_descriptor json_descriptor_t;
 
 typedef struct json_value json_value_t;
 
+typedef void (json_ptcallback_t)(char *,void *,int,json_value_t *);
+
+struct json_proctab {
+	char *field;
+	void *dest;
+	enum DATA_TYPE type;
+	int len;
+	json_ptcallback_t *cb;
+};
+typedef struct json_proctab json_proctab_t;
+
+#define JSON_PROCTAB_END { 0, 0, 0, 0, 0 }
+
 struct json_object {
     json_value_t  *wrapping_value;
     char       **names;
@@ -87,33 +100,31 @@ struct descriptor_scope {
 };
 
 char *json_typestr(int);
-json_object_t *json_create_object(void);
+json_value_t *json_create_object(void);
 json_value_t *json_create_array(void);
-int json_destroy(json_object_t *);
+int json_destroy(json_value_t *);
 json_value_t *json_parse(char *);
 
-int json_add_string(json_object_t *,char *,char *);
-int json_add_boolean(json_object_t *,char *,int);
-int json_add_number(json_object_t *,char *,double);
-int json_add_array(json_object_t *,char *,json_value_t *);
-int json_add_object(json_object_t *,char *,json_object_t *);
-int json_add_descriptor(json_object_t *,char *,json_descriptor_t);
+int json_add_string(json_value_t *,char *,char *);
+int json_add_boolean(json_value_t *,char *,int);
+int json_add_number(json_value_t *,char *,double);
+int json_add_value(json_value_t *,char *,json_value_t *);
+int json_add_descriptor(json_value_t *,char *,json_descriptor_t);
 
 int json_array_add_string(json_value_t *,char *);
 int json_array_add_strings(json_value_t *,char *);
 int json_array_add_boolean(json_value_t *,int);
 int json_array_add_number(json_value_t *,double);
-int json_array_add_array(json_value_t *,json_value_t *);
-int json_array_add_object(json_value_t *,json_object_t *);
+int json_array_add_value(json_value_t *,json_value_t *);
 int json_array_add_descriptor(json_value_t *,json_descriptor_t);
 
-int json_tostring(json_object_t *,char *,int,int);
-char *json_dumps(json_object_t *,int);
+int json_tostring(json_value_t *,char *,int,int);
+char *json_dumps(json_value_t *,int);
 const char  *   json_string (const JSON_Value *value);
 void        json_free_serialized_string(char *string);
 #define json_free_string(s) json_free_serialized_string(s)
 
-//int tab_to_json(JSON_Object *root_object, cfg_proctab_t *tab);
-//int json_to_tab(cfg_proctab_t *tab, JSON_Object *root_object);
+json_value_t *json_from_tab(json_proctab_t *);
+int json_to_tab(json_proctab_t *, json_value_t *);
 
 #endif

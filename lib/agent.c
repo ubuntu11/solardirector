@@ -85,7 +85,7 @@ agent_callback_skip:
 
 int agent_send_status(solard_agent_t *ap, char *name, char *func, char *op, char *id, int status, char *message) {
 	char topic[200],msg[4096];
-	json_object_t *o;
+	json_value_t *o;
 
 	dprintf(1,"op: %s, status: %d, message: %s\n", op, status, message);
 
@@ -179,11 +179,11 @@ list agent_config_payload2list(solard_agent_t *ap, char *name, char *func, char 
 		goto agent_config_payload_error;
 	}
 
-	json_destroy((json_object_t *)v);
+	json_destroy(v);
 	dprintf(1,"returning: %p\n", lp);
 	return lp;
 agent_config_payload_error:
-	json_destroy((json_object_t *)v);
+	json_destroy(v);
 	dprintf(1,"returning: 0\n");
 	return 0;
 }
@@ -233,7 +233,7 @@ void agent_process(solard_agent_t *ap, solard_message_t *msg) {
 			goto agent_process_error;
 		}
 		ap->role->control(ap->role_handle,msg->action,msg->id,v);
-		json_destroy((json_object_t *)v);
+		json_destroy(v);
 	}
 	dprintf(1,"used: %ld\n", mem_used() - start);
 	return;

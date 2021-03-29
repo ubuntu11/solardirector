@@ -17,36 +17,22 @@ char *json_typestr(int type) {
 	return typenames[type];
 }
 
-json_object_t *json_create_object(void) {
-	json_object_t *o;
-
+json_value_t *json_create_object(void) {
 #ifdef DEBUG_MEM
 	if (!_init) {
 		json_set_allocation_functions(mem_malloc,mem_free);
 		_init = 1;
 	}
 #endif
-	o = (json_object_t *) json_value_init_object();
-	dprintf(5,"o: %p\n", o);
-	return o;
+	return json_value_init_object();
 }
 
 json_value_t *json_create_array(void) {
 	return json_value_init_array();
 }
 
-#if 0
-json_array_t *json_create_array(void) {
-	json_array_t *a;
-
-	a = (json_array_t *) json_value_init_array();
-	dprintf(5,"a: %p\n", a);
-	return a;
-}
-#endif
-
-int json_destroy(json_object_t *o) {
-	json_value_free((JSON_Value *)o);
+int json_destroy(json_value_t *v) {
+	json_value_free(v);
 	return 0;
 }
 
@@ -180,34 +166,28 @@ json_object_t *json_create_descriptor(json_descriptor_t d) {
 	return (json_object_t *)v;
 }
 
-int json_add_string(json_object_t *o, char *name, char *value) {
+int json_add_string(json_value_t *o, char *name, char *value) {
 	dprintf(5,"object: %p, name: %s, value: %s\n", o, name, value);
-	return json_object_set_string(json_object((JSON_Value *)o), name, value);
+	return json_object_set_string(json_object(o), name, value);
 }
 
-int json_add_number(json_object_t *o, char *name, double value) {
+int json_add_number(json_value_t *o, char *name, double value) {
 	dprintf(5,"object: %p, name: %s, value: %f\n", o, name, value);
-	return json_object_set_number(json_object((JSON_Value *)o), name, value);
+	return json_object_set_number(json_object(o), name, value);
 }
 
-int json_add_array(json_object_t *o, char *name, json_value_t *value) {
+int json_add_value(json_value_t *v, char *name, json_value_t *value) {
 //	XXX json_object_set_value does not copy passed value so it shouldn't be freed afterwards.
-	dprintf(5,"object: %p, name: %s, value: %p\n", o, name, value);
-	return json_object_set_value(json_object((JSON_Value *)o), name, value);
+	dprintf(5,"object: %p, name: %s, value: %p\n", v, name, value);
+	return json_object_set_value(json_object(v), name, value);
 }
 
-int json_add_object(json_object_t *o, char *name, json_object_t *value) {
-//	XXX json_object_set_value does not copy passed value so it shouldn't be freed afterwards.
-	dprintf(5,"object: %p, name: %s, value: %p\n", o, name, value);
-	return json_object_set_value(json_object((JSON_Value *)o), name, (JSON_Value *)value);
-}
-
-int json_add_descriptor(json_object_t *o,char *name,json_descriptor_t d) {
+int json_add_descriptor(json_value_t *o,char *name,json_descriptor_t d) {
 	JSON_Value *v;
 
 	v = (JSON_Value *) json_create_descriptor(d);
 	dprintf(5,"o: %p, name: %s, v: %p\n", o, name, v);
-	return json_object_set_value(json_object((JSON_Value *)o),name,v);
+	return json_object_set_value(json_object(o),name,v);
 }
 
 int json_array_add_string(json_value_t *a,char *value) {
@@ -240,8 +220,8 @@ int json_array_add_number(json_value_t *a,double value) {
 	return json_array_append_number(json_array(a),value);
 }
 
-int json_array_add_object(json_value_t *a,json_object_t *o) {
-	return json_array_append_value(json_array(a),(JSON_Value *)o);
+int json_array_add_value(json_value_t *a,json_value_t *o) {
+	return json_array_append_value(json_array(a),o);
 }
 
 int json_array_add_descriptor(json_value_t *a,json_descriptor_t d) {
@@ -252,9 +232,9 @@ int json_array_add_descriptor(json_value_t *a,json_descriptor_t d) {
 	return json_array_append_value(json_array(a),v);
 }
 
-int json_tostring(json_object_t *j, char *dest, int dest_len, int pretty) {
+int json_tostring(json_value_t *j, char *dest, int dest_len, int pretty) {
 	char *p;
-	p = pretty ? json_serialize_to_string_pretty((JSON_Value *)j) : json_serialize_to_string((JSON_Value *)j);
+	p = pretty ? json_serialize_to_string_pretty(j) : json_serialize_to_string((JSON_Value *)j);
 	dprintf(5,"p: %s\n", p);
 	dprintf(5,"dest_len: %d\n", dest_len);
 	dest[0] = 0;
@@ -264,8 +244,8 @@ int json_tostring(json_object_t *j, char *dest, int dest_len, int pretty) {
 	return 0;
 }
 
-char *json_dumps(json_object_t *o, int pretty) {
-	return (pretty ? json_serialize_to_string_pretty((JSON_Value *)o) : json_serialize_to_string((JSON_Value *)o));
+char *json_dumps(json_value_t *o, int pretty) {
+	return (pretty ? json_serialize_to_string_pretty(o) : json_serialize_to_string(o));
 }
 
 #if 0
@@ -307,12 +287,74 @@ int json_add_list(json_object_t *j, char *label, list values) {
 	return 0;
 }
 
-#if 0
-int tab_to_json(JSON_Object *root_object, cfg_proctab_t *tab) {
-	return 1;
+json_value_t *json_from_tab(json_proctab_t *tab) {
+	json_proctab_t *p;
+	json_value_t *v;
+	int *ip;
+	float *fp;
+	double *dp;
+
+	v = json_create_object();
+	if (!v) return 0;
+	for(p=tab; p->field; p++) {
+		if (p->cb) p->cb(p->field,p->dest,p->len,v);
+		else {
+			switch(p->type) {
+			case DATA_TYPE_STRING:
+				json_add_string(v,p->field,p->dest);
+				break;
+			case DATA_TYPE_INT:
+				ip = p->dest;
+				json_add_number(v,p->field,*ip);
+				break;
+			case DATA_TYPE_FLOAT:
+				fp = p->dest;
+				json_add_number(v,p->field,*fp);
+				break;
+			case DATA_TYPE_DOUBLE:
+				dp = p->dest;
+				json_add_number(v,p->field,*dp);
+				break;
+			default:
+				dprintf(1,"json_from_type: unhandled type: %d\n", p->type);
+				break;
+			}
+		}
+	}
+	return v;
 }
 
-int json_to_tab(cfg_proctab_t *tab, JSON_Object *root_object) {
+int json_to_tab(json_proctab_t *tab, json_value_t *v) {
+	json_proctab_t *p;
+	json_object_t *o;
+	int i;
+
+	/* must be object */
+	if (v->type != JSONObject) return 1;
+
+	o = v->value.object;
+        for (i = 0; i < o->count; i++) {
+		dprintf(5,"name: %s\n", o->names[i]);
+		for(p=tab; p->field; p++) {
+			if (strcmp(p->field,o->names[i])==0) {
+				if (p->cb) p->cb(p->field,p->dest,p->len,o->values[i]);
+				else {
+					json_value_t *vv = o->values[i];
+					switch(vv->type) {
+					case JSONString:
+						conv_type(p->type,p->dest,p->len,DATA_TYPE_STRING,vv->value.string.chars,0);
+						break;
+					case JSONNumber:
+						conv_type(p->type,p->dest,p->len,DATA_TYPE_DOUBLE,&vv->value.number,0);
+						break;
+					case JSONBoolean:
+						conv_type(p->type,p->dest,p->len,DATA_TYPE_LOGICAL,&vv->value.boolean,0);
+						break;
+					}
+				}
+				break;
+			}
+		}
+        }
 	return 1;
 }
-#endif

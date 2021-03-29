@@ -528,6 +528,8 @@ void TSMADataMaster_OnReqEnd( struct _TIORequest * req )
    }
 }
 
+static int last_val = -1;
+
 void TSMADataMaster_OnTransfer( struct _TIORequest * req, BYTE percentTransfer )
 {
    UNUSED_VAR ( req );
@@ -538,13 +540,15 @@ void TSMADataMaster_OnTransfer( struct _TIORequest * req, BYTE percentTransfer )
    //data transports while get data are not so important.
    if (req->Cmd == CMD_GET_CINFO)
    {
+	if ((percentTransfer % 10) == 0 && percentTransfer != last_val) {
+		log_write(LOG_INFO,"SMANET: Transferring channel list: %d%% completed\n", percentTransfer);
+		last_val = percentTransfer;
+	}
       TNetDevice * dev = TPlant_FindDevAddr( req->DestAddr );
       if (dev)
       {
          DWORD devHandle = TNetDevice_GetHandle(dev);
-         TSMADataMaster_FireAPIEventDeviceDetection(YASDI_EVENT_DOWNLOAD_CHANLIST, 
-                                                    devHandle, 
-                                                    percentTransfer);
+	TSMADataMaster_FireAPIEventDeviceDetection(YASDI_EVENT_DOWNLOAD_CHANLIST, devHandle, percentTransfer);
       }
    }
 }
@@ -742,9 +746,8 @@ void TSMADataMaster_DoMasterCmds( void )
       {
       char * decodedMcCmd = "";
       decodedMcCmd = TSMADataMaster_DecodeMasterCmd(cmdreq);
-      YASDI_DEBUG(( VERBOSE_MASTER | VERBOSE_BUGFINDER,
-                    "TSMADataMaster::DoMasterCmds()"
-                    " Starting master command %s, 0x%x ...\n", decodedMcCmd, cmdreq ));
+      YASDI_DEBUG(( VERBOSE_MASTER | VERBOSE_BUGFINDER, "TSMADataMaster::DoMasterCmds()"
+		" Starting master command %s, 0x%x ...\n", decodedMcCmd, cmdreq ));
       }      
       #endif
       
@@ -839,6 +842,7 @@ void TSMADataMaster_DoMasterCmds( void )
       ADDTAIL(&Master.WorkingCmdQueue, &cmdreq->Node);
       
       //set new state of the master command (aktivate it)...
+	dprintf(1,"setting state... NewState: %p\n",NewState);
       TSMADataCmd_ChangeState(cmdreq, NewState); 
       
       //one command more in progress

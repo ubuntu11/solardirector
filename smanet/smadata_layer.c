@@ -58,7 +58,7 @@
 #include "repository.h"
 #include "fractionizer.h"
 #include "byteorder.h" 
-#include "smanet.h"
+#include "core.h"
 #include "sunnynet.h"
 #include "minqueue.h"
 #include "mempool.h"
@@ -152,7 +152,7 @@ void printIORequestList(TMinList * IORequestList)
                    PRUESSING, 03.05.2001, 1.0, Created
                    Pruessing,24.12.2001, 1.1, insert Mutexes...
 **************************************************************************/
-SHARED_FUNCTION void TSMAData_constructor()
+SHARED_FUNCTION void TSMAData_constructor(smanet_session_t *s)
 {
    /* Funktion Scheduler erzeugen */
    TSchedule_Constructor();
@@ -184,7 +184,7 @@ SHARED_FUNCTION void TSMAData_constructor()
 
 
    /* Die 'DriverLayer' erzeugen */
-   TDriverLayer_Constructor();
+   TDriverLayer_Constructor(s);
 
    /* Protocol - Objekte erzeugen */
    TProtLayer_Constructor( TDriverLayer_GetDeviceList() );
@@ -217,7 +217,7 @@ SHARED_FUNCTION void TSMAData_constructor()
                    ********************************************************
                    PRUESSING, 03.05.2001, 1.0, Created
 **************************************************************************/
-SHARED_FUNCTION void TSMAData_destructor()
+SHARED_FUNCTION void TSMAData_destructor(smanet_session_t *s)
 {
    // delete scheduler
    TSchedule_Destructor();
@@ -229,7 +229,7 @@ SHARED_FUNCTION void TSMAData_destructor()
    TRouter_destructor();
 
    // delete driver layer object...
-   TDriverLayer_Destructor();
+   TDriverLayer_Destructor(s);
 
    //delete Protocoll Layer
    TProtLayer_Destructor();
@@ -1586,10 +1586,7 @@ SHARED_FUNCTION void TSMAData_InitReqCfgNetAddr( TIORequest * req, WORD SrcAddr,
    //req->BusDriverDeviceHandle = INVALID_DRIVER_DEVICE_HANDLE;  //Allways to all bus drivers and peers it
 }
 
-SHARED_FUNCTION void TSMAData_InitReqGetChanInfo(TIORequest * req,
-                                 WORD SrcAddr,
-                                 WORD DstAddr,
-                                 DWORD Timeout, DWORD BadRepeats)
+SHARED_FUNCTION void TSMAData_InitReqGetChanInfo(TIORequest * req, WORD SrcAddr, WORD DstAddr, DWORD Timeout, DWORD BadRepeats)
 {
    assert( req );
    req->TxFlags    = 0;                    /* kein SMADATA1 BROADCAST! */

@@ -1442,17 +1442,14 @@ SHARED_FUNCTION void yasdiReset()
                    Pruessing, 18.08.2001, 1.1, Konstruktoren der YasdiLib
                                               entfernt
 **************************************************************************/
-//SHARED_FUNCTION int yasdiMasterInitialize(const char * iniFile, DWORD * pDriverNum ) {
-SHARED_FUNCTION int yasdiMasterInitialize(tp_callback_t *cb, cfg_info_t *cfg) {
+SHARED_FUNCTION int yasdiMasterInitialize(smanet_session_t *s) {
    int iRes = 0;
-
-	dprintf(1,"cb: %p, cfg: %p\n", cb, cfg);
 
    if (!bIsMasterLibInit)
    {
       /* Initialisiere die Yasdi-Library, Parameter durchreichen... */
 //      iRes = yasdiInitialize(iniFile, pDriverNum);
-      iRes = yasdiInitialize(cb,cfg);
+      iRes = yasdiInitialize(s);
 
       YASDI_DEBUG(( VERBOSE_MESSAGE, "YASDI Master Library V" LIB_YASDI_VERSION_FULL " (%s)\n" SMA_COPYRIGHT "\n"
                     "Compile time: " __TIME__  " " __DATE__ "\n\n",

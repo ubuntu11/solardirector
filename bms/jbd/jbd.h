@@ -57,16 +57,13 @@ int jbd_close(void *handle);
 
 /* Read */
 int jbd_get_fetstate(jbd_session_t *);
-int jbd_read(void *handle,...);
+int jbd_read(void *handle,void *buf,int buflen);
 
 /* Config */
 int jbd_config(void *,char *,char *,list);
-int jbd_config_add_params(json_object_t *);
+int jbd_config_add_params(json_value_t *);
 
 /* Info */
-//int jbd_can_get_info(jbd_session_t *s,jbd_info_t *info);
-//int jbd_std_get_info(jbd_session_t *s,jbd_info_t *info);
-//int jbd_get_info(void *handle,jbd_info_t *info);
 char *jbd_info(void *handle);
 
 /* Control */

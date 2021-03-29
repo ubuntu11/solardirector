@@ -58,13 +58,15 @@ struct solard_agent_config_req {
 };
 typedef struct solard_agent_config_req solard_confreq_t;
 
-#define AGENT_ROLE_BATTERY "Battery"
 #define AGENT_ROLE_INVERTER "Inverter"
+#define AGENT_ROLE_BATTERY "Battery"
 
 solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, solard_module_t *driver);
 int agent_run(solard_agent_t *ap);
 int agent_send_status(solard_agent_t *ap, char *name, char *func, char *op, char *clientid, int status, char *message);
 int agent_set_callback(solard_agent_t *, solard_agent_callback_t);
 void *agent_get_handle(solard_agent_t *);
+
+#define agent_get_driver_handle(ap) ap->role->get_handle(ap->role_handle)
 
 #endif /* __SD_AGENT_H */

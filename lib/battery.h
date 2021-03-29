@@ -26,8 +26,8 @@ typedef struct battery_cell battery_cell_t;
 #define BATTERY_MAX_CELLS 32
 
 struct solard_battery {
-	char uuid[BATTERY_ID_LEN+1];		/* Battery unique ID */
-	char name[BATTERY_NAME_LEN+1];	/* Battery name */
+	char id[BATTERY_ID_LEN];	/* Battery unique ID */
+	char name[BATTERY_NAME_LEN];	/* Battery name */
 	float capacity;			/* Battery pack capacity, in AH */
 	float voltage;			/* Pack voltage */
 	float current;			/* Pack current */
@@ -57,28 +57,9 @@ typedef struct solard_battery solard_battery_t;
 #define BATTERY_STATE_BALANCING	0x08
 #define BATTERY_STATE_OPEN		0x10
 
-//solard_battery_t *battery_init(int,char **,opt_proctab_t *opts, module_t *mp);
-//int battery_init(solard_battery_t *,char *);
-
-#if 0
-int pack_update(solard_battery_t *pp);
-int pack_update_all(sdagent_config_t *,int);
-int pack_add(sdagent_config_t *conf, char *packname, solard_battery_t *pp);
-int pack_init(sdagent_config_t *conf);
-int pack_check(sdagent_config_t *conf,solard_battery_t *pp);
-int pack_send_mqtt(solard_battery_t *pp);
-
-//int battery_get_config(solard_battery_t *, char *);
-
-char *battery_info(solard_agent_t *);
-int battery_update(solard_agent_t *);
-//int battery_write(solard_agent_t *);
-int battery_config(solard_agent_t *,char *,list);
-int battery_control(solard_agent_t *);
-int battery_process(solard_agent_t *, solard_message_t *);
-int battery_send_status(solard_agent_t *,char *,int,char *);
-#endif
-
 extern solard_module_t battery;
+void battery_dump(solard_battery_t *,int);
+int battery_from_json(solard_battery_t *bp, char *str);
+json_value_t *battery_to_json(solard_battery_t *bp);
 
 #endif

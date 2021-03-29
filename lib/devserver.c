@@ -82,8 +82,8 @@ int devserver_send(int fd, uint8_t opcode, uint8_t unit, uint16_t control, void 
 int devserver_recv(int fd, uint8_t *opcode, uint8_t *unit, uint16_t *control, void *data, int datasz, int timeout) {
 	int i,bytes,len,bytes_left;
 	uint8_t ch,pkt[256];
-	struct timeval tv,*tp;
-	fd_set rdset;
+//	struct timeval tv,*tp;
+//	fd_set rdset;
 
 	dprintf(5,"opcode: %d, unit: %d, control: %d, data: %p, datasz: %d, timeout: %d\n",
 		*opcode, *unit, *control, data, datasz, timeout);

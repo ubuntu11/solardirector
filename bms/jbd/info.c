@@ -47,8 +47,7 @@ int jbd_get_info(void *handle,jbd_info_t *info) {
 char *jbd_info(void *handle) {
 	jbd_session_t *s = handle;
 	jbd_info_t info;
-	json_object_t *j;
-	json_value_t *a;
+	json_value_t *j,*a;
 	char version[16],*p;
 	long mem_start;
 	uint8_t data[4];
@@ -96,7 +95,7 @@ char *jbd_info(void *handle) {
 	json_array_add_descriptor(a,(json_descriptor_t){ "CHARGE_CONTROL", DATA_TYPE_BOOL, 0, 0, 0, 2, (char *[]){ "off", "on" } });
 	json_array_add_descriptor(a,(json_descriptor_t){ "DISCHARGE_CONTROL", DATA_TYPE_BOOL, 0, 0, 0, 2, (char *[]){ "off", "on" } });
 	json_array_add_descriptor(a,(json_descriptor_t){ "BALANCE_CONTROL", DATA_TYPE_INT, "select", 3, (int []){ 0,1,2 }, 3, (char *[]){ "off", "on", "charge" } });
-	json_add_array(j,"controls",a);
+	json_add_value(j,"controls",a);
 	jbd_config_add_params(j);
 //	p = json_dumps(j,s->pp->conf->pretty);
 	p = json_dumps(j,0);

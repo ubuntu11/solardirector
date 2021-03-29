@@ -7,6 +7,8 @@ DYNAMIC=yes
 SHARED?=no
 STATIC?=no
 
+PREFIX?=/opt/sd
+
 # Define SRC_ROOT
 current_makefile := $(lastword $(MAKEFILE_LIST))
 SRC_ROOT=$(shell echo $$(dirname $(current_makefile)))

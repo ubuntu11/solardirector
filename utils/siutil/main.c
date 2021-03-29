@@ -1,11 +1,24 @@
 
 #include "common.h"
-#include "libyasdi.h"
-#include "libyasdimaster.h"
 #include <ctype.h>
 #include <sys/types.h>
+#include "smanet_internal.h"
 
-int debug = 3;
+int debug = 5;
+
+#if 0
+#include "os.h"
+#include "states.h"
+
+#include "master.h"
+#include "debug.h"
+#include "smadata_layer.h"
+#include "netdevice.h"
+#include "plant.h"
+#include "mastercmd.h"
+
+#include "libyasdi.h"
+#include "libyasdimaster.h"
 
 //WChanType = 0x040f and bChanIndex = 0 denotes all parameter channels
 //WChanType = 0x090f and bChanIndex = 0 denotes all spot value channels
@@ -14,12 +27,6 @@ int debug = 3;
 #define CHANTYPE_ALL 0xffff
 
 #define MAX_CHANHANDLES	2048
-
-//#ifdef DEBUG
-//#define dprintf(format, args...) printf("%s(%d): " format,__FUNCTION__,__LINE__, ## args)
-//#else
-//#define dprintf(format, args...) /* noop */
-//#endif
 
 extern BOOL TSecurity_SetNewAccessLevel(char * user, char * passwd);
 
@@ -247,35 +254,20 @@ void usage(char *myname) {
 	return;
 }
 
-int siutil_callback(void *ctx, char *transport, char *target, char *topts) {
-	cfg_info_t *cfg = ctx;
+int main(int argc, char **argv) {
+	int opt,all,list,param,action,type;
+	int i,driverCount,found,r,done;
+	char *progName,*configFile,name[32],device_type[32];
+	DWORD drivers[5],devCount,count,deviceHandles[1];
+	char transport[32],target[64],topts[32];
+	cfg_info_t *cfg;
 	cfg_proctab_t tab[] = {
 		{ "siutil","transport","Device transport",DATA_TYPE_STRING,transport,SOLARD_TRANSPORT_LEN-1, "" },
 		{ "siutil","target","Device target",DATA_TYPE_STRING,target,SOLARD_TARGET_LEN-1, "" },
 		{ "siutil","topts","Device transport options",DATA_TYPE_STRING,topts,SOLARD_TOPTS_LEN-1, "" },
 		CFG_PROCTAB_END
 	};
-
-	dprintf(1,"cfg: %p\n", cfg);
-//	if (!cfg) return 1;
-	cfg_get_tab(cfg,tab);
-	dprintf(1,"got tab\n");
-	if (debug) cfg_disp_tab(tab,"siutil",0);
-
-	dprintf(1,"transport: %s, target: %s, topts: %s\n", transport, target, topts);
-	if (!strlen(transport) || !strlen(target)) {
-		log_write(LOG_ERROR,"must provide both transport and target\n");
-		return 1;
-	}
-	return 0;
-}
-
-int main(int argc, char **argv) {
-	int opt,all,list,param,action,type;
-	int i,driverCount,found,r,done;
-	char *progName,*configFile,name[32],device_type[32];
-	DWORD drivers[5],devCount,count,deviceHandles[1];
-	cfg_info_t *cfg;
+	smanet_session_t *s;
 
 	progName = argv[0];
 
@@ -339,8 +331,23 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 	dprintf(1,"cfg: %p\n", cfg);
-//	yasdiMasterInitialize(configFile,&count);
-	yasdiMasterInitialize(siutil_callback,cfg);
+	cfg_get_tab(cfg,tab);
+	dprintf(1,"got tab\n");
+	if (debug) cfg_disp_tab(tab,"siutil",0);
+
+	dprintf(1,"transport: %s, target: %s, topts: %s\n", transport, target, topts);
+	if (!strlen(transport) || !strlen(target)) {
+		log_write(LOG_ERROR,"must provide both transport and target\n");
+		return 1;
+	}
+
+	s = calloc(1,sizeof(*s));
+	if (!s) return 1;
+	s->tp = load_module(0,transport,SOLARD_MODTYPE_TRANSPORT);
+	s->tp_handle = s->tp->new(0,target,topts);
+//	s = smanet_init(tp, tp_handle);
+
+	yasdiMasterInitialize(s);
 	count = 1;
 
 	driverCount = yasdiMasterGetDriver(drivers, 5);
@@ -367,7 +374,7 @@ int main(int argc, char **argv) {
 
 	done = 0;
 	while(!done) {
-		r = DoStartDeviceDetection(1, TRUE);
+		r = DoStartDeviceDetection(1, FALSE);
 		dprintf(1,"r: %d\n", r);
 		switch(r) {
 		case YE_OK:
@@ -385,6 +392,7 @@ int main(int argc, char **argv) {
 			goto error;
 			break;
 		}
+		sleep(1);
 	}
 
 	TSecurity_SetNewAccessLevel(0,0);
@@ -418,3 +426,17 @@ error:
 	yasdiMasterShutdown();
 	return r;
 }
+#else
+int main(int argc, char **argv) {
+	smanet_session_t *s;
+	solard_module_t *tp;
+	void *tp_handle;
+	char *transport;
+
+	transport = "serial";
+	tp = load_module(0,transport,SOLARD_MODTYPE_TRANSPORT);
+	tp_handle = tp->new(0,"/dev/ttyS0","19200");
+	s = smanet_init(tp, tp_handle);
+	if (!s) return 1;
+}
+#endif

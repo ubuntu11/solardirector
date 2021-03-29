@@ -30,7 +30,6 @@ typedef struct can_session can_session_t;
 
 static void *can_new(void *conf, void *target, void *topts) {
 	can_session_t *s;
-	char *p;
 
 	dprintf(1,"target: %s, topts: %s\n", target, topts);
 
@@ -43,12 +42,6 @@ static void *can_new(void *conf, void *target, void *topts) {
 	strncat(s->interface,strele(0,",",(char *)target),sizeof(s->interface)-1);
 	if (topts) s->bitrate = atoi(topts);
 	if (!s->bitrate) s->bitrate = DEFAULT_BITRATE;
-#if 0
-	p = strele(1,",",(char *)target);
-	if (strlen(p)) s->bitrate = atoi(p);
-	else if (topts) s->bitrate = atoi(topts);
-	else s->bitrate = DEFAULT_BITRATE;
-#endif
 	dprintf(3,"interface: %s, bitrate: %d\n",s->interface,s->bitrate);
 
         return s;

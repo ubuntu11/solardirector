@@ -5,13 +5,7 @@
 #include "repository.h"
 #include "device.h"
 #include "driver_layer.h"
-#if 0
-#include "serial_posix.h"
-#include <aio.h>
-#include "copyright.h"
-#include "version.h"
-#endif
-#include "common.h"
+#include "smanet_internal.h"
 
 /**************************************************************************
 ***** LOCAL - Prototyps ***********************************************
@@ -24,14 +18,12 @@ BOOL transport_reopen(TDevice * dev);
 //void transport_modemstatus_clr(TDevice * dev, DWORD flags);
 char * transport_decode_posix_error(int errcode);
 //void transport_writeAsync(TDevice * dev, struct TNetPacket * frame, DWORD DriverDeviceHandle, TDriverSendFlags flags);
-int (*transport_RegisterDevice)(TDevice * newdev);
+//int (*transport_RegisterDevice)(TDevice * newdev);
 
 /**************************************************************************
 ***** Global Variables  ***************************************************
 ***************************************************************************/
 
-extern tp_callback_t *tpcb;
-extern cfg_info_t *cfg;
 static int transport_dBytesReadTotal = 0;
 
 /**************************************************************************
@@ -83,17 +75,15 @@ void aio_completion_handler( sigval_t sigval );
                    Pruessing, 12.09.2000, 1.1, erweitert
 **************************************************************************/
 SHARED_FUNCTION BOOL transport_open(TDevice * dev) {
-   int iBytesInBuffer;
-//   struct termios options;
 //   int rate;
 //   CREATE_VAR_THIS(dev, struct TSerialPosixPriv *);
 
-   YASDI_DEBUG((VERBOSE_HWL,"Serial::open('%s')\n",dev->cName));
+   YASDI_DEBUG((VERBOSE_HWL,"transport_open('%s')\n",dev->cName));
 
    // is the device in right state ??
    if (dev->DeviceState == DS_ONLINE)
    {
-      YASDI_DEBUG((VERBOSE_HWL,"Serial_open: Device is already open!\n"));
+      YASDI_DEBUG((VERBOSE_HWL,"transport_open: Device is already open!\n"));
       return TRUE;
    }
 
@@ -154,7 +144,7 @@ SHARED_FUNCTION BOOL transport_open(TDevice * dev) {
       //and can't be used.
       if (ioctl(this->fd, FIONREAD, &iBytesInBuffer) < 0)
       {
-         YASDI_DEBUG((VERBOSE_WARNING, "Serial: Unable to open transport port '%s' (ioctrl/FIOREAD had failed)\n", this->cPort));
+         YASDI_DEBUG((VERBOSE_WARNING, "transport: Unable to open transport port '%s' (ioctrl/FIOREAD had failed)\n", this->cPort));
          return FALSE;
       }
 #endif
@@ -162,7 +152,7 @@ SHARED_FUNCTION BOOL transport_open(TDevice * dev) {
 	dev->DeviceState = DS_ONLINE;
 	return TRUE;
 transport_open_error:
-//	YASDI_DEBUG((VERBOSE_WARNING, "Serial: Unable to open transport port '%s'\n", this->cPort));
+//	YASDI_DEBUG((VERBOSE_WARNING, "transport: Unable to open transport port '%s'\n", this->cPort));
 	log_write(LOG_SYSERR,"smanet: unable to open transport");
 	return FALSE;
 }
@@ -224,7 +214,7 @@ void transport_wait_bus_free(TDevice * dev)
 			{
 			   //The time for one transmission => 1000ms maximum
 			   //If the line is more than 1000ms set, something is wrong. Maybe an SBC is connected
-            YASDI_DEBUG((VERBOSE_HWL,"Serial: Error in Bus Arbitration. Maybe an SunnyBoyControl is connected?\n"));
+            YASDI_DEBUG((VERBOSE_HWL,"transport: Error in Bus Arbitration. Maybe an SunnyBoyControl is connected?\n"));
 			   return;
 			}
 
@@ -308,7 +298,7 @@ void transport_prepare_send(TDevice * dev)
    Description   : Write data to bus
    Parameter     :
    Return-Value  : ---
-   Changes       : Author, Date, Version, Reason
+   Changes       : Author, Datetransport, Version, Reason
                    ********************************************************
                    PRUESSING, 29.03.2001, 1.0, Created
 **************************************************************************/
@@ -323,7 +313,7 @@ SHARED_FUNCTION void transport_write(TDevice * dev, struct TNetPacket * frame, D
    //check if device is in wrong state
    if ( dev->DeviceState != DS_ONLINE )
    {
-      YASDI_DEBUG((VERBOSE_HWL,"Serial: Nothing send. Bus driver '%s' is offline.\n", dev->cName ));
+      YASDI_DEBUG((VERBOSE_HWL,"transport: Nothing send. Bus driver '%s' is offline.\n", dev->cName ));
 	   return;
    }
 
@@ -629,10 +619,10 @@ char * transport_decode_posix_error(int errcode)
                    ********************************************************
                    PRUESSING, 10.04.2001, 1.0, Created
 **************************************************************************/
-TDevice * transport_create(DWORD dUnit) {
+TDevice * transport_create(smanet_session_t *s) {
 	TDevice * interface;
 //	struct TSerialPosixPriv * priv;
-	char transport[32],target[64],topts[64],*p;
+//	char transport[32],target[64],topts[64],*p;
 
 	dprintf(1,"creating interface...\n");
 #if 0
@@ -681,10 +671,10 @@ TDevice * transport_create(DWORD dUnit) {
       interface->Read      = transport_read;
       interface->GetMTU    = transport_GetMTU;
 
-	dprintf(1,"tpcb: %p, cfg: %p\n", tpcb, cfg);
+	interface->tp = s->tp;
+	interface->tp_handle = s->tp_handle;
 
-	if (tpcb && tpcb(cfg,transport,target,topts)) return 0;
-
+#if 0
 	dprintf(1,"transport: %s, target: %s, topts: %s\n", transport, target, topts);
 	if (!strlen(transport) || !strlen(target)) {
 		log_write(LOG_ERROR,"transport and target must be specified\n");
@@ -700,6 +690,7 @@ TDevice * transport_create(DWORD dUnit) {
 		log_write(LOG_ERROR,"error initializing %s\n", transport);
 		return 0;
 	}
+#endif
 	strcpy(interface->cName,interface->tp->name);
 #if 0
 	p = cfg_get_item(cfg, "smanet","media");
@@ -752,7 +743,8 @@ TDevice * transport_create(DWORD dUnit) {
       ** register this new bus device driver in the YASDI core
       */
 	dprintf(1,"registering device!\n");
-	(*transport_RegisterDevice)( interface );
+//	(*transport_RegisterDevice)( interface );
+	s->regfunc(interface);
    }
 
    return interface;
@@ -768,9 +760,9 @@ TDevice * transport_create(DWORD dUnit) {
                    ********************************************************
                    PRUESSING, 11.04.2001, 1.0, Created
 **************************************************************************/
-void transport_create_all()
+void transport_create_all(smanet_session_t *s)
 {
-	transport_create(0);
+	transport_create(s);
 #if 0
    int i;
    TDevice * dev = NULL;
@@ -807,16 +799,17 @@ void transport_create_all()
                                                Parameter
 **************************************************************************/
 //int InitYasdiModule( void * RegFuncPtr, TOnDriverEvent eventCallback )
-int transport_init( void * RegFuncPtr, TOnDriverEvent eventCallback )
-{
+//int transport_init( void * RegFuncPtr, TOnDriverEvent eventCallback )
+int transport_init( smanet_session_t *s ) {
 
    /* store functions for registration... */
-   transport_RegisterDevice = RegFuncPtr;
+//   transport_RegisterDevice = RegFuncPtr;
+//	s->regfunc = RegFuncPtr;
 
    /*
    ** Create all drivers
    */
-   transport_create_all();
+   transport_create_all(s);
 
    return 0; /* 0 => ok */
 }

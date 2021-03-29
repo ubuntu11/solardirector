@@ -156,8 +156,8 @@ void display(cellmon_config_t *conf) {
 		sprintf(str,"Temp%d",y+1);
 		printf(format,str);
 		for(x=0; x < npacks; x++) {
-//			sprintf(str,"%2.1f",FTEMP(temps[y][x]));
-			sprintf(str,"%2.1f",temps[y][x]);
+			sprintf(str,"%2.1f",FTEMP(temps[y][x]));
+//			sprintf(str,"%2.1f",temps[y][x]);
 			printf(format,str);
 		}
 		printf("\n");

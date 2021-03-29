@@ -52,7 +52,7 @@
 #include "prot_layer.h"
 #include "driver_layer.h"
 #include "sunnynet.h"
-#include "smanet.h"
+#include "core.h"
 #include "frame_listener.h"
 #include "smadata_layer.h"
 

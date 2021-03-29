@@ -40,7 +40,7 @@
 #include "frame_listener.h"
 #include "device.h"
 #include "sunnynet.h"
-#include "smanet.h"   
+#include "core.h"   
 
 /* The internal transport protocol ID, defines for each transport protocol.
 ** Currently SMANet and SunnyNet or "AllAvailable" 

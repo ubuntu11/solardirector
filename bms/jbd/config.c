@@ -194,29 +194,28 @@ json_descriptor_t *_getd(char *label) {
 	return 0;
 }
 
-int jbd_config_add_params(json_object_t *j) {
+int jbd_config_add_params(json_value_t *j) {
 	int x,y;
-	json_value_t *ca,*a;
-	json_object_t *o;
+	json_value_t *ca,*o,*a;
 	struct parmdir *dp;
 
 	/* Configuration array */
 	ca = json_create_array();
 
 	for(x=0; x < NALL; x++) {
-       		o = json_create_object();
+		o = json_create_object();
 		dp = &allparms[x];
 		if (dp->count > 1) {
 			a = json_create_array();
 			for(y=0; y < dp->count; y++) json_array_add_descriptor(a,dp->parms[y]);
-			json_add_array(o,dp->name,a);
+			json_add_value(o,dp->name,a);
 		} else if (dp->count == 1) {
 			json_add_descriptor(o,dp->name,dp->parms[0]);
 		}
-		json_array_add_object(ca,o);
+		json_array_add_value(ca,o);
 	}
 
-	json_add_array(j,"configuration",ca);
+	json_add_value(j,"configuration",ca);
 	return 0;
 }
 

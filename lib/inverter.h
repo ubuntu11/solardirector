@@ -6,9 +6,12 @@
 
 typedef struct inverter_session inverter_session_t;
 
+#define INVERTER_ID_LEN 64
 #define INVERTER_NAME_LEN 32
 
 struct solard_inverter {
+	char id[INVERTER_ID_LEN];
+	char name[INVERTER_NAME_LEN];
 	float charge_voltage;
 	float discharge_voltage;
 	float charge_amps;
@@ -23,7 +26,7 @@ struct solard_inverter {
 	float site_power;		/* pv/wind/caes/chp watts */
 	float soc;
 	float soh;
-	int error;			/* Inverter Error code, 0 if none */
+	int errcode;			/* Inverter Error code, 0 if none */
 	char errmsg[256];		/* Inverter Error message */
 	void *handle;			/* Inverter Handle */
 	uint16_t state;			/* Inverter State */
@@ -40,5 +43,8 @@ typedef struct solard_inverter inverter_t;
 #define SOLARD_INVERTER_STATE_CHARGING	0x10
 
 extern module_t inverter;
+void inverter_dump(solard_inverter_t *,int);
+int inverter_from_json(solard_inverter_t *, char *);
+json_value_t *inverter_to_json(solard_inverter_t *);
 
 #endif /* __SOLARD_INVERTER_H */

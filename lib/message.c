@@ -4,8 +4,14 @@
 void solard_getmsg(void *ctx, char *topic, char *message, int msg_len) {
 	list lp = ctx;
 	solard_message_t newmsg;
+	char *root;
 
 	dprintf(1,"topic: %s, message(%d): %s\n", topic, msg_len, message);
+
+	/* All messages must start with /SolarD */
+	root = strele(1,"/",topic);
+	dprintf(1,"root: %s\n", root);
+	if (strcmp(root,"SolarD") != 0) return;
 
 	memset(&newmsg,0,sizeof(newmsg));
 
@@ -14,6 +20,8 @@ void solard_getmsg(void *ctx, char *topic, char *message, int msg_len) {
 	newmsg.data_len = msg_len;
 	dprintf(4,"data: %s\n", newmsg.data);
 
+	newmsg.role[0] = 0;
+	strncat(newmsg.role,strele(2,"/",topic),sizeof(newmsg.role)-1);
 	newmsg.name[0] = 0;
 	strncat(newmsg.name,strele(3,"/",topic),sizeof(newmsg.name)-1);
 	newmsg.func[0] = 0;

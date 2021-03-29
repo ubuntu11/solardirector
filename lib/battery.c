@@ -10,11 +10,28 @@ struct battery_session {
 };
 typedef struct battery_session battery_session_t;
 
-#if 0
-solard_battery_t *battery_init(int argc,char **argv,opt_proctab_t *opts, module_t *mp) {
-	return 0;
+void battery_dump(solard_battery_t *bp, int dlevel) {
+	int i;
+
+	dprintf(dlevel,"id: %s\n", bp->id);
+	dprintf(dlevel,"name: %s\n", bp->name);
+	dprintf(dlevel,"capacity: %.1f\n", bp->capacity);
+	dprintf(dlevel,"voltage %.1f\n", bp->voltage);
+	dprintf(dlevel,"current: %.1f\n", bp->current);
+	dprintf(dlevel,"ntemps: %d\n", bp->ntemps);
+	for(i=0; i < bp->ntemps; i++) dprintf(dlevel,"temp[%d]: %.1f\n", i, bp->temps[i]);
+	dprintf(dlevel,"ncells: %d\n", bp->ncells);
+	for(i=0; i < bp->ncells; i++) dprintf(dlevel,"cellvolt[%d]: %.3f\n", i, bp->cellvolt[i]);
+	for(i=0; i < bp->ncells; i++) dprintf(dlevel,"cellres[%d]: %.3f\n", i, bp->cellres[i]);
+	dprintf(dlevel,"cell_min: %.3f\n", bp->cell_min);
+	dprintf(dlevel,"cell_max: %.3f\n", bp->cell_max);
+	dprintf(dlevel,"cell_diff: %.3f\n", bp->cell_diff);
+	dprintf(dlevel,"cell_avg: %.3f\n", bp->cell_avg);
+	dprintf(dlevel,"cell_total: %.3f\n", bp->cell_total);
+	dprintf(dlevel,"errcode: %d\n", bp->errcode);
+	dprintf(dlevel,"errmsg: %s\n", bp->errmsg);
+	dprintf(dlevel,"state: %04x\n", bp->state);
 }
-#endif
 
 int battery_get_config(battery_session_t *s, char *section_name) {
 	struct cfg_proctab packtab[] = {
@@ -32,12 +49,9 @@ int battery_init(void *conf, char *section_name) {
 	return 0;
 }
 
-//void *battery_new(void *handle, ...) {
 void *battery_new(void *handle, void *driver, void *driver_handle) {
 	solard_agent_t *conf = handle;
 	battery_session_t *s;
-//	va_list va;
-//	char *sname;
 
 	s = calloc(1,sizeof(*s));
 	if (!s) {
@@ -47,14 +61,6 @@ void *battery_new(void *handle, void *driver, void *driver_handle) {
 	s->ap = conf;
 	s->driver = driver;
 	s->handle = driver_handle;
-
-#if 0
-	va_start(va,handle);
-	s->driver = va_arg(va,solard_module_t *);
-	s->handle = va_arg(va,void *);
-	sname = va_arg(va,char *);
-	va_end(va);
-#endif
 
 	/* Save a copy of the name */
 	strncat(s->name,s->ap->name,sizeof(s->name)-1);
@@ -72,108 +78,159 @@ int battery_open(void *handle) {
 int battery_close(void *handle) {
 	return 0;
 }
-int battery_send_mqtt(battery_session_t *s) {
-	solard_battery_t *pp = &s->info;
-	register int i,j;
-	char temp[256],*p;
-	unsigned long mask;
-	json_object_t *o;
-	struct battery_states {
-		int mask;
-		char *label;
-	} states[] = {
-		{ BATTERY_STATE_CHARGING, "Charging" },
-		{ BATTERY_STATE_DISCHARGING, "Discharging" },
-		{ BATTERY_STATE_BALANCING, "Balancing" },
-	};
+
+static void _get_arr(char *name,void *dest, int len,json_value_t *v) {
+	solard_battery_t *bp = dest;
+	json_array_t *a;
+	int i;
+
+	dprintf(6,"type: %d(%s)\n", v->type, json_typestr(v->type));
+	if (v->type != JSONArray) return;
+ 
+	a = v->value.array;
+	if (!a->count) return;
+	/* must be numbers */
+	if (a->items[0]->type != JSONNumber) return;
+	if (strcmp(name,"temps")==0) {
+		for(i=0; i < a->count; i++) bp->temps[i] = a->items[i]->value.number;
+		bp->ntemps = a->count;
+	} else if (strcmp(name,"cellvolt")==0) {
+		for(i=0; i < a->count; i++) bp->cellvolt[i] = a->items[i]->value.number;
+		bp->ncells = a->count;
+	} else if (strcmp(name,"cellres")==0) {
+		for(i=0; i < a->count; i++) bp->cellres[i] = a->items[i]->value.number;
+	}
+	return;
+}
+
+static void _set_arr(char *name,void *dest, int len,json_value_t *v) {
+	solard_battery_t *bp = dest;
+	json_value_t *a;
+	int i;
+
+	a = json_create_array();
+	if (!a) return;
+	dprintf(1,"len: %d\n", len);
+	if (strcmp(name,"temps")==0) {
+		for(i=0; i < len; i++) json_array_add_number(a,bp->temps[i]);
+	} else if (strcmp(name,"cellvolt")==0) {
+		for(i=0; i < len; i++) json_array_add_number(a,bp->cellvolt[i]);
+	} else if (strcmp(name,"cellres")==0) {
+		for(i=0; i < len; i++) json_array_add_number(a,bp->cellres[i]);
+	}
+	json_add_value(v,name,a);
+	return;
+}
+
+static struct battery_states {
+	int mask;
+	char *label;
+} states[] = {
+	{ BATTERY_STATE_CHARGING, "Charging" },
+	{ BATTERY_STATE_DISCHARGING, "Discharging" },
+	{ BATTERY_STATE_BALANCING, "Balancing" },
+};
 #define NSTATES (sizeof(states)/sizeof(struct battery_states))
 
-	/* Create JSON data */
-	o = json_create_object();
-//	if (get_timestamp(temp,sizeof(temp),1) == 0) json_add_string(o, "timestamp", temp);
-	json_add_string(o, "name", s->name);
-	if (strlen(s->ap->uuid)) json_add_string(o, "uuid", s->ap->uuid);
-	json_add_number(o, "state", pp->state);
-	json_add_number(o, "errcode", pp->errcode);
-	json_add_string(o, "errmsg", pp->errmsg);
-	json_add_number(o, "capacity", pp->capacity);
-	json_add_number(o, "voltage", pp->voltage);
-	json_add_number(o, "current", pp->current);
-	if (pp->ntemps) {
-		json_value_t *a;
+static void _get_state(char *name, void *dest, int len, json_value_t *v) {
+	solard_battery_t *bp = dest;
+	list lp;
+	char *p;
+	int i;
 
-		a = json_create_array();
-		dprintf(4,"ntemps: %d\n", pp->ntemps);
-		for(i=0; i < pp->ntemps; i++) json_array_add_number(a,pp->temps[i]);
-		json_add_array(o,"temps",a);
-	}
-	if (pp->ncells) {
-		json_value_t *a;
+	dprintf(4,"value: %s\n", v->value.string.chars);
+	conv_type(DATA_TYPE_LIST,&lp,0,DATA_TYPE_STRING,v->value.string.chars,v->value.string.length);
 
-		a = json_create_array();
-		dprintf(4,"cells: %d\n", pp->ncells);
-		for(i=0; i < pp->ncells; i++) json_array_add_number(a,pp->cellvolt[i]);
-		json_add_array(o,"cellvolt",a);
+	bp->state = 0;
+	list_reset(lp);
+	while((p = list_get_next(lp)) != 0) {
+		dprintf(6,"p: %s\n", p);
+		for(i=0; i < NSTATES; i++) {
+			if (strcmp(p,states[i].label) == 0) {
+				bp->state |= states[i].mask;
+				break;
+			}
+		}
 	}
-	json_add_number(o, "cell_min", pp->cell_min);
-	json_add_number(o, "cell_max", pp->cell_max);
-	json_add_number(o, "cell_diff", pp->cell_diff);
-	json_add_number(o, "cell_avg", pp->cell_avg);
-	json_add_number(o, "cell_total", pp->cell_total);
+	dprintf(4,"state: %x\n", bp->state);
+	list_destroy(lp);
+}
+
+static void _set_state(char *name, void *dest, int len, json_value_t *v) {
+	solard_battery_t *bp = dest;
+	char temp[128],*p;
+	int i,j;
+
+	dprintf(1,"state: %x\n", bp->state);
 
 	/* States */
 	temp[0] = 0;
 	p = temp;
-	dprintf(1,"state: %x\n", pp->state);
 	for(i=j=0; i < NSTATES; i++) {
-		if (solard_check_state(pp,states[i].mask)) {
+		if (solard_check_state(bp,states[i].mask)) {
 			if (j) p += sprintf(p,",");
 			p += sprintf(p,states[i].label);
 			j++;
 		}
 	}
-	dprintf(2,"temp: %s\n",temp);
-	json_add_string(o, "states", temp);
+	dprintf(1,"temp: %s\n", temp);
+	json_add_string(v, name, temp);
+}
 
-	mask = 1;
-	for(i=0; i < pp->ncells; i++) {
-		temp[i] = ((pp->balancebits & mask) != 0 ? '1' : '0');
-		mask <<= 1;
-	}
-	temp[i] = 0;
-	json_add_string(o, "balancebits", temp);
+#define BATTERY_TAB(NTEMP,NBAT,ACTION,STATE) \
+		{ "id",&bp->id,DATA_TYPE_STRING,sizeof(bp->id)-1,0 }, \
+		{ "name",&bp->name,DATA_TYPE_STRING,sizeof(bp->name)-1,0 }, \
+		{ "capacity",&bp->capacity,DATA_TYPE_FLOAT,0,0 }, \
+		{ "voltage",&bp->voltage,DATA_TYPE_FLOAT,0,0 }, \
+		{ "current",&bp->current,DATA_TYPE_FLOAT,0,0 }, \
+		{ "ntemps",&bp->ntemps,DATA_TYPE_INT,0,0 }, \
+		{ "temps",bp,0,NTEMP,ACTION }, \
+		{ "ncells",&bp->ncells,DATA_TYPE_INT,0,0 }, \
+		{ "cellvolt",bp,0,NBAT,ACTION }, \
+		{ "cellres",bp,0,NBAT,ACTION }, \
+		{ "cell_min",&bp->cell_min,DATA_TYPE_FLOAT,0,0 }, \
+		{ "cell_max",&bp->cell_max,DATA_TYPE_FLOAT,0,0 }, \
+		{ "cell_diff",&bp->cell_diff,DATA_TYPE_FLOAT,0,0 }, \
+		{ "cell_avg",&bp->cell_avg,DATA_TYPE_FLOAT,0,0 }, \
+		{ "cell_total",&bp->cell_total,DATA_TYPE_FLOAT,0,0 }, \
+		{ "errcode",&bp->errcode,DATA_TYPE_INT,0,0 }, \
+		{ "errmsg",&bp->errmsg,DATA_TYPE_STRING,sizeof(bp->errmsg)-1,0 }, \
+		{ "state",bp,0,0,STATE }, \
+		JSON_PROCTAB_END
 
-	/* TODO: protection info ... already covered with 'error/errmsg?' */
-#if 0
-        struct {
-                unsigned sover: 1;              /* Single overvoltage protection */
-                unsigned sunder: 1;             /* Single undervoltage protection */
-                unsigned gover: 1;              /* Whole group overvoltage protection */
-                unsigned gunder: 1;             /* Whole group undervoltage protection */
-                unsigned chitemp: 1;            /* Charge over temperature protection */
-                unsigned clowtemp: 1;           /* Charge low temperature protection */
-                unsigned dhitemp: 1;            /* Discharge over temperature protection */
-                unsigned dlowtemp: 1;           /* Discharge low temperature protection */
-                unsigned cover: 1;              /* Charge overcurrent protection */
-                unsigned cunder: 1;             /* Discharge overcurrent protection */
-                unsigned shorted: 1;            /* Short circuit protection */
-                unsigned ic: 1;                 /* Front detection IC error */
-                unsigned mos: 1;                /* Software lock MOS */
-        } protect;
-#endif
-	p = json_dumps(o,0);
+json_value_t *battery_to_json(solard_battery_t *bp) {
+	json_proctab_t battery_tab[] = { BATTERY_TAB(bp->ntemps,bp->ncells,_set_arr,_set_state) };
+
+	return json_from_tab(battery_tab);
+}
+
+int battery_from_json(solard_battery_t *bp, char *str) {
+	json_proctab_t battery_tab[] = { BATTERY_TAB(BATTERY_MAX_TEMPS,BATTERY_MAX_CELLS,_get_arr,_get_state) };
+	json_value_t *v;
+
+	v = json_parse(str);
+	memset(bp,0,sizeof(*bp));
+	json_to_tab(battery_tab,v);
+	battery_dump(bp,3);
+	json_destroy(v);
+	return 0;
+};
+
+int battery_send_mqtt(battery_session_t *s) {
+	solard_battery_t *pp = &s->info;
+	char temp[256],*p;
+	json_value_t *v;
+
+//	strcpy(pp->id,s->id);
+	strcpy(pp->name,s->name);
+	v = battery_to_json(pp);
+	if (!v) return 1;
+	p = json_dumps(v,0);
 	sprintf(temp,"/SolarD/Battery/%s/Data",s->name);
 	dprintf(2,"sending mqtt data...\n");
-#if 1
-	if (mqtt_pub(s->ap->m, temp, p, 0)) {
-		dprintf(1,"mqtt send error!\n");
-		return 1;
-	}
-#else
-	mqtt_dosend(s->ap->m, temp, p);
-#endif
+	mqtt_pub(s->ap->m, temp, p, 0);
 	free(p);
-	json_destroy(o);
+	json_destroy(v);
 	return 0;
 }
 
@@ -182,9 +239,13 @@ char *battery_info(void *handle) {
 	char *info;
 
 	dprintf(4,"%s: opening...\n", s->name);
-	if (s->driver->open(s->handle)) {
-		dprintf(1,"%s: open error\n",s->name);
-		return 0;
+	while(1) {
+		if (!s->driver->open(s->handle)) {
+			break;
+		} else {
+			dprintf(1,"%s: open error\n",s->name);
+		}
+		sleep(10);
 	}
 	dprintf(4,"%s: getting info...\n", s->name);
 	info = (s->driver->info ? s->driver->info(s->handle) : "{}");
@@ -227,6 +288,7 @@ int battery_read(void *handle,void *buf,int buflen) {
 		pp->cell_diff = pp->cell_max - pp->cell_min;
 		pp->cell_avg = total / pp->ncells;
 		if (!(int)pp->voltage) pp->voltage = total;
+		pp->cell_total = total;
 		battery_send_mqtt(s);
 	}
 	dprintf(4,"%s: returning: %d\n", s->name, r);

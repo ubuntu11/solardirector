@@ -26,6 +26,7 @@
 #include "netpacket.h"
 #include "timer.h"
 #include "iorequest.h"
+#include "smanet.h"
 
 enum
 {
@@ -89,10 +90,9 @@ typedef struct
 } TDriverEventListener;
 
 
-
 /* Public Functions */
-SHARED_FUNCTION void TSMAData_constructor( void );
-SHARED_FUNCTION void TSMAData_destructor( void );
+SHARED_FUNCTION void TSMAData_constructor( smanet_session_t * );
+SHARED_FUNCTION void TSMAData_destructor( smanet_session_t * );
 SHARED_FUNCTION void TSMAData_AddIORequest( TIORequest * req );
 SHARED_FUNCTION void TSMAData_AddPaketListener( TPacketRcvListener * listener );
 SHARED_FUNCTION void TSMAData_SendPacket( WORD Dest, WORD Source, BYTE Cmd,

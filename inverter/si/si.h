@@ -19,7 +19,8 @@ struct si_session {
 };
 typedef struct si_session si_session_t;
 
-#define SI_STATE_RUNNING 0x01
+#define SI_STATE_STARTUP 0x01
+#define SI_STATE_RUNNING 0x02
 #define SI_STATE_OPEN 0x10
 
 void *si_recv_thread(void *handle);
@@ -31,6 +32,6 @@ int si_config(void *,char *,char *,list);
 
 #define si_getshort(v) (short)( ((v)[1]) << 8 | ((v)[0]) )
 #define si_putshort(p,v) { float tmp; *((p+1)) = ((int)(tmp = v) >> 8); *((p)) = (int)(tmp = v); }
-#define si_putlong(p,v) { *((p+3)) = ((int)(v) >> 24); *((p)+2) = ((int)(v) >> 16); *((p+1)) = ((int)(v) >> 8); *((p)) = (int)(v); }
+#define si_putlong(p,v) { *((p+3)) = ((int)(v) >> 24); *((p)+2) = ((int)(v) >> 16); *((p+1)) = ((int)(v) >> 8); *((p)) = ((int)(v) & 0x0F); }
 
 #endif /* __SOLARD_SI_H */

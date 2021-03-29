@@ -139,10 +139,7 @@ SHARED_FUNCTION void TRepository_Init()
    strcpy(tmpfile, ProgPath);
    Tools_PathAdd(tmpfile, YASDI_DEVICES_SUBDIR); //default is current path + "devices"
    //the default path can be overridden with config file 
-   TRepository_GetElementStr ("Misc.ChannelListDir",
-                              tmpfile, //default file 
-                              PathDeviceDir,
-                              sizeof(PathDeviceDir)-1 );
+//   TRepository_GetElementStr ("Misc.ChannelListDir", tmpfile, PathDeviceDir, sizeof(PathDeviceDir)-1 );
 
    //try to replace an possible "$HOME" variable and only this
    {
@@ -227,6 +224,7 @@ SHARED_FUNCTION int TRepository_GetElementInt (char * key, int _default)
    TRepository_GetKeyPart(key, SectionKey, 1);
 
    return GetPrivateProfileInt_(section, SectionKey, _default, ConfigFilePath );
+	return 1;
 }
 
 SHARED_FUNCTION BOOL TRepository_GetIsElementExist(char * key )
@@ -238,6 +236,7 @@ SHARED_FUNCTION BOOL TRepository_GetIsElementExist(char * key )
    TRepository_GetKeyPart(key, SectionKey, 1);
 
    return GetPrivateProfileCheck(section, SectionKey, ConfigFilePath );
+	return 0;
 }
 
 

@@ -3,7 +3,6 @@
 
 #include "module.h"
 
-
 /* Bus driver device states */
 typedef enum {DS_OFFLINE, DS_ONLINE} TDeviceState; 
 
@@ -60,6 +59,7 @@ struct _TDevice
    int (*IoCtrl)(struct _TDevice * device,        // specific driver IO Control function
                  int cmd,
                  BYTE * params);
+
 	solard_module_t *tp;
 	void *tp_handle;
 

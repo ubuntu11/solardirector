@@ -46,6 +46,7 @@
 extern "C" {
 #endif
 
+#include "smanet.h"
 #include "compiler.h"       /* "SHARED_FUNCTION" specific    */
 #include "smadef.h"         /* SMA style includes            */
 
@@ -145,9 +146,7 @@ typedef enum { SPOTCHANNELS=0, PARAMCHANNELS, TESTCHANNELS, ALLCHANNELS } TChanT
                    PRUESSING, 18.08.2001, 1.1, Konstruktoren der YasdiLib
                                                entfernt
 **************************************************************************/
-//SHARED_FUNCTION int yasdiMasterInitialize(const char * iniFile,DWORD * pDriverNum );
-#include "cfg.h"
-SHARED_FUNCTION int yasdiMasterInitialize(tp_callback_t *,cfg_info_t *);
+SHARED_FUNCTION int yasdiMasterInitialize(smanet_session_t *);
 
 
 /**************************************************************************

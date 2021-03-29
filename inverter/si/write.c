@@ -8,15 +8,25 @@ int si_write(si_session_t *s, void *buf, int buflen) {
 	dprintf(1,"0x351: charge_voltage: %3.2f, charge_amps: %3.2f, discharge_voltage: %3.2f, discharge_amps: %3.2f\n",
 		inv->charge_voltage, inv->charge_amps, inv->discharge_voltage, inv->discharge_amps);
 	si_putshort(&data[0],(inv->charge_voltage * 10.0));
-	si_putshort(&data[2],(inv->charge_amps * 10.0));
+	if (solard_check_state(s,SI_STATE_STARTUP)) {
+		dprintf(1,"startup!\n");
+		si_putshort(&data[2],1);
+	} else {
+		si_putshort(&data[2],(inv->charge_amps * 10.0));
+	}
 	si_putshort(&data[4],(inv->discharge_amps * 10.0));
 	si_putshort(&data[6],(inv->discharge_voltage * 10.0));
 //	if (s->can->write(s->can_handle,0x351,&data,8) < 0) return 1;
 
 	dprintf(1,"0x355: SOC: %.1f, SOH: %.1f\n", inv->soc, inv->soh);
-	si_putshort(&data[0],inv->soc);
+	if (solard_check_state(s,SI_STATE_STARTUP)) {
+		si_putshort(&data[0],99.9);
+		si_putlong(&data[4],9990);
+	} else {
+		si_putshort(&data[0],inv->soc);
+		si_putlong(&data[4],(inv->soc * 100.0));
+	}
 	si_putshort(&data[2],inv->soh);
-	si_putlong(&data[4],(inv->soc * 100.0));
 //	if (s->can->write(s->can_handle,0x355,&data,8) < 0) return 1;
 
 #if 0
@@ -50,5 +60,6 @@ int si_write(si_session_t *s, void *buf, int buflen) {
 //	if (s->can->write(s->can_handle,0x35F,&data,8) < 0) return 1;
 #endif
 
+	solard_clear_state(s,SI_STATE_STARTUP);
 	return 0;
 }

@@ -234,15 +234,10 @@ int jbd_get_fetstate(jbd_session_t *s) {
 	return r;
 }
 
-int jbd_read(void *handle,...) {
+int jbd_read(void *handle, void *buf, int buflen) {
 	jbd_session_t *s = handle;
-	solard_battery_t *pp;
+	solard_battery_t *pp = buf;
 	int r;
-	va_list ap;
-
-	va_start(ap, handle);
-	pp = va_arg(ap,solard_battery_t *);
-	va_end(ap);
 
 	dprintf(2,"transport: %s\n", s->tp->name);
 	if (strncmp(s->tp->name,"can",3)==0) 

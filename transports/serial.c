@@ -219,20 +219,20 @@ static int serial_read(void *handle, void *buf, int buflen) {
 	bidx = 0;
 	FD_ZERO(&rdset);
 	FD_SET(s->fd,&rdset);
-	dprintf(5,"waiting...\n");
+	dprintf(7,"waiting...\n");
 	num = select(s->fd+1,&rdset,0,0,&tv);
-	dprintf(5,"num: %d\n", num);
+	dprintf(7,"num: %d\n", num);
 	if (num < 1) goto serial_read_done;
 
 	bidx = ioctl(s->fd, FIONREAD, &bytes);
-	dprintf(5,"bidx: %d\n", bidx);
+	dprintf(7,"bidx: %d\n", bidx);
 	if (bidx < 0) goto serial_read_done;
-	dprintf(5,"bytes: %d\n", bytes);
+	dprintf(7,"bytes: %d\n", bytes);
 	/* select said there was data yet there is none? */
 	if (bytes == 0) goto serial_read_done;
 
 	//limit the read for the maximum destination buffer size
-	dprintf(5,"bytes: %d, buflen: %d\n",bytes,buflen);
+	dprintf(7,"bytes: %d, buflen: %d\n",bytes,buflen);
 	num = buflen > bytes ? bytes : buflen;
 	dprintf(7,"num: %d\n", num);
 	bidx = read(s->fd, buf, num);

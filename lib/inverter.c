@@ -1,8 +1,5 @@
 
 #include "agent.h"
-#include "uuid.h"
-#include "mqtt.h"
-#include "json.h"
 
 struct inverter_session {
 	char name[INVERTER_NAME_LEN+1];
@@ -93,34 +90,24 @@ static char *inverter_info(void *handle) {
 	return info;
 }
 
-static int inverter_mqtt_send(inverter_session_t *s) {
-	solard_inverter_t *inv = &s->info;
-	register int i,j,r;
-	char temp[256],*p;
-	json_object_t *o;
-	struct inverter_states {
-		int mask;
-		char *label;
-	} states[] = {
-		{ SOLARD_INVERTER_STATE_RUNNING, "Running" },
-		{ SOLARD_INVERTER_STATE_CHARGING, "Charging" },
-		{ SOLARD_INVERTER_STATE_GRID, "GridConnected" },
-		{ SOLARD_INVERTER_STATE_GEN, "GeneratorRunning" },
-	};
+static struct inverter_states {
+	int mask;
+	char *label;
+} states[] = {
+	{ SOLARD_INVERTER_STATE_RUNNING, "Running" },
+	{ SOLARD_INVERTER_STATE_CHARGING, "Charging" },
+	{ SOLARD_INVERTER_STATE_GRID, "GridConnected" },
+	{ SOLARD_INVERTER_STATE_GEN, "GeneratorRunning" },
+};
 #define NSTATES (sizeof(states)/sizeof(struct inverter_states))
 
-	o = json_create_object();
-	if (get_timestamp(temp,sizeof(temp),1) == 0) json_add_string(o, "timestamp", temp);
-	json_add_string(o, "name", s->name);
-	json_add_number(o, "error", inv->error);
-	json_add_string(o, "errmsg", inv->errmsg);
-	json_add_number(o, "capacity", inv->soc);
-	json_add_number(o, "battery_voltage", inv->battery_voltage);
-	json_add_number(o, "battery_current", inv->battery_current);
-	json_add_number(o, "battery_power", inv->battery_power);
-	json_add_number(o, "grid_power", inv->grid_power);
-	json_add_number(o, "load_power", inv->load_power);
-	json_add_number(o, "site_power", inv->site_power);
+static void _get_state(char *name, void *dest, int len, json_value_t *v) {
+	dprintf(1,"value: %s\n", v->value.string.chars);
+
+#if 0
+	solard_inverter_t *inv = dest;
+	char temp[128],*p;
+	int i,j;
 
 	/* States */
 	temp[0] = 0;
@@ -132,16 +119,91 @@ static int inverter_mqtt_send(inverter_session_t *s) {
 			j++;
 		}
 	}
-	json_add_string(o, "states", temp);
+	json_add_string(v, "states", temp);
+#endif
+}
 
-	p = json_dumps(o,s->ap->pretty);
-	json_destroy(o);
+static void _set_state(char *name, void *dest, int len, json_value_t *v) {
+	solard_inverter_t *inv = dest;
+	char temp[128],*p;
+	int i,j;
 
-	sprintf(temp,"/Inverter/%s",s->name);
+	dprintf(1,"state: %x\n", inv->state);
+
+	/* States */
+	temp[0] = 0;
+	p = temp;
+	for(i=j=0; i < NSTATES; i++) {
+		if (solard_check_state(inv,states[i].mask)) {
+			if (j) p += sprintf(p,",");
+			p += sprintf(p,states[i].label);
+			j++;
+		}
+	}
+	dprintf(1,"temp: %s\n", temp);
+	json_add_string(v, "states", temp);
+}
+
+#define INVERTER_TAB(ACTION) \
+		{ "id",&inv->id,DATA_TYPE_STRING,sizeof(inv->id)-1,0 }, \
+		{ "name",&inv->name,DATA_TYPE_STRING,sizeof(inv->name)-1,0 }, \
+		{ "charge_voltage",&inv->charge_voltage,DATA_TYPE_FLOAT,0,0 }, \
+		{ "discharge_voltage",&inv->discharge_voltage,DATA_TYPE_FLOAT,0,0 }, \
+		{ "charge_amps",&inv->charge_amps,DATA_TYPE_FLOAT,0,0 }, \
+		{ "discharge_amps",&inv->discharge_amps,DATA_TYPE_FLOAT,0,0 }, \
+		{ "battery_voltage",&inv->battery_voltage,DATA_TYPE_FLOAT,0,0 }, \
+		{ "battery_current",&inv->battery_current,DATA_TYPE_FLOAT,0,0 }, \
+		{ "battery_temp",&inv->battery_temp,DATA_TYPE_FLOAT,0,0 }, \
+		{ "battery_power",&inv->battery_power,DATA_TYPE_FLOAT,0,0 }, \
+		{ "battery_capacity",&inv->battery_capacity,DATA_TYPE_FLOAT,0,0 }, \
+		{ "grid_power",&inv->grid_power,DATA_TYPE_FLOAT,0,0 }, \
+		{ "load_power",&inv->load_power,DATA_TYPE_FLOAT,0,0 }, \
+		{ "site_power",&inv->site_power,DATA_TYPE_FLOAT,0,0 }, \
+		{ "soc",&inv->soc,DATA_TYPE_FLOAT,0,0 }, \
+		{ "soh",&inv->soh,DATA_TYPE_FLOAT,0,0 }, \
+		{ "errcode",&inv->errcode,DATA_TYPE_INT,0,0 }, \
+		{ "errmsg",&inv->errmsg,DATA_TYPE_STRING,sizeof(inv->errmsg)-1,0 }, \
+		{ "state",inv,0,0,ACTION }, \
+		JSON_PROCTAB_END
+
+//		{ "state",&inv->state,DATA_TYPE_INT,0,0 },
+
+int inverter_from_json(solard_inverter_t *inv, char *str) {
+	json_proctab_t inverter_tab[] = { INVERTER_TAB(_get_state) };
+	json_value_t *v;
+
+	v = json_parse(str);
+	memset(inv,0,sizeof(*inv));
+	json_to_tab(inverter_tab,v);
+//	inverter_dump(inv,3);
+	json_destroy(v);
+	return 0;
+};
+
+json_value_t *inverter_to_json(solard_inverter_t *inv) {
+	json_proctab_t inverter_tab[] = { INVERTER_TAB(_set_state) };
+
+	return json_from_tab(inverter_tab);
+}
+
+static int inverter_mqtt_send(inverter_session_t *s) {
+	solard_inverter_t *inv = &s->info;
+	char temp[256],*p;
+	json_value_t *v;
+	int r;
+
+//	strcpy(inv->uuid,s->uuid);
+	strcpy(inv->name,s->name);
+	v = inverter_to_json(&s->info);
+	if (!v) return 1;
+	p = json_dumps(v,0);
+	dprintf(1,"p: %s\n",p);
+	sprintf(temp,"/SolarD/%s/%s/Data",AGENT_ROLE_INVERTER,s->name);
 	r = mqtt_send(s->ap->m, temp, p, 15);
 	if (r) dprintf(1,"mqtt send error!\n");
 	free(p);
-	return r;
+	json_destroy(v);
+	return 0;
 }
 
 static int inverter_read(inverter_session_t *s) {

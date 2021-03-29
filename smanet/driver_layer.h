@@ -41,6 +41,7 @@
 #ifndef DRIVER_LAYER_H
 #define DRIVER_LAYER_H
 
+#include "smanet_internal.h"
 #include "netpacket.h"
 
 /*
@@ -70,8 +71,8 @@ typedef struct
 /*
 ** Oeffentliche Prototypen ("public")
 */
-void TDriverLayer_Constructor(void);
-void TDriverLayer_Destructor(void);
+void TDriverLayer_Constructor(smanet_session_t *);
+void TDriverLayer_Destructor(smanet_session_t *);
 
 int TDriverLayer_RegisterDevice(TDevice * newdev);
 void TDriverLayer_UnregisterDevice(TDevice * dev);

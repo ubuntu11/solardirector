@@ -87,10 +87,12 @@ static TMinList DeviceBase; /* List of all device drivers in the device layer */
 
 struct smanet_driver {
 	char *name;
-	int (*init)(void *RegFuncPtr,TOnDriverEvent eventCallback);
+//	int (*init)(void *RegFuncPtr,TOnDriverEvent eventCallback);
+	int (*init)(smanet_session_t *);
 };
 typedef struct smanet_driver smanet_driver_t;
 
+#if 0
 #ifdef MODULE
 extern int transport_init(void *RegFuncPtr,TOnDriverEvent eventCallback);
 #endif
@@ -100,6 +102,7 @@ static smanet_driver_t drivers[] = {
 #endif
 };
 #define NDRIVERS (sizeof(drivers)/sizeof(struct smanet_driver))
+#endif
 
 //static TMinList ModulList; /* List of all driver modules loaded... */
 
@@ -126,7 +129,7 @@ static T_MUTEX DriverAccessMutex; //Access to drivers...
                    PRUESSING, 19.04.2001, 1.0, Created
                    Pruessing, 01.01.2002, 1.1, Changes to unload modules correctly...
 **************************************************************************/
-void TDriverLayer_Constructor( void )
+void TDriverLayer_Constructor( smanet_session_t *s )
 {
    char ConfigPath[50];
    char DriverPath[100];
@@ -150,11 +153,15 @@ void TDriverLayer_Constructor( void )
    //begin Driver ID counting at ZERO...
    NextUniqueDriverID = 0;
 
+	s->regfunc = TDriverLayer_RegisterDevice;
+	transport_create(s);
+#if 0
 	for(i=0; i < NDRIVERS; i++) {
 		dp = &drivers[i];
 		dprintf(1,"driver: %s\n", dp->name);
 		dp->init(TDriverLayer_RegisterDevice, TSMAData_OnNewEvent);
 	}
+#endif
 
 #if 0
    //load all drivers (until "DriverModules.DriverX" is not found anymore)... 
@@ -230,7 +237,7 @@ void TDriverLayer_Constructor( void )
                    PRUESSING, 19.04.2001, 1.0, Created
                    Pruessing, 01.01.2002, 1.1, fill with real live...
 **************************************************************************/
-void TDriverLayer_Destructor()
+void TDriverLayer_Destructor(smanet_session_t *s)
 {
 
    TSharedLibElem * CurDLL;

@@ -35,6 +35,11 @@
 *                 Pruessing, 23.12.2001, Createt
 ***************************************************************************/
 
+#include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include "os.h"
 #include "lists.h"
 #include "debug.h"
@@ -45,9 +50,7 @@
 #include "repository.h"
 #include "tools.h"
 #include "copyright.h"
-
-tp_callback_t *tpcb = 0;
-cfg_info_t *cfg = 0;
+#include "smanet.h"
 
 /**************************************************************************
    Description   : Initialization of the Yasdi-Shared-Library
@@ -60,21 +63,27 @@ cfg_info_t *cfg = 0;
                    ********************************************************
                    PRUESSING, 23.12.2001, 1.0, Created
 **************************************************************************/
-//SHARED_FUNCTION int yasdiInitialize(const char * cIniFileName, DWORD * pDriverCount)
-SHARED_FUNCTION int yasdiInitialize(tp_callback_t *cb, cfg_info_t *info) {
+SHARED_FUNCTION int yasdiInitialize(smanet_session_t *s) {
    int iRes = 0;
+	long uid;
    						   
-	dprintf(1,"cb: %p, cfg: %p\n", cb, cfg);
-	tpcb = cb;
-	cfg = info;
-
+	uid = getuid();
+	if (uid == 0) {
+		strcpy(ProgPath,"/var/lib/smanet");
+	} else {
+		/* Get home dir */
+		struct passwd *pw = getpwuid(uid);
+		sprintf(ProgPath,"%s/.smanet",pw->pw_dir);
+	}
+	dprintf(1,"ProgPath: %s\n", ProgPath);
+	mkdir(ProgPath,0755);
 #if 0
    if (cIniFileName) strcpy( ProgPath, cIniFileName );
    else              ProgPath[0] = 0;
+#endif
    
    //Construct first the repository (to get configs)
    TRepository_Init();
-#endif
    
 #if 0
    /*
@@ -126,7 +135,7 @@ SHARED_FUNCTION int yasdiInitialize(tp_callback_t *cb, cfg_info_t *info) {
    /*
     * Call the contructor of the SMAData-Layer...that's all
     */
-   TSMAData_constructor();
+   TSMAData_constructor(s);
 
 #if 0
    //Get the count of loaded drivers...
@@ -155,7 +164,7 @@ SHARED_FUNCTION int yasdiInitialize(tp_callback_t *cb, cfg_info_t *info) {
                    ********************************************************
                    PRUESSING, 23.12.2001, 1.0, Created
 **************************************************************************/
-SHARED_FUNCTION void yasdiShutdown(void) 
+SHARED_FUNCTION void yasdiShutdown(smanet_session_t *s) 
 {
    YASDI_DEBUG(( VERBOSE_MESSAGE,
                  "YASDI calling yasdiShutdown...\n" ));
@@ -164,7 +173,7 @@ SHARED_FUNCTION void yasdiShutdown(void)
    TStatisticWriter_Destructor();
 
    //TSMAData-Destructor...
-   TSMAData_destructor();
+   TSMAData_destructor(s);
 
    //destroy the repository...
    TRepository_Destroy();

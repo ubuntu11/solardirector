@@ -91,8 +91,8 @@ char *client_get_config(solard_client_t *cp, char *name, int timeout, int direct
 
 	a = json_create_array();
 	json_array_add_string(a,name);
-	json_tostring((json_object_t *)a,data,sizeof(data)-1,0);
-	json_destroy((json_object_t *)a);
+	json_tostring(a,data,sizeof(data)-1,0);
+	json_destroy(a);
 
 	/* Request it */
 	sprintf(temp,"%s/Config/Get/%s",cp->topic,cp->id);
@@ -130,7 +130,7 @@ list client_get_mconfig(solard_client_t *cp, int count, char **names, int timeou
 	}
 	dprintf(1,"a->count: %d\n",(int)a->value.array->count);
 	if (a->value.array->count) {
-		json_tostring((json_object_t *)a,cp->temp,1048576,0);
+		json_tostring(a,cp->temp,1048576,0);
 		dprintf(1,"temp: %s\n", cp->temp);
 
 		/* Request */
@@ -152,21 +152,21 @@ list client_get_mconfig(solard_client_t *cp, int count, char **names, int timeou
 	}
 
 client_get_mconfig_done:
-	json_destroy((json_object_t *)a);
+	json_destroy(a);
 	dprintf(1,"returning results\n");
 	return results;
 }
 
 int client_set_config(solard_client_t *cp, char *name, char *value, int timeout) {
 	char temp[200],data[256];
-	json_object_t *o;
+	json_value_t *o;
 
 	dprintf(1,"name: %s, value: %s\n", name, value);
 
 	o = json_create_object();
 	json_add_string(o,name,value);
 	json_tostring(o,data,sizeof(data)-1,0);
-	json_destroy(o);
+	json_destroy((json_value_t *)o);
 
 	/* Request it */
 	sprintf(temp,"%s/Config/%s/%s",cp->topic,(strcmp(name,"Add")==0 ? "Add" : "Set"),cp->id);

@@ -8,6 +8,7 @@ struct solard_config {
 	solard_client_t *c;
 	solard_inverter_t *inv;
 	list packs;
+	list agents;
 	int state;
 };
 typedef struct solard_config solard_config_t;

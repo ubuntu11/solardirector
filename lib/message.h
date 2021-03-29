@@ -28,6 +28,7 @@ enum SOLARD_MESSAGE_TYPE {
 
 struct solard_message {
 	enum SOLARD_MESSAGE_TYPE type;
+	char role[32];
 	char name[64];
 	char func[32];
 	union {

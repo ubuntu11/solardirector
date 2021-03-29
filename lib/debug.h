@@ -20,6 +20,14 @@ extern int debug;
 #define DDLOG(format, args...) /* noop */
 #endif
 
+/* dlevels
+1-9 programs
+2-9 libs
+5 transports
+7 protocol bindump 
+*/
+
+
 #ifdef DEBUG_MEM
 void *mem_alloc(size_t size, int clear);
 void *mem_malloc(size_t size);
