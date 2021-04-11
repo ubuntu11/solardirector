@@ -46,6 +46,7 @@
 #include "mempool.h"
 #include "minmap.h"
 #include "libyasdimaster.h"
+#include "smanet_internal.h"
 
 
 /**************************************************************************
@@ -496,12 +497,14 @@ int TChannel_ScanUpdateValue(TChannel * me, struct _TNetDevice * dev, TVirtBuffe
  ---------------------------------------------------------------------------------
  |          |            |              |      |           |                       |
  | KanalTyp | Kanalindex | DatensatzAnz | Zeit | Zeitbasis | Wert1 Wert2 ... Wertn |
+ | ChannelType | Channel index | Record number | Time | Time base | Value1 value2 ... valuen |
  ---------------------------------------------------------------------------------
 
  Format Parameteranforderung
  --------------------------------------------------------------------
  |          |            |              |                           |
  | KanalTyp | Kanalindex | DatensatzAnz | Wert1 Wert2 ... WertN     |
+ | ChannelType | Channel index | Record number | Value1 value2 ... valueN |
  --------------------------------------------------------------------
 */
    int ArraySize;
@@ -513,41 +516,59 @@ int TChannel_ScanUpdateValue(TChannel * me, struct _TNetDevice * dev, TVirtBuffe
    DWORD dwVal;
    float fVal;
    BYTE bVal;
+	smanet_chaninfo_t rec,*rp;
 
    assert( me );
 
-	dprintf(4, "----- INFO:\n");
+//	dprintf(4, "----- INFO:\n");
+	memset(&rec,0,sizeof(rec));
 
    //channel array size?
    ArraySize = TChannel_GetValArraySize( me );  
+//	dprintf(1,"ArraySize: %d\n", ArraySize);
 
    //Read each value (maybe more than one => ArraySize)...
+//	dprintf(1,"chanValRepo: %d\n", dev->chanValRepo);
    dst.buffer.b = TChanValRepo_GetValuePtr( dev->chanValRepo,  me->Handle );
    value = dst.buffer.b;
+   dprintf(1,"wNType: %04x\n", me->wNType);
    switch( me->wNType & 0x0f )
    {
       case CH_BYTE:
          dst.size = ArraySize * 1;
          iRes = Tools_CopyValuesFromSMADataBuffer(&dst,src,BYTE_VALUES,ArraySize);
          bVal = *(BYTE*)value;
+	rec.type = DATA_TYPE_BYTE;
+	rec.bval = bVal;
          break;
       case CH_WORD:
          dst.size = ArraySize * 2;
          iRes = Tools_CopyValuesFromSMADataBuffer(&dst,src,WORD_VALUES,ArraySize);
          MoveWORD(&wVal, value);
+	rec.type = DATA_TYPE_SHORT;
+	rec.wval = wVal;
          break;
       case CH_DWORD:
          dst.size = ArraySize * 4;
          iRes = Tools_CopyValuesFromSMADataBuffer(&dst,src,DWORD_VALUES,ArraySize);
          MoveDWORD(&dwVal, value);
+	rec.type = DATA_TYPE_LONG;
+	rec.lval = dwVal;
          break;
       case CH_FLOAT4:
          dst.size = ArraySize * 4;
          iRes = Tools_CopyValuesFromSMADataBuffer(&dst,src,FLOAT_VALUES,ArraySize);
          MoveFLOAT(&fVal, value);
+	rec.type = DATA_TYPE_FLOAT;
+	rec.fval = fVal;
          break;
       default: return -1;
    }
+	strncat(rec.name,TChannel_GetName(me),sizeof(rec.name)-1);
+	dprintf(1,"rec: name: %s, type: %d\n", rec.name, rec.type);
+	rp = _smanet_find_chan(smanet_session,rec.name);
+	if (rp) *rp = rec;
+	else list_add(smanet_session->channels,&rec,sizeof(rec));
 
    //Debugging...
    #ifdef DEBUG
@@ -832,11 +853,7 @@ double TChannel_GetValue(TChannel * me, TNetDevice * dev, int iValIndex)
                    ********************************************************
                    PRUESSING, 08.07.2001, 1.0, Created
 **************************************************************************/
-int TChannel_GetValueText(struct _TChannel * me,
-                          TNetDevice * dev,
-                          char * TextBuffer,
-                          int TextBufSize )
-{
+int TChannel_GetValueText(struct _TChannel * me, TNetDevice * dev, char * TextBuffer, int TextBufSize ) {
    int iValCount;
    char * StatText;
    double dblValue;

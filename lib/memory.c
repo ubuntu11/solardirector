@@ -4,6 +4,7 @@
 #include "debug.h"
 #undef malloc
 #undef calloc
+#undef realloc
 #undef free
 
 static unsigned long used = 0, peak = 0;
@@ -38,6 +39,21 @@ void *mem_malloc(size_t size) {
 
 void *mem_calloc(size_t num, size_t size) {
 	return (mem_alloc((num*size),1));
+}
+
+void *mem_realloc(void *mem, size_t size) {
+	unsigned long *len;
+
+	mem = (char *) mem - sizeof(long);
+	mem = realloc(mem,size);
+	len = (unsigned long *) mem;
+	*len = size;
+	used += size;
+	if (used > peak)
+		peak = used;
+	mem = (char *) mem + sizeof(long);
+	dprintf(9,"mem_realloc: start: %p, size: %ld\n",mem,size);
+	return mem;
 }
 
 void mem_free(void *mem) {

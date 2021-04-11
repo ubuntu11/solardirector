@@ -34,7 +34,7 @@ void display(cellmon_config_t *conf) {
 	float summ[NSUMM][BATTERY_MAX_PACKS];
 	float bsum[NBSUM][BATTERY_MAX_PACKS];
 	char lupd[BATTERY_MAX_PACKS][32];
-	float cell_total, cell_min, cell_max, cell_diff, cell_avg, min_cap;
+	float cell_total, cell_min, cell_max, cell_diff, cell_avg, cap, kwh;
 	int x,y,npacks,cells,max_temps,pack_reported;
 	char str[32];
 	char *slabels[NSUMM] = { "Min","Max","Avg","Diff" };
@@ -63,6 +63,7 @@ void display(cellmon_config_t *conf) {
 	memset(summ,0,sizeof(summ));
 	memset(bsum,0,sizeof(bsum));
 	x = 0;
+	cap = 0.0;
 	pack_reported = 0;
 	list_reset(conf->packs);
 	while((pp = list_get_next(conf->packs)) != 0) {
@@ -79,8 +80,7 @@ void display(cellmon_config_t *conf) {
 //				dprintf(1,"values[%d][%d]: %.3f\n", y, x, values[y][x]);
 				cell_total += pp->cellvolt[y];
 			}
-			dprintf(2,"min_cap: %.3f, pp->capacity: %.3f\n", min_cap, pp->capacity);
-			if (pp->capacity < min_cap) min_cap = pp->capacity;
+			cap += pp->capacity;
 			pack_reported++;
 			for(y=0; y < pp->ntemps; y++) temps[y][x] = pp->temps[y];
 			cell_avg = cell_total / pp->ncells;
@@ -101,14 +101,6 @@ void display(cellmon_config_t *conf) {
 	}
 
 	if (!debug) system("clear; echo \"**** $(date) ****\"");
-
-#if 0
-	conf->capacity = (conf->user_capacity == -1 ? min_cap * pack_reported++ : conf->user_capacity);
-	printf("Capacity: %2.1f\n", conf->capacity);
-	conf->kwh = (conf->capacity * conf->system_voltage) / 1000.0;
-	printf("kWh: %2.1f\n", conf->kwh);
-	printf("\n");
-#endif
 
 	sprintf(format,"%%-%d.%ds ",COLUMN_WIDTH,COLUMN_WIDTH);
 	/* Header */
@@ -202,4 +194,10 @@ void display(cellmon_config_t *conf) {
 	printf(format,"updated");
 	for(x=0; x < npacks; x++) printf(format,lupd[x]);
 	printf("\n");
+
+	printf("\n");
+	printf("Total packs: %d\n", pack_reported);
+	printf("Capacity: %2.1f\n", cap);
+	kwh = (cap * 48.0) / 1000.0;
+	printf("kWh: %2.1f (60%%: %2.1f)\n", kwh, (kwh * .6));
 }

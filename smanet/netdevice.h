@@ -25,6 +25,7 @@
 #include "lists.h"
 #include "objman.h"
 #include "netchannel.h"
+#include "smanet.h"
 
 struct _TChanList;
 struct _THandleListIter;
@@ -191,6 +192,7 @@ typedef struct _TDeviceList
 	THandleList * DevList;	/* Delegation!! */
 } TDeviceList;
 
+//TDeviceList * TDeviceList_Constructor( smanet_session_t * );
 TDeviceList * TDeviceList_Constructor( void );
 void TDeviceList_Destructor	( TDeviceList * me );
 void TDeviceList_Add    		( TDeviceList * me, TNetDevice * );	

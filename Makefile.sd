@@ -13,6 +13,8 @@ PREFIX?=/opt/sd
 current_makefile := $(lastword $(MAKEFILE_LIST))
 SRC_ROOT=$(shell echo $$(dirname $(current_makefile)))
 
+CFLAGS+=-DETCDIR=\"$(ETCDIR)\" -DLIBDIR=\"$(LIBDIR)\"
+
 # Uses libsmanet? must be included before libsolard as it refs
 ifeq ($(SMANET),yes)
 	CFLAGS+=-I$(SRC_ROOT)/smanet

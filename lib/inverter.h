@@ -9,26 +9,43 @@ typedef struct inverter_session inverter_session_t;
 #define INVERTER_ID_LEN 64
 #define INVERTER_NAME_LEN 32
 
+enum INVERTER_TYPE {
+	INVERTER_TYPE_PVTODC,		/* PV panels to DC (charge controller) */
+	INVERTER_TYPE_PVTOAC,		/* PV panels to AC (sunny boy/etc) */
+	INVERTER_TYPE_DCTOAC,		/* Battery to AC (battery inverter) */
+	INVERTER_TYPE_ALL,		/* All functions in 1 unit */
+};
+
 struct solard_inverter {
 	char id[INVERTER_ID_LEN];
 	char name[INVERTER_NAME_LEN];
+	enum INVERTER_TYPE type;
 	float charge_voltage;
-	float discharge_voltage;
+	float charge_max_voltage;	/* inc voltage to this in order to mainint charge amps */
+	int charge_at_max;		/* Always charge at max voltage */
 	float charge_amps;
+	float discharge_voltage;
 	float discharge_amps;
 	float battery_voltage;		/* Really? I need to comment this? */
 	float battery_current;		/* batt power, in amps */
-	float battery_temp;		/* batt temp */
 	float battery_power;		/* batt power, in watts */
-	float battery_capacity;		/* battery capacity, in AH */
-	float grid_power;		/* Grid/Gen watts */
-	float load_power;		/* loads watts */
-	float site_power;		/* pv/wind/caes/chp watts */
-	float soc;
-	float soh;
+	float battery_temp;		/* batt temp */
+	float soc;			/* State of Charge */
+	float soh;			/* State of Health */
+	solard_power_t grid_voltage;
+	float grid_frequency;
+	solard_power_t grid_current;
+	solard_power_t grid_watts;
+	solard_power_t load_voltage;
+	float load_frequency;
+	solard_power_t load_current;
+	solard_power_t load_watts;
+	solard_power_t pv_voltage;
+	solard_power_t pv_current;
+	solard_power_t pv_watts;
+	double yeild;			/* Total PV yeild */
 	int errcode;			/* Inverter Error code, 0 if none */
 	char errmsg[256];		/* Inverter Error message */
-	void *handle;			/* Inverter Handle */
 	uint16_t state;			/* Inverter State */
 };
 typedef struct solard_inverter solard_inverter_t;

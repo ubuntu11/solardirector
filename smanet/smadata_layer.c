@@ -626,6 +626,16 @@ SHARED_FUNCTION void TSMAData_OnFrameReceived(struct TNetPacket * frame)
    DWORD Flags = 0;
    struct TSMADataHead smadata;
    TIORequest * req;
+
+{
+      BYTE * framedata=NULL;
+      WORD framedatasize=0;
+      FOREACH_IN_BUFFER(frame, framedata, &framedatasize)
+      {
+        bindump("get frame",framedata,framedatasize);
+	}
+}
+
    
    //YASDI_DEBUG((VERBOSE_SMADATALIB,"TSMAData_OnFrameReceived(...)\n"));
    
@@ -1766,13 +1776,7 @@ SHARED_FUNCTION void TSMAData_InitReqSetChannel( TIORequest * req,
 
 
 
-SHARED_FUNCTION void TSMAData_InitReqGetTestChannels( TIORequest * req,
-                                        WORD SrcAddr,
-                                        WORD DstAddr,
-                                        DWORD Timeout,
-                                        DWORD BadRepeats,
-                                        WORD transportProtID )
-{
+SHARED_FUNCTION void TSMAData_InitReqGetTestChannels( TIORequest * req, WORD SrcAddr, WORD DstAddr, DWORD Timeout, DWORD BadRepeats, WORD transportProtID ) {
    /* alle Onlinekanaele...(=> 0x290f) */
    WORD ChanMask  = CH_SPOT | CH_IN | CH_TEST |
                     CH_ANALOG | CH_DIGITAL | CH_COUNTER | CH_STATUS;
@@ -1801,8 +1805,7 @@ SHARED_FUNCTION void TSMAData_InitReqGetTestChannels( TIORequest * req,
 }
 
 
-char * TSMAData_DecodeCmd(BYTE cmd)
-{
+char * TSMAData_DecodeCmd(BYTE cmd) {
    switch(cmd)
    {
       case CMD_GET_DATA:      return "CMD_GET_DATA";
@@ -1818,7 +1821,3 @@ char * TSMAData_DecodeCmd(BYTE cmd)
       default:                return  "(unknown CMD)";
    }
 }
-
-
-
-

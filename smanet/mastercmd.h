@@ -28,6 +28,7 @@
 #include "netdevice.h"
 #include "netchannel.h"
 #include "states.h"
+#include "smanet.h"
 
 
 /*

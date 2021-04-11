@@ -312,18 +312,15 @@ void TStateChanReader_OnIOReqPktRcv( TMasterCmdReq * mc,
    UNUSED_VAR ( mc     );
    UNUSED_VAR ( req    );
    
-printf("**** READING CHAN ****\n");
    YASDI_DEBUG(( VERBOSE_MASTER, "TStateChanReader::OnIOReqPktRcv(): Size=%ld\n", rcvInfo->BufferSize ));
-  	
+
   	dev = TPlant_FindDevAddr( rcvInfo->SourceAddr );
-  	if (dev)
-  	{
-        int iRes = TStateChanReader_ScanUpdateValue(dev, rcvInfo->Buffer, rcvInfo->BufferSize);    
+  	if (dev) {
+	        int iRes = TStateChanReader_ScanUpdateValue(dev, rcvInfo->Buffer, rcvInfo->BufferSize);    
   		/* Die Kanalwerte in die entsprechenden kanaele eintragen... */
-		if (iRes != 0)
-		{
+		if (iRes != 0) {
 			YASDI_DEBUG((VERBOSE_MASTER, "TStateChanReader::OnIOReqPktRcv(): Error in parsing"
-				" channel list answer. Function returns code %d!\n", iRes ));
+                      " channel list answer. Function returns code %d!\n", iRes ));
 		}
   	}	
 }
@@ -438,14 +435,17 @@ int TStateChanReader_ScanUpdateValue(TNetDevice * me, BYTE * Buffer, DWORD nByte
    //Read Channel mask...
    dst.buffer.w = &Mask; dst.size = 2;
    Tools_CopyValuesFromSMADataBuffer(&dst,&src,WORD_VALUES,1);
+	dprintf(1,"Mask: %04x\n", Mask);
    
    //Read Channelindex
    dst.buffer.b = &ChanNr; dst.size = 1;
    Tools_CopyValuesFromSMADataBuffer(&dst,&src,BYTE_VALUES,1);
+	dprintf(1,"index: %02x\n", ChanNr);
    
    //Now the data set count (only on online + parameter channels)
    dst.buffer.w = &datasetcount; dst.size = 2;
    Tools_CopyValuesFromSMADataBuffer(&dst,&src,WORD_VALUES,1);
+	dprintf(1,"count: %d\n", datasetcount);
    
    
    //Online channels got time and timebase...not used...

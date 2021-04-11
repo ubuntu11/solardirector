@@ -9,7 +9,7 @@ extern int debug;
 
 #if DEBUG
 //#define dprintf(level, format, args...) { if (debug >= level) printf("%s(%d): " format,__FUNCTION__,__LINE__, ## args); }
-#define dprintf(level, format, args...) { if (debug >= level) log_write(LOG_DEBUG, "%s(%d): " format, __FUNCTION__, __LINE__, ## args); }
+#define dprintf(level, format, args...) { if (debug >= level) log_write(LOG_DEBUG, "%s(%d) %s: " format,__FILE__,__LINE__, __FUNCTION__, ## args); }
 #define DPRINTF(format, args...) printf("%s(%d): " format,__FUNCTION__,__LINE__, ## args)
 #define DLOG(opts, format, args...) log_write(opts, "%s(%d): " format, __FUNCTION__, __LINE__, ## args)
 #define DDLOG(format, args...) log_write(LOG_DEBUG, "%s(%d): " format, __FUNCTION__, __LINE__, ## args)
@@ -32,6 +32,7 @@ extern int debug;
 void *mem_alloc(size_t size, int clear);
 void *mem_malloc(size_t size);
 void *mem_calloc(size_t nmemb, size_t size);
+void *mem_realloc(void *, size_t size);
 void mem_free(void *mem);
 unsigned long mem_used(void);
 unsigned long mem_peak(void);
@@ -43,6 +44,10 @@ unsigned long mem_peak(void);
 #undef calloc
 #endif
 #define calloc(n,s) mem_alloc((n)*(s),1)
+#ifdef realloc
+#undef realloc
+#endif
+#define realloc(n,s) mem_realloc(n,s)
 #ifdef free
 #undef free
 #endif

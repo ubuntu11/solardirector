@@ -26,8 +26,8 @@ typedef void (json_ptcallback_t)(char *,void *,int,json_value_t *);
 
 struct json_proctab {
 	char *field;
-	void *dest;
 	enum DATA_TYPE type;
+	void *ptr;
 	int len;
 	json_ptcallback_t *cb;
 };
@@ -110,6 +110,11 @@ int json_add_boolean(json_value_t *,char *,int);
 int json_add_number(json_value_t *,char *,double);
 int json_add_value(json_value_t *,char *,json_value_t *);
 int json_add_descriptor(json_value_t *,char *,json_descriptor_t);
+
+char *json_get_string(json_value_t *,char *);
+double json_get_number(json_value_t *,char *);
+int json_get_boolean(json_value_t *,char *);
+json_value_t *json_get_value(json_value_t *,char *);
 
 int json_array_add_string(json_value_t *,char *);
 int json_array_add_strings(json_value_t *,char *);

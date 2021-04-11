@@ -64,7 +64,7 @@ int jbd_config(void *,char *,char *,list);
 int jbd_config_add_params(json_value_t *);
 
 /* Info */
-char *jbd_info(void *handle);
+json_value_t *jbd_info(void *handle);
 
 /* Control */
 int jbd_control(void *handle,char *,char *,json_value_t *);

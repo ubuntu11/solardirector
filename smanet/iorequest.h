@@ -24,6 +24,7 @@
 
 #include "lists.h"
 #include "timer.h" 
+#include "smanet.h"
 
 /* Status eines IORequests */
 typedef enum 
@@ -112,7 +113,7 @@ typedef struct _TIORequest
 } TIORequest;
 
 
-SHARED_FUNCTION TIORequest * TIORequest_Constructor( void );
+SHARED_FUNCTION TIORequest * TIORequest_Constructor( smanet_session_t *s );
 SHARED_FUNCTION void TIORequest_Destructor(TIORequest * req);
 SHARED_FUNCTION TReqStatus TIORequest_GetStatus( TIORequest * req );
 SHARED_FUNCTION void TIORequest_SetOnReceive( TIORequest * req, TIORequestOnReceiveFkt fkt );

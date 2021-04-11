@@ -8,31 +8,6 @@ LICENSE file in the root directory of this source tree.
 */
 
 #include "cellmon.h"
-#include <sys/types.h>
-#include <pwd.h>
-
-char *find_config_file(char *name) {
-	static char temp[1024];
-	long uid;
-	struct passwd *pw;
-
-	if (access(name,R_OK)==0) return name;
-	uid = getuid();
-	pw = getpwuid(uid);
-	if (pw) {
-		sprintf(temp,"%s/etc/%s",pw->pw_dir,name);
-		dprintf(1,"temp: %s\n", temp);
-		if (access(temp,R_OK)==0) return temp;
-	}
-
-	sprintf(temp,"/etc/%s",name);
-	if (access(temp,R_OK)==0) return temp;
-	sprintf(temp,"/usr/local/etc/%s",name);
-	if (access(temp,R_OK)==0) return temp;
-	sprintf(temp,"/opt/mybmm/etc/%s",name);
-	if (access(temp,R_OK)==0) return temp;
-	return 0;
-}
 
 solard_battery_t *find_pack_by_id(cellmon_config_t *conf, char *id) {
 	solard_battery_t *pp;
@@ -109,17 +84,19 @@ int main(int argc,char **argv) {
 //	#define nargs (sizeof(args)/sizeof(char *))
 	cellmon_config_t *conf;
 	solard_message_t *msg;
-	char *configfile;
+	char configfile[256],topic[SOLARD_TOPIC_SIZE],*p;
 	long start;
 	int web_flag;
+//		{ "-w|web output",&web_flag,DATA_TYPE_BOOL,0,0,"false" },
 	opt_proctab_t opts[] = {
 		/* Spec, dest, type len, reqd, default val, have */
-		{ "-w|web output",&web_flag,DATA_TYPE_BOOL,0,0,"false" },
+		{ "-t::|topic",&topic,DATA_TYPE_STRING,sizeof(topic)-1,0,"" },
 		OPTS_END
 	};
 //	time_t last_read,cur,diff;
 
-	configfile = find_config_file("cellmon.conf");
+	find_config_file("cellmon.conf",configfile,sizeof(configfile)-1);
+	dprintf(1,"configfile: %s\n", configfile);
 
 	conf = calloc(1,sizeof(*conf));
 	if (!conf) return 1;
@@ -128,11 +105,19 @@ int main(int argc,char **argv) {
 	if (!conf->c) return 1;
 	conf->packs = list_create();
 
-	if (mqtt_sub(conf->c->m,"/SolarD/Battery/+/Data")) return 1;
+	if (!strlen(topic)) {
+		p = cfg_get_item(conf->c->cfg,"cellmon","topic");
+		if (p) strncat(topic,p,sizeof(topic)-1);
+		else {
+			log_write(LOG_ERROR,"topic must be specified either in config file or command line\n");
+			return 1;
+		}
+	}
+
+	if (mqtt_sub(conf->c->m,topic)) return 1;
 
 	/* main loop */
 	start = mem_used();
-//	time(&last_read);
 	while(1) {
 		dprintf(1,"count: %d\n", list_count(conf->c->messages));
 		list_reset(conf->c->messages);
@@ -140,28 +125,8 @@ int main(int argc,char **argv) {
 			getpack(conf,msg->name,msg->data);
 			list_delete(conf->c->messages,msg);
 		}
-#if 0
-		if (web_flag) {
-			/* Call read func */
-			time(&cur);
-			diff = cur - last_read;
-			dprintf(3,"diff: %d, read_interval: %d\n", (int)diff, 30);
-			if (diff >= 30) {
-				web_display(conf,web_flag);
-				break;
-			}
-		} else
-#endif
 		display(conf);
 		dprintf(1,"used: %ld\n", mem_used() - start);
-#if 0
-		if (debug) {
-			conf->state = 0;
-			while(!conf->state) sleep(1);
-		} else {
-			sleep(1);
-		}
-#endif
 		sleep(1);
 	}
 	return 0;

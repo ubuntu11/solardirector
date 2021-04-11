@@ -135,8 +135,7 @@ DWORD dwPacketRead  = 0;                     /* overall cound of packets read */
                    ********************************************************
                    PRUESSING, 20.04.2001, 1.0, Created
 **************************************************************************/
-void TProtLayer_CreateProtocol(TDevice * device)
-{
+void TProtLayer_CreateProtocol(TDevice * device) {
    int i;
    char cProtName[30];
    char ConfigPath[50];
@@ -183,8 +182,7 @@ void TProtLayer_CreateProtocol(TDevice * device)
                    ********************************************************
                    PRUESSING, 23.04.2001, 1.0, Created
 **************************************************************************/
-void TProtLayer_Constructor(TMinList * DeviceList)
-{
+void TProtLayer_Constructor(TMinList * DeviceList) {
    TDevice * CurDev;
 
    //Reinit list
@@ -206,8 +204,7 @@ void TProtLayer_Constructor(TMinList * DeviceList)
                    ********************************************************
                    Bakalov, 13.12.2001, 1.0, Created
 **************************************************************************/
-void TProtLayer_Destructor()
-{
+void TProtLayer_Destructor() {
    TProtocolMapEntry * entry;
    restart:
    foreach_f(&ProtocolMap, entry)
@@ -239,8 +236,7 @@ void TProtLayer_Destructor()
 * THROWS : ---
 *
 **************************************************************************/
-SHARED_FUNCTION WORD TProtLayer_GetAllProtocols( void )
-{
+SHARED_FUNCTION WORD TProtLayer_GetAllProtocols( void ) {
    WORD prot = 0;
    TProtocolMapEntry * entry;
    foreach_f(&ProtocolMap, entry)
@@ -264,8 +260,7 @@ SHARED_FUNCTION WORD TProtLayer_GetAllProtocols( void )
                    ********************************************************
                    PRUESSING, 23.04.2001, 1.0, Created
 **************************************************************************/
-SHARED_FUNCTION void TProtLayer_WriteFrame(struct TNetPacket * frame, WORD protid)
-{
+SHARED_FUNCTION void TProtLayer_WriteFrame(struct TNetPacket * frame, WORD protid) {
    TDevice * driver = TDriverLayer_FindDriverID( frame->RouteInfo.BusDriverID );
 
    /*
@@ -341,8 +336,7 @@ SHARED_FUNCTION void TProtLayer_WriteFrame(struct TNetPacket * frame, WORD proti
                    ********************************************************
                    PRUESSING, 02.05.2001, 1.0, Created
 **************************************************************************/
-BOOL TProtLayer_ScanInput(TDevice * dev)
-{
+BOOL TProtLayer_ScanInput(TDevice * dev) {
    DWORD DriverDeviceHandel=0; 
    DWORD dwBytesRead;
    BYTE Buffer[AMOUNT_TO_READ];
@@ -357,11 +351,7 @@ BOOL TProtLayer_ScanInput(TDevice * dev)
          //Prot. ist Bus zugeordnet ?
          if (entry->device == dev)
          {
-            entry->protocol->Scan(entry->protocol, 
-                                  dev, 
-                                  Buffer, 
-                                  dwBytesRead, 
-                                  DriverDeviceHandel);
+            entry->protocol->Scan(entry->protocol, dev, Buffer, dwBytesRead, DriverDeviceHandel);
          }
       }      
    }
@@ -378,8 +368,7 @@ BOOL TProtLayer_ScanInput(TDevice * dev)
                    ********************************************************
                    PRUESSING, 03.05.2001, 1.0, Created
 **************************************************************************/
-SHARED_FUNCTION void TProtLayer_AddFrameListener( TFrameListener * listener )
-{
+SHARED_FUNCTION void TProtLayer_AddFrameListener( TFrameListener * listener ) {
    assert(listener);
    YASDI_DEBUG((VERBOSE_PROTLAYER, "TProtLayer_AddFrameListener( protid=0x%x )\n", 
                 listener->ProtocolID));
@@ -396,8 +385,7 @@ SHARED_FUNCTION void TProtLayer_AddFrameListener( TFrameListener * listener )
                    ********************************************************
                    PRUESSING, 03.05.2001, 1.0, Created
 **************************************************************************/
-void TProtLayer_NotifyFrameListener(struct TNetPacket * frame, WORD protid)
-{
+void TProtLayer_NotifyFrameListener(struct TNetPacket * frame, WORD protid) {
    TFrameListener * CurListener;
    
    ++dwPacketRead;
@@ -423,8 +411,7 @@ void TProtLayer_NotifyFrameListener(struct TNetPacket * frame, WORD protid)
                    PRUESSING,  28.01.2002, 1.0, Created
                    Pruessing, 15.10.2002, 1.1, Driver MTU was not considered...
 **************************************************************************/
-SHARED_FUNCTION DWORD TProtLayer_GetMTU( DWORD DriverID )
-{
+SHARED_FUNCTION DWORD TProtLayer_GetMTU( DWORD DriverID ) {
    TDevice * driver;
    WORD wMTU = 0xffff;
 
@@ -448,5 +435,3 @@ SHARED_FUNCTION DWORD TProtLayer_GetMTU( DWORD DriverID )
 
    return wMTU;
 }
-
-

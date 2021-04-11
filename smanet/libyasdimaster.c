@@ -343,9 +343,7 @@ SHARED_FUNCTION DWORD FindChannelName(DWORD devh, char * ChanName)
    chan = TNetDevice_FindChannelName(dev, ChanName);
    if (!chan)
    {
-      YASDI_DEBUG((VERBOSE_LIBRARY,
-                   "Error: %s(): Unknown channel '%s' from device '%s'\n.",
-                   __func__,
+      YASDI_DEBUG((VERBOSE_LIBRARY, "Error: %s(): Unknown channel '%s' from device '%s'\n.", __func__,
                    ChanName, TNetDevice_GetName( dev ) ) );
       return INVALID_HANDLE;
    }
@@ -497,13 +495,8 @@ SHARED_FUNCTION int GetChannelName( DWORD dChanHandle, char * ChanName, DWORD Ch
                                               VOR der Dereferenzierung der
                                               Handles; Fehlermeldungen ergaenzt
 **************************************************************************/
-SHARED_FUNCTION int GetChannelValue(DWORD dChannelHandle,
-                                    DWORD dDeviceHandle,
-                                    double * dblValue,
-                                    char * ValText,
-                                    DWORD dMaxValTextSize,
-                                    DWORD dMaxChanValAge)
-{
+SHARED_FUNCTION int GetChannelValue(DWORD dChannelHandle, DWORD dDeviceHandle, double * dblValue,
+		char * ValText, DWORD dMaxValTextSize, DWORD dMaxChanValAge) {
    TMasterCmdResult CmdState;
    TMasterCmdReq * mc;
    TNetDevice * dev;
@@ -511,26 +504,18 @@ SHARED_FUNCTION int GetChannelValue(DWORD dChannelHandle,
    DWORD chanTime;
    DWORD systemtime, ageTime;
    int res;
-   
-   
-   
+
    if (ValText) ValText[0]=0;
    *dblValue = CHANVAL_INVALID;
-   
    
    //check handle...
    res = libResolveHandles( dDeviceHandle, dChannelHandle, &dev, &chan, __func__ );
    if (YE_OK != res ) return res;
 
-   
    // Does we have the right access rights?
-   if (!TChannel_IsLevel( chan, TSecurity_getCurLev(), CHECK_READ))
-   {
-      YASDI_DEBUG((VERBOSE_LIBRARY,
-                   "ERROR: No access rights for channel '%s' "
-                   "from device '%s'...\n",
-                   TChannel_GetName( chan),
-                   TNetDevice_GetName( dev ) ) );
+   if (!TChannel_IsLevel( chan, TSecurity_getCurLev(), CHECK_READ)) {
+      YASDI_DEBUG((VERBOSE_LIBRARY, "ERROR: No access rights for channel '%s' "
+                   "from device '%s'...\n", TChannel_GetName( chan), TNetDevice_GetName( dev ) ) );
       return YE_NO_ACCESS_RIGHTS;
    }
 
@@ -820,9 +805,8 @@ SHARED_FUNCTION DWORD GetChannelValueTimeStamp( DWORD dChannelHandle, DWORD dDev
 /**************************************************************************
    Description   : Liefert die Einheit zu einem Kanal
    Parameter     : dChannelHandle = Kanalhandle
-   					 cChanUnit = Zeiger auf den optionalen Kanaltext, der dem
-   									 aktuellen Wert entspricht
-   					 cChanUnitMaxSize = maximal verfuegbarer Spicherplatz der
+	cChanUnit = Zeiger auf den optionalen Kanaltext, der dem aktuellen Wert entspricht
+	cChanUnitMaxSize = maximal verfuegbarer Spicherplatz der
    											  Kanaleinheit
    Return-Value  : 0  = alles ok
    					 <0 = Fehler (= -1 => Geraetehandle ungueltig )
@@ -830,10 +814,7 @@ SHARED_FUNCTION DWORD GetChannelValueTimeStamp( DWORD dChannelHandle, DWORD dDev
                    ********************************************************
                    PRUESSING, 02.07.2001, 1.0, Created
 **************************************************************************/
-SHARED_FUNCTION int GetChannelUnit( DWORD dChannelHandle,
-                                    char * cChanUnit,
-                                    DWORD cChanUnitMaxSize)
-{
+SHARED_FUNCTION int GetChannelUnit( DWORD dChannelHandle, char * cChanUnit, DWORD cChanUnitMaxSize) {
    char * cUnit = NULL;
    TChannel * chan;
    int res;
@@ -882,10 +863,8 @@ SHARED_FUNCTION char * GetMasterStateText(int iStateIndex)
 
 /**************************************************************************
    Description   : Setzt den Wert eines Kanals.
-                   Die Funktion blockiert solange, bis der Kanalwert
-                   erfolgreich am Geraet gesetzt werden konnte,
-		             oder ein Fehler (Timeout) aufgetreten ist...
-		             (Synchrones Verhalten)
+                   Die Funktion blockiert solange, bis der Kanalwert erfolgreich am Geraet gesetzt werden konnte,
+		             oder ein Fehler (Timeout) aufgetreten ist...  (Synchrones Verhalten)
 
    Parameter     : dChannelHandle = Handle des Kanals
                    dDevHandle = Handle des Geraetes
@@ -909,10 +888,7 @@ SHARED_FUNCTION char * GetMasterStateText(int iStateIndex)
                                                ausserhalb des zulaessigen
                                                Bereichs
 **************************************************************************/
-SHARED_FUNCTION int SetChannelValue(DWORD dChannelHandle,
-                                    DWORD dDevHandle,
-                                    double dblValue)
-{
+SHARED_FUNCTION int SetChannelValue(DWORD dChannelHandle, DWORD dDevHandle, double dblValue) {
    TMasterCmdResult CmdState;
    double min,max;
    int iRes,res;
@@ -936,8 +912,7 @@ SHARED_FUNCTION int SetChannelValue(DWORD dChannelHandle,
       return YE_NO_ACCESS_RIGHTS;
    }
 
-   //Ueberpruefe, ob der neue Wert im zulaessigen Wertebereich des
-   //Kanals liegt
+   //Ueberpruefe, ob der neue Wert im zulaessigen Wertebereich des Kanals liegt
    iRes = GetChannelValRange(dChannelHandle, &min, &max);
    if (iRes >= 0)
    {
@@ -1204,10 +1179,7 @@ SHARED_FUNCTION int GetChannelValRange( DWORD dChannelHandle,
                    Pruessing, 12.02.2002, 1.4, Fktn konvertiert nach
                                                yasdiDoMasterCmdEx
 **************************************************************************/
-SHARED_FUNCTION int yasdiDoMasterCmdEx(const char * cmd,
-                                       DWORD param1,
-                                       DWORD param2,
-                                       DWORD param3)
+SHARED_FUNCTION int yasdiDoMasterCmdEx(const char * cmd, DWORD param1, DWORD param2, DWORD param3)
 {
    TMasterCmdReq * mc;
 
@@ -2071,31 +2043,24 @@ static int libResolveHandles(DWORD devHandle, DWORD chanHandle, TNetDevice ** de
 	dprintf(1,"devHandle: %d, chanHandle: %d, dev: %p, chan: %p, funcName: %p\n",
 		devHandle, chanHandle, dev, chan, funcName);
 	//Library initialized?
-	if (!bIsMasterLibInit) 
-		return YE_SHUTDOWN;
+	if (!bIsMasterLibInit) return YE_SHUTDOWN;
 	
 	//resolve device handle...
-	if (dev && devHandle != INVALID_HANDLE)
-	{
+	if (dev && devHandle != INVALID_HANDLE) {
 		*dev = TObjManager_GetRef( devHandle  );
-		if (*dev == NULL)
-		{
-			YASDI_DEBUG((VERBOSE_LIBRARY,
-                      "ERROR: %s(): Called with unknown device handle"
-                      " (%u)!\n", funcName, devHandle));
+		if (*dev == NULL) {
+			YASDI_DEBUG((VERBOSE_LIBRARY, "ERROR: %s(): Called with unknown device handle"
+				" (%u)!\n", funcName, devHandle));
 			return YE_UNKNOWN_HANDLE;
 		}
 	}
 	
 	//resolve channel handle...
-	if (chan && chanHandle != INVALID_HANDLE)
-	{
+	if (chan && chanHandle != INVALID_HANDLE) {
 		*chan = TObjManager_GetRef( chanHandle );
-		if (*chan == NULL)
-		{
-			YASDI_DEBUG((VERBOSE_LIBRARY,
-                      "ERROR: %s(): Called with unknown channel handle"
-                      " (%u)!\n", funcName, chanHandle));
+		if (*chan == NULL) {
+			YASDI_DEBUG((VERBOSE_LIBRARY, "ERROR: %s(): Called with unknown channel handle"
+	                      " (%u)!\n", funcName, chanHandle));
 			return YE_UNKNOWN_HANDLE;
 		}
 	}

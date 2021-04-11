@@ -36,42 +36,9 @@ int json_destroy(json_value_t *v) {
 	return 0;
 }
 
-JSON_Value *json_parse(char *str) {
+json_value_t *json_parse(char *str) {
 	return json_parse_string(str);
 }
-
-#if 0
-void json_object_set(JSON_Object *o, int type, char *label, void *value) {
-	JSON_Value *vv;
-	double *dv;
-	int *iv;
-
-	switch(type) {
-//	case JSONString:
-	case DATA_TYPE_STRING:
-		json_object_set_string(o,label,(char *)value);
-		break;
-	case JSONNumber:
-		dv = value;
-		json_object_set_number(o,label,*dv);
-		break;
-	case JSONObject:
-		vv = (JSON_Value *) value;
-		json_object_set_value(o,label,vv);
-		break;
-	case JSONArray:
-		vv = (JSON_Value *) value;
-		json_object_set_value(o,label,vv);
-		break;
-	case JSONBoolean:
-		iv = value;
-		json_object_set_boolean(o,label,*iv);
-		break;
-	default:
-		break;
-	}
-}
-#endif
 
 void json_object_set_scope(JSON_Object *o, int type, char *scope, int nvalues, void *values) {
 	int i,*ip;
@@ -190,6 +157,12 @@ int json_add_descriptor(json_value_t *o,char *name,json_descriptor_t d) {
 	return json_object_set_value(json_object(o),name,v);
 }
 
+char *json_get_string(json_value_t *v, char *name) {
+	return (char *)json_object_get_string(json_object(v),name);
+}
+
+/*****************************************************/
+
 int json_array_add_string(json_value_t *a,char *value) {
 	return json_array_append_string(json_array(a),value);
 }
@@ -297,22 +270,22 @@ json_value_t *json_from_tab(json_proctab_t *tab) {
 	v = json_create_object();
 	if (!v) return 0;
 	for(p=tab; p->field; p++) {
-		if (p->cb) p->cb(p->field,p->dest,p->len,v);
+		if (p->cb) p->cb(p->field,p->ptr,p->len,v);
 		else {
 			switch(p->type) {
 			case DATA_TYPE_STRING:
-				json_add_string(v,p->field,p->dest);
+				json_add_string(v,p->field,p->ptr);
 				break;
 			case DATA_TYPE_INT:
-				ip = p->dest;
+				ip = p->ptr;
 				json_add_number(v,p->field,*ip);
 				break;
 			case DATA_TYPE_FLOAT:
-				fp = p->dest;
+				fp = p->ptr;
 				json_add_number(v,p->field,*fp);
 				break;
 			case DATA_TYPE_DOUBLE:
-				dp = p->dest;
+				dp = p->ptr;
 				json_add_number(v,p->field,*dp);
 				break;
 			default:
@@ -327,7 +300,7 @@ json_value_t *json_from_tab(json_proctab_t *tab) {
 int json_to_tab(json_proctab_t *tab, json_value_t *v) {
 	json_proctab_t *p;
 	json_object_t *o;
-	int i;
+	int i,count;
 
 	/* must be object */
 	if (v->type != JSONObject) return 1;
@@ -337,18 +310,18 @@ int json_to_tab(json_proctab_t *tab, json_value_t *v) {
 		dprintf(5,"name: %s\n", o->names[i]);
 		for(p=tab; p->field; p++) {
 			if (strcmp(p->field,o->names[i])==0) {
-				if (p->cb) p->cb(p->field,p->dest,p->len,o->values[i]);
+				if (p->cb) p->cb(p->field,p->ptr,p->len,o->values[i]);
 				else {
 					json_value_t *vv = o->values[i];
 					switch(vv->type) {
 					case JSONString:
-						conv_type(p->type,p->dest,p->len,DATA_TYPE_STRING,vv->value.string.chars,0);
+						conv_type(p->type,p->ptr,p->len,DATA_TYPE_STRING,vv->value.string.chars,0);
 						break;
 					case JSONNumber:
-						conv_type(p->type,p->dest,p->len,DATA_TYPE_DOUBLE,&vv->value.number,0);
+						conv_type(p->type,p->ptr,p->len,DATA_TYPE_DOUBLE,&vv->value.number,0);
 						break;
 					case JSONBoolean:
-						conv_type(p->type,p->dest,p->len,DATA_TYPE_LOGICAL,&vv->value.boolean,0);
+						conv_type(p->type,p->ptr,p->len,DATA_TYPE_LOGICAL,&vv->value.boolean,0);
 						break;
 					}
 				}

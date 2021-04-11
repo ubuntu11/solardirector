@@ -339,7 +339,7 @@ SHARED_FUNCTION void transport_write(TDevice * dev, struct TNetPacket * frame, D
       WORD framedatasize=0;
       FOREACH_IN_BUFFER(frame, framedata, &framedatasize)
       {
-//         ires = write(this->fd, framedata, framedatasize);
+	bindump("put frame",framedata,framedatasize);
 	ires = dev->tp->write(dev->tp_handle,framedata, framedatasize);
          if (ires < 0)
          {
@@ -348,6 +348,7 @@ SHARED_FUNCTION void transport_write(TDevice * dev, struct TNetPacket * frame, D
             if (transport_reopen(dev)) goto startagain;
 		break;
          }
+	usleep(550000);
          dBytesSend += ires; 
       }
    }
@@ -545,7 +546,7 @@ int transport_GetMTU(TDevice * dev)
       default:              return 255; break;
    }
 #endif
-	dprintf(1,"returning 255\n");
+	dprintf(7,"returning 255\n");
 	return 255;
 }
 

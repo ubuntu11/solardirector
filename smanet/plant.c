@@ -82,7 +82,6 @@ char * TPlantName_GetName()
 
 THandleList * TPlant_GetDeviceList( void )
 {
-	if (!Plant.DevList) return 0;
    return Plant.DevList->DevList;
 }
 

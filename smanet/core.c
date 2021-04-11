@@ -137,27 +137,22 @@ void TSMANet_destructor(struct TProtocol * this)
                    ********************************************************
                    PRUESSING, 19.04.2001, 1.0, Created
 **************************************************************************/
-void TSMANet_scan_input(struct TProtocol * prot, TDevice * dev, 
-                        BYTE * buffer, DWORD dBytesRead, DWORD DriverDeviceHandel )
-{
+void TSMANet_scan_input(struct TProtocol * prot, TDevice * dev, BYTE * buffer, DWORD dBytesRead, DWORD DriverDeviceHandel ) {
    CREATE_VAR_THIS(prot, struct TSMANetPriv *);
    DWORD dCurPos;
 
    /* Puffer scannen ...*/
-   for (dCurPos = 0; dCurPos < dBytesRead; dCurPos++)
-   {
+   for (dCurPos = 0; dCurPos < dBytesRead; dCurPos++) {
       //YASDI_DEBUG((0,"dCurPos = %ld\n",dCurPos));
       /* HDLC-Sync-Zeichen empfangen ? */
-      if (buffer[dCurPos] == HDLC_SYNC)
-      {
+      if (buffer[dCurPos] == HDLC_SYNC) {
          /* ueberpruefe die bisher erzeugte Checksumme */
-         if (this->FCS_In != PPPGOODFCS16)
-         {
+	 /* Check the checksum generated so far */
+         if (this->FCS_In != PPPGOODFCS16) {
+	    /* Check sum is not correct, so start character received */
             /* Checksumme stimmt nicht, also Startzeichen erhalten: */
             this->FCS_In = PPPINITFCS16;
-         }
-         else
-         {
+         } else {
             /* Checksumme ist ok => Zeichen war Stopzeichen */
             
             /*
@@ -183,9 +178,7 @@ void TSMANet_scan_input(struct TProtocol * prot, TDevice * dev,
                TProtLayer_NotifyFrameListener( frame, ppp_prod_id );
                TNetPacketManagement_FreeBuffer( frame );
                this->FCS_In = 0;
-            }
-            else
-            {
+            } else {
                YASDI_DEBUG((VERBOSE_MESSAGE," #### Problem parsing SMANet\n"));
             }
          }
@@ -197,16 +190,14 @@ void TSMANet_scan_input(struct TProtocol * prot, TDevice * dev,
       }
 
       /* HDLC-Escape-Zeichen empfangen ?*/
-      if (buffer[dCurPos] == HDLC_ESC)
-      {
+      if (buffer[dCurPos] == HDLC_ESC) {
          /* Vormerken, dass das naechste Zeichen ersetzt werden muss */
          this->bEscRcv = true;
          continue;
       }
 
       /* Zeichen ersetzen ?*/
-      if (this->bEscRcv)
-      {
+      if (this->bEscRcv) {
          buffer[dCurPos] ^= 0x20;
          this->bEscRcv = false;
       }
@@ -215,6 +206,9 @@ void TSMANet_scan_input(struct TProtocol * prot, TDevice * dev,
       ** Neues empfangenes Zeichen in FCS-Berechnung einfliessen lassen und
       ** in den Puffer uebertragen, wenn Puffer noch platz hat
       */
+	
+	/* Include the new received character in the FCS calculation 
+	and transferred to the buffer if the buffer still has space */
       this->FCS_In = TSMANet_CalcFCSRaw( this->FCS_In, &buffer[dCurPos], 1);
       if (this->dWritePos <= sizeof(this->PktBuffer) )
          this->PktBuffer[ this->dWritePos++ ] = (BYTE)buffer[dCurPos];
@@ -238,8 +232,7 @@ void TSMANet_scan_input(struct TProtocol * prot, TDevice * dev,
                    ********************************************************
                    PRUESSING, 21.05.2001, 1.0, Created
 **************************************************************************/
-WORD TSMANet_CharMapper(BYTE* pDest, BYTE* pSrc, WORD wDatLen)
-{
+WORD TSMANet_CharMapper(BYTE* pDest, BYTE* pSrc, WORD wDatLen) {
    WORD  wSrcIdx;
    WORD  wDstIdx = 0;
 
@@ -287,8 +280,7 @@ WORD TSMANet_CharMapper(BYTE* pDest, BYTE* pSrc, WORD wDatLen)
                    ********************************************************
                    PRUESSING, 21.05.2001, 1.0, Created
 **************************************************************************/
-WORD TSMANet_CalcFCSRaw(WORD fcs, BYTE* pCh, WORD wLen)
-{
+WORD TSMANet_CalcFCSRaw(WORD fcs, BYTE* pCh, WORD wLen) {
    while(wLen--)
    {
       fcs = (WORD)((fcs >> 8) ^ fcstab[(fcs ^ *pCh++) & 0xff]);
@@ -304,8 +296,7 @@ WORD TSMANet_CalcFCSRaw(WORD fcs, BYTE* pCh, WORD wLen)
                    ********************************************************
                    PRUESSING, 21.05.2001, 1.0, Created
 **************************************************************************/
-WORD TSMANet_CalcChecksum( struct TNetPacket * frame )
-{
+WORD TSMANet_CalcChecksum( struct TNetPacket * frame ) {
    //struct TNetPacketFrag * CurFrameFrag;
    WORD cs = PPPINITFCS16;
 
@@ -334,9 +325,7 @@ WORD TSMANet_CalcChecksum( struct TNetPacket * frame )
                                                of alignment problems
                                                of some cpu's...
 **************************************************************************/
-void TSMANet_encapsulate(struct TProtocol * prot, struct TNetPacket * frame, 
-                         WORD protid)
-{
+void TSMANet_encapsulate(struct TProtocol * prot, struct TNetPacket * frame, WORD protid) {
    THDLCHead hdlchead;
    BYTE fcsStreamed[2];
    BYTE * DstBuffer;
@@ -407,8 +396,7 @@ void TSMANet_encapsulate(struct TProtocol * prot, struct TNetPacket * frame,
                    ********************************************************
                    PRUESSING, 25.04.2001, 1.0, Created
 **************************************************************************/
-DWORD TSMANet_GetMTU()
-{
+DWORD TSMANet_GetMTU() {
    return 255;
 }
 

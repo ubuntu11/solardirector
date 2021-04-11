@@ -1,17 +1,39 @@
 
 #include "common.h"
 
+void solard_message_dump(solard_message_t *msg, int dlevel) {
+#if 0
+        enum SOLARD_MESSAGE_TYPE type;
+        char role[32];
+        char name[64];
+        char func[32];
+        union {
+                char action[32];
+                char param[32];
+        };
+        char id[64];
+        union {
+                char data[262144];
+                int status;
+                char message[256];
+        };
+        int data_len;
+#endif
+	dprintf(dlevel,"msg: type: %d, role: %s, name: %s, func: %s, action: %s, id: %s\n",
+		msg->type,msg->role,msg->name,msg->func,msg->action);
+}
+
 void solard_getmsg(void *ctx, char *topic, char *message, int msg_len) {
 	list lp = ctx;
 	solard_message_t newmsg;
 	char *root;
 
-	dprintf(1,"topic: %s, message(%d): %s\n", topic, msg_len, message);
+	dprintf(4,"topic: %s, message(%d): %s\n", topic, msg_len, message);
 
-	/* All messages must start with /SolarD */
-	root = strele(1,"/",topic);
-	dprintf(1,"root: %s\n", root);
-	if (strcmp(root,"SolarD") != 0) return;
+	/* All messages must start with SOLARD_TOPIC_ROOT */
+	root = strele(0,"/",topic);
+	dprintf(4,"root: %s\n", root);
+	if (strcmp(root,SOLARD_TOPIC_ROOT) != 0) return;
 
 	memset(&newmsg,0,sizeof(newmsg));
 
@@ -21,21 +43,21 @@ void solard_getmsg(void *ctx, char *topic, char *message, int msg_len) {
 	dprintf(4,"data: %s\n", newmsg.data);
 
 	newmsg.role[0] = 0;
-	strncat(newmsg.role,strele(2,"/",topic),sizeof(newmsg.role)-1);
+	strncat(newmsg.role,strele(1,"/",topic),sizeof(newmsg.role)-1);
 	newmsg.name[0] = 0;
-	strncat(newmsg.name,strele(3,"/",topic),sizeof(newmsg.name)-1);
+	strncat(newmsg.name,strele(2,"/",topic),sizeof(newmsg.name)-1);
 	newmsg.func[0] = 0;
-	strncat(newmsg.func,strele(4,"/",topic),sizeof(newmsg.func)-1);
+	strncat(newmsg.func,strele(3,"/",topic),sizeof(newmsg.func)-1);
 	newmsg.action[0] = 0;
-	strncat(newmsg.action,strele(5,"/",topic),sizeof(newmsg.action)-1);
+	strncat(newmsg.action,strele(4,"/",topic),sizeof(newmsg.action)-1);
 	newmsg.id[0] = 0;
-	strncat(newmsg.id,strele(6,"/",topic),sizeof(newmsg.id)-1);
+	strncat(newmsg.id,strele(5,"/",topic),sizeof(newmsg.id)-1);
 
        	/* Is this a Status Reply? */
 	if (strcmp(newmsg.id,"Status") == 0) {
 		newmsg.type = SOLARD_MESSAGE_STATUS;
 		newmsg.id[0] = 0;
-		strncat(newmsg.id,strele(7,"/",topic),sizeof(newmsg.id)-1);
+		strncat(newmsg.id,strele(6,"/",topic),sizeof(newmsg.id)-1);
 		dprintf(4,"new id: %s\n", newmsg.id);
 	}
 	dprintf(4,"newmsg: name: %s, func: %s, action: %s, id: %s, data(%d): %s\n",
@@ -49,7 +71,7 @@ void solard_ingest(list lp, int timeout) {
 	while(1) {
 		time(&cur);
 		upd = list_updated(lp);
-		dprintf(1,"cur: %ld, upd: %ld, diff: %ld\n", cur, upd, cur-upd);
+		dprintf(4,"cur: %ld, upd: %ld, diff: %ld\n", cur, upd, cur-upd);
 		if ((cur - upd) >= timeout) break;
 		sleep(1);
 	}

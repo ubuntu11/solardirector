@@ -7,7 +7,8 @@
 #include "utils.h"
 #include "debug.h"
 
-#define TIMEOUT 1000L
+//#define TIMEOUT 1000L
+#define TIMEOUT 10000L
 
 struct mqtt_session {
 	mqtt_config_t config;
@@ -17,6 +18,10 @@ struct mqtt_session {
 	void *ctx;
 };
 typedef struct mqtt_session mqtt_session_t;
+
+static void mqtt_dc(void *ctx, char *cause) {
+	dprintf(1,"MQTT disconnected! cause: %s\n", cause);
+}
 
 static int mqtt_getmsg(void *ctx, char *topicName, int topicLen, MQTTClient_message *message) {
 	char topic[256];
@@ -76,6 +81,8 @@ struct mqtt_session *mqtt_new(mqtt_config_t *conf, mqtt_callback_t *cb, void *ct
 	mqtt_session_t *s;
 	int rc;
 
+	dprintf(1,"mqtt_config: host: %s, clientid: %s, user: %s, pass: %s\n",
+		conf->host, conf->clientid, conf->user, conf->pass);
 	s = calloc(1,sizeof(*s));
 	if (!s) {
 		log_write(LOG_SYSERR,"mqtt_new: calloc");
@@ -88,7 +95,7 @@ struct mqtt_session *mqtt_new(mqtt_config_t *conf, mqtt_callback_t *cb, void *ct
 	}
 	s->cb = cb;
 	s->ctx = ctx;
-	rc = MQTTClient_setCallbacks(s->c, s, 0, mqtt_getmsg, 0);
+	rc = MQTTClient_setCallbacks(s->c, s, mqtt_dc, mqtt_getmsg, 0);
 	dprintf(2,"rc: %d\n", rc);
 	if (rc) {
 		free(s);
@@ -147,6 +154,7 @@ int mqtt_destroy(mqtt_session_t *s) {
 	return 0;
 }
 
+
 int mqtt_pub(mqtt_session_t *s, char *topic, char *message, int retain) {
 	MQTTClient_message pubmsg = MQTTClient_message_initializer;
 	MQTTClient_deliveryToken token;
@@ -158,24 +166,21 @@ int mqtt_pub(mqtt_session_t *s, char *topic, char *message, int retain) {
 		pubmsg.payload = message;
 		pubmsg.payloadlen = strlen(message);
 	}
+
 	pubmsg.qos = 2;
 	pubmsg.retained = retain;
+	token = 0;
 	rc = MQTTClient_publishMessage(s->c, topic, &pubmsg, &token);
 	dprintf(2,"rc: %d\n", rc);
-	if (rc != MQTTCLIENT_SUCCESS) {
-		lprintf(LOG_ERROR,"MQTTClient_publishMessage: %s\n",MQTTReasonCode_toString(rc));
-		return 1;
-	}
-	rc = MQTTClient_waitForCompletion(s->c, token, 5000);
+	if (rc != MQTTCLIENT_SUCCESS) return 1;
+	rc = MQTTClient_waitForCompletion(s->c, token, TIMEOUT);
 	dprintf(2,"rc: %d\n", rc);
-	if (rc != MQTTCLIENT_SUCCESS) {
-		lprintf(LOG_SYSERR,"MQTTClient_waitForCompletion");
-		return 1;
-	}
-	dprintf(2,"delivered message.\n");
+	if (rc != MQTTCLIENT_SUCCESS) return 1;
+	dprintf(2,"delivered message... token: %d\n",token);
 	return 0;
 }
 
+#if 0
 int mqtt_send(mqtt_session_t *s, char *topic, char *message, int timeout) {
 	MQTTClient_message pubmsg = MQTTClient_message_initializer;
 	MQTTClient_deliveryToken token;
@@ -204,6 +209,7 @@ int mqtt_send(mqtt_session_t *s, char *topic, char *message, int timeout) {
 	dprintf(3,"delivered message.\n");
 	return 0;
 }
+#endif
 
 int mqtt_setcb(mqtt_session_t *s, void *ctx, MQTTClient_connectionLost *cl, MQTTClient_messageArrived *ma, MQTTClient_deliveryComplete *dc) {
 	int rc;
@@ -258,6 +264,7 @@ int mqtt_unsubmany(mqtt_session_t *s, int count, char **topic) {
 	return rc;
 }
 
+#if 0
 int mqtt_fullsend(char *address, char *clientid, char *message, char *topic, char *user, char *pass) {
 	mqtt_config_t config;
 	mqtt_session_t *s;
@@ -280,3 +287,4 @@ mqtt_send_error:
 	mqtt_destroy(s);
 	return rc;
 }
+#endif

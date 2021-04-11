@@ -97,8 +97,7 @@ void TSMADataMaster_OnBusEvent(TGenDriverEvent * event)
 * THROWS : ---
 *
 **************************************************************************/
-void TSMADataMaster_OnEventBusConnected(TGenDriverEvent * event)
-{
+void TSMADataMaster_OnEventBusConnected(TGenDriverEvent * event) {
    
    /* Master command to detect the new device...*/
    TMasterCmdReq * mc = TMasterCmdFactory_GetMasterCmd( MC_DETECTION );

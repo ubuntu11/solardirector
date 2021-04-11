@@ -47,6 +47,7 @@ int get_timestamp(char *ts, int tslen, int local);
 int become_daemon(void);
 void conv_type(int dt,void *d,int dl,int st,void *s,int sl);
 char *typestr(int);
+int find_config_file(char *,char *,int);
 
 /* Define the log options */
 #define LOG_CREATE		0x0001	/* Create a new logfile */

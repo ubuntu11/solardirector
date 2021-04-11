@@ -23,6 +23,7 @@
 #define REPOSITORY_H
 
 #include "smadef.h"
+#include "smanet.h"
 
 
 /*
@@ -53,7 +54,7 @@ typedef struct
 extern char ProgPath[YASDI_PROGRAM_PATH];   
 
 
-SHARED_FUNCTION void TRepository_Init( void );
+SHARED_FUNCTION void TRepository_Init( smanet_session_t *s );
 SHARED_FUNCTION void TRepository_Destroy( void );
 SHARED_FUNCTION void TRepository_GetElementStr      (char * key, 
                                                      char * _default, 

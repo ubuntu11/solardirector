@@ -14,9 +14,9 @@ struct sb_session {
 };
 typedef struct sb_session sb_session_t;
 
-char *sb_info(void *);
-int sb_read(void *handle,...);
+json_value_t *sb_info(void *);
+int sb_read(void *handle,void *,int);
 int sb_config(void *,char *,char *,list);
-int sb_control(void *handle,...);
+int sb_control(void *, char *, char *, json_value_t *);
 
 #endif

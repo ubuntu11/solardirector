@@ -52,6 +52,8 @@
 #include "copyright.h"
 #include "smanet.h"
 
+smanet_session_t *smanet_session;
+
 /**************************************************************************
    Description   : Initialization of the Yasdi-Shared-Library
    Parameter     : cIniFileName = Pointer to the configuration file (INI-File)
@@ -64,26 +66,17 @@
                    PRUESSING, 23.12.2001, 1.0, Created
 **************************************************************************/
 SHARED_FUNCTION int yasdiInitialize(smanet_session_t *s) {
-   int iRes = 0;
-	long uid;
-   						   
-	uid = getuid();
-	if (uid == 0) {
-		strcpy(ProgPath,"/var/lib/smanet");
-	} else {
-		/* Get home dir */
-		struct passwd *pw = getpwuid(uid);
-		sprintf(ProgPath,"%s/.smanet",pw->pw_dir);
-	}
-	dprintf(1,"ProgPath: %s\n", ProgPath);
-	mkdir(ProgPath,0755);
+//	int iRes = 0;
+
+	smanet_session = s;
+
 #if 0
    if (cIniFileName) strcpy( ProgPath, cIniFileName );
    else              ProgPath[0] = 0;
 #endif
    
    //Construct first the repository (to get configs)
-   TRepository_Init();
+   TRepository_Init(s);
    
 #if 0
    /*
@@ -152,7 +145,8 @@ SHARED_FUNCTION int yasdiInitialize(smanet_session_t *s) {
    /*Using Statistic Writer?*/
    TStatisticWriter_Constructor();
    
-   return iRes;
+//   return iRes;
+   return 0;
 }
 
 

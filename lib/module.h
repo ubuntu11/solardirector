@@ -20,14 +20,9 @@ typedef struct solard_agent solard_agent_t;
 #include "json.h"
 
 typedef int (*solard_module_init_t)(void *,char *);
-//typedef void *(*solard_module_new_t)(void *,...);
 typedef void *(*solard_module_new_t)(void *,void *,void *);
-typedef char *(*solard_module_info_t)(void *);
+typedef json_value_t *(*solard_module_info_t)(void *);
 typedef int (*solard_module_open_t)(void *);
-#if 0
-typedef int (*solard_module_read_t)(void *,...);
-typedef int (*solard_module_write_t)(void *,...);
-#endif
 typedef int (*solard_module_read_t)(void *,void *,int);
 typedef int (*solard_module_write_t)(void *,void *,int);
 typedef int (*solard_module_close_t)(void *);
@@ -59,6 +54,7 @@ struct solard_module {
 };
 
 module_t *load_module(list lp, char *name, int type);
+int load_tp_from_cfg(solard_module_t **mp, void **h, cfg_info_t *cfg, char *section_name);
 
 #ifndef EXPORT_API
 #define EXPORT_API __attribute__ ((visibility("default")))

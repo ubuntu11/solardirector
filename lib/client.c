@@ -1,6 +1,7 @@
 
 #include <pthread.h>
 #include "client.h"
+#include "uuid.h"
 
 #define DEBUG_STARTUP 0
 
@@ -10,7 +11,9 @@
 #define _ST_DEBUG 0
 #endif
 
-char *find_entry(solard_client_t *cp, char *name) {
+#define CLIENT_TEMP_SIZE 1048576
+
+static char *find_entry(solard_client_t *cp, char *name) {
 	solard_message_t *dp;
 	char *p;
 
@@ -29,11 +32,11 @@ char *find_entry(solard_client_t *cp, char *name) {
 	return p;
 }
 
-int get_status(solard_client_t *cp, char *action, char *name, int timeout) {
-	solard_message_t *dp;
+static int client_get_status(solard_client_t *cp, char *action, char *param, int timeout) {
+	solard_message_t *msg;
 	int retries, r, found;
 
-	dprintf(1,"action: %s, name: %s\n", action, name);
+	dprintf(1,"action: %s, param: %s\n", action, param);
 
 	r = 1;
 	retries=timeout;
@@ -41,13 +44,12 @@ int get_status(solard_client_t *cp, char *action, char *name, int timeout) {
 	while(retries--) {
 		dprintf(5,"count: %d\n", list_count(cp->messages));
 		list_reset(cp->messages);
-		while((dp = list_get_next(cp->messages)) != 0) {
-			dprintf(1,"dp: type: %d, action: %s, name %s, data: %s\n", dp->type, dp->action, dp->name, dp->data);
-			if (dp->type != SOLARD_MESSAGE_STATUS) continue;
-			if (strcmp(dp->action,action)==0) {
+		while((msg = list_get_next(cp->messages)) != 0) {
+			solard_message_dump(msg,3);
+			if (msg->type != SOLARD_MESSAGE_STATUS) continue;
+			if (strcmp(msg->action,action)==0) {
 				dprintf(1,"match.\n");
-//				mqtt_pub(cp->m,dp->topic,0,0);
-				list_delete(cp->messages,dp);
+				list_delete(cp->messages,msg);
 				found = 1;
 				r = 0;
 				break;
@@ -61,125 +63,125 @@ int get_status(solard_client_t *cp, char *action, char *name, int timeout) {
 	return r;
 }
 
-char *check(solard_client_t *s, char *name, int wait) {
+char *check(solard_client_t *cp, char *param, int wait) {
 	char *p;
 	int retries;
 
 	/* See if we have it first */
 	retries=1;
 	while(retries--) {
-		p = find_entry(s,name);
+		p = find_entry(cp,param);
 		dprintf(7,"p: %s\n", p);
-		if (p) {
-			char *p2;
-			p2 = malloc(strlen(p)+1);
-			strcpy(p2,p);
-			return p2;
-		}
+		if (p) return strcpy(cp->data,p);
 		if (wait) sleep(1);
 	}
 	return 0;
 }
 
-char *client_get_config(solard_client_t *cp, char *name, int timeout, int direct) {
-	char temp[200],data[128], *p;
+char *client_get_config(solard_client_t *cp, char *target, char *param, int timeout, int direct) {
+	char topic[SOLARD_TOPIC_SIZE], *p;
 	json_value_t *a;
 
-	dprintf(1,"name: %s, timeout: %d, direct: %d\n", name, timeout, direct);
+	dprintf(1,"target: %s, param: %s, timeout: %d, direct: %d\n", target, param, timeout, direct);
 
-	if (!direct && (p = check(cp, name, 0)) != 0) return p;
+	if (!direct && (p = check(cp, param, 0)) != 0) return p;
 
 	a = json_create_array();
-	json_array_add_string(a,name);
-	json_tostring(a,data,sizeof(data)-1,0);
+	json_array_add_string(a,param);
+	json_tostring(a,cp->data,sizeof(cp->data)-1,0);
 	json_destroy(a);
 
 	/* Request it */
-	sprintf(temp,"%s/Config/Get/%s",cp->topic,cp->id);
-	dprintf(1,"temp: %s\n",temp);
-	mqtt_pub(cp->m,temp,data,0);
+	sprintf(topic,"%s/%s/%s/%s/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONFIG,SOLARD_ACTION_GET,cp->id);
+	dprintf(1,"topic: %s\n",topic);
+	mqtt_pub(cp->m,topic,cp->data,0);
 
 	/* Get status message */
-	if (get_status(cp, "Get", name, timeout) != 0) return 0;
+	client_get_status(cp, SOLARD_ACTION_GET, param, timeout);
 
 	/* Get value message */
 	dprintf(1,"finding...\n");
-	p = find_entry(cp, name);
+	p = find_entry(cp, param);
 
-	/* Clear our get request */
-	mqtt_pub(cp->m,temp,0,0);
+        /* Clear our request and the status reply */
+        mqtt_pub(cp->m,topic,0,0);
+        sprintf(topic,"%s/%s/%s/%s/Status/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONFIG,SOLARD_ACTION_GET,cp->id);
+        mqtt_pub(cp->m,topic,0,0);
 
 	dprintf(1,"returning: %s\n", p);
 	return p;
 }
 
-list client_get_mconfig(solard_client_t *cp, int count, char **names, int timeout) {
-	char topic[200], *p;
+list client_get_mconfig(solard_client_t *cp, char *target, int count, char **params, int timeout) {
+	char topic[SOLARD_TOPIC_SIZE], *p;
 	json_value_t *a;
 	int i;
 	list results;
 
-	dprintf(1,"count: %d, names: %p, timeout: %d\n", count, names, timeout);
+	dprintf(1,"target: %s, count: %d, params: %p, timeout: %d\n", target, count, params, timeout);
 
 	results = list_create();
 
 	a = json_create_array();
+
+	/* Only fetch the ones we dont have */
 	for(i=0; i < count; i++) {
-		dprintf(1,"names[%d]: %s\n", i, names[i]);
-		if ((p = check(cp, names[i],0)) == 0) json_array_add_string(a,names[i]);
+		dprintf(1,"params[%d]: %s\n", i, params[i]);
+		if ((p = check(cp, params[i],0)) == 0) json_array_add_string(a,params[i]);
 	}
 	dprintf(1,"a->count: %d\n",(int)a->value.array->count);
 	if (a->value.array->count) {
-		json_tostring(a,cp->temp,1048576,0);
-		dprintf(1,"temp: %s\n", cp->temp);
+		json_tostring(a,cp->data,sizeof(cp->data)-1,0);
+		dprintf(1,"data: %s\n", cp->data);
 
 		/* Request */
-		sprintf(topic,"%s/Config/Get/%s",cp->topic,cp->id);
+		sprintf(topic,"%s/%s/%s/%s/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONFIG,SOLARD_ACTION_GET,cp->id);
 		dprintf(1,"topic: %s\n",topic);
-		mqtt_pub(cp->m,topic,cp->temp,0);
+		mqtt_pub(cp->m,topic,cp->data,0);
 
 		/* Get status message */
-		if (get_status(cp, "Get", 0, timeout) != 0) goto client_get_mconfig_done;
+		client_get_status(cp, SOLARD_ACTION_GET, 0, timeout);
 
-		/* Clear our get request */
+		/* Clear our request and the status reply */
+		mqtt_pub(cp->m,topic,0,0);
+		sprintf(topic,"%s/%s/%s/%s/Status/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONFIG,SOLARD_ACTION_SET,cp->id);
 		mqtt_pub(cp->m,topic,0,0);
 	}
 
 	/* Get value message */
 	dprintf(1,"finding...\n");
 	for(i=0; i < count; i++) {
-		if ((p = find_entry(cp, names[i])) != 0) list_add(results,p,strlen(p)+1);
+		if ((p = find_entry(cp, params[i])) != 0) list_add(results,p,strlen(p)+1);
 	}
 
-client_get_mconfig_done:
 	json_destroy(a);
 	dprintf(1,"returning results\n");
 	return results;
 }
 
-int client_set_config(solard_client_t *cp, char *name, char *value, int timeout) {
-	char temp[200],data[256];
+int client_set_config(solard_client_t *cp, char *target, char *param, char *value, int timeout) {
+	char topic[SOLARD_TOPIC_SIZE];
 	json_value_t *o;
 
-	dprintf(1,"name: %s, value: %s\n", name, value);
+	dprintf(1,"target: %s, param: %s, value: %s\n", target, param, value);
 
 	o = json_create_object();
-	json_add_string(o,name,value);
-	json_tostring(o,data,sizeof(data)-1,0);
-	json_destroy((json_value_t *)o);
+	json_add_string(o,param,value);
+	json_tostring(o,cp->data,sizeof(cp->data)-1,0);
+	json_destroy(o);
 
 	/* Request it */
-	sprintf(temp,"%s/Config/%s/%s",cp->topic,(strcmp(name,"Add")==0 ? "Add" : "Set"),cp->id);
-	dprintf(1,"temp: %s\n",temp);
-	mqtt_pub(cp->m,temp,data,0);
+	sprintf(topic,"%s/%s/%s/%s/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONFIG,SOLARD_ACTION_SET,cp->id);
+	dprintf(1,"topic: %s\n",topic);
+	mqtt_pub(cp->m,topic,cp->data,0);
 
 	/* Get status message */
-	get_status(cp, "Set", name, timeout);
+	client_get_status(cp, SOLARD_ACTION_SET, param, timeout);
 
-	/* Clear our get request and the status reply */
-	mqtt_pub(cp->m,temp,0,0);
-	sprintf(temp,"%s/Status/Set/%s",cp->topic,cp->id);
-	mqtt_pub(cp->m,temp,0,0);
+	/* Clear our request and the status reply */
+	mqtt_pub(cp->m,topic,0,0);
+	sprintf(topic,"%s/%s/%s/%s/Status/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONFIG,SOLARD_ACTION_SET,cp->id);
+	mqtt_pub(cp->m,topic,0,0);
 	return 0;
 }
 
@@ -211,30 +213,27 @@ solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,cha
 	}
 	pthread_mutex_init(&s->lock, 0);
 	s->messages = list_create();
-	strcpy(s->id,id);
-	s->temp = malloc(1048576);
 
 	dprintf(1,"argc: %d, argv: %p, opts: %p, id: %s\n", argc, argv, opts, id);
 
-	section_name = strlen(name) ? name : "client";
+	memset(&mqtt_config,0,sizeof(mqtt_config));
+
+	section_name = strlen(name) ? name : id;
 	dprintf(1,"section_name: %s\n", section_name);
 	dprintf(1,"configfile: %s\n", configfile);
 	if (strlen(configfile) == 0 && cf != 0) strncat(configfile,cf,sizeof(configfile)-1);
 	if (strlen(configfile)) {
 		cfg_proctab_t agent_tab[] = {
-			{ section_name, "name", "Client name", DATA_TYPE_STRING,&s->name,sizeof(s->name), 0 },
-			{ section_name, "uuid", "Client ID", DATA_TYPE_STRING,&s->id,sizeof(s->id), 0 },
+			{ section_name, "id", "Client ID", DATA_TYPE_STRING,&s->id,sizeof(s->id), 0 },
+			{ section_name, "name", "Client name", DATA_TYPE_STRING,&s->name,sizeof(s->name), id },
 			CFG_PROCTAB_END
 		};
 		s->cfg = cfg_read(configfile);
-		if (!s->cfg) {
-			log_write(LOG_SYSERROR,"unable to read configfile: %s\n",configfile);
-			goto client_init_error;
+		if (s->cfg) {
+			cfg_get_tab(s->cfg,agent_tab);
+			if (debug) cfg_disp_tab(agent_tab,"agent",0);
+			if (mqtt_get_config(s->cfg,&mqtt_config)) goto client_init_error;
 		}
-		cfg_get_tab(s->cfg,agent_tab);
-		if (debug) cfg_disp_tab(agent_tab,"agent",0);
-		memset(&mqtt_config,0,sizeof(mqtt_config));
-		if (mqtt_get_config(s->cfg,&mqtt_config)) goto client_init_error;
 	} else {
 		if (!strlen(mqtt_info)) {
 			log_write(LOG_ERROR,"either configfile or mqtt info must be specified.\n");
@@ -246,13 +245,26 @@ solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,cha
 		strncat(mqtt_config.pass,strele(3,":",mqtt_info),sizeof(mqtt_config.pass)-1);
 		dprintf(1,"host: %s, clientid: %s, user: %s, pass: %s\n", mqtt_config.host, mqtt_config.clientid, mqtt_config.user, mqtt_config.pass);
 	}
+	if (!strlen(s->id)) strcpy(s->id,id);
+	if (!strlen(s->name)) strcpy(s->name,id);
+
+#if 0
+	/* if we dont have a UUID, gen one */
+	if (!strlen(s->id) && s->cfg) {
+		uint8_t uuid[16];
+
+		dprintf(1,"gen'ing UUID...\n");
+		uuid_generate_random(uuid);
+		my_uuid_unparse(uuid, s->id);
+		dprintf(4,"conf->c->id: %s\n",s->id);
+ 		cfg_set_item(s->cfg,"solard","id",0,s->id);
+		cfg_write(s->cfg);
+	}
+#endif
 
 	/* MQTT Init */
-	if (!strlen(mqtt_config.host)) {
-		log_write(LOG_ERROR,"mqtt host must be specified\n");
-		goto client_init_error;
-	}
-	if (!strlen(mqtt_config.clientid)) strncat(mqtt_config.clientid,s->name,MQTT_CLIENTID_LEN-1);
+	if (!strlen(mqtt_config.host)) strcpy(mqtt_config.host,"localhost");
+	if (!strlen(mqtt_config.clientid)) strncat(mqtt_config.clientid,s->name,sizeof(mqtt_config.clientid)-1);
 	s->m = mqtt_new(&mqtt_config,solard_getmsg,s->messages);
 	if (!s->m) goto client_init_error;
 //	if (mqtt_setcb(s->m,s,client_mqtt_reconnect,client_callback,0)) return 0;

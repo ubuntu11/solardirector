@@ -25,7 +25,6 @@ int main(int argc,char **argv) {
 	if (!s) return 1;
 
 //	optind -= (nargs-1);
-	dprintf(1,"argc: %d, optind: %d\n", argc,optind);
         argc -= optind;
         argv += optind;
         optind = 0;
@@ -40,10 +39,9 @@ int main(int argc,char **argv) {
 	action = argv[1];
 	dprintf(1,"target: %s, action: %s\n", target, action);
 
-	sprintf(s->topic,"/SolarD/%s",target);
-	sprintf(topic,"/SolarD/%s/Config/+",target);
+	sprintf(topic,"%s/%s/%s/+",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONFIG);
 	if (mqtt_sub(s->m,topic)) return 0;
-	sprintf(topic,"/SolarD/%s/Config/+/Status/%s",target,s->id);
+	sprintf(topic,"%s/%s/%s/+/%s/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONFIG,SOLARD_ID_STATUS,s->id);
 	dprintf(1,"topic: %s\n", topic);
 	if (mqtt_sub(s->m,topic)) return 0;
 
@@ -70,7 +68,7 @@ int main(int argc,char **argv) {
 		if (count == 1) {
 			list_reset(lp);
 			while((p = list_get_next(lp)) != 0) {
-				val = client_get_config(s,p,timeout,read_flag);
+				val = client_get_config(s,target,p,timeout,read_flag);
 				if (val) printf("%s %s\n", p, val);
 			}
 		} else {
@@ -83,7 +81,7 @@ int main(int argc,char **argv) {
 			while((p = list_get_next(lp)) != 0) names[i++] = p;
 			dprintf(1,"action: %s\n", action);
 			if (strcasecmp(action,"get")==0) {
-				values = client_get_mconfig(s,count,names,30);
+				values = client_get_mconfig(s,target,count,names,30);
 				if (!values) return 1;
 				i = 0;
 				list_reset(values);
@@ -100,24 +98,11 @@ int main(int argc,char **argv) {
 			}
 		}
 	} else if (strcasecmp(action,"set")==0 || strcasecmp(action,"add")==0) {
-		client_set_config(s,argv[2],argv[3],15);
+		client_set_config(s,target,argv[2],argv[3],15);
 	} else {
 		log_write(LOG_ERROR,"invalid action: %s\n", action);
 		return 1;
 	}
-#if 0
-	if (strchr(temp,',')) {
-			char **names;
-			int i;
-			list lp,res;
-
-		} else {
-			p = client_get_config(s,argv[1],10);
-			if (p) printf("%s\n", p);
-		}
-	} else {
-	}
-#endif
 
 	free(s);
 	return 0;

@@ -251,33 +251,28 @@ SHARED_FUNCTION void serial_release(TDevice * dev)
                    ********************************************************
                    PRUESSING, 29.03.2001, 1.0, Created
 **************************************************************************/
-void serial_wait_bus_free(TDevice * dev)
-{
+void serial_wait_bus_free(TDevice * dev) {
    int iCnt = 0;
    CREATE_VAR_THIS(dev,struct TSerialPosixPriv *);
    /*
     * Wait on RS485/Powerline from 85ms to 115ms
 	* Get state of Line free from DCD line (RS485-Piggyback, SMAPowerline modem)
 	*/
-   if (SERMT_POWERLINE == this->media)
-   {
-      do
-	   {
+   if (SERMT_POWERLINE == this->media) {
+      do {
 	     iCnt = 0;
-		 while(IS_DCD_SET( dev ))
-		 {
-         // already wait 1000 ms
-         if ( iCnt > 1005 )
-			{
+		 while(IS_DCD_SET( dev )) {
+		         // already wait 1000 ms
+			 if ( iCnt > 1005 ) {
 			   //The time for one transmission => 1000ms maximum
 			   //If the line is more than 1000ms set, something is wrong. Maybe an SBC is connected
             YASDI_DEBUG((VERBOSE_HWL,"Serial: Error in Bus Arbitration. Maybe an SunnyBoyControl is connected?\n"));
-			   return;
+				   return;
 			}
 
 			//wait for silence 
 		 	os_thread_sleep(5); 
-            iCnt += 5;
+			iCnt += 5;
 		 }
 
 		  // wait random time between 85 and 115ms
@@ -358,11 +353,7 @@ void serial_prepare_send(TDevice * dev)
                    ********************************************************
                    PRUESSING, 29.03.2001, 1.0, Created
 **************************************************************************/
-SHARED_FUNCTION void serial_write(TDevice * dev, 
-                                  struct TNetPacket * frame,
-                                  DWORD DriverDeviceHandle, 
-                                  TDriverSendFlags flags)
-{
+SHARED_FUNCTION void serial_write(TDevice * dev, struct TNetPacket * frame, DWORD DriverDeviceHandle, TDriverSendFlags flags) {
    int ires;
    DWORD dBytesSend = 0;
 
@@ -460,11 +451,7 @@ BOOL serial_reopen(TDevice * dev)
                    ********************************************************
                    PRUESSING, 29.03.2001, 1.0, Created
 **************************************************************************/
-SHARED_FUNCTION DWORD serial_read(TDevice * dev, 
-                                  BYTE * DestBuffer, 
-                                  DWORD dBufferSize,
-                                  DWORD * DriverDevHandle)
-{
+SHARED_FUNCTION DWORD serial_read(TDevice * dev, BYTE * DestBuffer, DWORD dBufferSize, DWORD * DriverDevHandle) {
    CREATE_VAR_THIS(dev,struct TSerialPosixPriv *);
    int BytesRead;
 
@@ -505,6 +492,7 @@ SHARED_FUNCTION DWORD serial_read(TDevice * dev,
 	  
 	  //print received bytes for debug...
 #if 0
+	if (BytesRead) bindump("serial_read",DestBuffer,BytesRead);
 		{
 			int i;
 			if (BytesRead) YASDI_DEBUG((VERBOSE_HWL, "Received Data:\n"));

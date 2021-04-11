@@ -8,23 +8,19 @@ LICENSE file in the root directory of this source tree.
 
 #include "sb.h"
 
-void *sb_new(void *conf, ...) {
+void *sb_new(void *conf, void *tp, void *tp_handle) {
 	sb_session_t *s;
-	va_list ap;
 
 	s = calloc(1,sizeof(*s));
 	if (!s) {
 		perror("sb_new: calloc");
 		return 0;
 	}
-
-	va_start(ap,conf);
 	s->conf = conf;
-	s->tp = va_arg(ap,solard_module_t *);
-	s->tp_handle = va_arg(ap,void *);
-	va_end(ap);
+	s->tp = tp;
+	s->tp_handle = tp_handle;
 
-//	strncat(s->name,conf->bat.name,sizeof(s->name)-1);
+//	strncat(s->name,s->conf->name,sizeof(s->name)-1);
 
 	return s;
 }
@@ -72,9 +68,9 @@ int sb_close(void *handle) {
 
 static solard_module_t sb_driver = {
 	SOLARD_MODTYPE_INVERTER,
-	"sbagent",
+	"sb",
 	0,				/* Init */
-	sb_new,			/* New */
+	sb_new,				/* New */
 	sb_info,			/* info */
 	sb_open,			/* Open */
 	sb_read,			/* Read */

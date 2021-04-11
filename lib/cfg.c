@@ -642,7 +642,7 @@ int cfg_write(CFG_INFO *info) {
 		/* Write the section's data */
 		list_reset(section->items);
 		while( (item = list_get_next(section->items)) != 0) {
-			if (item->desc) {
+			if (item->desc && strlen(item->desc)) {
 				if (item->desc[0] != ';') fprintf(fp,";");
 				fprintf(fp,"%s\n",item->desc);
 			}

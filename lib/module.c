@@ -91,3 +91,20 @@ solard_module_t *load_module(list lp, char *name, int type) {
 
 	return mp;
 }
+
+int load_tp_from_cfg(solard_module_t **mp, void **h, cfg_info_t *cfg, char *section_name) {
+	char transport[SOLARD_TRANSPORT_LEN],target[SOLARD_TARGET_LEN],topts[SOLARD_TOPTS_LEN];
+	cfg_proctab_t tab[] = {
+		{ section_name,"transport","Transport",DATA_TYPE_STRING,&transport,sizeof(transport),"" },
+		{ section_name,"target","Transport address/interface/device", DATA_TYPE_STRING,&target,sizeof(target),"" },
+		{ section_name,"topts","Transport specific options",DATA_TYPE_STRING,&topts,sizeof(topts),"" },
+		CFG_PROCTAB_END
+	};
+	cfg_get_tab(cfg,tab);
+	if (debug) cfg_disp_tab(tab,0,0);
+	if (!strlen(transport) || !strlen(target) || !strlen(topts)) return 1;
+	*mp = load_module(0,transport,SOLARD_MODTYPE_TRANSPORT);
+	*h = (*mp)->new(0,target,topts);
+	if (!*h) return 1;
+	return 0;
+}

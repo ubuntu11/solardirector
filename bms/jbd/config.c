@@ -462,7 +462,7 @@ static void jbd_get_config(jbd_session_t *s, struct jbd_params *pp, json_descrip
 		sprintf(temp,"unhandled switch for: %d",pp->dt);
 		break;
 	}
-	sprintf(topic,"%s/%s/Config/%s",s->conf->topic,s->conf->name,pp->label);
+	sprintf(topic,"%s/%s/%s/%s/%s",SOLARD_TOPIC_ROOT,SOLARD_ROLE_BATTERY,s->conf->name,SOLARD_FUNC_CONFIG,pp->label);
 	dprintf(1,"topic: %s, temp: %s\n", topic, temp);
 	mqtt_pub(s->conf->m,topic,temp,1);
 }
@@ -570,6 +570,7 @@ static int jbd_set_config(jbd_session_t *s, uint8_t *data, struct jbd_params *pp
 	case JBD_PARM_DT_FLOAT:
 		/* The COVP and CUVP release values must be 100mV diff  */
 		conv_type(DATA_TYPE_FLOAT,&fval,0,req->type,&req->sval,0);
+		dprintf(1,"fval: %f\n", fval);
 		dprintf(1,"scale: %f\n", dp->scale);
 		if (dp->scale != 0.0) fval *= dp->scale;
 		val = fval;

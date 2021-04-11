@@ -44,11 +44,11 @@ int jbd_get_info(void *handle,jbd_info_t *info) {
 	return r;
 }
 
-char *jbd_info(void *handle) {
+json_value_t *jbd_info(void *handle) {
 	jbd_session_t *s = handle;
 	jbd_info_t info;
 	json_value_t *j,*a;
-	char version[16],*p;
+	char version[16];
 	long mem_start;
 	uint8_t data[4];
 	uint16_t val;
@@ -82,7 +82,7 @@ char *jbd_info(void *handle) {
 	j = json_create_object();
 	if (!j) return 0;
 	json_add_string(j,"agent_name","jbd");
-	json_add_string(j,"agent_role",AGENT_ROLE_BATTERY);
+	json_add_string(j,"agent_role",SOLARD_ROLE_BATTERY);
 	json_add_string(j,"agent_description","JBD BMS Utility");
 	json_add_string(j,"agent_version","1.0");
 	json_add_string(j,"agent_author","Stephen P. Shoecraft");
@@ -97,12 +97,7 @@ char *jbd_info(void *handle) {
 	json_array_add_descriptor(a,(json_descriptor_t){ "BALANCE_CONTROL", DATA_TYPE_INT, "select", 3, (int []){ 0,1,2 }, 3, (char *[]){ "off", "on", "charge" } });
 	json_add_value(j,"controls",a);
 	jbd_config_add_params(j);
-//	p = json_dumps(j,s->pp->conf->pretty);
-	p = json_dumps(j,0);
-	json_destroy(j);
 
 	dprintf(1,"mem_used: %ld\n",mem_used() - mem_start);
-
-	dprintf(1,"return: %p\n", p);
-	return p;
+	return j;
 }

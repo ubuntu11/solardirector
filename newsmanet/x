@@ -1,0 +1,779 @@
+serial_new(64): target: /dev/ttyS0, speed: 19200, data: 8, parity: N, stop: 1
+main(34): tp_handle: 0x14b1154
+serial_open(152): target: /dev/ttyS0
+serial_open(160): path: /dev/ttyS0
+set_interface_attribs(74): fd: 3, speed: 19200, data: 8, parity: 0, stop: 1, vmin: 0, vtime: 1
+smanet_command(7): cmd: 6, packet: 0x7ed804bc, buf: (nil), buflen: 0
+smanet_send_packet(75): src: 0000, dest: 0000, ctrl: 80, cnt: 0, cmd: 06, buffer: (nil), buflen: 0
+copy2buf(172): returning: 7
+copy2buf(172): returning: 2
+put frame(15):
+0000: 7E FF 03 40 41 00 00 00 00 80 00 06 D7 C0 7E       ~..@A.........~ 
+get frame(25):
+0000: FF 03 40 41 01 00 00 00 40 00 06 B4 C4 1A 4B 53    ..@A....@.....KS
+0010: 49 36 30 34 38 55 4D E1 2D                         I6048UM.-       
+smanet_recv_packet(56): src: 0001, dest: 0000
+smanet_recv_packet(58): control: 40, count: 0, command: 06
+smanet_recv_packet(64): data_len: 12
+smanet_command(29): returning: 0
+smanet_get_net_start(42): type: 0x14b21cc, buflen: 31
+smanet_get_net_start(46): type: SI6048UM
+smanet_init(19): serial: 1260045492, type: SI6048UM
+smanet_command(7): cmd: 3, packet: 0x7ed804bc, buf: 0x7ed804b4, buflen: 6
+smanet_send_packet(75): src: 0000, dest: 0000, ctrl: 80, cnt: 0, cmd: 03, buffer: 0x7ed804b4, buflen: 6
+copy2buf(172): returning: 13
+copy2buf(172): returning: 2
+put frame(21):
+0000: 7E FF 03 40 41 00 00 00 00 80 00 03 B4 C4 1A 4B    ~..@A..........K
+0010: 01 00 F7 88 7E                                     ....~           
+get frame(17):
+0000: FF 03 40 41 01 00 00 00 40 00 03 B4 C4 1A 4B 7E    ..@A....@.....K~
+0010: 85                                                 .               
+smanet_recv_packet(56): src: 0001, dest: 0000
+smanet_recv_packet(58): control: 40, count: 0, command: 03
+smanet_recv_packet(64): data_len: 4
+smanet_command(29): returning: 0
+smanet_cfg_net_adr(62): setting addr to 1
+parse_channels(36): data_len: 14718
+parse_channels(52): newchan: num: 1, name: AutoStr, index: 01, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: , gain: 0.000000, offset: 10.000000
+parse_channels(52): newchan: num: 2, name: Dt, index: 02, mask: 0401, format: 0102, level: 0
+parse_channels(73): unit: yyyymmdd, gain: 20100100.000000, offset: 137563152.000000
+parse_channels(52): newchan: num: 3, name: Tm, index: 03, mask: 0401, format: 0102, level: 0
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 4, name: BatCpyNom, index: 04, mask: 0401, format: 0104, level: 2
+parse_channels(73): unit: Ah, gain: 50.000000, offset: 10000.000000
+parse_channels(52): newchan: num: 5, name: BatVtgNom, index: 05, mask: 0401, format: 0104, level: 2
+parse_channels(73): unit: V, gain: 42.000000, offset: 52.000000
+parse_channels(52): newchan: num: 6, name: BatChrgCurMax, index: 06, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: A, gain: 10.000000, offset: 1200.000000
+parse_channels(52): newchan: num: 7, name: BatTmpMax, index: 07, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: degC, gain: 0.000000, offset: 50.000000
+parse_channels(52): newchan: num: 8, name: BatTmpStr, index: 08, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: degC, gain: 0.000000, offset: 50.000000
+parse_channels(52): newchan: num: 9, name: BatWirRes, index: 09, mask: 0401, format: 0101, level: 17
+parse_channels(73): unit: mOhm, gain: 0.000000, offset: 50.000000
+parse_channels(52): newchan: num: 10, name: AptTmBoost, index: 0a, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: min, gain: 1.000000, offset: 600.000000
+parse_channels(52): newchan: num: 11, name: AptTmFul, index: 0b, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: h, gain: 1.000000, offset: 20.000000
+parse_channels(52): newchan: num: 12, name: AptTmEqu, index: 0c, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: h, gain: 1.000000, offset: 48.000000
+parse_channels(52): newchan: num: 13, name: CycTmFul, index: 0d, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: d, gain: 1.000000, offset: 180.000000
+parse_channels(52): newchan: num: 14, name: CycTmEqu, index: 0e, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: d, gain: 7.000000, offset: 365.000000
+parse_channels(52): newchan: num: 15, name: ChrgVtgBoost, index: 0f, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: V, gain: 0.000000, offset: 2.700000
+parse_channels(52): newchan: num: 16, name: ChrgVtgFul, index: 10, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: V, gain: 0.000000, offset: 2.700000
+parse_channels(52): newchan: num: 17, name: ChrgVtgEqu, index: 11, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: V, gain: 0.000000, offset: 2.700000
+parse_channels(52): newchan: num: 18, name: ChrgVtgFlo, index: 12, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: V, gain: 0.000000, offset: 2.400000
+parse_channels(52): newchan: num: 19, name: BatTmpCps, index: 13, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: mV/degC, gain: 0.000000, offset: 10.000000
+parse_channels(52): newchan: num: 20, name: GnAutoStr, index: 14, mask: 0401, format: 0100, level: 1
+parse_channels(73): unit: , gain: 0.000000, offset: 10.000000
+parse_channels(52): newchan: num: 21, name: GnSocTm1Str, index: 15, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
+parse_channels(52): newchan: num: 22, name: GnSocTm1Stp, index: 16, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
+parse_channels(52): newchan: num: 23, name: GnSocTm2Str, index: 17, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
+parse_channels(52): newchan: num: 24, name: GnSocTm2Stp, index: 18, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
+parse_channels(52): newchan: num: 25, name: GnTm1Str, index: 19, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 26, name: GnTm2Str, index: 1a, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 27, name: GnPwrStr, index: 1b, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: kW, gain: 5.000000, offset: 20.000000
+parse_channels(52): newchan: num: 28, name: GnPwrStp, index: 1c, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: kW, gain: 5.000000, offset: 20.000000
+parse_channels(52): newchan: num: 29, name: GnVtgMin, index: 1d, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: V, gain: 80.000000, offset: 132.000000
+parse_channels(52): newchan: num: 30, name: GnVtgMax, index: 1e, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: V, gain: 105.000000, offset: 150.000000
+parse_channels(52): newchan: num: 31, name: GnCurNom, index: 1f, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: A, gain: 0.000000, offset: 1000.000000
+parse_channels(52): newchan: num: 32, name: GnFrqNom, index: 20, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: Hz, gain: 50.000000, offset: 70.000000
+parse_channels(52): newchan: num: 33, name: GnFrqMin, index: 21, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: Hz, gain: 50.000000, offset: 66.000000
+parse_channels(52): newchan: num: 34, name: GnFrqMax, index: 22, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: Hz, gain: 54.000000, offset: 70.000000
+parse_channels(52): newchan: num: 35, name: GnPwrAvgTm, index: 23, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: sec, gain: 1.000000, offset: 900.000000
+parse_channels(52): newchan: num: 36, name: GnOpTmMin, index: 24, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: min, gain: 0.000000, offset: 360.000000
+parse_channels(52): newchan: num: 37, name: GnStpTmMin, index: 25, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: min, gain: 0.000000, offset: 360.000000
+parse_channels(52): newchan: num: 38, name: GnCoolTm, index: 26, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: min, gain: 0.000000, offset: 60.000000
+parse_channels(52): newchan: num: 39, name: GnErrStpTm, index: 27, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: h, gain: 0.000000, offset: 24.000000
+parse_channels(52): newchan: num: 40, name: GnWarmTm, index: 28, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: sec, gain: 5.000000, offset: 900.000000
+parse_channels(52): newchan: num: 41, name: GnRvPwr, index: 29, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: W, gain: 0.000000, offset: 5000.000000
+parse_channels(52): newchan: num: 42, name: GnRvTm, index: 2a, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: sec, gain: 0.000000, offset: 900.000000
+parse_channels(52): newchan: num: 43, name: GnTmOpStrDt, index: 2b, mask: 0401, format: 0102, level: 0
+parse_channels(73): unit: yyyymmdd, gain: 20100100.000000, offset: 137563152.000000
+parse_channels(52): newchan: num: 44, name: GnTmOpStrTm, index: 2c, mask: 0401, format: 0102, level: 0
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 45, name: GnTmOpRnDur, index: 2d, mask: 0401, format: 0102, level: 0
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 6503227.000000
+parse_channels(52): newchan: num: 46, name: GdVtgMin, index: 2e, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: V, gain: 80.000000, offset: 132.000000
+parse_channels(52): newchan: num: 47, name: GdVtgMax, index: 2f, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: V, gain: 105.000000, offset: 150.000000
+parse_channels(52): newchan: num: 48, name: GdCurNom, index: 30, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: A, gain: 0.000000, offset: 1000.000000
+parse_channels(52): newchan: num: 49, name: GdFrqNom, index: 31, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: Hz, gain: 50.000000, offset: 70.000000
+parse_channels(52): newchan: num: 50, name: GdFrqMin, index: 32, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: Hz, gain: 50.000000, offset: 60.500000
+parse_channels(52): newchan: num: 51, name: GdFrqMax, index: 33, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: Hz, gain: 59.300003, offset: 70.000000
+parse_channels(52): newchan: num: 52, name: GdVldTm, index: 34, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: sec, gain: 5.000000, offset: 900.000000
+parse_channels(52): newchan: num: 53, name: GdRvPwr, index: 35, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: W, gain: 0.000000, offset: 5000.000000
+parse_channels(52): newchan: num: 54, name: GdRvTm, index: 36, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: sec, gain: 0.000000, offset: 60.000000
+parse_channels(52): newchan: num: 55, name: GdVtgIncPro, index: 37, mask: 0401, format: 0104, level: 17
+parse_channels(73): unit: V, gain: 132.000000, offset: 138.000000
+parse_channels(52): newchan: num: 56, name: FedInSocStr, index: 38, mask: 0401, format: 0101, level: 17
+parse_channels(73): unit: %, gain: 1.000000, offset: 90.000000
+parse_channels(52): newchan: num: 57, name: FedInSocStp, index: 39, mask: 0401, format: 0101, level: 17
+parse_channels(73): unit: %, gain: 1.000000, offset: 90.000000
+parse_channels(52): newchan: num: 58, name: FedInTmStr, index: 3a, mask: 0401, format: 0102, level: 17
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 59, name: FedInTmStp, index: 3b, mask: 0401, format: 0102, level: 17
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 60, name: FedInCurAt, index: 3c, mask: 0401, format: 0104, level: 17
+parse_channels(73): unit: A, gain: -1000.000000, offset: 1000.000000
+parse_channels(52): newchan: num: 61, name: FedInCurRt, index: 3d, mask: 0401, format: 0104, level: 17
+parse_channels(73): unit: A, gain: -1000.000000, offset: 1000.000000
+parse_channels(52): newchan: num: 62, name: GdSocTm1Str, index: 3e, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
+parse_channels(52): newchan: num: 63, name: GdSocTm1Stp, index: 3f, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
+parse_channels(52): newchan: num: 64, name: GdSocTm2Str, index: 40, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
+parse_channels(52): newchan: num: 65, name: GdSocTm2Stp, index: 41, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
+parse_channels(52): newchan: num: 66, name: GdTm1Str, index: 42, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 67, name: GdTm2Str, index: 43, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 68, name: GdPwrStr, index: 44, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: kW, gain: 0.000000, offset: 20.000000
+parse_channels(52): newchan: num: 69, name: GdPwrStp, index: 45, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: kW, gain: 0.000000, offset: 20.000000
+parse_channels(52): newchan: num: 70, name: SlpStrTm, index: 46, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 71, name: SlpStpTm, index: 47, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 72, name: InvVtgNom, index: 48, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: V, gain: 80.000000, offset: 150.000000
+parse_channels(52): newchan: num: 73, name: InvChrgCurMax, index: 49, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: A, gain: 0.000000, offset: 50.000000
+parse_channels(52): newchan: num: 74, name: InvFrqNom, index: 4a, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: Hz, gain: 50.000000, offset: 70.000000
+parse_channels(52): newchan: num: 75, name: InvTmOpStrDt, index: 4b, mask: 0401, format: 0102, level: 0
+parse_channels(73): unit: yyyymmdd, gain: 20100100.000000, offset: 137563152.000000
+parse_channels(52): newchan: num: 76, name: InvTmOpStrTm, index: 4c, mask: 0401, format: 0102, level: 0
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 77, name: InvTmOpRnDur, index: 4d, mask: 0401, format: 0102, level: 0
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 6503168.000000
+parse_channels(52): newchan: num: 78, name: Lod1SocTm1Str, index: 4e, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 1.000000, offset: 90.000000
+parse_channels(52): newchan: num: 79, name: Lod1SocTm1Stp, index: 4f, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 1.000000, offset: 90.000000
+parse_channels(52): newchan: num: 80, name: Lod1SocTm2Str, index: 50, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 1.000000, offset: 90.000000
+parse_channels(52): newchan: num: 81, name: Lod1SocTm2Stp, index: 51, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 1.000000, offset: 90.000000
+parse_channels(52): newchan: num: 82, name: Lod1Tm1Str, index: 52, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 83, name: Lod1Tm2Str, index: 53, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 84, name: Lod2SocTm1Str, index: 54, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 1.000000, offset: 90.000000
+parse_channels(52): newchan: num: 85, name: Lod2SocTm1Stp, index: 55, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 1.000000, offset: 90.000000
+parse_channels(52): newchan: num: 86, name: Lod2SocTm2Str, index: 56, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 1.000000, offset: 90.000000
+parse_channels(52): newchan: num: 87, name: Lod2SocTm2Stp, index: 57, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 1.000000, offset: 90.000000
+parse_channels(52): newchan: num: 88, name: Lod2Tm1Str, index: 58, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 89, name: Lod2Tm2Str, index: 59, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 90, name: RlyTmr1StrDt, index: 5a, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: yyyymmdd, gain: 20100100.000000, offset: 137563152.000000
+parse_channels(52): newchan: num: 91, name: RlyTmr1StrTm, index: 5b, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 92, name: RlyTmr1Dur, index: 5c, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 6503168.000000
+parse_channels(52): newchan: num: 93, name: RlyTmr2StrDt, index: 5d, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: yyyymmdd, gain: 20100100.000000, offset: 137563152.000000
+parse_channels(52): newchan: num: 94, name: RlyTmr2StrTm, index: 5e, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 95, name: RlyTmr2Dur, index: 5f, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 6503168.000000
+parse_channels(52): newchan: num: 96, name: BatFanTmpStr, index: 60, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: degC, gain: 20.000000, offset: 50.000000
+parse_channels(52): newchan: num: 97, name: GnTmStr, index: 61, mask: 0401, format: 0102, level: 0
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 98, name: ExtLkTm, index: 62, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: min, gain: 0.000000, offset: 60.000000
+parse_channels(52): newchan: num: 99, name: SilentTmFlo, index: 63, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: h, gain: 1.000000, offset: 48.000000
+parse_channels(52): newchan: num: 100, name: SilentTmMax, index: 64, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: h, gain: 1.000000, offset: 168.000000
+parse_channels(52): newchan: num: 101, name: BatChrgVtgMan, index: 65, mask: 0401, format: 0104, level: 17
+parse_channels(73): unit: V, gain: 41.000000, offset: 63.000000
+parse_channels(52): newchan: num: 102, name: BatPro1TmStr, index: 66, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 103, name: BatPro1TmStp, index: 67, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 104, name: BatPro2TmStr, index: 68, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 105, name: BatPro2TmStp, index: 69, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 106, name: BatPro1Soc, index: 6a, mask: 0401, format: 0100, level: 1
+parse_channels(73): unit: %, gain: 0.000000, offset: 70.000000
+parse_channels(52): newchan: num: 107, name: BatPro2Soc, index: 6b, mask: 0401, format: 0100, level: 1
+parse_channels(73): unit: %, gain: 0.000000, offset: 70.000000
+parse_channels(52): newchan: num: 108, name: BatPro3Soc, index: 6c, mask: 0401, format: 0100, level: 1
+parse_channels(73): unit: %, gain: 0.000000, offset: 70.000000
+parse_channels(52): newchan: num: 109, name: SimSoc, index: 6d, mask: 0401, format: 0101, level: 17
+parse_channels(73): unit: %, gain: 0.000000, offset: 100.000000
+parse_channels(52): newchan: num: 110, name: AuthCode, index: 6e, mask: 0401, format: 0102, level: 17
+parse_channels(73): unit: , gain: 0.000000, offset: 4294967296.000000
+parse_channels(52): newchan: num: 111, name: Plimit, index: 6f, mask: 0401, format: 0101, level: 15
+parse_channels(73): unit: kW, gain: 0.000000, offset: 100.000000
+parse_channels(52): newchan: num: 112, name: ChpOpTmMin, index: 70, mask: 0401, format: 0100, level: 1
+parse_channels(73): unit: min, gain: 1.000000, offset: 600.000000
+parse_channels(52): newchan: num: 113, name: ChpStpTmMin, index: 71, mask: 0401, format: 0100, level: 1
+parse_channels(73): unit: min, gain: 1.000000, offset: 1440.000000
+parse_channels(52): newchan: num: 114, name: ChpSocTm1Str, index: 72, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
+parse_channels(52): newchan: num: 115, name: ChpSocTm1Stp, index: 73, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
+parse_channels(52): newchan: num: 116, name: ChpSocTm2Str, index: 74, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
+parse_channels(52): newchan: num: 117, name: ChpSocTm2Stp, index: 75, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
+parse_channels(52): newchan: num: 118, name: ChpTm1Str, index: 76, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 119, name: ChpTm2Str, index: 77, mask: 0401, format: 0102, level: 1
+parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
+parse_channels(52): newchan: num: 120, name: ChpPwrStr, index: 78, mask: 0401, format: 0104, level: 1
+parse_channels(73): unit: kW, gain: 0.000000, offset: 100.000000
+parse_channels(52): newchan: num: 121, name: ChpPwrStrDly, index: 79, mask: 0401, format: 0100, level: 1
+parse_channels(73): unit: min, gain: 1.000000, offset: 600.000000
+parse_channels(52): newchan: num: 122, name: PvEgyMtr, index: 7a, mask: 0401, format: 0102, level: 15
+parse_channels(73): unit: kWh, gain: 0.000000, offset: 2147483520.000000
+parse_channels(52): newchan: num: 123, name: FedInCurAtCom, index: 7b, mask: 0401, format: 0104, level: 17
+parse_channels(73): unit: A, gain: -54.200005, offset: 54.200005
+parse_channels(52): newchan: num: 124, name: FedInCurRtCom, index: 7c, mask: 0401, format: 0104, level: 17
+parse_channels(73): unit: A, gain: -54.200005, offset: 54.200005
+parse_channels(52): newchan: num: 125, name: SlfCsmpSOCMin, index: 7d, mask: 0401, format: 0101, level: 1
+parse_channels(73): unit: %, gain: 5.000000, offset: 90.000000
+parse_channels(52): newchan: num: 126, name: SN, index: 01, mask: 0404, format: 0102, level: 15
+parse_channels(89): unit: , gain: 1.000000
+parse_channels(52): newchan: num: 127, name: SNSlv1, index: 02, mask: 0404, format: 0102, level: 15
+parse_channels(89): unit: , gain: 1.000000
+parse_channels(52): newchan: num: 128, name: SNSlv2, index: 03, mask: 0404, format: 0102, level: 15
+parse_channels(89): unit: , gain: 1.000000
+parse_channels(52): newchan: num: 129, name: SNSlv3, index: 04, mask: 0404, format: 0102, level: 15
+parse_channels(89): unit: , gain: 1.000000
+parse_channels(52): newchan: num: 130, name: GdCsmpEgyMtr, index: 05, mask: 0404, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 1.000000
+parse_channels(52): newchan: num: 131, name: GdFeedEgyMtr, index: 06, mask: 0404, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 1.000000
+parse_channels(52): newchan: num: 132, name: BatTyp, index: 01, mask: 0408, format: 0100, level: 2
+parse_channels(94): newchan.size: 38
+parse_channels(103): fixed status: ---,VRLA,FLA,NiCd,LiIon_Ext-BMS,Other
+parse_channels(52): newchan: num: 133, name: AutoEquChrgEna, index: 02, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 19
+parse_channels(103): fixed status: ---,Disable,Enable
+parse_channels(52): newchan: num: 134, name: GnAutoEna, index: 03, mask: 0408, format: 0100, level: 0
+parse_channels(94): newchan.size: 11
+parse_channels(103): fixed status: ---,Off,On
+parse_channels(52): newchan: num: 135, name: GnPwrEna, index: 04, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 11
+parse_channels(103): fixed status: ---,Off,On
+parse_channels(52): newchan: num: 136, name: GnStrMod, index: 05, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 28
+parse_channels(103): fixed status: ---,Manual,Autostart,GenMan
+parse_channels(52): newchan: num: 137, name: GnTmOpEna, index: 06, mask: 0408, format: 0100, level: 0
+parse_channels(94): newchan.size: 19
+parse_channels(103): fixed status: ---,Disable,Enable
+parse_channels(52): newchan: num: 138, name: GnTmOpCyc, index: 07, mask: 0408, format: 0100, level: 0
+parse_channels(94): newchan.size: 24
+parse_channels(103): fixed status: ---,Single,Daily,Weekly
+parse_channels(52): newchan: num: 139, name: GdMod, index: 08, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 24
+parse_channels(103): fixed status: ---,GridCharge,GridFeed
+parse_channels(52): newchan: num: 140, name: SilentEna, index: 09, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 19
+parse_channels(103): fixed status: ---,Disable,Enable
+parse_channels(52): newchan: num: 141, name: GdAISns, index: 0a, mask: 0408, format: 0100, level: 17
+parse_channels(94): newchan.size: 27
+parse_channels(103): fixed status: ---,Low,Medium,Normal,High
+parse_channels(52): newchan: num: 142, name: GdVtgIncProEna, index: 0b, mask: 0408, format: 0100, level: 17
+parse_channels(94): newchan.size: 19
+parse_channels(103): fixed status: ---,Disable,Enable
+parse_channels(52): newchan: num: 143, name: Country, index: 0c, mask: 0408, format: 0100, level: 17
+parse_channels(94): newchan.size: 33
+parse_channels(103): fixed status: ---,GER_VDE0126_1_1,AS4777,Other
+parse_channels(52): newchan: num: 144, name: FedInMod, index: 0d, mask: 0408, format: 0100, level: 17
+parse_channels(94): newchan.size: 34
+parse_channels(103): fixed status: ---,Off,Time,Signal,Com,SignalCom
+parse_channels(52): newchan: num: 145, name: FedInCtl, index: 0e, mask: 0408, format: 0100, level: 17
+parse_channels(94): newchan.size: 18
+parse_channels(103): fixed status: ---,ExtCur,InvCur
+parse_channels(52): newchan: num: 146, name: GdSocEna, index: 0f, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 19
+parse_channels(103): fixed status: ---,Disable,Enable
+parse_channels(52): newchan: num: 147, name: GdPwrEna, index: 10, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 19
+parse_channels(103): fixed status: ---,Disable,Enable
+parse_channels(52): newchan: num: 148, name: GdManStr, index: 11, mask: 0408, format: 0100, level: 0
+parse_channels(94): newchan.size: 20
+parse_channels(103): fixed status: ---,Auto,Stop,Start
+parse_channels(52): newchan: num: 149, name: ClstCfg, index: 12, mask: 0408, format: 0100, level: 2
+parse_channels(94): newchan.size: 83
+parse_channels(103): fixed status: ---,HW,Slave1,Slave2,Slave3,1Phase1,1Phase2,1Phase3,1Phase4,2Phase2,3Phase,2Phase4
+parse_channels(52): newchan: num: 150, name: ComBaud, index: 13, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 25
+parse_channels(103): fixed status: ---,1200,4800,9600,19200
+parse_channels(52): newchan: num: 151, name: SleepEna, index: 14, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 19
+parse_channels(103): fixed status: ---,Disable,Enable
+parse_channels(52): newchan: num: 152, name: AfraEna, index: 15, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 19
+parse_channels(103): fixed status: ---,Disable,Enable
+parse_channels(52): newchan: num: 153, name: SlpAtNgt, index: 16, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 19
+parse_channels(103): fixed status: ---,Disable,Enable
+parse_channels(52): newchan: num: 154, name: InvRs, index: 17, mask: 0408, format: 0100, level: 0
+parse_channels(94): newchan.size: 12
+parse_channels(103): fixed status: ---,Restart
+parse_channels(52): newchan: num: 155, name: ParaSto, index: 18, mask: 0408, format: 0100, level: 0
+parse_channels(94): newchan.size: 14
+parse_channels(103): fixed status: ---,Set1,Set2
+parse_channels(52): newchan: num: 156, name: InvTmOpEna, index: 19, mask: 0408, format: 0100, level: 0
+parse_channels(94): newchan.size: 19
+parse_channels(103): fixed status: ---,Disable,Enable
+parse_channels(52): newchan: num: 157, name: InvTmOpCyc, index: 1a, mask: 0408, format: 0100, level: 0
+parse_channels(94): newchan.size: 24
+parse_channels(103): fixed status: ---,Single,Daily,Weekly
+parse_channels(52): newchan: num: 158, name: ManStr, index: 1b, mask: 0408, format: 0100, level: 0
+parse_channels(94): newchan.size: 15
+parse_channels(103): fixed status: ---,Start,Stop
+parse_channels(52): newchan: num: 159, name: ErrAckn, index: 1c, mask: 0408, format: 0100, level: 0
+parse_channels(94): newchan.size: 16
+parse_channels(103): fixed status: ---,Ackn,NoAckn
+parse_channels(52): newchan: num: 160, name: ParaLod, index: 1d, mask: 0408, format: 0100, level: 17
+parse_channels(94): newchan.size: 22
+parse_channels(103): fixed status: ---,Set1,Set2,Factory
+parse_channels(52): newchan: num: 161, name: CntRs, index: 1e, mask: 0408, format: 0100, level: 17
+parse_channels(94): newchan.size: 49
+parse_channels(103): fixed status: ---,Inv,Bat,Gn,Gd,All,Sic1,Sic2,Sic3,Sic4,SicAll
+parse_channels(52): newchan: num: 162, name: RlyTmr1Cyc, index: 1f, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 24
+parse_channels(103): fixed status: ---,Single,Daily,Weekly
+parse_channels(52): newchan: num: 163, name: RlyTmr2Cyc, index: 20, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 24
+parse_channels(103): fixed status: ---,Single,Daily,Weekly
+parse_channels(52): newchan: num: 164, name: Rly1Op, index: 21, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 176
+parse_channels(103): fixed status: ---,Off,On,AutoGn,AutoLodExt,AutoLod1Soc,AutoLod2Soc,Tmr1,Tmr2,ExtPwrDer,GnRn,ExtVfOk,GdOn,Error,Warn,Run,BatFan,AcdCir,MccBatFan,MccAutoLod,CHPreq,CHPAdd,SiComRemote,Overload
+parse_channels(52): newchan: num: 165, name: Rly1OpSlv1, index: 22, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 176
+parse_channels(103): fixed status: ---,Off,On,AutoGn,AutoLodExt,AutoLod1Soc,AutoLod2Soc,Tmr1,Tmr2,ExtPwrDer,GnRn,ExtVfOk,GdOn,Error,Warn,Run,BatFan,AcdCir,MccBatFan,MccAutoLod,CHPreq,CHPAdd,SiComRemote,Overload
+parse_channels(52): newchan: num: 166, name: Rly1OpSlv2, index: 23, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 176
+parse_channels(103): fixed status: ---,Off,On,AutoGn,AutoLodExt,AutoLod1Soc,AutoLod2Soc,Tmr1,Tmr2,ExtPwrDer,GnRn,ExtVfOk,GdOn,Error,Warn,Run,BatFan,AcdCir,MccBatFan,MccAutoLod,CHPreq,CHPAdd,SiComRemote,Overload
+parse_channels(52): newchan: num: 167, name: Rly2Op, index: 24, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 176
+parse_channels(103): fixed status: ---,Off,On,AutoGn,AutoLodExt,AutoLod1Soc,AutoLod2Soc,Tmr1,Tmr2,ExtPwrDer,GnRn,ExtVfOk,GdOn,Error,Warn,Run,BatFan,AcdCir,MccBatFan,MccAutoLod,CHPreq,CHPAdd,SiComRemote,Overload
+parse_channels(52): newchan: num: 168, name: Rly2OpSlv1, index: 25, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 176
+parse_channels(103): fixed status: ---,Off,On,AutoGn,AutoLodExt,AutoLod1Soc,AutoLod2Soc,Tmr1,Tmr2,ExtPwrDer,GnRn,ExtVfOk,GdOn,Error,Warn,Run,BatFan,AcdCir,MccBatFan,MccAutoLod,CHPreq,CHPAdd,SiComRemote,Overload
+parse_channels(52): newchan: num: 169, name: Rly2OpSlv2, index: 26, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 176
+parse_channels(103): fixed status: ---,Off,On,AutoGn,AutoLodExt,AutoLod1Soc,AutoLod2Soc,Tmr1,Tmr2,ExtPwrDer,GnRn,ExtVfOk,GdOn,Error,Warn,Run,BatFan,AcdCir,MccBatFan,MccAutoLod,CHPreq,CHPAdd,SiComRemote,Overload
+parse_channels(52): newchan: num: 170, name: GnManStr, index: 27, mask: 0408, format: 0100, level: 0
+parse_channels(94): newchan.size: 26
+parse_channels(103): fixed status: ---,Auto,Stop,Start,Run1h
+parse_channels(52): newchan: num: 171, name: GnAck, index: 28, mask: 0408, format: 0100, level: 0
+parse_channels(94): newchan.size: 9
+parse_channels(103): fixed status: ---,Ackn
+parse_channels(52): newchan: num: 172, name: ChrgSelMan, index: 29, mask: 0408, format: 0100, level: 0
+parse_channels(94): newchan.size: 20
+parse_channels(103): fixed status: ---,Idle,Start,Stop
+parse_channels(52): newchan: num: 173, name: GnCtlMod, index: 2a, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 15
+parse_channels(103): fixed status: ---,Cur,CurFrq
+parse_channels(52): newchan: num: 174, name: CardFunc, index: 2b, mask: 0408, format: 0100, level: 0
+parse_channels(94): newchan.size: 44
+parse_channels(103): fixed status: ---,ForcedWrite,StoEvtHis,StoFailHis,StoHis
+parse_channels(52): newchan: num: 175, name: GnAISns, index: 2c, mask: 0408, format: 0100, level: 17
+parse_channels(94): newchan.size: 27
+parse_channels(103): fixed status: ---,Low,Medium,Normal,High
+parse_channels(52): newchan: num: 176, name: BkupTst, index: 2d, mask: 0408, format: 0100, level: 0
+parse_channels(94): newchan.size: 15
+parse_channels(103): fixed status: ---,Stop,Start
+parse_channels(52): newchan: num: 177, name: ExtSrc, index: 2e, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 28
+parse_channels(103): fixed status: ---,PvOnly,Gen,Grid,GenGrid
+parse_channels(52): newchan: num: 178, name: LongChLstEna, index: 2f, mask: 0408, format: 0100, level: 18
+parse_channels(94): newchan.size: 19
+parse_channels(103): fixed status: ---,Disable,Enable
+parse_channels(52): newchan: num: 179, name: ChrgCtlOp, index: 30, mask: 0408, format: 0100, level: 17
+parse_channels(94): newchan.size: 20
+parse_channels(103): fixed status: ---,Auto,DCOnly,SMA
+parse_channels(52): newchan: num: 180, name: ChpPwrEna, index: 31, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 19
+parse_channels(103): fixed status: ---,Disable,Enable
+parse_channels(52): newchan: num: 181, name: ChpManStr, index: 32, mask: 0408, format: 0100, level: 0
+parse_channels(94): newchan.size: 16
+parse_channels(103): fixed status: Auto,Start,Stop
+parse_channels(52): newchan: num: 182, name: RnMod, index: 33, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 25
+parse_channels(103): fixed status: ---,RunAlways,StopAlways
+parse_channels(52): newchan: num: 183, name: SlfCsmpIncEna, index: 34, mask: 0408, format: 0100, level: 1
+parse_channels(94): newchan.size: 19
+parse_channels(103): fixed status: ---,Disable,Enable
+parse_channels(52): newchan: num: 184, name: SlfCsmpStdbyMod, index: 35, mask: 0408, format: 0100, level: 17
+parse_channels(94): newchan.size: 11
+parse_channels(103): fixed status: ---,Off,On
+parse_channels(52): newchan: num: 185, name: Msg, index: 01, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: , gain: 1.000000, offset: 0.000000
+parse_channels(52): newchan: num: 186, name: Soh, index: 02, mask: 0901, format: 0100, level: 15
+parse_channels(73): unit: %, gain: 1.000000, offset: 0.000000
+parse_channels(52): newchan: num: 187, name: TotInvPwrAt, index: 03, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 188, name: TotInvCur, index: 04, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 189, name: TotInvPwrRt, index: 05, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kVAr, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 190, name: BatSoc, index: 06, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: %, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 191, name: BatVtg, index: 07, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: V, gain: 0.100000, offset: 0.000000
+parse_channels(52): newchan: num: 192, name: BatChrgVtg, index: 08, mask: 0901, format: 0104, level: 15
+parse_channels(73): unit: V, gain: 0.100000, offset: 0.000000
+parse_channels(52): newchan: num: 193, name: AptTmRmg, index: 09, mask: 0901, format: 0102, level: 15
+parse_channels(73): unit: hhmmss, gain: 1.000000, offset: 0.000000
+parse_channels(52): newchan: num: 194, name: TotBatCur, index: 0a, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 195, name: BatTmp, index: 0b, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: degC, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 196, name: RmgTmFul, index: 0c, mask: 0901, format: 0102, level: 15
+parse_channels(73): unit: d, gain: 1.000000, offset: 0.000000
+parse_channels(52): newchan: num: 197, name: RmgTmEqu, index: 0d, mask: 0901, format: 0102, level: 15
+parse_channels(73): unit: d, gain: 1.000000, offset: 0.000000
+parse_channels(52): newchan: num: 198, name: BatSocErr, index: 0e, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: %, gain: 0.100000, offset: 0.000000
+parse_channels(52): newchan: num: 199, name: GnRmgTm, index: 0f, mask: 0901, format: 0102, level: 15
+parse_channels(73): unit: hhmmss, gain: 1.000000, offset: 0.000000
+parse_channels(52): newchan: num: 200, name: InvPwrAt, index: 10, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 201, name: InvPwrAtSlv1, index: 11, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 202, name: InvPwrAtSlv2, index: 12, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 203, name: InvPwrAtSlv3, index: 13, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 204, name: InvVtg, index: 14, mask: 0901, format: 0102, level: 15
+parse_channels(73): unit: V, gain: 0.001000, offset: 0.000000
+parse_channels(52): newchan: num: 205, name: InvVtgSlv1, index: 15, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: V, gain: 0.100000, offset: 0.000000
+parse_channels(52): newchan: num: 206, name: InvVtgSlv2, index: 16, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: V, gain: 0.100000, offset: 0.000000
+parse_channels(52): newchan: num: 207, name: InvVtgSlv3, index: 17, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: V, gain: 0.100000, offset: 0.000000
+parse_channels(52): newchan: num: 208, name: InvCur, index: 18, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 209, name: InvCurSlv1, index: 19, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 210, name: InvCurSlv2, index: 1a, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 211, name: InvCurSlv3, index: 1b, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 212, name: InvFrq, index: 1c, mask: 0901, format: 0102, level: 15
+parse_channels(73): unit: Hz, gain: 0.001000, offset: 0.000000
+parse_channels(52): newchan: num: 213, name: InvPwrRt, index: 1d, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kVAr, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 214, name: InvPwrRtSlv1, index: 1e, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kVAr, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 215, name: InvPwrRtSlv2, index: 1f, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kVAr, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 216, name: InvPwrRtSlv3, index: 20, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kVAr, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 217, name: ExtPwrAt, index: 21, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 218, name: ExtPwrAtSlv1, index: 22, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 219, name: ExtPwrAtSlv2, index: 23, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 220, name: ExtPwrAtSlv3, index: 24, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 221, name: ExtVtg, index: 25, mask: 0901, format: 0102, level: 15
+parse_channels(73): unit: V, gain: 0.001000, offset: 0.000000
+parse_channels(52): newchan: num: 222, name: ExtVtgSlv1, index: 26, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: V, gain: 0.100000, offset: 0.000000
+parse_channels(52): newchan: num: 223, name: ExtVtgSlv2, index: 27, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: V, gain: 0.100000, offset: 0.000000
+parse_channels(52): newchan: num: 224, name: ExtVtgSlv3, index: 28, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: V, gain: 0.100000, offset: 0.000000
+parse_channels(52): newchan: num: 225, name: ExtCur, index: 29, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 226, name: ExtCurSlv1, index: 2a, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 227, name: ExtCurSlv2, index: 2b, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 228, name: ExtCurSlv3, index: 2c, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 229, name: ExtFrq, index: 2d, mask: 0901, format: 0102, level: 15
+parse_channels(73): unit: Hz, gain: 0.001000, offset: 0.000000
+parse_channels(52): newchan: num: 230, name: ExtPwrRt, index: 2e, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kVAr, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 231, name: ExtPwrRtSlv1, index: 2f, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kVAr, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 232, name: ExtPwrRtSlv2, index: 30, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kVAr, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 233, name: ExtPwrRtSlv3, index: 31, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kVAr, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 234, name: TotExtPwrAt, index: 32, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 235, name: TotExtCur, index: 33, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 236, name: TotExtPwrRt, index: 34, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kVAr, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 237, name: TotLodPwr, index: 35, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 238, name: GdRmgTm, index: 36, mask: 0901, format: 0102, level: 15
+parse_channels(73): unit: hhmmss, gain: 1.000000, offset: 0.000000
+parse_channels(52): newchan: num: 239, name: Pac, index: 37, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 240, name: Firmware, index: 38, mask: 0901, format: 0102, level: 15
+parse_channels(73): unit: , gain: 0.001000, offset: 0.000000
+parse_channels(52): newchan: num: 241, name: Iac, index: 39, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 242, name: Vac, index: 3a, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: V, gain: 0.100000, offset: 0.000000
+parse_channels(52): newchan: num: 243, name: Fac, index: 3b, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: Hz, gain: 0.100000, offset: 0.000000
+parse_channels(52): newchan: num: 244, name: ChpPwrAt, index: 3c, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 245, name: ChpRmgTm, index: 3d, mask: 0901, format: 0102, level: 15
+parse_channels(73): unit: hhmmss, gain: 1.000000, offset: 0.000000
+parse_channels(52): newchan: num: 246, name: ChpStrRmgTm, index: 3e, mask: 0901, format: 0102, level: 15
+parse_channels(73): unit: hhmmss, gain: 1.000000, offset: 0.000000
+parse_channels(52): newchan: num: 247, name: Sic1PvPwr, index: 3f, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: W, gain: 1.000000, offset: -32767.000000
+parse_channels(52): newchan: num: 248, name: Sic2PvPwr, index: 40, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: W, gain: 1.000000, offset: -32767.000000
+parse_channels(52): newchan: num: 249, name: Sic3PvPwr, index: 41, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: W, gain: 1.000000, offset: -32767.000000
+parse_channels(52): newchan: num: 250, name: Sic4PvPwr, index: 42, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: W, gain: 1.000000, offset: -32767.000000
+parse_channels(52): newchan: num: 251, name: Sic1SWVers, index: 43, mask: 0901, format: 0101, level: 31
+parse_channels(73): unit: , gain: 0.010000, offset: -327.670013
+parse_channels(52): newchan: num: 252, name: Sic2SWVers, index: 44, mask: 0901, format: 0101, level: 31
+parse_channels(73): unit: , gain: 0.010000, offset: -327.670013
+parse_channels(52): newchan: num: 253, name: Sic3SWVers, index: 45, mask: 0901, format: 0101, level: 31
+parse_channels(73): unit: , gain: 0.010000, offset: -327.670013
+parse_channels(52): newchan: num: 254, name: Sic4SWVers, index: 46, mask: 0901, format: 0101, level: 31
+parse_channels(73): unit: , gain: 0.010000, offset: -327.670013
+parse_channels(52): newchan: num: 255, name: TotSicPvPwr, index: 47, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: W, gain: 1.000000, offset: -32767.000000
+parse_channels(52): newchan: num: 256, name: TotSicBatCur, index: 48, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 257, name: TotMccLodPwr, index: 49, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 258, name: TotPvPwrAt, index: 4a, mask: 0901, format: 0104, level: 15
+parse_channels(73): unit: kW, gain: 0.001000, offset: 0.000000
+parse_channels(52): newchan: num: 259, name: TotLodPwrAt, index: 4b, mask: 0901, format: 0104, level: 15
+parse_channels(73): unit: kW, gain: 0.001000, offset: 0.000000
+parse_channels(52): newchan: num: 260, name: SlfCsmpPwrAt, index: 4c, mask: 0901, format: 0104, level: 15
+parse_channels(73): unit: kW, gain: 0.001000, offset: 0.000000
+parse_channels(52): newchan: num: 261, name: SlfCsmpIncPwr, index: 4d, mask: 0901, format: 0104, level: 15
+parse_channels(73): unit: kW, gain: 0.001000, offset: 0.000000
+parse_channels(52): newchan: num: 262, name: BatCpyThrpCnt, index: 4e, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: , gain: 1.000000, offset: 0.000000
+parse_channels(52): newchan: num: 263, name: GdCsmpPwrAt, index: 4f, mask: 0901, format: 0104, level: 15
+parse_channels(73): unit: kW, gain: 0.001000, offset: 0.000000
+parse_channels(52): newchan: num: 264, name: GdFeedPwrAt, index: 50, mask: 0901, format: 0104, level: 15
+parse_channels(73): unit: kW, gain: 0.001000, offset: 0.000000
+parse_channels(52): newchan: num: 265, name: PacPV, index: 51, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 266, name: PacFeed-In, index: 52, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 267, name: PacConsumption, index: 53, mask: 0901, format: 0101, level: 15
+parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
+parse_channels(52): newchan: num: 268, name: kWhPV, index: 54, mask: 0901, format: 0102, level: 15
+parse_channels(73): unit: kWh, gain: 1.000000, offset: 0.000000
+parse_channels(52): newchan: num: 269, name: FwVer, index: 01, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: , gain: 0.001000
+parse_channels(52): newchan: num: 270, name: OnTmh, index: 02, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: h, gain: 0.100000
+parse_channels(52): newchan: num: 271, name: FwVer2, index: 03, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: , gain: 0.001000
+parse_channels(52): newchan: num: 272, name: EgyCntIn, index: 04, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 0.100000
+parse_channels(52): newchan: num: 273, name: EgyCntOut, index: 05, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 0.100000
+parse_channels(52): newchan: num: 274, name: EgyCntTm, index: 06, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: h, gain: 0.100000
+parse_channels(52): newchan: num: 275, name: GnEgyCnt, index: 07, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 0.100000
+parse_channels(52): newchan: num: 276, name: GnEgyTm, index: 08, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: h, gain: 0.100000
+parse_channels(52): newchan: num: 277, name: GnOpTmh, index: 09, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: h, gain: 0.100000
+parse_channels(52): newchan: num: 278, name: GnStrCnt, index: 0a, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: , gain: 1.000000
+parse_channels(52): newchan: num: 279, name: GdEgyCntIn, index: 0b, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 0.100000
+parse_channels(52): newchan: num: 280, name: GdEgyCntOut, index: 0c, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 0.100000
+parse_channels(52): newchan: num: 281, name: GdEgyTmh, index: 0d, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: h, gain: 0.100000
+parse_channels(52): newchan: num: 282, name: GdOpTmh, index: 0e, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: h, gain: 0.100000
+parse_channels(52): newchan: num: 283, name: GdCtcCnt, index: 0f, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: , gain: 1.000000
+parse_channels(52): newchan: num: 284, name: TotTmh, index: 10, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: h, gain: 0.100000
+parse_channels(52): newchan: num: 285, name: Sic1EgyCntIn, index: 11, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 0.100000
+parse_channels(52): newchan: num: 286, name: Sic2EgyCntIn, index: 12, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 0.100000
+parse_channels(52): newchan: num: 287, name: Sic3EgyCntIn, index: 13, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 0.100000
+parse_channels(52): newchan: num: 288, name: Sic4EgyCntIn, index: 14, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 0.100000
+parse_channels(52): newchan: num: 289, name: TotSicEgyCntIn, index: 15, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 0.100000
+parse_channels(52): newchan: num: 290, name: Sic1TdyEgyCntIn, index: 16, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 0.100000
+parse_channels(52): newchan: num: 291, name: Sic2TdyEgyCntIn, index: 17, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 0.100000
+parse_channels(52): newchan: num: 292, name: Sic3TdyEgyCntIn, index: 18, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 0.100000
+parse_channels(52): newchan: num: 293, name: Sic4TdyEgyCntIn, index: 19, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 0.100000
+parse_channels(52): newchan: num: 294, name: TotSicDyEgyCntI, index: 1a, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 0.100000
+parse_channels(52): newchan: num: 295, name: Serial Number, index: 1b, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: , gain: 1.000000
+parse_channels(52): newchan: num: 296, name: E-Total-In, index: 1c, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 0.100000
+parse_channels(52): newchan: num: 297, name: E-Total, index: 1d, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 0.100000
+parse_channels(52): newchan: num: 298, name: h-On, index: 1e, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: h, gain: 0.100000
+parse_channels(52): newchan: num: 299, name: TotLodEgyCnt, index: 1f, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 1.000000
+parse_channels(52): newchan: num: 300, name: SlfCsmpIncEgy, index: 20, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 1.000000
+parse_channels(52): newchan: num: 301, name: SlfCsmpEgy, index: 21, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 1.000000
+parse_channels(52): newchan: num: 302, name: SlfCsmpIncTdy, index: 22, mask: 0904, format: 0104, level: 15
+parse_channels(89): unit: kWh, gain: 0.001000
+parse_channels(52): newchan: num: 303, name: GdCsmpEgyTdy, index: 23, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 0.100000
+parse_channels(52): newchan: num: 304, name: kWhFeed-In, index: 24, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 1.000000
+parse_channels(52): newchan: num: 305, name: kWhConsumption, index: 25, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 1.000000
+parse_channels(52): newchan: num: 306, name: GdFeedEgyTdy, index: 26, mask: 0904, format: 0102, level: 15
+parse_channels(89): unit: kWh, gain: 0.100000
+parse_channels(52): newchan: num: 307, name: Adr, index: 01, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 32
+parse_channels(103): fixed status: ---,Master,Slave1,Slave2,Slave3
+parse_channels(52): newchan: num: 308, name: OpStt, index: 02, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 30
+parse_channels(103): fixed status: ---,Operating,Warning,Failure
+parse_channels(52): newchan: num: 309, name: OpSttSlv1, index: 03, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 30
+parse_channels(103): fixed status: ---,Operating,Warning,Failure
+parse_channels(52): newchan: num: 310, name: OpSttSlv2, index: 04, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 30
+parse_channels(103): fixed status: ---,Operating,Warning,Failure
+parse_channels(52): newchan: num: 311, name: OpSttSlv3, index: 05, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 30
+parse_channels(103): fixed status: ---,Operating,Warning,Failure
+parse_channels(52): newchan: num: 312, name: CardStt, index: 06, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 105
+parse_channels(103): fixed status: ---,Off,Operational,Mount,OutOfSpace,BadFileSys,Incomp,Parameter,ParamFailed,WriteLogData,WriteLogFailed
+parse_channels(52): newchan: num: 313, name: Prio, index: 07, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 29
+parse_channels(103): fixed status: ---,Ina,Prio_A,Prio_B,Prio_C
+parse_channels(52): newchan: num: 314, name: BatChrgOp, index: 08, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 77
+parse_channels(103): fixed status: ---,Boost,Full,Float,Equalize,Equalize,Silent,Float,Silent,---,LiIon_Ext-BMS
+parse_channels(52): newchan: num: 315, name: AptPhs, index: 09, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 11
+parse_channels(103): fixed status: ---,Off,On
+parse_channels(52): newchan: num: 316, name: GnDmdSrc, index: 0a, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 43
+parse_channels(103): fixed status: ---,None,Bat,Lod,Tim,Run1h,Start,ExtSrcReq
+parse_channels(52): newchan: num: 317, name: GnStt, index: 0b, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 92
+parse_channels(103): fixed status: ---,Off,Init,Ready,Warm,Connect,Run,Retry,Disconnect,Cool,Lock,Fail,FailLock,Reinit,GnRmgTm
+parse_channels(52): newchan: num: 318, name: InvOpStt, index: 0c, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 54
+parse_channels(103): fixed status: ---,Init,Standby,Run,Run,Error,Manual,Startup,KickOff
+parse_channels(52): newchan: num: 319, name: InvOpSttSlv1, index: 0d, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 54
+parse_channels(103): fixed status: ---,Init,Standby,Run,Run,Error,Manual,Startup,KickOff
+parse_channels(52): newchan: num: 320, name: InvOpSttSlv2, index: 0e, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 54
+parse_channels(103): fixed status: ---,Init,Standby,Run,Run,Error,Manual,Startup,KickOff
+parse_channels(52): newchan: num: 321, name: InvOpSttSlv3, index: 0f, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 54
+parse_channels(103): fixed status: ---,Init,Standby,Run,Run,Error,Manual,Startup,KickOff
+parse_channels(52): newchan: num: 322, name: Rly1Stt, index: 10, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 11
+parse_channels(103): fixed status: ---,Off,On
+parse_channels(52): newchan: num: 323, name: Rly2Stt, index: 11, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 11
+parse_channels(103): fixed status: ---,Off,On
+parse_channels(52): newchan: num: 324, name: GnRnStt, index: 12, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 11
+parse_channels(103): fixed status: ---,Off,On
+parse_channels(52): newchan: num: 325, name: Mode, index: 13, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 40
+parse_channels(103): fixed status: ---,Operation,Warning,Disturbance,Error
+parse_channels(52): newchan: num: 326, name: Error, index: 14, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 84
+parse_channels(103): fixed status: -----,1xx INV,2xx BAT,3xx EXT,4xx GEN,5xx GRD,6xx RLY,7xx SYS,8xx AS/MC Box,85x SIC
+parse_channels(52): newchan: num: 327, name: ChpStt, index: 15, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 18
+parse_channels(103): fixed status: ---,Idle,Run,Lock
+parse_channels(52): newchan: num: 328, name: PvGdConStt, index: 16, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 20
+parse_channels(103): fixed status: ---,Off,Grid,Backup
+parse_channels(52): newchan: num: 329, name: LodGdConStt, index: 17, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 31
+parse_channels(103): fixed status: ---,Off,Grid,Backup,GridBypass
+parse_channels(52): newchan: num: 330, name: BatMntStt, index: 18, mask: 0908, format: 0100, level: 15
+parse_channels(94): newchan.size: 16
+parse_channels(103): fixed status: ---,On,Wait,Off
+main(40): count: 330
+smanet_save_channels(192): path: mychans.dat
+smanet_load_channels(231): path: mychans.dat
+main(44): count: 330
+timeouts: 0, commands: 2

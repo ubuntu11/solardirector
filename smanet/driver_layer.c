@@ -397,13 +397,13 @@ SHARED_FUNCTION char * TDriverLayer_DriverID2String( DWORD DriverID )
 {
 	char *p;
 
-	dprintf(1,"DriverID: %d\n", DriverID);
+	dprintf(7,"DriverID: %d\n", DriverID);
 	TDevice * driver = TDriverLayer_FindDriverID( DriverID );
 	if (driver)
 		p = driver->cName;
 	else
 		p = 0;
-	dprintf(1,"returning: %s\n",p ? p : "(null)");
+	dprintf(7,"returning: %s\n",p ? p : "(null)");
 	return p;
 }
 
@@ -418,7 +418,7 @@ SHARED_FUNCTION char * TDriverLayer_DriverID2String( DWORD DriverID )
 **************************************************************************/
 DWORD TDriverLayer_GetDriverCount( void )
 {
-	dprintf(1,"returning: %d\n", NextUniqueDriverID);
+	dprintf(7,"returning: %d\n", NextUniqueDriverID);
 	return NextUniqueDriverID;
 }
 
@@ -486,10 +486,7 @@ void TDriverLayer_write( struct TNetPacket * Frame )
    ** Send data's to driver
    */
    assert( driver->Write );
-   driver->Write( driver,
-                  Frame,
-                  Frame->RouteInfo.BusDriverPeer,
-                  Frame->RouteInfo.Flags );
+   driver->Write( driver, Frame, Frame->RouteInfo.BusDriverPeer, Frame->RouteInfo.Flags );
 
    //Access to driver ended
    os_thread_MutexUnlock( &DriverAccessMutex );

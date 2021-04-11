@@ -25,15 +25,12 @@
 #include <assert.h>
 
 
-SHARED_FUNCTION TIORequest * TIORequest_Constructor()
-{
+SHARED_FUNCTION TIORequest * TIORequest_Constructor(smanet_session_t *s) {
    TIORequest * req = os_malloc( sizeof(TIORequest) );
    return req;
-
 }
 
-SHARED_FUNCTION void TIORequest_Destructor(TIORequest * req)
-{
+SHARED_FUNCTION void TIORequest_Destructor(TIORequest * req) {
    assert( req );
    os_free( req );
 }

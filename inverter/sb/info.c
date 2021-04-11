@@ -1,7 +1,7 @@
 
 #include "sb.h"
 
-char *sb_info(void *handle) {
-	return "{}";
+json_value_t *sb_info(void *handle) {
+	return json_parse("{}");
 }
 

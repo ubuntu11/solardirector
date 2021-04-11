@@ -7,7 +7,7 @@
 //struct solard_agent;
 typedef struct solard_agent solard_agent_t;
 typedef struct solard_agent agent_t;
-typedef int (*solard_agent_callback_t)(solard_agent_t *, void *);
+typedef int (*solard_agent_callback_t)(solard_agent_t *);
 
 #include "module.h"
 #include "battery.h"
@@ -19,13 +19,11 @@ typedef int (*solard_agent_callback_t)(solard_agent_t *, void *);
 #define SOLARD_UUID_LEN 38
 
 struct solard_agent {
-	char name[SOLARD_AGENT_NAME_LEN+1];
-	char uuid[SOLARD_UUID_LEN+1];
+	char id[SOLARD_UUID_LEN];
+	char name[SOLARD_AGENT_NAME_LEN];
 	void *cfg;
-//	char *configfile;		/* Config filename */
 	char section_name[64];		/* Configfile section name */
 	mqtt_session_t *m;		/* MQTT Session handle */
-	char topic[128];
 	int read_interval;
 	int write_interval;
 	list modules;			/* list of loaded modules */
@@ -34,22 +32,19 @@ struct solard_agent {
 	int pretty;			/* Format json messages for readability (uses more mem) */
 	module_t *role;
 	void *role_handle;
-	solard_agent_callback_t rcbw;	/* Called between read and write */
+	void *role_data;		/* Role-specific data */
+	json_value_t *info;		/* Info returned by role/driver */
+	solard_agent_callback_t cb;	/* Called between read and write */
 };
 
 /* Agent states */
 #define SOLARD_AGENT_RUNNING 0x01
 #define SOLARD_AGENT_CONFIG_DIRTY 0x10
 
-struct solard_agent_message {
-        char topic[128];
-        char payload[262144];
-};
-
 /* Agent configuration request item */
 struct solard_agent_config_req {
 	char name[64];
-	int type;
+	enum DATA_TYPE type;
 	union {
 		char sval[128];
 		double dval;
@@ -57,9 +52,6 @@ struct solard_agent_config_req {
 	};
 };
 typedef struct solard_agent_config_req solard_confreq_t;
-
-#define AGENT_ROLE_INVERTER "Inverter"
-#define AGENT_ROLE_BATTERY "Battery"
 
 solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, solard_module_t *driver);
 int agent_run(solard_agent_t *ap);

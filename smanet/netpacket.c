@@ -563,10 +563,7 @@ SHARED_FUNCTION void TNetPacket_Destructor(struct TNetPacket * frame)
                    PRUESSING, 16.05.2001, 1.0, Created
                    PRUESSING, 09.08.2007, bugfix...
 **************************************************************************/
-SHARED_FUNCTION BOOL TNetPacket_RemHead(struct TNetPacket * frame,
-                                        DWORD iCount,
-                                        void * vpBuffer )
-{
+SHARED_FUNCTION BOOL TNetPacket_RemHead(struct TNetPacket * frame, DWORD iCount, void * vpBuffer ) {
    BOOL bres = TRUE;
    TNetPacketFrag * FirstFrameFrag;
    WORD bufSizeToRemove;
@@ -611,9 +608,7 @@ SHARED_FUNCTION BOOL TNetPacket_RemHead(struct TNetPacket * frame,
                    ********************************************************
                    PRUESSING, 10.05.2001, 1.0, Created
 **************************************************************************/
-SHARED_FUNCTION void TNetPacket_Copy(struct TNetPacket * DestFrame,
-                                     struct TNetPacket * SourceFrame )
-{
+SHARED_FUNCTION void TNetPacket_Copy(struct TNetPacket * DestFrame, struct TNetPacket * SourceFrame ) {
    TNetPacketFrag * FrameFrag;
 
    foreach_f( &SourceFrame->Fragments, FrameFrag )
@@ -638,8 +633,7 @@ SHARED_FUNCTION void TNetPacket_Copy(struct TNetPacket * DestFrame,
                    ********************************************************
                    PRUESSING, 21.05.2001, 1.0, Created
 **************************************************************************/
-SHARED_FUNCTION void TNetPacket_Clear(struct TNetPacket * frame)
-{
+SHARED_FUNCTION void TNetPacket_Clear(struct TNetPacket * frame) {
    TNetPacketFrag * CurFrag;
    
 restart:
@@ -665,8 +659,7 @@ restart:
                    PRUESSING, 10.05.2001, 1.0, Created
                    PRUESSING, 07.06.2001, 1.1, Bug beim Zusammenfuegen
 **************************************************************************/
-SHARED_FUNCTION void TNetPacket_CopyFromBuffer( struct TNetPacket * frame,
-                                                BYTE * Buffer )
+SHARED_FUNCTION void TNetPacket_CopyFromBuffer( struct TNetPacket * frame, BYTE * Buffer )
 {
    TNetPacketFrag * CurFrag;
 
@@ -681,10 +674,7 @@ SHARED_FUNCTION void TNetPacket_CopyFromBuffer( struct TNetPacket * frame,
 
 
 //! Get next buffer fragment...
-SHARED_FUNCTION BYTE * TNetPacket_GetNextFragment( struct TNetPacket * frame, 
-                                                   BYTE * lastDataBuffer,
-                                                   WORD * lastDataBufferSize)
-{
+SHARED_FUNCTION BYTE * TNetPacket_GetNextFragment( struct TNetPacket * frame, BYTE * lastDataBuffer, WORD * lastDataBufferSize) {
    TNetPacketFrag * CurFrag;      
    //start of iteration? get the first fragment...
    if (lastDataBuffer == NULL)
@@ -744,10 +734,7 @@ SHARED_FUNCTION void TNetPacket_Print(struct TNetPacket *frame,  WORD bVerboseMo
 }
 
 #else
-SHARED_FUNCTION void TNetPacket_PrintCountedCB(TDBGCBParseBuffer out,
-                                               struct TNetPacket *frame, 
-                                               WORD count)
-{
+SHARED_FUNCTION void TNetPacket_PrintCountedCB(TDBGCBParseBuffer out, struct TNetPacket *frame, WORD count) {
    TNetPacketFrag * FrameFrag;
 
    BYTE bLineByte[16]={0}; //one row...

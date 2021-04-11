@@ -16,8 +16,6 @@ SBINDIR?=$(PREFIX)/sbin
 LIBDIR?=$(PREFIX)/lib
 INCDIR?=$(PREFIX)/include
 
-CFLAGS+=-DETCDIR=$(ETCDIR)
-
 ifeq ($(TARGET),pi3)
 	ARCH=pi
 	OS=Linux
@@ -273,8 +271,12 @@ debug: $(PROG)
 	gdb ./$(PROG)
 
 install: $(PROG)
+ifneq ($(CONFIGFILE),)
+	sudo mkdir -p $(ETCDIR)
+	sudo $(INSTALL) -m 644 -o root -g root $(CONFIGFILE) $(ETCDIR)/$(CONFIGFILE)
+endif
 	sudo mkdir -p $(BINDIR)
-	sudo $(INSTALL) -m 755 -o bin -g bin $(PROG) $(BINDIR)/$(PROG)
+	sudo $(INSTALL) -m 755 -o root -g root $(PROG) $(BINDIR)/$(PROG)
 endif
 
 clean:

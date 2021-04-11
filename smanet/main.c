@@ -672,8 +672,7 @@ int TSMADataMaster_AddCmd( struct _TMasterCmdReq * Cmd )
                    ********************************************************
                    PRUESSING, 20.06.2001, 1.0, Created
 **************************************************************************/
-void TSMADataMaster_CmdEnds(TMasterCmdReq * CurCmd, TMasterCmdResult Result)
-{
+void TSMADataMaster_CmdEnds(TMasterCmdReq * CurCmd, TMasterCmdResult Result) {
    assert( CurCmd );
    //Remove master command from list of currently working commands...
    REMOVE( &CurCmd->Node ); //internal list of commands, no threads...
@@ -715,8 +714,7 @@ void TSMADataMaster_CmdEnds(TMasterCmdReq * CurCmd, TMasterCmdResult Result)
                                               "Kommander" in die Klasse
                                               "Master" verpflanzt
 **************************************************************************/
-void TSMADataMaster_DoMasterCmds( void )
-{
+void TSMADataMaster_DoMasterCmds( void ) {
    TMasterState * NewState = NULL; 
    TMasterCmdReq * cmdreq = NULL;
    

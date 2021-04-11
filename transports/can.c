@@ -884,7 +884,7 @@ static int can_read(void *handle, void *buf, int buflen) {
 		dprintf(8,"bytes: %d, id: %x, frame->can_id: %x\n", bytes, id, frame->can_id);
 	} while(id != 0xFFFF && frame->can_id != id);
 	if (bytes > 0 && debug >= 8) bindump("FROM DEVICE",buf,sizeof(struct can_frame));
-	dprintf(6,"returning: %d\n", bytes);
+	dprintf(8,"returning: %d\n", bytes);
 	return bytes;
 }
 

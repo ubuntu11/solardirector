@@ -33,8 +33,7 @@ enum
 
 
 /* Driver Event for all available events types (I need OO, please...:-) ) */
-typedef struct
-{
+typedef struct {
    TMinNode Node;             //for linking
    TDriverEvent eventType; /* Event typ: DRE_PEER_ADDED or
                                          DRE_PEER_REMOVED or

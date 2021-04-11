@@ -47,5 +47,6 @@ typedef struct solard_message solard_message_t;
 
 void solard_getmsg(void *, char *, char *, int);
 void solard_ingest(list, int);
+void solard_message_dump(solard_message_t *,int);
 
 #endif

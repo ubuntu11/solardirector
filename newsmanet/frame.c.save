@@ -1,0 +1,193 @@
+
+#include "smanet_internal.h"
+
+enum STATES {
+	STATE_UNKNOWN,
+	STATE_START,
+	STATE_ADDR,
+	STATE_CTRL,
+	STATE_PROTH,
+	STATE_PROTL,
+	STATE_SRCL,
+	STATE_SRCH,
+	STATE_DSTL,
+	STATE_DSTH,
+	STATE_SCTRL,
+	STATE_OFFSET,
+	STATE_CMD,
+	STATE_DATA,
+	STATE_FCSH,
+	STATE_FCSL,
+	STATE_END,
+};
+
+#define SMANET_PROT 0x4041
+#define SMANET_ACCM 0x000E0000
+
+#if 0
+typedef unsigned char BYTE;
+typedef unsigned short WORD;
+#define HDLC_ESC 0x7d
+#define HDLC_SYNC 0x7e
+WORD TSMANet_CharMapper(BYTE* pDest, BYTE* pSrc, WORD wDatLen) {
+   WORD  wSrcIdx;
+   WORD  wDstIdx = 0;
+
+   for(wSrcIdx = 0; wSrcIdx < wDatLen; wSrcIdx++) {
+      if(pSrc[wSrcIdx] < 0x20) {
+         if(SMANET_ACCM & (0x00000001L << pSrc[wSrcIdx])) {
+            pDest[wDstIdx++] = HDLC_ESC;
+            pDest[wDstIdx++] = (pSrc[wSrcIdx] ^ 0x20); //HP nach (WORD) Konvertierung??
+         } else {
+            pDest[wDstIdx++]  = pSrc[wSrcIdx];
+         }
+      } else {
+         switch(pSrc[wSrcIdx]) {
+            case HDLC_ESC:
+            case HDLC_SYNC:
+               pDest[wDstIdx++] = HDLC_ESC;
+               pDest[wDstIdx++] = (pSrc[wSrcIdx] ^ 0x20); //HP nach (WORD) Konvertierung???
+               break;
+
+            default:
+               pDest[wDstIdx++] = pSrc[wSrcIdx];
+               break;
+         }  /* switch() */
+      }
+   }/* for */
+
+   return wDstIdx;
+} /* CharMapper() */
+
+int smanet_read_frame(smanet_session_t *s) {
+	uint8_t data[256],ch;
+	int bytes,start,i;
+
+	start = i = 0;
+	while(1) {
+		bytes = s->tp->read(s->tp_handle,&ch,1);
+		dprintf(1,"bytes: %d\n", bytes);
+		dprintf(1,"start: %d, i: %d\n", start, i);
+		if (start) {
+			if (ch == 0x7e) {
+				dprintf(1,"END!\n");
+				bindump("input",s->buffer,i);
+				start = 0;
+				i = TSMANet_CharMapper(data,s->buffer,i);
+				bindump("output",data,i);
+			} else {
+				s->buffer[i++] = ch;
+			}
+		} else if (ch == 0x7e) {
+			start = 1;
+			s->buffer[0] = ch;
+			i = 1;
+		}
+	}
+}
+#else
+int smanet_read_frame(smanet_session_t *s) {
+	uint8_t ch;
+	int bytes,state,have_esc;
+	int i;
+	uint16_t prot,src,dest;
+	int done,len,offset;
+	int sctrl,cmd,fcs;
+
+	have_esc = 0;
+	i = 0;
+	state = STATE_START;
+	done = 0;
+	while(!done) {
+		dprintf(1,">>> state: %d\n", state);
+		bytes = s->tp->read(s->tp_handle,&ch,1);
+		dprintf(1,"bytes: %d\n", bytes);
+		if (bytes < 0) return -1;
+		if (bytes == 0) continue;
+		dprintf(1,"ch: %x\n", ch);
+		if (ch == 0x7D) {
+			have_esc = 1;
+			continue;
+		}
+		if (have_esc) {
+			ch ^= 0x20;
+			dprintf(1,"NEW ch: %02x\n", ch);
+			have_esc = 0;
+		}
+		switch(state) {
+		case STATE_START:
+			dprintf(1,"want: 0x7e, got: 0x%02x\n", ch);
+			if (ch != 0x7E) state = STATE_UNKNOWN;
+			break;
+		case STATE_ADDR:
+			dprintf(1,"want: 0xff, got: 0x%02x\n", ch);
+			if (ch == 0x7e) state--;
+			else if (ch != 0xFF) state = STATE_UNKNOWN;
+			break;
+		case STATE_CTRL:
+			dprintf(1,"want: 0x03, got: 0x%02x\n", ch);
+			if (ch != 0x03) state = STATE_UNKNOWN;
+			else i = 0;
+			break;
+		case STATE_PROTH:
+			prot = ch << 8;
+			break;
+		case STATE_PROTL:
+			prot |= ch;
+			dprintf(1,"prot: %04x\n",prot);
+			if (prot != SMANET_PROT) state = STATE_UNKNOWN;
+			break;
+		case STATE_SRCL:
+			src = ch;
+			break;
+		case STATE_SRCH:
+			src |= ch << 8;
+			dprintf(1,"src: %04x\n",src);
+			break;
+		case STATE_DSTL:
+			dest = ch;
+			break;
+		case STATE_DSTH:
+			dest |= ch << 8;
+			dprintf(1,"dest: %04x\n",dest);
+			break;
+		case STATE_SCTRL:
+			sctrl = ch;
+			dprintf(1,"sctrl: %02x\n", sctrl);
+			break;
+		case STATE_OFFSET:
+			offset = ch;
+			dprintf(1,"offset:% d\n", offset);
+			break;
+		case STATE_CMD:
+			cmd = ch;
+			dprintf(1,"cmd: %02x\n", cmd);
+			len = command_getlen(cmd);
+			i = 0;
+			break;
+		case STATE_DATA:
+			dprintf(1,"data[%d]: %02x\n",i,ch);
+			s->buffer[i++] = ch;
+			if (i < len) state--;
+			else bindump("data",s->buffer,len);
+			break;
+		case STATE_FCSH:
+			fcs = ch << 8;
+			break;
+		case STATE_FCSL:
+			fcs |= ch;
+			dprintf(1,"fcs: %04x\n",fcs);
+			break;
+		case STATE_END:
+			dprintf(1,"want: 0x7e, got: 0x%02x\n", ch);
+			if (ch != 0x7e) state = STATE_UNKNOWN;
+			else done = 1;
+		default:
+			state = STATE_UNKNOWN;
+			break;
+		}
+		state++;
+	}
+	return 0;
+}
+#endif

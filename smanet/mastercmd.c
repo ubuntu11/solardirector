@@ -70,16 +70,16 @@ static TMinList unusedMasterCmdList; //list of allocated but unused Master comma
 ********************** TMasterCmd *********************************
 ******************************************************************/
 void TMasterCmd_Init( TMasterCmdReq * me, TMasterCmdType cmd);
-TMasterCmdReq * TMasterCmd_Constructor( TMasterCmdType cmd )
-{
-   TMasterCmdReq * me  = os_malloc(sizeof(TMasterCmdReq));
-   me->IOReq           = TIORequest_Constructor();
-   //me->IOReq2          = TIORequest_Constructor(); 
-   me->NewFoundDevList = TDeviceList_Constructor();
-   me->IOReq->TxData   = os_malloc(100); //100 bytes send buffer
-   //me->IOReq2->TxData  = os_malloc(100);
-   TMasterCmd_Init(me, cmd);
-   return me;
+TMasterCmdReq * TMasterCmd_Constructor( TMasterCmdType cmd ) {
+	TMasterCmdReq * me  = os_malloc(sizeof(TMasterCmdReq));
+
+	me->IOReq           = TIORequest_Constructor(0);
+	//me->IOReq2          = TIORequest_Constructor(); 
+	me->NewFoundDevList = TDeviceList_Constructor();
+	me->IOReq->TxData   = os_malloc(100); //100 bytes send buffer
+	//me->IOReq2->TxData  = os_malloc(100);
+	TMasterCmd_Init(me, cmd);
+	return me;
 }
 
 void TMasterCmd_Init( TMasterCmdReq * me, TMasterCmdType type)
@@ -168,8 +168,7 @@ void TMasterCmdFactory_Destroy( void )
 }
 
 static int usedcmd=0;
-TMasterCmdReq * TMasterCmdFactory_GetMasterCmd( TMasterCmdType cmd )
-{
+TMasterCmdReq * TMasterCmdFactory_GetMasterCmd( TMasterCmdType cmd ) {
    TMasterCmdReq * mc= NULL;
    usedcmd++;
    os_thread_MutexLock(&unusedMasterCmdList.Mutex);

@@ -75,8 +75,20 @@ void TRepository_GetKeyPart(char * key, char * ResBuf, int iKeyPos);
                    Pruessing,28.02.2002, 1.2, Try to use config file
                                               in UserHomeDir if possible
 **************************************************************************/
-SHARED_FUNCTION void TRepository_Init()
-{
+SHARED_FUNCTION void TRepository_Init(smanet_session_t *s) {
+	memset(PathDeviceDir,0,sizeof(PathDeviceDir));
+
+#ifdef LIBDIR
+	strncat(PathDeviceDir,LIBDIR,sizeof(PathDeviceDir)-1);
+	strcat(PathDeviceDir,"/smanet");
+#endif
+	dprintf(1,"PathDeviceDir: %s\n", PathDeviceDir);
+	if (Tools_mkdir_recursive(PathDeviceDir)<0) {
+		log_write(LOG_SYSERR,"mkdir %s\n",PathDeviceDir);
+		return;
+	}
+
+#if 0
    char INIFile[20]={0};
    char WorkPath[YASDI_PROGRAM_PATH]={0};
    char HomeDir[YASDI_PROGRAM_PATH]={0};
@@ -161,6 +173,7 @@ SHARED_FUNCTION void TRepository_Init()
            "Can't create directory for channel list cache '%s'\n"
            "Please be sure that the parent directory is writable.\n", PathDeviceDir));
    }
+#endif
 }
 
 
@@ -280,37 +293,35 @@ void TRepository_GetKeyPart(char * key, char * ResBuf, int iKeyPos)
                    PRUESSING, 28.06.2001, 1.0, Created
                    Pruessing, 01.09.2007, 2.0, create cache directory if not exists...
 **************************************************************************/
-SHARED_FUNCTION int TRepository_StoreChanList(char * DevType,
-                                             BYTE * Buffer,
-                                             DWORD BufferSize)
-{
-   char filename[255];
-   BYTE iVersion;
-   FILE * fd;
-   
-   strcpy( filename, PathDeviceDir );
-   Tools_PathAdd(filename, DevType);
-   strcat(filename,".bin"); /* with extension ".bin" (binary) */
+SHARED_FUNCTION int TRepository_StoreChanList(char * DevType, BYTE * Buffer, DWORD BufferSize) {
+	char filename[255];
+	BYTE iVersion;
+	FILE * fd;
 
-   fd = fopen(filename,"wb+");
-   if (!fd)
-   {
-      YASDI_DEBUG(( VERBOSE_ERROR, "Can't create channel list cache file '%s'!\n", filename));
-      YASDI_DEBUG(( VERBOSE_ERROR, "Be sure that 'device' directory is writable!\n"));
-      goto err;
-   }
+	strcpy( filename, PathDeviceDir );
+	Tools_PathAdd(filename, DevType);
+	strcat(filename,".bin"); /* with extension ".bin" (binary) */
 
-   /* "Version magic" (yasdi uses "10") set it as first byte */
-   //Save the rest as binary
-   iVersion = 10;
-   if (fwrite(&iVersion, 1, 1, fd)<1) goto err;
-   if (fwrite(Buffer, 1, BufferSize, fd )<BufferSize) goto err;
-   
-   fclose(fd);
-   return 0;
+	dprintf(1,"filename: %s\n", filename);
 
-   err:
-   return -1;
+	fd = fopen(filename,"wb+");
+	if (!fd) {
+		YASDI_DEBUG(( VERBOSE_ERROR, "Can't create channel list cache file '%s'!\n", filename));
+		YASDI_DEBUG(( VERBOSE_ERROR, "Be sure that 'device' directory is writable!\n"));
+		goto err;
+	}
+
+	/* "Version magic" (yasdi uses "10") set it as first byte */
+	//Save the rest as binary
+	iVersion = 10;
+	if (fwrite(&iVersion, 1, 1, fd)<1) goto err;
+	if (fwrite(Buffer, 1, BufferSize, fd )<BufferSize) goto err;
+
+	fclose(fd);
+	return 0;
+
+err:
+	return -1;
 }
 
 /**************************************************************************
@@ -331,62 +342,57 @@ SHARED_FUNCTION int TRepository_StoreChanList(char * DevType,
                                                 Datei wurde im Textmode geoeffnet!
                                               - Umgestellt auf ANSI-C-IO
 **************************************************************************/
-SHARED_FUNCTION int TRepository_LoadChannelList(char * cDevType,
-                                                BYTE ** ChanListStruct,
-                                                int * BufferSize)
-{
-   int ires = -1;
-   FILE * fd;
-   BYTE * Buffer;
-   BYTE iVersion;
-   DWORD iFileSize;
-   char filename[255];
-  
+SHARED_FUNCTION int TRepository_LoadChannelList(char * cDevType, BYTE ** ChanListStruct, int * BufferSize) {
+	int ires = -1;
+	FILE * fd;
+	BYTE * Buffer;
+	BYTE iVersion;
+	DWORD iFileSize;
+	char filename[255];
 
-   /* Den Dateinamen zusammenbauen */
-   strcpy(filename, PathDeviceDir);
-   Tools_PathAdd( filename, cDevType);
-   strcat(filename,".bin");
+	dprintf(1,"cDevType: %s\n", cDevType);
 
-   //Open binary chahhel list file
-   fd = fopen(filename, "rb" );
-   if (fd != 0)
-   {
-      //get file size
-      iFileSize = Tools_GetFileSize( fd );
+	/* Den Dateinamen zusammenbauen */
+	strcpy(filename, PathDeviceDir);
+	Tools_PathAdd( filename, cDevType);
+	strcat(filename,".bin");
 
-      /* "Versionskennung" lesen */
-      fread( &iVersion, 1, sizeof(iVersion), fd );
-      iFileSize -= sizeof(iVersion);
+	dprintf(1,"filename: %s\n", filename);
 
-      //get buffer for the channel list
-      Buffer = os_malloc( iFileSize );
-      //Version Magic must be "10" for YASDI, "3" for SDC 
-      if (iVersion == 10 || iVersion == 3)
-      {
-         //open channel list and parse it
-         iFileSize = fread( Buffer, 1, iFileSize, fd );
-         ires = 0; /* alles ok*/
-         *ChanListStruct = Buffer;
-         *BufferSize = iFileSize;
-      }
-      else
-      {
-         ires = -1;
-         Buffer = NULL;
-         os_free( Buffer );
-      }
+	//Open binary chahhel list file
+	fd = fopen(filename, "rb" );
+	if (fd != 0) {
+		//get file size
+		iFileSize = Tools_GetFileSize( fd );
 
-      fclose(fd);
-      return ires;
-   }
-   else
-   {
-      YASDI_DEBUG(( VERBOSE_MESSAGE,
-                    "No channel list file of device type '%s' is in file cache.\n",
-                    filename ));
-      return -1;
-   }
+		/* "Versionskennung" lesen */
+		fread( &iVersion, 1, sizeof(iVersion), fd );
+		iFileSize -= sizeof(iVersion);
+
+		//get buffer for the channel list
+		Buffer = os_malloc( iFileSize );
+		//Version Magic must be "10" for YASDI, "3" for SDC 
+		if (iVersion == 10 || iVersion == 3)
+		{
+			//open channel list and parse it
+			iFileSize = fread( Buffer, 1, iFileSize, fd );
+			ires = 0; /* alles ok*/
+			*ChanListStruct = Buffer;
+			*BufferSize = iFileSize;
+		} else {
+			ires = -1;
+			Buffer = NULL;
+			os_free( Buffer );
+		}
+
+		fclose(fd);
+		return ires;
+	} else {
+		YASDI_DEBUG(( VERBOSE_MESSAGE,
+			    "No channel list file of device type '%s' is in file cache.\n",
+			    filename ));
+		return -1;
+	}
 }
 
 

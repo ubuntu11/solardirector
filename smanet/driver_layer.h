@@ -93,8 +93,7 @@ SHARED_FUNCTION TMinList * TDriverLayer_GetDeviceList( void );
 void TDriverLayer_SetAllDriversOnline( void );
 void TDriverLayer_SetAllDriversOffline( void );
 
-void TDriverLayer_OnNewEvent( TDevice * newdev,
-                              TGenDriverEvent * event );
+void TDriverLayer_OnNewEvent( TDevice * newdev, TGenDriverEvent * event );
 
 #define TDriverLayer_GetDriverName2(BusDriver) (BusDriver)->cName
 
