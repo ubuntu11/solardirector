@@ -66,18 +66,20 @@ static struct parmdir {
 };
 #define NALL (sizeof(allparms)/sizeof(struct parmdir))
 
-smanet_chaninfo_t *get_smanet(si_session_t *s, char *name) {
+#if 0
+smanet_channel_t *get_smanet(si_session_t *s, char *name) {
 	if (!s->smanet) {
 		s->smanet = smanet_init(s->tty,s->tty_handle);
 		if (!s->smanet) return 0;
 	}
 	return smanet_find_chan(s->smanet,name);
 }
+#endif
 
 json_descriptor_t *_getd(si_session_t *s,char *name) {
 	json_descriptor_t *dp;
 	register int i,j;
-	smanet_chaninfo_t *info;
+//	smanet_chaninfo_t *info;
 
 	dprintf(1,"label: %s\n", name);
 
@@ -98,6 +100,7 @@ json_descriptor_t *_getd(si_session_t *s,char *name) {
 		if (strcmp(dp->name,name)==0)
 			return dp;
 	}
+#if 0
 	/* Not found, go get it */
 	info = get_smanet(s,name);
 	if (info) {
@@ -123,6 +126,7 @@ json_descriptor_t *_getd(si_session_t *s,char *name) {
 		newd.scale = 1;
 		return list_add(s->desc,&newd,sizeof(newd));
 	}
+#endif
 	return 0;
 }
 
@@ -181,7 +185,7 @@ static json_proctab_t *_getinv(si_session_t *s, char *name) {
 si_param_t *_getp(si_session_t *s, char *name) {
 	json_proctab_t *invp;
 	si_param_t *pinfo;
-	smanet_chaninfo_t *info;
+//	smanet_chaninfo_t *info;
 
 	dprintf(1,"name: %s\n", name);
 
@@ -230,29 +234,31 @@ si_param_t *_getp(si_session_t *s, char *name) {
 		return pinfo;
 	}
 
+#if 0
 	/* Is it from the SI? */
 	info = get_smanet(s,name);
 	if (info) {
 		strncat(pinfo->name,info->name,sizeof(pinfo->name)-1);
 		pinfo->source = 2;
-		pinfo->type = info->type;
-		switch(info->type) {
+		pinfo->type = info->value.type;
+		switch(info->value.type) {
 		case DATA_TYPE_BYTE:
-			pinfo->bval = info->bval;
+			pinfo->bval = info->value.bval;
 			break;
 		case DATA_TYPE_SHORT:
-			pinfo->wval = info->wval;
+			pinfo->wval = info->value.wval;
 			break;
 		case DATA_TYPE_LONG:
-			pinfo->lval = info->lval;
+			pinfo->lval = info->value.lval;
 			break;
 		case DATA_TYPE_FLOAT:
-			pinfo->fval = info->fval;
+			pinfo->fval = info->value.fval;
 			break;
 		default: break;
 		}
 		return pinfo;
 	}
+#endif
 	return 0;
 }
 
@@ -342,10 +348,12 @@ static int si_set_config(si_session_t *s, si_param_t *pp, json_descriptor_t *dp,
 		conv_type(DATA_TYPE_STRING,temp,sizeof(temp)-1,req->type,&req->sval,0);
 		cfg_set_item(s->conf->cfg,s->conf->section_name,invp->field,"",temp);
 		cfg_write(s->conf->cfg);
+#if 0
 	} else {
 		/* Update the SI */
 		conv_type(DATA_TYPE_STRING,temp,sizeof(temp)-1,pp->type,&pp->bval,0);
 		smanet_setparm(s->smanet,pp->name,temp);
+#endif
 	}
 	/* Re-get the param */
 	return si_get_config(s,_getp(s,dp->name),dp);
