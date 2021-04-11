@@ -1,8 +1,0 @@
-
-startup: 99.9% and .1 charge amps 1st pass and after losing contact/re-contacting
-
-/SolarD/Battery Inverter/Sunny Island/Values
-/SolarD/Battery Inverter/Sunny Island/Config/Get
-/SolarD/Battery Inverter/Sunny Island/Config/Get/Param-status
-/SolarD/Battery Inverter/Sunny Island/Config/Set
-/SolarD/Battery Inverter/Sunny Island/Config (retain)

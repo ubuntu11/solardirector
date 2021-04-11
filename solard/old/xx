@@ -1,7 +1,0 @@
-
-include ../Makefile.inc 
-
-name1 := $(firstword $(MAKEFILE_LIST))
-
-all:
-	echo $(name1)

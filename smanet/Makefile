@@ -1,5 +1,11 @@
 
 LIBNAME=smanet
-SRCS=busevents.c byteorder.c chanvalrepo.c defractionizer.c driver_layer.c feature_tests.c fractionizer.c iorequest.c transport.c libyasdi.c mastercmd.c mempool.c minmap.c minqueue.c netchannel.c netdevice.c netpacket.c objman.c os_linux.c plant.c prot_layer.c repository.c router.c scheduler.c smadata_layer.c core.c stateconfig.c statedetection.c stateident.c statereadchan.c statewritechan.c statistic_writer.c sunnynet.c timer.c tools.c ysecurity.c libyasdimaster.c main.c smanet.c getini.c
+SRCS=init.c frame.c packet.c command.c channel.c value.c
+
+try: try.c ../transports/serial.c libsmanet_debug.a
+	cc $(CFLAGS) -o $@ try.c ../transports/serial.c -L. -lsmanet_debug -L../lib -lsolard_debug -ldl
 
 include ../Makefile.sd
+
+debug: try
+	gdb ./try

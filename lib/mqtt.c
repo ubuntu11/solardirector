@@ -1,4 +1,12 @@
 
+/*
+Copyright (c) 2021, Stephen P. Shoecraft
+All rights reserved.
+
+This source code is licensed under the BSD-style license found in the
+LICENSE file in the root directory of this source tree.
+*/
+
 #include <string.h>
 #include <MQTTClient.h>
 #include <MQTTAsync.h>
@@ -7,7 +15,6 @@
 #include "utils.h"
 #include "debug.h"
 
-//#define TIMEOUT 1000L
 #define TIMEOUT 10000L
 
 struct mqtt_session {

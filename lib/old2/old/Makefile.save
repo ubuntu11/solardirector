@@ -1,7 +1,0 @@
-
-NAME=solard
-LIB=yes
-SRCS=init.c cfg.c list.c module.c mqtt.c inverter.c pack.c parson.c stredit.c utils.c uuid.c worker.c json.c
-OBJS=$(SRCS:.c=.o)
-
-include ../Makefile.inc
