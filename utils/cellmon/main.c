@@ -86,7 +86,7 @@ int main(int argc,char **argv) {
 	solard_message_t *msg;
 	char configfile[256],topic[SOLARD_TOPIC_SIZE],*p;
 	long start;
-	int web_flag;
+//	int web_flag;
 //		{ "-w|web output",&web_flag,DATA_TYPE_BOOL,0,0,"false" },
 	opt_proctab_t opts[] = {
 		/* Spec, dest, type len, reqd, default val, have */
@@ -108,10 +108,7 @@ int main(int argc,char **argv) {
 	if (!strlen(topic)) {
 		p = cfg_get_item(conf->c->cfg,"cellmon","topic");
 		if (p) strncat(topic,p,sizeof(topic)-1);
-		else {
-			log_write(LOG_ERROR,"topic must be specified either in config file or command line\n");
-			return 1;
-		}
+		else strcpy(topic,"SolarD/Battery/+/Data");
 	}
 
 	if (mqtt_sub(conf->c->m,topic)) return 1;
