@@ -9,6 +9,8 @@ LICENSE file in the root directory of this source tree.
 
 #include "jbd.h"
 
+extern char *jbd_version_string;
+
 int jbd_can_get_info(jbd_session_t *s,jbd_info_t *info) {
 	return 1;
 }
@@ -92,7 +94,7 @@ json_value_t *jbd_info(void *handle) {
 	json_add_string(j,"agent_name","jbd");
 	json_add_string(j,"agent_role",SOLARD_ROLE_BATTERY);
 	json_add_string(j,"agent_description","JBD BMS Utility");
-	json_add_string(j,"agent_version","1.0");
+	json_add_string(j,"agent_version",jbd_version_string);
 	json_add_string(j,"agent_author","Stephen P. Shoecraft");
 	json_add_string(j,"device_manufacturer",info.manufacturer);
 	json_add_string(j,"device_model",info.model);

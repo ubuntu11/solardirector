@@ -7,18 +7,17 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#include <net/if.h>
-#include <sys/ioctl.h>
+#ifndef __WIN32
 #include <sys/types.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <linux/can.h>
-#include <linux/can/raw.h>
-#include <arpa/inet.h>
-#include <linux/can.h>
 #include <net/if.h>
 #include <linux/if_link.h>
 #include <linux/rtnetlink.h>
 #include <linux/netlink.h>
+#include <linux/can.h>
+#include <linux/can/raw.h>
+#include <arpa/inet.h>
 #include "module.h"
 #include "utils.h"
 #include "debug.h"
@@ -921,7 +920,7 @@ static int can_close(void *handle) {
 	return 0;
 }
 
-solard_module_t can_module = {
+EXPORT solard_module_t can_module = {
 	SOLARD_MODTYPE_TRANSPORT,
 	"can",
 	0,
@@ -932,3 +931,7 @@ solard_module_t can_module = {
 	can_write,
 	can_close,
 };
+#else
+#include "module.h"
+SOLARD_DUMMY_MODULE(can)
+#endif

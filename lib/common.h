@@ -19,6 +19,16 @@ LICENSE file in the root directory of this source tree.
 #include <errno.h>
 #include <time.h>
 
+#ifdef __WIN32
+struct can_frame {
+	long can_id;
+	unsigned char can_dlc;
+        unsigned char data[8];
+};
+#else
+#include <linux/can.h>
+#endif
+
 #include "types.h"
 #include "opts.h"
 #include "cfg.h"

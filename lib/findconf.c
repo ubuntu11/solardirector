@@ -8,6 +8,7 @@ LICENSE file in the root directory of this source tree.
 */
 
 #include "common.h"
+#ifndef __WIN32
 #include <pwd.h>
 
 int find_config_file(char *name, char *temp, int len) {
@@ -39,3 +40,6 @@ int find_config_file(char *name, char *temp, int len) {
 	if (access(temp,R_OK)==0) return 0;
 	return 1;
 }
+#else
+int find_config_file(char *name, char *temp, int len) { return 1; }
+#endif

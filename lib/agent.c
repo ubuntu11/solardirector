@@ -7,11 +7,6 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#include <time.h>
-#include <ctype.h>
-#include "agent.h"
-#include <sys/signal.h>
-
 #define DEBUG_STARTUP 0
 
 #if DEBUG_STARTUP
@@ -20,8 +15,15 @@ LICENSE file in the root directory of this source tree.
 #define _ST_DEBUG 0
 #endif
 
+#include <time.h>
+#include <ctype.h>
+#include "agent.h"
+
 static int suspend_read = 0;
 static int suspend_write = 0;
+#ifndef __WIN32
+#include <sys/signal.h>
+
 void usr1_handler(int signo) {
 	if (signo == SIGUSR1) {
 		log_write(LOG_INFO,"agent: %s reads\n", (suspend_read ? "resuming" : "suspending"));
@@ -31,6 +33,7 @@ void usr1_handler(int signo) {
 		suspend_write = (suspend_write ? 0 : 1);
 	}
 }
+#endif
 
 int agent_set_callback(solard_agent_t *ap, solard_agent_callback_t cb) {
 	ap->cb = cb;
@@ -207,7 +210,7 @@ int agent_sub(solard_agent_t *ap, char *name, char *func, char *action, char *id
 			}
 		}
 	}
-	dprintf(1,"topic: %s\n", topic);
+	log_write(LOG_INFO,"%s\n", topic);
 	return mqtt_sub(ap->m,topic);
 }
 
@@ -234,13 +237,13 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 		OPTS_END
 	}, *opts;
 	int logopts = LOG_INFO|LOG_WARNING|LOG_ERROR|LOG_SYSERR|_ST_DEBUG;
-	module_t *tp;
+	solard_module_t *tp;
 	void *tp_handle,*driver_handle;
 	list names;
 
 	opts = opt_addopts(std_opts,agent_opts);
 	if (!opts) return 0;
-	tp_info[0] = mqtt_info[0] = configfile[0] = 0;
+//	*tp_info = *mqtt_info = *configfile = 0;
 	if (solard_common_init(argc,argv,opts,logopts)) return 0;
 
 	ap = calloc(1,sizeof(*ap));
@@ -266,9 +269,12 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 		break;
 	}
 
+	memset(&mqtt_config,0,sizeof(mqtt_config));
+
 	strncat(ap->section_name,strlen(sname) ? sname : driver->name,sizeof(ap->section_name)-1);
 	dprintf(1,"section_name: %s\n", ap->section_name);
 	dprintf(1,"configfile: %s\n", configfile);
+	*transport = *target = *topts = 0;
 	if (strlen(configfile)) {
 		cfg_proctab_t agent_tab[] = {
 			{ ap->section_name, "id", "Agent ID", DATA_TYPE_STRING,&ap->id,sizeof(ap->id), 0 },
@@ -283,22 +289,17 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 		if (!ap->cfg) goto agent_init_error;
 		cfg_get_tab(ap->cfg,agent_tab);
 		if (debug) cfg_disp_tab(agent_tab,"agent",0);
-		memset(&mqtt_config,0,sizeof(mqtt_config));
 		if (mqtt_get_config(ap->cfg,&mqtt_config)) goto agent_init_error;
 	} 
 
+	dprintf(1,"tp_info: %s\n", tp_info);
 	if (strlen(tp_info)) {
-#if 0
-		if (!strlen(tp_info) || !strlen(mqtt_info)) {
-			log_write(LOG_ERROR,"either configfile or transport and mqtt info must be specified.\n");
-			goto agent_init_error;
-		}
-#endif
 		strncat(transport,strele(0,":",tp_info),sizeof(transport)-1);
 		strncat(target,strele(1,":",tp_info),sizeof(target)-1);
 		strncat(topts,strele(2,":",tp_info),sizeof(topts)-1);
 	}
 
+	dprintf(1,"mqtt_info: %s\n", mqtt_info);
 	if (strlen(mqtt_info)) {
 		strncat(mqtt_config.host,strele(0,":",mqtt_info),sizeof(mqtt_config.host)-1);
 		strncat(mqtt_config.clientid,strele(1,":",mqtt_info),sizeof(mqtt_config.clientid)-1);
@@ -366,6 +367,7 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 
 	names = list_create();
 	list_add(names,"all",4);
+	list_add(names,"All",4);
 	if (strcmp(ap->name,driver->name) != 0) list_add(names,driver->name,strlen(driver->name)+1);
 	list_add(names,ap->name,strlen(ap->name)+1);
 	p = json_get_string(ap->info,"device_model");
@@ -374,6 +376,7 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 
 	/* Sub to all messages for the instance */
 	list_reset(names);
+	log_write(LOG_INFO,"Subscribing to the following topics:\n");
 	while((p = list_get_next(names)) != 0) {
 		agent_sub(ap,p,SOLARD_FUNC_CONFIG,SOLARD_ACTION_GET,"+");
 		agent_sub(ap,p,SOLARD_FUNC_CONFIG,SOLARD_ACTION_SET,"+");

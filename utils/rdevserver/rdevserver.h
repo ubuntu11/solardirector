@@ -7,15 +7,15 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#ifndef __SIPROX_H
-#define __SIPROX_H
+#ifndef __RDEVSERVER_H
+#define __RDEVSERVER_H
 
 #include "common.h"
 #include "module.h"
 #include "devserver.h"
 #include <linux/can.h>
 
-struct siproxy_config {
+struct rdev_config {
 	cfg_info_t *cfg;
 	list modules;
 	devserver_config_t ds;
@@ -26,15 +26,11 @@ struct siproxy_config {
 	uint32_t bitmap;
 	uint16_t state;
 };
-typedef struct siproxy_config siproxy_config_t;
+typedef struct rdev_config rdev_config_t;
 
-/* From SI */
-#define SI_STATE_RUNNING 0x01
-#define SI_STATE_OPEN 0x10
-#define si_getshort(v) (short)( ((v)[1]) << 8 | ((v)[0]) )
-#define si_putshort(p,v) { float tmp; *((p+1)) = ((int)(tmp = v) >> 8); *((p)) = (int)(tmp = v); }
-#define si_putlong(p,v) { *((p+3)) = ((int)(v) >> 24); *((p)+2) = ((int)(v) >> 16); *((p+1)) = ((int)(v) >> 8); *((p)) = (int)(v); }
+#define RDEV_STATE_RUNNING 0x01
+#define RDEV_STATE_OPEN 0x10
 
-int server(siproxy_config_t *,int);
+int server(rdev_config_t *,int);
 
 #endif

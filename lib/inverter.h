@@ -67,7 +67,7 @@ typedef struct solard_inverter inverter_t;
 #define SOLARD_INVERTER_STATE_GEN	0x08
 #define SOLARD_INVERTER_STATE_CHARGING	0x10
 
-extern module_t inverter;
+extern solard_module_t inverter;
 void inverter_dump(solard_inverter_t *,int);
 int inverter_from_json(solard_inverter_t *, char *);
 json_value_t *inverter_to_json(solard_inverter_t *);

@@ -14,6 +14,7 @@ LICENSE file in the root directory of this source tree.
 #include <pthread.h>
 #include <signal.h>
 #include <errno.h>
+#include <time.h>
 #include "worker.h"
 
 #define DEBUG_WORKER 0
@@ -179,7 +180,7 @@ static void *worker(void *arg) {
 	dprintf("worker[%d]: exiting...\n", wp->slot);
 	signal(SIGINT,SIG_DFL);
 	pthread_exit(0);
-//	return (void *)0;
+	return (void *)0;
 }
 
 /* Put a worker to work */

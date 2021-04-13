@@ -7,10 +7,15 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#include <dlfcn.h>
 #include "agent.h"
 #include "module.h"
 #include "list.h"
+
+#ifdef __WIN32
+#include <windows.h>
+#else
+#include <dlfcn.h>
+#endif
 
 /* List of transports we support */
 //static char *tlist[] = { "bt", "can", "can_ip", "ip", "serial" };
@@ -37,6 +42,10 @@ solard_module_t *solard_get_module(solard_config_t *conf, char *name, int type) 
 solard_module_t *load_module(list lp, char *name, int type) {
 	char temp[128];
 	solard_module_t *mp;
+#ifdef __WIN32
+	HMODULE mod;
+//	FARPROC proc;
+#endif
 
 	dprintf(1,"lp: %p, name: %s, type: %d\n", lp, name, type);
 
@@ -52,23 +61,22 @@ solard_module_t *load_module(list lp, char *name, int type) {
 		dprintf(3,"NOT found.\n");
 	}
 
-#if 0
-	sprintf(temp,"modules/%s.so", p);
-	dprintf(3,"temp: %s\n", temp);
-	h = dlopen(temp,RTLD_NOW);
-
-	/* If a debug sym is present in the mod, set it to same as ours */
-	mod_debug = dlsym(conf->dlsym_handle, "debug");
-	if (mod_debug) *mod_debug = debug;
-#endif
-
-	/* Get the module symbol */
+	/* Get the module */
 	sprintf(temp,"%s_module",name);
+#ifdef __WIN32
+	mod = GetModuleHandle(0);
+	dprintf(1,"mod: %p\n", mod);
+	mp = (solard_module_t *) GetProcAddress(mod, temp);
+#else
 	mp = dlsym(0, temp);
+#endif
 	dprintf(3,"module: %p\n", mp);
 	if (!mp) {
+#ifdef __WIN32
+		log_write(LOG_ERROR,"GetProcAddress %s\n",temp);
+#else
 		log_write(LOG_ERROR,"%s\n",dlerror());
-//		printf("error: cannot find symbol: %s_module: %s\n",name,dlerror());
+#endif
 		return 0;
 	}
 	if (type != SOLARD_MODTYPE_ANY && mp->type != type) {

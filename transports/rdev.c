@@ -7,13 +7,19 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
+#ifdef __WIN32
+#include <winsock2.h>
+#include <windows.h>
+#include <ws2tcpip.h>
+#else
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netdb.h>
+#endif
 #include <fcntl.h>
 #include <ctype.h>
-#include <netdb.h>
 #include "devserver.h"
 #include "module.h"
 #include "utils.h"
@@ -181,7 +187,7 @@ static int rdev_close(void *handle) {
 	return 0;
 }
 
-solard_module_t rdev_module = {
+EXPORT solard_module_t rdev_module = {
 	SOLARD_MODTYPE_TRANSPORT,
 	"rdev",
 	0,

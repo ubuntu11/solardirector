@@ -18,13 +18,13 @@ LICENSE file in the root directory of this source tree.
 #define _ST_DEBUG 0
 #endif
 
-static void *siproxy_recv_thread(void *handle) {
-	siproxy_config_t *conf = handle;
+static void *rdev_recv_thread(void *handle) {
+	rdev_config_t *conf = handle;
 	struct can_frame frame;
 	int bytes;
 
 	dprintf(3,"thread started!\n");
-	while(solard_check_state(conf,SI_STATE_OPEN)) {
+	while(solard_check_state(conf,RDEV_STATE_OPEN)) {
 		bytes = conf->can->read(conf->can_handle,&frame,0xffff);
 		dprintf(7,"bytes: %d\n", bytes);
 		if (bytes < 0) {
@@ -42,8 +42,8 @@ static void *siproxy_recv_thread(void *handle) {
 	return 0;
 }
 
-static int siproxy_can_open(void *handle) {
-	siproxy_config_t *conf = handle;
+static int rdev_can_open(void *handle) {
+	rdev_config_t *conf = handle;
 	pthread_attr_t attr;
 	int r;
 
@@ -51,28 +51,28 @@ static int siproxy_can_open(void *handle) {
 
 	r = conf->can->open(conf->can_handle);
 	if (r) return r;
-	solard_set_state(conf,SI_STATE_OPEN);
+	solard_set_state(conf,RDEV_STATE_OPEN);
 
 	/* Start the CAN read thread */
 	if (pthread_attr_init(&attr)) {
 		log_write(LOG_SYSERR,"pthread_attr_init");
-		goto siproxy_can_open_error;
+		goto rdev_can_open_error;
 	}
 	if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED)) {
 		log_write(LOG_SYSERR,"pthread_attr_setdetachstate");
-		goto siproxy_can_open_error;
+		goto rdev_can_open_error;
 	}
-	if (pthread_create(&conf->th,&attr,&siproxy_recv_thread,conf)) {
+	if (pthread_create(&conf->th,&attr,&rdev_recv_thread,conf)) {
 		log_write(LOG_SYSERR,"pthread_create");
-		goto siproxy_can_open_error;
+		goto rdev_can_open_error;
 	}
 	r = 0;
-siproxy_can_open_error:
+rdev_can_open_error:
 	return r;
 }
 
-static int siproxy_can_read(void *handle, void *buf, int buflen) {
-	siproxy_config_t *conf = handle;
+static int rdev_can_read(void *handle, void *buf, int buflen) {
+	rdev_config_t *conf = handle;
 	char what[16];
 	uint16_t mask;
 	int id,idx,retries;
@@ -103,22 +103,22 @@ static int siproxy_can_read(void *handle, void *buf, int buflen) {
 	return 0;
 }
 
-static int siproxy_can_write(void *handle, void *buf, int buflen) {
-	siproxy_config_t *conf = handle;
+static int rdev_can_write(void *handle, void *buf, int buflen) {
+	rdev_config_t *conf = handle;
 	return conf->can->write(conf->can_handle,buf,buflen);
 }
 
-static int siproxy_can_close(void *handle) {
-	siproxy_config_t *conf = handle;
+static int rdev_can_close(void *handle) {
+	rdev_config_t *conf = handle;
 	int r;
 
 	dprintf(1,"closing...\n");
 	r = conf->can->close(conf->can_handle);
-	if (!r) solard_clear_state(conf,SI_STATE_OPEN);
+	if (!r) solard_clear_state(conf,RDEV_STATE_OPEN);
 	return r;
 }
 
-int add_device(siproxy_config_t *conf, char *name) {
+int add_device(rdev_config_t *conf, char *name) {
 	char transport[SOLARD_TRANSPORT_LEN],target[SOLARD_TARGET_LEN],topts[SOLARD_TOPTS_LEN];
 	cfg_proctab_t tab[] = {
 		{ name,"transport","Device transport",DATA_TYPE_STRING,&transport,sizeof(transport)-1, "" },
@@ -155,10 +155,10 @@ int add_device(siproxy_config_t *conf, char *name) {
 		conf->can = mp;
 		conf->can_handle = mp_handle;
 		dev.handle = conf;
-		dev.open = siproxy_can_open;
-		dev.read = siproxy_can_read;
-		dev.write = siproxy_can_write;
-		dev.close = siproxy_can_close;
+		dev.open = rdev_can_open;
+		dev.read = rdev_can_read;
+		dev.write = rdev_can_write;
+		dev.close = rdev_can_close;
 	} else {
 		dev.handle = mp_handle;
 		dev.open = mp->open;
@@ -173,7 +173,7 @@ add_device_error:
 }
 
 int main(int argc,char **argv) {
-	siproxy_config_t *conf;
+	rdev_config_t *conf;
 	int port;
 	char configfile[256],*p;
 	opt_proctab_t opts[] = {
@@ -184,12 +184,12 @@ int main(int argc,char **argv) {
 	int logopts = LOG_INFO|LOG_WARNING|LOG_ERROR|LOG_SYSERR|_ST_DEBUG;
 	list devices;
 	cfg_proctab_t tab[] = {
-		{ "siproxy", "port", "Network port", DATA_TYPE_INT,&port, 0, "3900" },
-		{ "siproxy","devices","Device list",DATA_TYPE_LIST,&devices,0, 0 },
+		{ "rdev", "port", "Network port", DATA_TYPE_INT,&port, 0, "3900" },
+		{ "rdev","devices","Device list",DATA_TYPE_LIST,&devices,0, 0 },
 		CFG_PROCTAB_END
 	};
 	devserver_io_t dummy_dev = { "dummy", "dummy", 0, 0, 0, 0 };
-//	char *args[] = { "t2", "-d", "4", "-c", "siproxy.conf" };
+//	char *args[] = { "t2", "-d", "4", "-c", "rdev.conf" };
 //	#define nargs (sizeof(args)/sizeof(char *))
 
 //	solard_common_init(nargs,args,opts,0xffff);
@@ -218,13 +218,13 @@ int main(int argc,char **argv) {
 		goto init_error;
 	}
 	cfg_get_tab(conf->cfg,tab);
-	if (debug) cfg_disp_tab(tab,"siproxy",0);
+	if (debug) cfg_disp_tab(tab,"rdev",0);
 	list_reset(devices);
 	while((p = list_get_next(devices)) != 0) {
 		if (add_device(conf,p)) return 1;
 	}
 
-	solard_set_state(conf,SI_STATE_RUNNING);
+	solard_set_state(conf,RDEV_STATE_RUNNING);
 	server(conf,port);
 	return 0;
 init_error:

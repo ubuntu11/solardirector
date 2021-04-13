@@ -9,7 +9,6 @@ LICENSE file in the root directory of this source tree.
 
 #include "common.h"
 #include "devserver.h"
-#include <linux/can.h>
 
 //#define devserver_get16(p) (uint16_t)(*(p) | (*((p)+1) << 8))
 #define devserver_get16(p) (uint16_t)(*(p) | (*((p)+1) << 8))
@@ -90,56 +89,15 @@ int devserver_send(int fd, uint8_t opcode, uint8_t unit, uint16_t control, void 
 int devserver_recv(int fd, uint8_t *opcode, uint8_t *unit, uint16_t *control, void *data, int datasz, int timeout) {
 	int i,bytes,len,bytes_left;
 	uint8_t ch,pkt[256];
-//	struct timeval tv,*tp;
-//	fd_set rdset;
 
 	dprintf(5,"opcode: %d, unit: %d, control: %d, data: %p, datasz: %d, timeout: %d\n",
 		*opcode, *unit, *control, data, datasz, timeout);
 
-#if 0
-//	tv.tv_usec = 0;
-//	tv.tv_sec = 2;
-	tv.tv_usec = timeout;
-	tv.tv_sec = 0;
-	tp = timeout >= 0 ? &tv : 0;
-
-	FD_ZERO(&rdset);
-	FD_SET(fd,&rdset);
-
-	bytes = select(fd+1,&rdset,0,0,tp);
-	dprintf(5,"bytes: %d\n", bytes);
-	if (bytes < 1) return bytes;
-
-#if 0
-	i = ioctl(s->fd, FIONREAD, &bytes);
-	dprintf(5,"ioctl status: %d\n", i);
-	if (i < 0) return -1;
-	dprintf(5,"bytes: %d\n", bytes);
-	/* select said there was data yet there is none? */
-	if (bytes == 0) return 0;
-#endif
-
 	bytes = read(fd,&ch,1);
-	dprintf(5,"bytes: %d, ch: %02x\n", bytes, ch);
+	dprintf(5,"bytes: %d\n", bytes);
 	if (bytes < 0) perror("read");
-#if 0
-	/* Read the start */
-	do {
-		bytes = select(fd+1,&rdset,0,0,tp);
-		dprintf(5,"bytes: %d\n", bytes);
-		if (bytes < 1) return bytes;
 
-		dprintf(1,"reading...\n");
-		bytes = read(fd,&ch,1);
-		dprintf(5,"bytes: %d, ch: %02x\n", bytes, ch);
-		if (bytes < 1) return bytes;
-	} while(ch != PACKET_START);
-#endif
-#else
-	bytes = read(fd,&ch,1);
-	dprintf(5,"bytes: %d, ch: %02x\n", bytes, ch);
-	if (bytes < 0) perror("read");
-#endif
+	dprintf(5,"ch: %02x\n", ch);
 	if (ch != PACKET_START) return -1;
 	i=0;
 	pkt[i++] = ch;

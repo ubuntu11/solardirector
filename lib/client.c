@@ -193,7 +193,7 @@ int client_set_config(solard_client_t *cp, char *target, char *param, char *valu
 	return 0;
 }
 
-solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,char *id,char *cf) {
+solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,char *id) {
 	solard_client_t *s;
 	char mqtt_info[200];
 	char configfile[256];
@@ -210,7 +210,7 @@ solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,cha
 
 	opts = opt_addopts(std_opts,client_opts);
 	if (!opts) return 0;
-	mqtt_info[0] = configfile[0] = 0;
+	*mqtt_info = *configfile = 0;
 	if (solard_common_init(argc,argv,opts,logopts)) return 0;
 
 	dprintf(1,"creating session...\n");
@@ -219,7 +219,7 @@ solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,cha
 		perror("calloc");
 		return 0;
 	}
-	pthread_mutex_init(&s->lock, 0);
+//	pthread_mutex_init(&s->lock, 0);
 	s->messages = list_create();
 
 	dprintf(1,"argc: %d, argv: %p, opts: %p, id: %s\n", argc, argv, opts, id);
@@ -229,7 +229,6 @@ solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,cha
 	section_name = strlen(name) ? name : id;
 	dprintf(1,"section_name: %s\n", section_name);
 	dprintf(1,"configfile: %s\n", configfile);
-	if (strlen(configfile) == 0 && cf != 0) strncat(configfile,cf,sizeof(configfile)-1);
 	if (strlen(configfile)) {
 		cfg_proctab_t agent_tab[] = {
 			{ section_name, "id", "Client ID", DATA_TYPE_STRING,&s->id,sizeof(s->id), 0 },
@@ -243,10 +242,12 @@ solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,cha
 			if (mqtt_get_config(s->cfg,&mqtt_config)) goto client_init_error;
 		}
 	} else {
+		dprintf(1,"mqtt_info: %s\n", mqtt_info);
 		if (!strlen(mqtt_info)) {
 			log_write(LOG_ERROR,"either configfile or mqtt info must be specified.\n");
 			goto client_init_error;
 		}
+		memset(&mqtt_config,0,sizeof(mqtt_config));
 		strncat(mqtt_config.host,strele(0,":",mqtt_info),sizeof(mqtt_config.host)-1);
 		strncat(mqtt_config.clientid,strele(1,":",mqtt_info),sizeof(mqtt_config.clientid)-1);
 		strncat(mqtt_config.user,strele(2,":",mqtt_info),sizeof(mqtt_config.user)-1);

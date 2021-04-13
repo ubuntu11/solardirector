@@ -49,6 +49,7 @@ else ifeq ($(TARGET),win64)
 	DEST_BINDIR=$(DEST_PREFIX)/bin
 	DEST_INCDIR=$(DEST_IPREFIX)/include
 	DEST_LIBDIR=$(DEST_IPREFIX)/lib
+	DYNAMIC=no
 else ifeq ($(TARGET),win32)
 	ARCH=win32
 	OS=win
@@ -68,6 +69,7 @@ else ifeq ($(TARGET),win32)
 	DEST_BINDIR=$(DEST_PREFIX)/bin
 	DEST_INCDIR=$(DEST_IPREFIX)/include
 	DEST_LIBDIR=$(DEST_IPREFIX)/lib
+	DYNAMIC=no
 #$(findstring find,in)
 else ifneq (,$(findstring linux,$(TARGET)))
 	ARCH=linux
@@ -235,10 +237,15 @@ endif
 # Uses pthreads? (needed @ end)
 ifeq ($(PTHREADS),yes)
 ifeq ($(OS),win)
-LIBS+=-lpthreadGC2
+#LIBS+=-lpthreadGC2
+LIBS+=-lpthread
 else
 LIBS+=-lpthread
 endif
+endif
+
+ifeq ($(OS),win)
+LIBS+=-lws2_32
 endif
 
 #

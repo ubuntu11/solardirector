@@ -28,8 +28,8 @@ int main(int argc,char **argv) {
 	};
 	list lp;
 
-//	s = client_init(nargs,args,0,"sdconfig","sdconfig.conf");
-	s = client_init(argc,argv,opts,"sdconfig","sdconfig.conf");
+//	s = client_init(nargs,args,0,"sdconfig");
+	s = client_init(argc,argv,opts,"sdconfig");
 	if (!s) return 1;
 
 //	optind -= (nargs-1);
@@ -55,11 +55,12 @@ int main(int argc,char **argv) {
 
 	/* Compile all arguments into a single string */
 	/* Get the length */
+	len = 0;
 	for(i=2; i < argc; i++) len += strlen(argv[i])+1;
 	/* Alloc a string to hold */
 	temp = malloc(len+1);
 	if (!temp) {
-		log_write(LOG_SYSERR,"malloc temp");
+		log_write(LOG_SYSERR,"malloc temp(%d)",len+1);
 		return 1;
 	}
 	p = temp;

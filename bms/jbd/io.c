@@ -8,7 +8,6 @@ LICENSE file in the root directory of this source tree.
 */
 
 #include "jbd.h"
-#include <linux/can.h>
 
 #define MIN_CMD_LEN 7
 

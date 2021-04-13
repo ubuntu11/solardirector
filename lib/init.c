@@ -9,8 +9,10 @@ LICENSE file in the root directory of this source tree.
 
 #include <string.h>
 #include <stdlib.h>
-
 #include "common.h"
+#ifdef __WIN32
+#include <winsock2.h>
+#endif
 
 int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_opts) {
 	/* std command-line opts */
@@ -32,6 +34,10 @@ int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_op
 	char *file;
 	volatile int error,log_opts;
 	char *ident;
+#ifdef __WIN32
+	WSADATA wsaData;
+	int iResult;
+#endif
 
 	append_flag = back_flag = verb_flag = help_flag = err_flag = 0;
 
@@ -45,6 +51,16 @@ int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_op
 	log_open(ident,0,log_opts);
 
 	dprintf(1,"common_init: argc: %d, argv: %p, add_opts: %p, log_opts: %x", argc, argv, add_opts, log_opts);
+
+#ifdef __WIN32
+	dprintf(1,"initializng winsock...\n");
+	/* Initialize Winsock */
+	iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
+	if (iResult != 0) {
+		log_write(LOG_SYSERR,"WSAStartup");
+		return 1;
+	}
+#endif
 
 	/* If add_opts, add to std */
 	opts = (add_opts ? opt_addopts(std_opts,add_opts) : std_opts);

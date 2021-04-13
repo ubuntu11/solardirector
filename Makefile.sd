@@ -9,6 +9,10 @@ STATIC?=no
 
 PREFIX?=/opt/sd
 
+ifneq "$(findstring win,$(TARGET))" ""
+ISWIN=yes
+endif
+
 # Define SRC_ROOT
 current_makefile := $(lastword $(MAKEFILE_LIST))
 SRC_ROOT=$(shell echo $$(dirname $(current_makefile)))
@@ -43,16 +47,19 @@ endif
 
 # Bluetooth
 ifeq ($(BLUETOOTH),yes)
+ifneq ($(ISWIN),yes)
 CFLAGS+=-DBLUETOOTH
 LIBS+=-lgattlib -lglib-2.0
 endif
-
-ifneq "$(findstring can_ip,$(TRANSPORTS))" ""
-SRCS+=dsfuncs.c
 endif
 
 ifneq "$(findstring http,$(TRANSPORTS))" ""
 LIBS+=-lcurl
+endif
+
+# Add transports symbol
+ifneq ($(TRANSPORTS),)
+CFLAGS+=-DTRANSPORTS="\"$(TRANSPORTS)\""
 endif
 
 include $(SRC_ROOT)/Makefile.inc

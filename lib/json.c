@@ -308,7 +308,7 @@ json_value_t *json_from_tab(json_proctab_t *tab) {
 int json_to_tab(json_proctab_t *tab, json_value_t *v) {
 	json_proctab_t *p;
 	json_object_t *o;
-	int i,count;
+	register int i;
 
 	/* must be object */
 	if (v->type != JSONObject) return 1;

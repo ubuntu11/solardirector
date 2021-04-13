@@ -10,7 +10,8 @@ LICENSE file in the root directory of this source tree.
 #include "common.h"
 #include <ctype.h>
 #include <sys/types.h>
-#include "smanet_internal.h"
+#include "module.h"
+#include "smanet.h"
 
 #define DEBUG_STARTUP 0
 
@@ -39,7 +40,6 @@ LICENSE file in the root directory of this source tree.
 
 //WChanType = 0x040f and bChanIndex = 0 denotes all parameter channels
 //WChanType = 0x090f and bChanIndex = 0 denotes all spot value channels
-#endif
 
 #define MAX_CHANHANDLES	2048
 
@@ -192,7 +192,6 @@ int setparm(int handle, char *name, char *sval) {
 	return 0;
 }
 
-#if 0
 static int getmyhomedir(char *dest, int destlen) {
 	FILE *fp;
 	char line[256],*p,*s;
@@ -365,7 +364,7 @@ int main(int argc, char **argv) {
 	yasdiMasterShutdown();
 	return r;
 }
-#else
+#endif
 void usage(char *myname) {
 	printf("usage: %s [-alps] -n chan | ChanName [value]\n",myname);
 	return;
@@ -492,6 +491,7 @@ int main(int argc, char **argv) {
 	if (!s) return 1;
 
 	dprintf(1,"action: %d\n", action);
+#if 0
 	switch(action) {
 	case 0:
 		dolist(s->dev_handle, type, (argc ? argv[0] : 0));
@@ -503,7 +503,7 @@ int main(int argc, char **argv) {
 		setparm(s->dev_handle, argv[0], argv[1]);
 		break;
 	}
+#endif
 
 	return 0;
 }
-#endif

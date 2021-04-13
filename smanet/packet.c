@@ -55,7 +55,7 @@ int smanet_recv_packet(smanet_session_t *s, int command, smanet_packet_t *packet
 	if (!s || !packet) return 1;
 	dprintf(1,"command: %d, timeout: %d\n", command, timeout);
 
-	len = smanet_read_frame(s,data,sizeof(data),2);
+	len = smanet_read_frame(s,data,sizeof(data),3);
 	if (len < 0) return -1;
 	if (len == 0) {
 		dprintf(1,"timeout!\n");

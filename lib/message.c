@@ -26,9 +26,11 @@ void solard_message_dump(solard_message_t *msg, int dlevel) {
                 char message[256];
         };
         int data_len;
-#endif
+	if (!msg) return;
 	dprintf(dlevel,"msg: type: %d, role: %s, name: %s, func: %s, action: %s, id: %s\n",
 		msg->type,msg->role,msg->name,msg->func,msg->action);
+	dprintf(dlevel,"msg: data_len: %d\n", msg->data_len);
+#endif
 }
 
 void solard_getmsg(void *ctx, char *topic, char *message, int msg_len) {

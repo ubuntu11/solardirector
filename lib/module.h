@@ -12,9 +12,9 @@ LICENSE file in the root directory of this source tree.
 
 struct solard_module;
 typedef struct solard_module solard_module_t;
-typedef struct solard_module module_t;
 
 enum SOLARD_MODTYPE {
+	SOLARD_MODTYPE_NONE,
         SOLARD_MODTYPE_INVERTER,
         SOLARD_MODTYPE_BATTERY,
         SOLARD_MODTYPE_TRANSPORT,
@@ -61,11 +61,34 @@ struct solard_module {
 	solard_module_get_handle_t get_info;
 };
 
-module_t *load_module(list lp, char *name, int type);
+solard_module_t *load_module(list lp, char *name, int type);
 int load_tp_from_cfg(solard_module_t **mp, void **h, cfg_info_t *cfg, char *section_name);
 
-#ifndef EXPORT_API
-#define EXPORT_API __attribute__ ((visibility("default")))
-#endif 
+extern solard_module_t solard_dummy_module;
+#define SOLARD_DUMMY_MODULE(name) \
+solard_module_t name_module = { \
+	SOLARD_MODTYPE_NONE, \
+	"name", \
+	0,		/* Init */ \
+	0,		/* New */ \
+	0,		/* Info */ \
+	0,		/* Open */ \
+	0,		/* Read */ \
+	0,		/* Write */ \
+	0,		/* Close */ \
+	0,		/* Free */ \
+	0,		/* Shutdown */ \
+	0,		/* Config */ \
+	0,		/* Control */ \
+};
+
+#ifdef EXPORT
+#undef EXPORT
+#endif
+#ifdef __WIN32
+#define EXPORT __declspec(dllexport)
+#else
+#define EXPORT __attribute__ ((visibility("default")))
+#endif
 
 #endif /* __SOLARD_MODULE_H */

@@ -8,10 +8,15 @@ LICENSE file in the root directory of this source tree.
 */
 
 #include <fcntl.h> 
+#include <time.h>
+#ifdef __WIN32
+#include <windows.h>
+#else
 #include <termios.h>
 #include <sys/ioctl.h>
-#include <time.h>
 #include <sys/select.h>
+#endif
+#include "buffer.h"
 #include "module.h"
 #include "utils.h"
 #include "debug.h"
@@ -19,11 +24,31 @@ LICENSE file in the root directory of this source tree.
 #define DEFAULT_SPEED 9600
 
 struct serial_session {
+#ifdef __WIN32
+	HANDLE h;
+#else
 	int fd;
+#endif
 	char target[SOLARD_AGENT_TARGET_LEN+1];
 	int speed,data,stop,parity;
+	buffer_t *buffer;
 };
 typedef struct serial_session serial_session_t;
+
+static int serial_refresh(void *handle, uint8_t *buffer, int buflen) {
+	serial_session_t *s = handle;
+	int bytes;
+
+#ifdef __WIN32
+	ReadFile(s->h, buffer, buflen, (LPDWORD)&bytes, 0);
+	dprintf(1,"bytes: %d\n", bytes);
+#else
+	/* We are cooked - just read whats avail */
+	bytes = read(s->fd, buffer, buflen);
+	if (bytes < 0) return -1;
+#endif
+	return bytes;
+}
 
 static void *serial_new(void *conf, void *target, void *topts) {
 	serial_session_t *s;
@@ -31,10 +56,17 @@ static void *serial_new(void *conf, void *target, void *topts) {
 
 	s = calloc(1,sizeof(*s));
 	if (!s) {
-		perror("serial_new: malloc");
+		log_write(LOG_SYSERR,"serial_new: calloc(%d)",sizeof(*s));
 		return 0;
 	}
+	s->buffer = buffer_init(1024,serial_refresh,s);
+	if (!s->buffer) return 0;
+
+#ifdef __WIN32
+	s->h = INVALID_HANDLE_VALUE;
+#else
 	s->fd = -1;
+#endif
 	strncat(s->target,strele(0,",",(char *)target),sizeof(s->target)-1);
 
 	/* Baud rate */
@@ -74,6 +106,7 @@ static void *serial_new(void *conf, void *target, void *topts) {
 	return s;
 }
 
+#ifndef __WIN32
 static int set_interface_attribs (int fd, int speed, int data, int parity, int stop, int vmin, int vtime) {
 	struct termios tty;
 	int rate;
@@ -103,13 +136,19 @@ static int set_interface_attribs (int fd, int speed, int data, int parity, int s
 
 	/* Baud */
 	switch(speed) {
-	case 57600:     rate = B57600;   break;
-	case 38400:     rate = B38400;   break;
-	case 19200:     rate = B19200;   break;
 	case 9600:      rate = B9600;    break;
-	case 4800:      rate = B4800;    break;
-	case 2400:      rate = B2400;    break;
+	case 19200:     rate = B19200;   break;
 	case 1200:      rate = B1200;    break;
+	case 2400:      rate = B2400;    break;
+	case 4800:      rate = B4800;    break;
+	case 38400:     rate = B38400;   break;
+	case 57600:     rate = B57600;   break;
+	case 115200:	rate = B115200;   break;
+	case 230400:	rate = B230400;   break;
+	case 460800:	rate = B460800;   break;
+	case 500000:	rate = B500000;   break;
+	case 576000:	rate = B576000;   break;
+	case 921600:	rate = B921600;   break;
 	case 600:       rate = B600;      break;
 	case 300:       rate = B300;      break;
 	case 150:       rate = B150;      break;
@@ -131,8 +170,9 @@ static int set_interface_attribs (int fd, int speed, int data, int parity, int s
 		case 8: default: tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8; break;
 	}
 
-	/* Stop bits (0 = 1, non-zero = 2 */
-	if (stop) tty.c_cflag |= CSTOPB;
+	/* Stop bits (2 = 2, any other value = 1) */
+	tty.c_cflag &= ~CSTOPB;
+	if (stop == 2) tty.c_cflag |= CSTOPB;
 	else tty.c_cflag &= ~CSTOPB;
 
 	/* Parity (0=none, 1=even, 2=odd */
@@ -155,8 +195,6 @@ static int serial_open(void *handle) {
 	serial_session_t *s = handle;
 	char path[256];
 
-	if (s->fd >= 0) return 0;
-
 	dprintf(1,"target: %s\n", s->target);
 	strcpy(path,s->target);
 	if ((access(path,0)) == 0) {
@@ -176,7 +214,78 @@ static int serial_open(void *handle) {
 
 	return 0;
 }
+#else
+static int set_interface_attribs (HANDLE h, int speed, int data, int parity, int stop, int vmin, int vtime) {
+	DCB Dcb;
 
+	GetCommState (h, &Dcb); 
+
+	/* Baud */
+	Dcb.BaudRate        = speed;
+
+	/* Stop bits (2 = 2, any other value = 1) */
+	if (stop == 2) Dcb.StopBits = TWOSTOPBITS;
+	else Dcb.StopBits = ONESTOPBIT;
+
+	/* Data bits */
+	Dcb.ByteSize        = data;
+
+	/* Parity (0=none, 1=even, 2=odd */
+	switch(parity) {
+		case 1: Dcb.Parity = EVENPARITY; break;
+		case 2: Dcb.Parity = ODDPARITY; break;
+		default: Dcb.Parity = NOPARITY; break;
+	}
+
+	Dcb.fParity         = 0;
+	Dcb.fOutxCtsFlow    = 0;
+	Dcb.fOutxDsrFlow    = 0;
+	Dcb.fDsrSensitivity = 0;
+	Dcb.fTXContinueOnXoff = TRUE;
+	Dcb.fOutX           = 0;
+	Dcb.fInX            = 0;
+	Dcb.fNull           = 0;
+	Dcb.fErrorChar      = 0;
+	Dcb.fAbortOnError   = 0;
+	Dcb.fRtsControl     = RTS_CONTROL_DISABLE;
+	Dcb.fDtrControl     = DTR_CONTROL_DISABLE;
+
+	SetCommState (h, &Dcb); 
+	return 0;
+}
+
+static int serial_open(void *handle) {
+	serial_session_t *s = handle;
+	char path[256];
+
+	dprintf(1,"target: %s\n", s->target);
+	sprintf(path,"\\\\.\\%s",s->target);
+	dprintf(1,"path: %s\n", path);
+	s->h = CreateFileA(path,                //port name
+                      GENERIC_READ | GENERIC_WRITE, //Read/Write
+                      0,                            // No Sharing
+                      NULL,                         // No Security
+                      OPEN_EXISTING,// Open existing port only
+                      0,            // Non Overlapped I/O
+                      NULL);        // Null for Comm Devices
+
+	dprintf(1,"h: %p\n", s->h);
+	if (s->h == INVALID_HANDLE_VALUE) return 1;
+
+	set_interface_attribs(s->h, s->speed, s->data, s->parity, s->stop, 0, 1);
+
+	dprintf(1,"done!\n");
+	return 0;
+}
+#endif
+
+static int serial_read(void *handle, void *buf, int buflen) {
+	serial_session_t *s = handle;
+
+	return buffer_get(s->buffer,buf,buflen);
+}
+
+#if 0
 static int serial_read(void *handle, void *buf, int buflen) {
 	serial_session_t *s = handle;
 	register uint8_t *p = buf;
@@ -188,11 +297,14 @@ static int serial_read(void *handle, void *buf, int buflen) {
 //	fd_set rfds;
 	time_t start,cur;
 
-	if (s->fd < 0) return -1;
-
 	dprintf(8,"buf: %p, buflen: %d\n", buf, buflen);
 	if (!buf || !buflen) return 0;
 
+#ifdef __WIN32
+	ReadFile(s->h, buf, buflen, (LPDWORD)&bytes, 0);
+	dprintf(1,"bytes: %d\n", bytes);
+	return bytes;
+#else
 	time(&start);
 	for(i=0; i < buflen; i++) {
 		bytes = read(s->fd,p,1);
@@ -215,6 +327,7 @@ static int serial_read(void *handle, void *buf, int buflen) {
 	}
 	count = i;
 	dprintf(8,"count: %d\n", count);
+#endif
 
 #if 0
 	/* See if there's anything to read */
@@ -256,41 +369,42 @@ static int serial_read(void *handle, void *buf, int buflen) {
 	dprintf(8,"returning: %d\n", count);
 	return count;
 }
+#endif
 
 static int serial_write(void *handle, void *buf, int buflen) {
 	serial_session_t *s = handle;
 	int bytes;
 
-	if (s->fd < 0) return -1;
-
 	dprintf(8,"buf: %p, buflen: %d\n", buf, buflen);
 
+#ifdef __WIN32
+	WriteFile(s->h,buf,buflen,(LPDWORD)&bytes,0);
+#else
 	bytes = write(s->fd,buf,buflen);
 	dprintf(8,"bytes: %d\n", bytes);
-	if (debug >= 8 && bytes > 0) bindump("TO DEVICE",buf,buflen);
-#if 0
-	{
-		int x = (buflen + 25) * 1000;
-		printf("x: %d\n", x);
-		usleep(x);
-	}
-//	usleep ((buflen + 25) * 10000);
 #endif
+	if (debug >= 8 && bytes > 0) bindump("TO DEVICE",buf,buflen);
+//	usleep ((buflen + 25) * 10000);
 	return bytes;
 }
 
 static int serial_close(void *handle) {
 	serial_session_t *s = handle;
 
+#ifdef _WIN32
+	CloseHandle(s->h);
+	s->h = INVALID_HANDLE_VALUE;
+#else
 	dprintf(1,"fd: %d\n",s->fd);
 	if (s->fd >= 0) {
 		close(s->fd);
 		s->fd = -1;
 	}
+#endif
 	return 0;
 }
 
-solard_module_t serial_module = {
+EXPORT solard_module_t serial_module = {
 	SOLARD_MODTYPE_TRANSPORT,
 	"serial",
 	0,

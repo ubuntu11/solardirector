@@ -12,11 +12,16 @@ LICENSE file in the root directory of this source tree.
 #include <unistd.h>
 #include <signal.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <sys/stat.h>
 #include "utils.h"
 #include "debug.h"
 
+#ifdef __WIN32
+int become_daemon(void) {
+	return 1;
+}
+#else
+#include <sys/wait.h>
 int become_daemon(void) {
 	pid_t pid;
 
@@ -57,3 +62,4 @@ int become_daemon(void) {
 	close(2);
 	return 0;
 }
+#endif

@@ -12,7 +12,7 @@ LICENSE file in the root directory of this source tree.
 struct battery_session {
 	char name[BATTERY_NAME_LEN+1];
 	solard_agent_t *ap;
-	module_t *driver;
+	solard_module_t *driver;
 	void *handle;
 	solard_battery_t info;
 };
@@ -189,9 +189,9 @@ static void _set_state(char *name, void *dest, int len, json_value_t *v) {
 static void _dump_arr(char *name,void *dest, int flen,json_value_t *v) {
 	solard_battery_t *bp = dest;
 	char format[16];
-	int i,dlevel = (int) v;
+	int i,*dlevel = (int *) v;
 
-	if (debug >= dlevel) {
+	if (debug >= *dlevel) {
 		dprintf(1,"flen: %d\n", flen);
 		if (strcmp(name,"temps")==0) {
 			sprintf(format,"%%%ds: %%.1f\n",flen);
@@ -210,10 +210,10 @@ static void _dump_arr(char *name,void *dest, int flen,json_value_t *v) {
 static void _dump_state(char *name, void *dest, int flen, json_value_t *v) {
 	solard_battery_t *bp = dest;
 	char format[16];
-	int dlevel = (int) v;
+	int *dlevel = (int *) v;
 
 	sprintf(format,"%%%ds: %%d\n",flen);
-	if (debug >= dlevel) printf(format,name,bp->state);
+	if (debug >= *dlevel) printf(format,name,bp->state);
 }
 
 void battery_dump(solard_battery_t *bp, int dlevel) {
@@ -230,7 +230,7 @@ void battery_dump(solard_battery_t *bp, int dlevel) {
 	sprintf(format,"%%%ds: %%s\n",flen);
 	dprintf(dlevel,"battery:\n");
 	for(p=tab; p->field; p++) {
-		if (p->cb) p->cb(p->field,p->ptr,flen,(void *)dlevel);
+		if (p->cb) p->cb(p->field,p->ptr,flen,(void *)&dlevel);
 		else {
 			conv_type(DATA_TYPE_STRING,&temp,sizeof(temp)-1,p->type,p->ptr,p->len);
 			if (debug >= dlevel) printf(format,p->field,temp);

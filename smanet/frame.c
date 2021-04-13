@@ -62,6 +62,7 @@ int smanet_read_frame(smanet_session_t *s, uint8_t *buffer, int buflen, int time
 			dprintf(dlevel,"diff: %d\n", diff);
 			if (diff >= timeout) {
 				s->timeouts++;
+				dprintf(1,"timeout!\n");
 				return 0;
 			}
 		}
@@ -81,7 +82,10 @@ int smanet_read_frame(smanet_session_t *s, uint8_t *buffer, int buflen, int time
 #endif
 		bytes = s->tp->read(s->tp_handle,&ch,1);
 		dprintf(dlevel,"bytes: %d\n", bytes);
-		if (bytes < 0) return -1;
+		if (bytes < 0) {
+			dprintf(1,"read error!\n");
+			return -1;
+		}
 		if (bytes == 0) continue;
 		dprintf(dlevel,"ch: %02X\n", ch);
 		if (have_start) {
@@ -100,13 +104,19 @@ int smanet_read_frame(smanet_session_t *s, uint8_t *buffer, int buflen, int time
 			have_start = 1;
 		}
 	}
-	if (!i) return 0;
+	if (!i) {
+		dprintf(1,"no data?\n");
+		return 0;
+	}
 //	if (debug >= dlevel+1) bindump("get frame",data,i);
 	bindump("get frame",data,i);
 	frame_fcs = data[i-1] << 8 | data[i-2];
 	fcs = calcfcs(data,i-2);
 	dprintf(dlevel,"fcs: %04x, frame_fcs: %04x\n", fcs, frame_fcs);
-	if (fcs != frame_fcs) return 0;
+	if (fcs != frame_fcs) {
+		dprintf(1,"fcs mismatch (fcs: %04x, frame_fcs: %04x)\n", fcs, frame_fcs);
+		return 0;
+	}
 	count = i - 2;
 
 	state = STATE_ADDR;

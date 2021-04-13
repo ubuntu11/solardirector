@@ -13,7 +13,7 @@ struct inverter_session {
 	char id[INVERTER_ID_LEN];
 	char name[INVERTER_NAME_LEN];
 	solard_agent_t *ap;
-	module_t *driver;
+	solard_module_t *driver;
 	void *handle;
 	uint16_t state;
 	solard_inverter_t info;
@@ -207,10 +207,10 @@ static void _set_state(char *name, void *dest, int len, json_value_t *v) {
 static void _dump_state(char *name, void *dest, int flen, json_value_t *v) {
 	solard_inverter_t *inv = dest;
 	char format[16];
-	int dlevel = (int) v;
+	int *dlevel = (int *) v;
 
 	sprintf(format,"%%%ds: %%d\n",flen);
-	if (debug >= dlevel) printf(format,name,inv->state);
+	if (debug >= *dlevel) printf(format,name,inv->state);
 }
 
 void inverter_dump(solard_inverter_t *inv, int dlevel) {
@@ -227,7 +227,7 @@ void inverter_dump(solard_inverter_t *inv, int dlevel) {
 	sprintf(format,"%%%ds: %%s\n",flen);
 	dprintf(dlevel,"inverter:\n");
 	for(p=tab; p->field; p++) {
-		if (p->cb) p->cb(p->field,p->ptr,flen,(void *)dlevel);
+		if (p->cb) p->cb(p->field,p->ptr,flen,(void *)&dlevel);
 		else {
 			conv_type(DATA_TYPE_STRING,&temp,sizeof(temp)-1,p->type,p->ptr,p->len);
 			if (debug >= dlevel) printf(format,p->field,temp);

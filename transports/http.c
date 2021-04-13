@@ -146,7 +146,7 @@ static int http_close(void *handle) {
 	return 0;
 }
 
-solard_module_t http_module = {
+EXPORT solard_module_t http_module = {
 	SOLARD_MODTYPE_TRANSPORT,
 	"ip",
 	http_init,

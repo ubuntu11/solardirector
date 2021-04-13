@@ -38,7 +38,7 @@ struct solard_agent {
 	list mq;			/* incoming message queue */
 	uint16_t state;			/* States */
 	int pretty;			/* Format json messages for readability (uses more mem) */
-	module_t *role;
+	solard_module_t *role;
 	void *role_handle;
 	void *role_data;		/* Role-specific data */
 	json_value_t *info;		/* Info returned by role/driver */

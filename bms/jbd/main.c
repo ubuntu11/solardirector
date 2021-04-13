@@ -6,10 +6,15 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
+char *jbd_version_string = "1.0";
+
 #include "jbd.h"
 
 void *jbd_new(void *conf, void *transport, void *transport_handle) {
 	jbd_session_t *s;
+
+	log_write(LOG_INFO,"JBD Agent version %s\n",jbd_version_string);
+	log_write(LOG_INFO,"Starting up...\n");
 
 	s = calloc(1,sizeof(*s));
 	if (!s) {
@@ -84,6 +89,7 @@ int main(int argc, char **argv) {
 	ap = agent_init(argc,argv,opts,&jbd_driver);
 	dprintf(1,"ap: %p\n",ap);
 	if (!ap) return 1;
+	log_write(LOG_INFO,"Running...\n");
 	agent_run(ap);
 	return 0;
 }

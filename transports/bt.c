@@ -11,6 +11,7 @@ This was tested against the MLT-BT05 TTL-to-Bluetooth module (HM-10 compat) on t
 
 */
 
+#ifndef __WIN32
 #include "gattlib.h"
 #include "module.h"
 
@@ -142,7 +143,7 @@ static int bt_close(void *handle) {
 	return 0;
 }
 
-solard_module_t bt_module = {
+EXPORT solard_module_t bt_module = {
 	SOLARD_MODTYPE_TRANSPORT,
 	"bt",
 	0,
@@ -153,3 +154,4 @@ solard_module_t bt_module = {
 	bt_write,
 	bt_close
 };
+#endif
