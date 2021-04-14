@@ -127,6 +127,11 @@ static int rdev_open(void *handle) {
 	if (bytes < 0) return -1;
 	dprintf(1,"bytes: %d, status: %d, unit: %d, control: %d\n", bytes, status, s->unit, control);
 	dprintf(1,"type: %s\n", s->type);
+	if (status != 0) {
+		close(s->fd);
+		s->fd = -1;
+		return 1;
+	}
 
 	return 0;
 }

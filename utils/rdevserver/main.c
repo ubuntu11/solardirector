@@ -206,7 +206,7 @@ int main(int argc,char **argv) {
 		goto init_error;
 	}
 	conf->modules = list_create();
-	devices = list_create();
+//	devices = list_create();
 
 	/* Add a dummy dsfunc for unit 0 */
 	devserver_add_unit(&conf->ds,&dummy_dev);
@@ -219,6 +219,8 @@ int main(int argc,char **argv) {
 	}
 	cfg_get_tab(conf->cfg,tab);
 	if (debug) cfg_disp_tab(tab,"rdev",0);
+
+	dprintf(1,"devices count: %d\n", list_count(devices));
 	list_reset(devices);
 	while((p = list_get_next(devices)) != 0) {
 		if (add_device(conf,p)) return 1;

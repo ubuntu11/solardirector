@@ -10,6 +10,25 @@ LICENSE file in the root directory of this source tree.
 #include "common.h"
 #include "devserver.h"
 
+#include <sys/types.h>
+#ifdef __WIN32
+#include <winsock2.h>
+#include <windows.h>
+#include <ws2tcpip.h>
+#else
+#include <sys/socket.h>
+#endif
+
+
+#ifdef __WIN32
+typedef SOCKET socket_t;
+#define SOCKET_CLOSE(s) closesocket(s);
+#else
+typedef int socket_t;
+#define SOCKET_CLOSE(s) close(s)
+#define INVALID_SOCKET -1
+#endif
+
 //#define devserver_get16(p) (uint16_t)(*(p) | (*((p)+1) << 8))
 #define devserver_get16(p) (uint16_t)(*(p) | (*((p)+1) << 8))
 #define devserver_put16(p,v) { float tmp; *(p) = ((uint16_t)(tmp = (v))); *((p)+1) = ((uint16_t)(tmp = (v)) >> 8); }
@@ -42,7 +61,7 @@ static uint16_t chksum(uint8_t *data, uint16_t datasz) {
 }
 #endif
 
-int devserver_send(int fd, uint8_t opcode, uint8_t unit, uint16_t control, void *data, int datasz) {
+int devserver_send(socket_t fd, uint8_t opcode, uint8_t unit, uint16_t control, void *data, int datasz) {
 	uint8_t pkt[256];
 	int i,bytes,len;
 
@@ -81,12 +100,12 @@ int devserver_send(int fd, uint8_t opcode, uint8_t unit, uint16_t control, void 
 	pkt[i++] = PACKET_END;
 
 	if (debug >= 5) bindump("SENDING",pkt,i);
-	bytes = write(fd, pkt, i);
+	bytes = send(fd, pkt, i, 0);
 	dprintf(5,"bytes: %d\n", bytes);
 	return bytes;
 }
 
-int devserver_recv(int fd, uint8_t *opcode, uint8_t *unit, uint16_t *control, void *data, int datasz, int timeout) {
+int devserver_recv(socket_t fd, uint8_t *opcode, uint8_t *unit, uint16_t *control, void *data, int datasz, int timeout) {
 	int i,bytes,len,bytes_left;
 	uint8_t ch,pkt[256];
 
@@ -138,7 +157,7 @@ int devserver_recv(int fd, uint8_t *opcode, uint8_t *unit, uint16_t *control, vo
 	bytes_left = len;
 	if (data && datasz && len) {
 		if (len > datasz) len = datasz;
-		bytes = read(fd,data,len);
+		bytes = recv(fd,data,len,0);
 		dprintf(5,"bytes: %d\n", bytes);
 		if (bytes < 1) return -1;
 		bytes_left -= len;
@@ -178,14 +197,14 @@ int devserver_recv(int fd, uint8_t *opcode, uint8_t *unit, uint16_t *control, vo
 	dprintf(5,"good packet!\n");
 
 	if (debug >= 5) bindump("RECEIVED",pkt,i);
-	dprintf(5,"opcode: %d, unit: %d, control: %d, data: %p, dataaz: %d, timeout: %d\n",
+	dprintf(5,"opcode: %d, unit: %d, control: %d, data: %p, datasz: %d, timeout: %d\n",
 		*opcode, *unit, *control, data, datasz, timeout);
 	/* Return total bytes written into buffer */
 	dprintf(5,"returning: %d\n", 1);
 	return 1;
 }
 
-int devserver_request(int fd, uint8_t opcode, uint8_t unit, uint16_t control, void *data, int len) {
+int devserver_request(socket_t fd, uint8_t opcode, uint8_t unit, uint16_t control, void *data, int len) {
 	uint8_t status,runit;
 	int bytes;
 
@@ -206,7 +225,7 @@ int devserver_request(int fd, uint8_t opcode, uint8_t unit, uint16_t control, vo
 /***************************************************************************************/
 
 /* Send a reply */
-static int devserver_reply(int fd, uint8_t status, uint8_t unit, uint16_t control, uint8_t *data, int len) {
+static int devserver_reply(socket_t fd, uint8_t status, uint8_t unit, uint16_t control, uint8_t *data, int len) {
 	int bytes;
 
 	bytes = devserver_send(fd,status,unit,control,data,len);
@@ -215,7 +234,7 @@ static int devserver_reply(int fd, uint8_t status, uint8_t unit, uint16_t contro
 }
 
 /* Send error reply */
-int devserver_error(int fd, uint8_t code) {
+int devserver_error(socket_t fd, uint8_t code) {
 	int bytes;
 
 	bytes = devserver_send(fd,code,0,0,0,0);
@@ -228,16 +247,26 @@ int devserver_open(devserver_config_t *conf, int c, uint8_t unit, uint16_t contr
 	int i;
 
 	dprintf(1,"data: %s\n", (char *)data);
+
 	io = 0;
+	dprintf(1,"conf->count: %d\n", conf->count);
 	for(i=0; i < conf->count; i++) {
+		dprintf(1,"units[%d].name: %s\n", i, conf->units[i].name);
 		if (strcmp(conf->units[i].name,(char *)data) == 0) {
+			dprintf(1,"found!\n");
 			io = &conf->units[i];
 			unit = i;
 			break;
 		}
 	}
-	if (!io) goto devserver_open_error;
+	errno = ENOENT;
+	if (!io) {
+		dprintf(1,"NOT found!\n");
+		return devserver_error(c,ENOENT);
+	}
+	dprintf(1,"io->open: %p\n", io->open);
 	if (!io->open) return devserver_reply(c,DEVSERVER_SUCCESS,unit,control,0,0);
+	dprintf(1,"io->handle: %p\n", io->handle);
 	if (io->open(io->handle)) goto devserver_open_error;
 	return devserver_reply(c,DEVSERVER_SUCCESS,unit,control,(uint8_t *)io->type,strlen(io->type)+1);
 devserver_open_error:
@@ -275,7 +304,7 @@ int devserver_read(devserver_config_t *conf, int c, uint8_t unit, uint16_t contr
 
 int devserver_write(devserver_config_t *conf, int c, uint8_t unit, uint16_t control, uint8_t *data, int datasz) {
 	devserver_io_t *io;
-	int bytes;
+	int bytes,len;
 
 	dprintf(5,"unit: %d, control: %d, data: %p, len: %d\n", unit, control, data, datasz);
 	if (unit < 0 || unit > conf->count) return devserver_error(c,EBADF);
@@ -284,8 +313,11 @@ int devserver_write(devserver_config_t *conf, int c, uint8_t unit, uint16_t cont
 	/* control has bytes to write */
 	if (strcmp(io->type,"can")==0)
 		bytes = io->write(io->handle, data, sizeof(struct can_frame));
-	else
-		bytes = io->write(io->handle, data, control > 255 ? 255 : control);
+	else {
+		len = control > datasz ? datasz : control;
+		dprintf(1,"len: %d\n",len);
+		bytes = io->write(io->handle, data, control > datasz ? datasz : control);
+	}
 	dprintf(5,"bytes: %d\n", bytes);
 	/* control has bytes written */
 	return bytes < 0 ? devserver_error(c,errno) : devserver_reply(c,DEVSERVER_SUCCESS,unit,bytes,data,bytes);

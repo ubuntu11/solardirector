@@ -28,10 +28,19 @@ void buffer_free(buffer_t *b) {
 }
 
 int buffer_get(buffer_t *b, uint8_t *data, int datasz) {
-	if (b->index >= b->bytes) {
-		b->bytes = b->read(b->ctx, b->buffer, b->size);
-		if (b->bytes < 0)  return -1;
+	register int i;
+
+	dprintf(8,"datasz: %d\n", datasz);
+
+	for(i=0; i < datasz; i++) {
+		dprintf(8,"i: %d, index: %d, bytes: %d\n", i, b->index, b->bytes);
+		if (b->index >= b->bytes) {
+			b->bytes = b->read(b->ctx, b->buffer, b->size);
+			if (b->bytes < 1) break;
+			b->index = 0;
+		}
+		data[i] = b->buffer[b->index++];
 	}
-	dprintf(1,"bytes: %d, datasz: %d\n", b->bytes, datasz);
-	return 0;
+	if (debug >= 8) bindump("data",data,i);
+	return i;
 }

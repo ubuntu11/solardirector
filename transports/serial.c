@@ -31,24 +31,54 @@ struct serial_session {
 #endif
 	char target[SOLARD_AGENT_TARGET_LEN+1];
 	int speed,data,stop,parity;
+#if USE_BUFFER
 	buffer_t *buffer;
+#endif
 };
 typedef struct serial_session serial_session_t;
 
-static int serial_refresh(void *handle, uint8_t *buffer, int buflen) {
+#if USE_BUFFER
+static int serial_get(void *handle, uint8_t *buffer, int buflen) {
 	serial_session_t *s = handle;
 	int bytes;
 
 #ifdef __WIN32
 	ReadFile(s->h, buffer, buflen, (LPDWORD)&bytes, 0);
-	dprintf(1,"bytes: %d\n", bytes);
+	dprintf(7,"bytes: %d\n", bytes);
+	return bytes;
 #else
+	struct timeval tv;
+	fd_set rfds;
+	int num,count;
+
 	/* We are cooked - just read whats avail */
 	bytes = read(s->fd, buffer, buflen);
-	if (bytes < 0) return -1;
+
+	count = 0;
+	FD_ZERO(&rfds);
+	FD_SET(s->fd,&rfds);
+//	dprintf(8,"waiting...\n");
+//	tv.tv_usec = 500000;
+	tv.tv_usec = 0;
+	tv.tv_sec = 1;
+	num = select(s->fd+1,&rfds,0,0,&tv);
+	dprintf(8,"num: %d\n", num);
+	if (num < 1) goto serial_get_done;
+
+	bytes = read(s->fd, buffer, buflen);
+	if (bytes < 0) {
+		log_write(LOG_SYSERR|LOG_DEBUG,"serial_get: read");
+		return -1;
+	}
+	count = bytes;
+
+serial_get_done:
+	if (debug >= 8 && count > 0) bindump("FROM DEVICE",buffer,count);
+	dprintf(8,"returning: %d\n", count);
+	return count;
 #endif
-	return bytes;
 }
+#endif
 
 static void *serial_new(void *conf, void *target, void *topts) {
 	serial_session_t *s;
@@ -59,8 +89,10 @@ static void *serial_new(void *conf, void *target, void *topts) {
 		log_write(LOG_SYSERR,"serial_new: calloc(%d)",sizeof(*s));
 		return 0;
 	}
-	s->buffer = buffer_init(1024,serial_refresh,s);
+#if USE_BUFFER
+	s->buffer = buffer_init(1024,serial_get,s);
 	if (!s->buffer) return 0;
+#endif
 
 #ifdef __WIN32
 	s->h = INVALID_HANDLE_VALUE;
@@ -279,13 +311,13 @@ static int serial_open(void *handle) {
 }
 #endif
 
+#if USE_BUFFER
 static int serial_read(void *handle, void *buf, int buflen) {
 	serial_session_t *s = handle;
 
 	return buffer_get(s->buffer,buf,buflen);
 }
-
-#if 0
+#else
 static int serial_read(void *handle, void *buf, int buflen) {
 	serial_session_t *s = handle;
 	register uint8_t *p = buf;
@@ -310,8 +342,6 @@ static int serial_read(void *handle, void *buf, int buflen) {
 		bytes = read(s->fd,p,1);
 		dprintf(8,"bytes: %d\n", bytes);
 		if (bytes < 0) {
-//			dprintf(1,"errno: %d\n", errno);
-//			if (errno == EAGAIN) continue;
 			if (errno == EAGAIN) break;
 			else return -1;
 		}

@@ -21,8 +21,8 @@ LICENSE file in the root directory of this source tree.
 #define _ST_DEBUG 0
 #endif
 
-extern module_t serial_module;
-extern module_t rdev_module;
+extern solard_module_t serial_module;
+extern solard_module_t rdev_module;
 
 int main(int argc,char **argv) {
 	int logopts = LOG_INFO|LOG_WARNING|LOG_ERROR|LOG_SYSERR|_ST_DEBUG;
@@ -37,10 +37,13 @@ int main(int argc,char **argv) {
 	solard_common_init(nargs,args,0,logopts);
 //	solard_common_init(argc,argv,opts,logopts);
 
-//	tp = &serial_module;
+#if 1
 	tp = &rdev_module;
-//	tp_handle = tp->new(0,"/dev/ttyS0","19200");
-	tp_handle = tp->new(0,"192.168.2.2:3900","tty0");
+	tp_handle = tp->new(0,"192.168.1.7:3900","tty0");
+#else
+	tp = &serial_module;
+	tp_handle = tp->new(0,"/dev/ttyS0","19200");
+#endif
 	dprintf(1,"tp_handle: %p\n", tp_handle);
 
 	s = smanet_init(tp,tp_handle);
