@@ -38,7 +38,7 @@ void *mem_alloc(size_t size, int clear) {
 		mem = (char *) mem + sizeof(long);
 		dprintf(9,"mem_alloc: start: %p, size: %ld\n",mem,size);
 	}
-//	dprintf(1,"used: %ld\n",used);
+	dprintf(9,"used: %ld\n",used);
 	return(mem);
 }
 
@@ -69,6 +69,7 @@ void mem_free(void *mem) {
 	unsigned long *len;
 	long size;
 
+	dprintf(9,"ptr: %p\n", mem);
 	if (!mem) return;
 	dprintf(9,"start: used: %ld\n",used);
 	mem = (char *) mem - sizeof(long);

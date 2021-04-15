@@ -8,10 +8,10 @@ LICENSE file in the root directory of this source tree.
 */
 
 #include "common.h"
-#include <ctype.h>
-#include <sys/types.h>
+#include "client.h"
+#include "smanet.h"
 
-#define DEBUG_STARTUP 0
+#define DEBUG_STARTUP 1
 
 #if DEBUG_STARTUP
 #define _ST_DEBUG LOG_DEBUG
@@ -30,8 +30,12 @@ int main(int argc, char **argv) {
 	char transport[32],target[64],topts[32];
 	opt_proctab_t opts[] = {
                 /* Spec, dest, type len, reqd, default val, have */
-		{ "-t:#|wait time",&timeout,DATA_TYPE_INT,0,0,"10" },
-		{ "-r|read from dev not server",&read_flag,DATA_TYPE_BOOL,0,0,"0" },
+		{ "-b",0,0,0,0,0 },
+		{ "-l|list",&list,DATA_TYPE_BOOL,0,0,"N" },
+		{ "-p|list params",&all,DATA_TYPE_BOOL,0,0,"N" },
+		{ "-a|list all",&all,DATA_TYPE_BOOL,0,0,"N" },
+		{ "-t::|transport",&tpinfo,DATA_TYPE_STRING,sizeof(tpinfo)-1,0,"" },
+		{ "-c::|configfile",&configfile,DATA_TYPE_STRING,sizeof(configfile)-1,0,"" },
 		OPTS_END
 	};
 	cfg_proctab_t tab[] = {
@@ -43,40 +47,14 @@ int main(int argc, char **argv) {
 	solard_module_t *tp;
 	void *tp_handle;
 	int logopts = LOG_INFO|LOG_WARNING|LOG_ERROR|LOG_SYSERR|_ST_DEBUG;
-	int type,i,action,opt;
+	int type,i,action;
 	cfg_info_t *cfg;
 
 	log_open("siutil",0,logopts);
 
 	all = list = param = 0;
 	configfile[0] = tpinfo[0] = 0;
-	while ((opt=getopt(argc, argv, "alpd:t:c:h")) != -1) {
-		switch (opt) {
-		case 'd':
-			debug = atoi(optarg);
-			break;
-		case 't':
-			strcpy(tpinfo,optarg);
-			break;
-		case 'c':
-			strcpy(configfile,optarg);
-			break;
-		case 'a':
-			all = 1;
-			break;
-		case 'l':
-			list = 1;
-			break;
-		case 'p':
-			param = 1;
-			break;
-		default:
-		case 'h':
-			usage(argv[0]);
-			exit(0);
-			break;
-		}
-	}
+	if (solard_common_init(argc,argv,opts,logopts)) return 1;
 	dprintf(1,"all: %d, list: %d, param: %d\n", all, list, param);
 
 	if (debug) logopts |= LOG_DEBUG|LOG_DEBUG2;
@@ -97,21 +75,23 @@ int main(int argc, char **argv) {
 	if (list) {
 		action = 0;
 		if (all) {
-			type = CHANTYPE_ALL;
+			type = 3;
 		} else if (param) {
-			type = CHANTYPE_PARM;
+			type = 1;
 		} else {
-			type = CHANTYPE_SPOT;
+			type = 0;
 		}
 	} else if (argc < 2) {
 		action = 1;
 	} else {
 		action = 2;
 	}
+	dprintf(1,"action: %d, type: %d\n", action, type);
 
 	/* -t takes precedence */
 	cfg = 0;
-	dprintf(1,"configfile: %s\n", configfile);
+	dprintf(1,"tpinfo: %s, configfile: %s\n", tpinfo, configfile);
+	*transport = *target = *topts = 0;
 	if (strlen(tpinfo)) {
 		transport[0] = target[0] = topts[0] = 0;
 		strncat(transport,strele(0,":",tpinfo),sizeof(transport)-1);
@@ -146,12 +126,15 @@ int main(int argc, char **argv) {
 	}
 	dprintf(1,"transport: %s, target: %s, topts: %s\n", transport, target, topts);
 	tp = load_module(0,transport,SOLARD_MODTYPE_TRANSPORT);
+	if (!tp) return 1;
 	tp_handle = tp->new(0,target,topts);
+	if (!tp_handle) return 1;
 	s = smanet_init(tp, tp_handle);
 	if (!s) return 1;
+	smanet_get_channels(s);
 
-	dprintf(1,"action: %d\n", action);
 #if 0
+	dprintf(1,"action: %d\n", action);
 	switch(action) {
 	case 0:
 		dolist(s->dev_handle, type, (argc ? argv[0] : 0));
@@ -167,4 +150,3 @@ int main(int argc, char **argv) {
 
 	return 0;
 }
-#endif

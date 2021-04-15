@@ -32,20 +32,71 @@ char *optarg;		/* argument associated with option */
 #define	BADARG	(int)':'
 #define	EMSG	""
 
+static void _doadd(list lp, opt_proctab_t *newopt) {
+	opt_proctab_t *opt;
+	char k1,k2;
+
+	if (newopt->keyword[0] == '-')
+		k1 = newopt->keyword[1];
+	else
+		k1 = newopt->keyword[0];
+
+	DDLOG("k1: %c\n", k1);
+	list_reset(lp);
+	while((opt = list_get_next(lp)) != 0) {
+		if (opt->keyword[0] == '-')
+			k2 = opt->keyword[1];
+		else
+			k2 = opt->keyword[0];
+		DDLOG("k2: %c\n", k2);
+		if (k1 == k2) {
+			DDLOG("found!\n");
+			list_delete(lp,opt);
+		}
+	}
+	DDLOG("newopt->type: %d\n", newopt->type);
+	if (!newopt->type) return;
+	DDLOG("adding\n");
+	list_add(lp,newopt,sizeof(*newopt));
+}
+
 opt_proctab_t *opt_addopts(opt_proctab_t *std_opts,opt_proctab_t *add_opts) {
-	opt_proctab_t *opts;
-	int scount,acount;
-	register int x,y;
+	opt_proctab_t *opts,*opt;
+//	int scount,acount;
+//	register int x,y;
+	register int i;
+	list lp;
 
 	if (std_opts && !add_opts) return std_opts;
 	else if (!std_opts && add_opts) return add_opts;
 	else if (!std_opts && !add_opts) return 0;
 
+	lp = list_create();
+	for(i=0; std_opts[i].keyword; i++) _doadd(lp,&std_opts[i]);
+	for(i=0; add_opts[i].keyword; i++) _doadd(lp,&add_opts[i]);
+
+	opts = mem_alloc(sizeof(*opt)*(list_count(lp)+1),1);
+	if (!opts) {
+		log_write(LOG_SYSERR,"opt_addopts: malloc");
+		return 0;
+	}
+	DDLOG("end list:\n");
+	i = 0;
+	list_reset(lp);
+	while((opt = list_get_next(lp)) != 0) {
+		DDLOG("opt: keyword: %s\n", opt->keyword);
+		opts[i++] = *opt;
+	}
+	list_destroy(lp);
+
+	DDLOG("returning: %p\n", opts);
+	return opts;
+#if 0
+
 	scount = acount = 0;
 	for(x=0; std_opts[x].keyword; x++) scount++;
 	for(x=0; add_opts[x].keyword; x++) acount++;
-	DLOG(LOG_DEBUG,"scount: %d, acount: %d",
-		scount,acount);
+	DLOG(LOG_DEBUG,"scount: %d, acount: %d", scount,acount);
 	opts = mem_alloc((scount + acount + 1) * sizeof(opt_proctab_t),1);
 	if (!opts) {
 		log_write(LOG_SYSERR,"opt_addopts: mem_alloc");
@@ -85,6 +136,7 @@ opt_proctab_t *opt_addopts(opt_proctab_t *std_opts,opt_proctab_t *add_opts) {
 
 
 	return opts;
+#endif
 }
 
 /*

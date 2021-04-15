@@ -80,10 +80,7 @@ int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_op
 	}
 
 	/* If add_opts, free malloc'd opts */
-	if (add_opts) {
-		dprintf(1,"common_init: freeing opts...");
-		mem_free(opts);
-	}
+	if (add_opts) mem_free(opts);
 	if (error) return 1;
 
 	/* Set the requested flags */

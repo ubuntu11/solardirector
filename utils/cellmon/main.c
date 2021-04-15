@@ -101,7 +101,7 @@ int main(int argc,char **argv) {
 	conf = calloc(1,sizeof(*conf));
 	if (!conf) return 1;
 //	conf->c = client_init(nargs,args,opts,"cellmon");
-	conf->c = client_init(argc,argv,opts,"cellmon",configfile);
+	conf->c = client_init(argc,argv,opts,"cellmon");
 	if (!conf->c) return 1;
 	conf->packs = list_create();
 

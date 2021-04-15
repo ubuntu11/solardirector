@@ -10,6 +10,8 @@ LICENSE file in the root directory of this source tree.
 #ifndef __SMANET_H
 #define __SMANET_H
 
+#include "module.h"
+
 enum SMANET_CHANCLASS {
 	SMANET_CHANCLASS_UNKNOWN,
 	SMANET_CHANCLASS_ANALOG,

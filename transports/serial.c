@@ -320,14 +320,17 @@ static int serial_read(void *handle, void *buf, int buflen) {
 #else
 static int serial_read(void *handle, void *buf, int buflen) {
 	serial_session_t *s = handle;
-	register uint8_t *p = buf;
-	register int i;
+//	register uint8_t *p = buf;
+//	register int i;
 //	uint8_t ch;
 	int bytes, count;
 //	int num, i;
-//	struct timeval tv;
-//	fd_set rfds;
-	time_t start,cur;
+//	time_t start,cur;
+#ifndef __WIN32
+	struct timeval tv;
+	fd_set rfds;
+	int num;
+#endif
 
 	dprintf(8,"buf: %p, buflen: %d\n", buf, buflen);
 	if (!buf || !buflen) return 0;
@@ -337,6 +340,7 @@ static int serial_read(void *handle, void *buf, int buflen) {
 	dprintf(1,"bytes: %d\n", bytes);
 	return bytes;
 #else
+#if 0
 	time(&start);
 	for(i=0; i < buflen; i++) {
 		bytes = read(s->fd,p,1);
@@ -356,10 +360,7 @@ static int serial_read(void *handle, void *buf, int buflen) {
 		p++;
 	}
 	count = i;
-	dprintf(8,"count: %d\n", count);
-#endif
-
-#if 0
+#else
 	/* See if there's anything to read */
 	count = 0;
 	FD_ZERO(&rfds);
@@ -371,6 +372,17 @@ static int serial_read(void *handle, void *buf, int buflen) {
 //	dprintf(8,"num: %d\n", num);
 	if (num < 1) goto serial_read_done;
 
+	/* Read */
+	bytes = read(s->fd, buf, buflen);
+	if (bytes < 0) {
+		log_write(LOG_SYSERR|LOG_DEBUG,"serial_read: read");
+		return -1;
+	}
+	count = bytes;
+#endif
+#endif
+
+#if 0
 	/* See how many bytes are waiting to be read */
 	bytes = ioctl(s->fd, FIONREAD, &count);
 //	dprintf(8,"bytes: %d\n", bytes);
@@ -382,19 +394,9 @@ static int serial_read(void *handle, void *buf, int buflen) {
 	/* select said there was data yet there is none? */
 	if (count == 0) goto serial_read_done;
 
-	/* Read */
-//	dprintf(8,"count: %d, buflen: %d\n",count,buflen);
-	num = count > buflen ? buflen : count;
-//	dprintf(8,"num: %d\n", num);
-	bytes = read(s->fd, buf, num);
-	if (bytes < 0) {
-		log_write(LOG_SYSERR|LOG_DEBUG,"serial_read: read");
-		return -1;
-	}
-	count = bytes;
 #endif
 
-//serial_read_done:
+serial_read_done:
 	if (debug >= 8 && count > 0) bindump("FROM DEVICE",buf,count);
 	dprintf(8,"returning: %d\n", count);
 	return count;
