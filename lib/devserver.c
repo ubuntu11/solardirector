@@ -48,6 +48,10 @@ struct devserver_funcs {
 #else
 #define PACKET_MIN	5
 #endif
+#define PACKET_ESC	0xAA
+#define PACKET_ESC_START 0x01
+#define PACKET_ESC_END	 0x02
+#define PACKET_ESC_ESC 	 0x03
 
 #ifdef CHKSUM
 static uint16_t chksum(uint8_t *data, uint16_t datasz) {
@@ -62,8 +66,9 @@ static uint16_t chksum(uint8_t *data, uint16_t datasz) {
 #endif
 
 int devserver_send(socket_t fd, uint8_t opcode, uint8_t unit, uint16_t control, void *data, int datasz) {
-	uint8_t pkt[256];
-	int i,bytes,len;
+	uint8_t pkt[256],*dptr;
+	int bytes,len;
+	register int i,j;
 
 	dprintf(5,"fd: %d, opcode: %d, unit: %d, control: %d, data: %p, datasz: %d\n",
 		fd, opcode, unit, control, data, datasz);
@@ -88,8 +93,26 @@ int devserver_send(socket_t fd, uint8_t opcode, uint8_t unit, uint16_t control, 
 //	i += 4;
 	/* byte 6+: data */
 	if (data && datasz) {
-		memcpy(&pkt[i],data,datasz);
-		i += datasz;
+		for(j=0; j < len; j++) {
+			dptr = data;
+			if (dptr[j] == PACKET_START || dptr[j] == PACKET_END || dptr[j] == PACKET_ESC) {
+				dprintf(1,"****** ESCAPING *****\n");
+				pkt[i++] = PACKET_ESC; 
+				switch(dptr[j]) {
+				case PACKET_START:
+					pkt[i++] = 0x01;
+					break;
+				case PACKET_END:
+					pkt[i++] = 0x02;
+					break;
+				case PACKET_ESC:
+					pkt[i++] = 0x03;
+					break;
+				}
+			} else {
+				pkt[i++] = dptr[j];
+			}
+		}
 	}
 #ifdef CHKSUM
 	/* byte n: checksum */
@@ -106,8 +129,9 @@ int devserver_send(socket_t fd, uint8_t opcode, uint8_t unit, uint16_t control, 
 }
 
 int devserver_recv(socket_t fd, uint8_t *opcode, uint8_t *unit, uint16_t *control, void *data, int datasz, int timeout) {
-	int i,bytes,len,bytes_left;
-	uint8_t ch,pkt[256];
+	int bytes,len,bytes_left;
+	uint8_t ch,pkt[256],*dptr;
+	register int i,j;
 
 	dprintf(5,"opcode: %d, unit: %d, control: %d, data: %p, datasz: %d, timeout: %d\n",
 		*opcode, *unit, *control, data, datasz, timeout);
@@ -157,11 +181,30 @@ int devserver_recv(socket_t fd, uint8_t *opcode, uint8_t *unit, uint16_t *contro
 	bytes_left = len;
 	if (data && datasz && len) {
 		if (len > datasz) len = datasz;
-		bytes = recv(fd,data,len,0);
-		dprintf(5,"bytes: %d\n", bytes);
-		if (bytes < 1) return -1;
+		dptr = data;
+		for(j=0; i < len; j++) {
+			bytes = recv(fd,&ch,1,0);
+			dprintf(5,"bytes: %d\n", bytes);
+			if (bytes < 1) return -1;
+			if (ch == PACKET_ESC) {
+				dprintf(1,"***** ESC ******\n");
+				bytes = recv(fd,&ch,1,0);
+				dprintf(5,"bytes: %d\n", bytes);
+				if (bytes < 1) return -1;
+				switch(ch) {
+				case PACKET_ESC_START:
+					dptr[j++] = PACKET_START;
+					break;
+				case PACKET_ESC_END:
+					dptr[j++] = PACKET_END;
+					break;
+				case PACKET_ESC_ESC:
+					dptr[j++] = PACKET_ESC;
+					break;
+				}
+			}
+		}
 		bytes_left -= len;
-		memcpy(&pkt[i],data,len);
 		i += len;
 	}
 	/* Drain any remaining data */
