@@ -226,8 +226,8 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 	int info_flag,pretty_flag,read_interval,write_interval;
 	opt_proctab_t std_opts[] = {
 		/* Spec, dest, type len, reqd, default val, have */
-		{ "-t::|transport:target:opts",&tp_info,DATA_TYPE_STRING,sizeof(tp_info)-1,0,"" },
-		{ "-m::|mqtt host:clientid[:user[:pass]]",&mqtt_info,DATA_TYPE_STRING,sizeof(mqtt_info)-1,0,"" },
+		{ "-t::|transport,target,opts",&tp_info,DATA_TYPE_STRING,sizeof(tp_info)-1,0,"" },
+		{ "-m::|mqtt host,clientid[,user[,pass]]",&mqtt_info,DATA_TYPE_STRING,sizeof(mqtt_info)-1,0,"" },
 		{ "-c:%|config file",&configfile,DATA_TYPE_STRING,sizeof(configfile)-1,0,"" },
 		{ "-n::|config section name",&sname,DATA_TYPE_STRING,sizeof(sname)-1,0,"" },
 		{ "-I|agent info",&info_flag,DATA_TYPE_LOGICAL,0,0,"0" },
@@ -294,17 +294,17 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 
 	dprintf(1,"tp_info: %s\n", tp_info);
 	if (strlen(tp_info)) {
-		strncat(transport,strele(0,":",tp_info),sizeof(transport)-1);
-		strncat(target,strele(1,":",tp_info),sizeof(target)-1);
-		strncat(topts,strele(2,":",tp_info),sizeof(topts)-1);
+		strncat(transport,strele(0,",",tp_info),sizeof(transport)-1);
+		strncat(target,strele(1,",",tp_info),sizeof(target)-1);
+		strncat(topts,strele(2,",",tp_info),sizeof(topts)-1);
 	}
 
 	dprintf(1,"mqtt_info: %s\n", mqtt_info);
 	if (strlen(mqtt_info)) {
-		strncat(mqtt_config.host,strele(0,":",mqtt_info),sizeof(mqtt_config.host)-1);
-		strncat(mqtt_config.clientid,strele(1,":",mqtt_info),sizeof(mqtt_config.clientid)-1);
-		strncat(mqtt_config.user,strele(2,":",mqtt_info),sizeof(mqtt_config.user)-1);
-		strncat(mqtt_config.pass,strele(3,":",mqtt_info),sizeof(mqtt_config.pass)-1);
+		strncat(mqtt_config.host,strele(0,",",mqtt_info),sizeof(mqtt_config.host)-1);
+		strncat(mqtt_config.clientid,strele(1,",",mqtt_info),sizeof(mqtt_config.clientid)-1);
+		strncat(mqtt_config.user,strele(2,",",mqtt_info),sizeof(mqtt_config.user)-1);
+		strncat(mqtt_config.pass,strele(3,",",mqtt_info),sizeof(mqtt_config.pass)-1);
 	}
 	if (!strlen(ap->name)) strcpy(ap->name,ap->section_name);
 

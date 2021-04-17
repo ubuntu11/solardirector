@@ -201,7 +201,7 @@ solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,cha
 	char name[32],*section_name;
 	opt_proctab_t std_opts[] = {
 		/* Spec, dest, type len, reqd, default val, have */
-		{ "-m::|mqtt host:clientid[:user[:pass]]",&mqtt_info,DATA_TYPE_STRING,sizeof(mqtt_info)-1,0,"" },
+		{ "-m::|mqtt host:port,clientid[,user[,pass]]",&mqtt_info,DATA_TYPE_STRING,sizeof(mqtt_info)-1,0,"" },
 		{ "-c:%|config file",&configfile,DATA_TYPE_STRING,sizeof(configfile)-1,0,"" },
 		{ "-n::|config section name",&name,DATA_TYPE_STRING,sizeof(name)-1,0,"" },
 		OPTS_END
@@ -248,10 +248,10 @@ solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,cha
 			goto client_init_error;
 		}
 		memset(&mqtt_config,0,sizeof(mqtt_config));
-		strncat(mqtt_config.host,strele(0,":",mqtt_info),sizeof(mqtt_config.host)-1);
-		strncat(mqtt_config.clientid,strele(1,":",mqtt_info),sizeof(mqtt_config.clientid)-1);
-		strncat(mqtt_config.user,strele(2,":",mqtt_info),sizeof(mqtt_config.user)-1);
-		strncat(mqtt_config.pass,strele(3,":",mqtt_info),sizeof(mqtt_config.pass)-1);
+		strncat(mqtt_config.host,strele(0,",",mqtt_info),sizeof(mqtt_config.host)-1);
+		strncat(mqtt_config.clientid,strele(1,",",mqtt_info),sizeof(mqtt_config.clientid)-1);
+		strncat(mqtt_config.user,strele(2,",",mqtt_info),sizeof(mqtt_config.user)-1);
+		strncat(mqtt_config.pass,strele(3,",",mqtt_info),sizeof(mqtt_config.pass)-1);
 		dprintf(1,"host: %s, clientid: %s, user: %s, pass: %s\n", mqtt_config.host, mqtt_config.clientid, mqtt_config.user, mqtt_config.pass);
 	}
 	if (!strlen(s->id)) strcpy(s->id,id);

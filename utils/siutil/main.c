@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
 		{ "-l|list",&list,DATA_TYPE_BOOL,0,0,"N" },
 		{ "-p|list params",&all,DATA_TYPE_BOOL,0,0,"N" },
 		{ "-a|list all",&all,DATA_TYPE_BOOL,0,0,"N" },
-		{ "-t::|transport",&tpinfo,DATA_TYPE_STRING,sizeof(tpinfo)-1,0,"" },
+		{ "-t::|<transport,target,topts>",&tpinfo,DATA_TYPE_STRING,sizeof(tpinfo)-1,0,"" },
 		{ "-c::|configfile",&configfile,DATA_TYPE_STRING,sizeof(configfile)-1,0,"" },
 		OPTS_END
 	};
@@ -93,10 +93,10 @@ int main(int argc, char **argv) {
 	dprintf(1,"tpinfo: %s, configfile: %s\n", tpinfo, configfile);
 	*transport = *target = *topts = 0;
 	if (strlen(tpinfo)) {
-		transport[0] = target[0] = topts[0] = 0;
-		strncat(transport,strele(0,":",tpinfo),sizeof(transport)-1);
-		strncat(target,strele(1,":",tpinfo),sizeof(target)-1);
-		strncat(topts,strele(2,":",tpinfo),sizeof(topts)-1);
+		*transport = *target = *topts = 0;
+		strncat(transport,strele(0,",",tpinfo),sizeof(transport)-1);
+		strncat(target,strele(1,",",tpinfo),sizeof(target)-1);
+		strncat(topts,strele(2,",",tpinfo),sizeof(topts)-1);
 	} else if (strlen(configfile)) {
 		cfg = cfg_read(configfile);
 		if (!cfg) {
