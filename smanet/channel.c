@@ -145,56 +145,44 @@ static int parse_channels(smanet_session_t *s, uint8_t *data, int data_len) {
 
 int smanet_get_channels(smanet_session_t *s) {
 	smanet_packet_t *p;
-//	register uint8_t *data, *sptr, *eptr;
-//	int count;
-//	int data_len;
+	char user[32],path[256];
 	FILE *fp;
 
-	fp = fopen("/tmp/channels.dat","rb");
+	getlogin_r(user,sizeof(user));
+	sprintf(path,"/tmp/%s_%s_clist.dat",user,s->type);
+	dprintf(1,"path: %s\n", path);
+	fp = fopen(path,"rb");
 	if (fp) {
 		int fd;
 		struct stat buf;
 
 		fd = fileno(fp);
-		fstat(fd, &buf);
-		p = smanet_alloc_packet(buf.st_size);
-		if (!p) return 1;
-		p->dataidx = fread(p->data,1,buf.st_size,fp);
+		dprintf(1,"fd: %d\n", fd);
+		if (fstat(fd, &buf) == 0) {
+			dprintf(1,"st_size: %d\n", buf.st_size);
+			if (buf.st_size > 0) {
+				p = smanet_alloc_packet(buf.st_size);
+				if (!p) return 1;
+				p->dataidx = fread(p->data,1,buf.st_size,fp);
+				parse_channels(s,p->data,p->dataidx);
+				smanet_free_packet(p);
+				return 0;
+			}
+		}
 		fclose(fp);
-		parse_channels(s,p->data,p->dataidx);
-		smanet_free_packet(p);
-		return 0;
 	}
 
 	p = smanet_alloc_packet(256);
 	if (!p) return 1;
 	if (smanet_command(s,CMD_GET_CINFO,p,0,0)) return 1;
-	bindump("data",p->data,p->dataidx);
-	parse_channels(s,p->data,p->dataidx);
-#if 0
-	data = malloc(DATASZ);
-	if (!data) {
-		log_write(LOG_SYSERR,"smanet_get_channels: malloc");
-		return 1;
+	dprintf(1,"p->dataidx: %d\n", p->dataidx);
+	bindump("channel data",p->data,p->dataidx);
+	fp = fopen(path,"wb+");
+	if (fp) {
+		fwrite(p->data,1,p->dataidx,fp);
+		fclose(fp);
 	}
-
-	sptr = data;
-	eptr = data + DATASZ;
-	count = 0;
-	do {
-		if (smanet_command(s,CMD_GET_CINFO,count,&p,0,0)) return 1;
-		dprintf(1,"data_len: %d\n", p.data_len);
-		if (sptr + p.data_len > eptr) return 1;
-		memcpy(sptr,p.data,p.data_len);
-		sptr += p.data_len;
-		count = p.count;
-	} while(count);
-	data_len = sptr - data;
-
-	parse_channels(s,data,data_len);
-	free(data);
-#endif
-	
+	parse_channels(s,p->data,p->dataidx);
 	return 0;
 }
 
@@ -221,26 +209,16 @@ int smanet_save_channels(smanet_session_t *s, char *path) {
 			goto smanet_save_channels_error;
 		}
 		if (c->mask & CH_STATUS) {
-			dprintf(1,"count: %d\n", list_count(c->strings));
+//			dprintf(1,"count: %d\n", list_count(c->strings));
 			conv_type(DATA_TYPE_STRING,&temp,sizeof(temp)-1,DATA_TYPE_LIST,&c->strings,0);
-			dprintf(1,"temp: %s\n", temp);
+//			dprintf(1,"temp: %s\n", temp);
 			len = strlen((char *)temp);
 			if (fwrite(&len,1,sizeof(len),fp) < 0) goto smanet_save_channels_error;
 			if (fwrite(temp,1,len,fp) < 0) goto smanet_save_channels_error;
 		}
-#if 0
-		if (c->class == SMANET_CHANCLASS_STATUS) {
-			dprintf(1,"size: %d, status: %s\n", c->size, c->status);
-			len = strlen(c->status);
-			fwrite(&len,1,sizeof(len),fp);
-			bytes = fwrite(c->status,1,len,fp);
-			if (bytes < 0) {
-				log_write(LOG_SYSERR,"smanet_save_channels: fwrite");
-				goto smanet_save_channels_error;
-			}
-		}
-#endif
+//		dprintf(1,"c: name: %s, timestamp: %d\n", c->name, c->value.timestamp);
 	}
+	r = 0;
 smanet_save_channels_error:
 	fclose(fp);
 	return r;
@@ -250,7 +228,7 @@ int smanet_load_channels(smanet_session_t *s, char *path) {
 	FILE *fp;
 	char temp[256];
 	smanet_channel_t newchan;
-	int bytes;
+	int bytes,r;
 	uint16_t len;
 
 	dprintf(1,"path: %s\n", path);
@@ -264,25 +242,30 @@ int smanet_load_channels(smanet_session_t *s, char *path) {
 	smanet_destroy_channels(s);
 	s->channels = list_create();
 
+	r = 1;
 	while(!feof(fp)) {
 		bytes = fread(&newchan,1,sizeof(newchan),fp);
 		if (bytes < 0) {
 			log_write(LOG_SYSERR,"smanet_save_channels: fread");
-			fclose(fp);
-			return 1;
+			goto smanet_load_channels_error;
 		} else if (bytes == 0) break;
 		if (newchan.mask & CH_STATUS) {
 //			dprintf(dlevel,"size: %d\n", newchan.size);
-			fread(&len,1,sizeof(len),fp);
-			fread(temp,1,len,fp);
+	//		fread(&len,1,sizeof(len),fp);
+	//		fread(temp,1,len,fp);
+			if (fread(&len,1,sizeof(len),fp) < 0) goto smanet_load_channels_error;
+			if (fread(temp,1,len,fp) < 0) goto smanet_load_channels_error;
 //			dprintf(dlevel,"temp: %s\n", temp);
 			conv_type(DATA_TYPE_LIST,&newchan.strings,0,DATA_TYPE_STRING,temp,len);
 //			dprintf(dlevel,"count: %d\n", list_count(newchan.strings));
 		}
+//		dprintf(1,"newchan: name: %s, timestamp: %d\n", newchan.name, newchan.value.timestamp);
 		list_add(s->channels,&newchan,sizeof(newchan));
 	}
+	r = 0;
+smanet_load_channels_error:
 	fclose(fp);
-	return 0;
+	return r;
 }
 
 smanet_channel_t *smanet_get_channelbyid(smanet_session_t *s, int id) {

@@ -56,7 +56,7 @@ int smanet_write_frame(smanet_session_t *, uint8_t *, int);
 
 smanet_packet_t *smanet_alloc_packet(int);
 void smanet_free_packet(smanet_packet_t *);
-int smanet_recv_packet(smanet_session_t *, int, smanet_packet_t *, int);
+int smanet_recv_packet(smanet_session_t *, uint8_t, int, smanet_packet_t *, int);
 int smanet_send_packet(smanet_session_t *s, uint16_t src, uint16_t dest, uint8_t ctrl, uint8_t cnt, uint8_t cmd, uint8_t *buffer, int buflen);
 
 int smanet_command(smanet_session_t *s, int cmd, smanet_packet_t *p, uint8_t *buf, int buflen);

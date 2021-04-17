@@ -15,33 +15,17 @@ int smanet_command(smanet_session_t *s, int cmd, smanet_packet_t *p, uint8_t *bu
 	dprintf(1,"cmd: %d, packet: %p, buf: %p, buflen: %d\n", cmd, p, buf, buflen);
 
 	if (!p) return 1;
-	if (cmd <= 0 || cmd > 60) {
-//		smanet_seterr(s,"invalid command");
-		return 1;
-	}
-
-#if 0
-        sptr = data;
-        eptr = data + DATASZ;
-        count = 0;
-        do {
-                if (smanet_command(s,CMD_GET_CINFO,count,&p,0,0)) return 1;
-                dprintf(1,"data_len: %d\n", p.data_len);
-                if (sptr + p.data_len > eptr) return 1;
-                memcpy(sptr,p.data,p.data_len);
-                sptr += p.data_len;
-                count = p.count;
-        } while(count);
-#endif
+	if (cmd <= 0 || cmd > 60) return 1;
 
 	count = 0;
 	s->timeouts = 0;
-	do {
+	while(1) {
 		s->commands++;
 		control = s->addr ? 0 : 0x80;
 		if (smanet_send_packet(s,0,s->addr,control,count,cmd,buf,buflen)) return 1;
 		usleep(550000);
-		r = smanet_recv_packet(s,cmd,p,0);
+		r = smanet_recv_packet(s,count,cmd,p,0);
+		dprintf(1,"r: %d\n", r);
 		if (r < 0) return 1;
 		if (r == 1) return 1;
 		if (r == 2) {
@@ -51,9 +35,12 @@ int smanet_command(smanet_session_t *s, int cmd, smanet_packet_t *p, uint8_t *bu
 		}
 		if (r == 3) continue;
 		if (!p->response) continue;
-                dprintf(1,"dataidx: %d\n", p->dataidx);
+		dprintf(1,"p->command: %02x, cmd: %02x\n", p->command, cmd);
+		if (p->command != cmd) continue;
 		count = p->count;
-	} while(count);
+		dprintf(1,"count: %d\n",count);
+		if (!count) break;
+	}
 	dprintf(1,"returning: %d\n", 0);
 	return 0;
 }

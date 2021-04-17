@@ -27,6 +27,7 @@ smanet_session_t *smanet_init(solard_module_t *tp, void *tp_handle) {
         dprintf(1,"serial: %ld, type: %s\n", s->serial, s->type);
 	sleep(1);
 	if (smanet_cfg_net_adr(s,1)) goto smanet_init_error;
+	dprintf(1,"back\n");
 	return s;
 
 smanet_init_error:

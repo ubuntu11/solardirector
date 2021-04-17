@@ -47,13 +47,17 @@ struct __attribute__((packed, aligned(1))) packet_header {
 	uint8_t command;
 };
 
-int smanet_recv_packet(smanet_session_t *s, int command, smanet_packet_t *packet, int timeout) {
+int smanet_recv_packet(smanet_session_t *s, uint8_t count, int command, smanet_packet_t *packet, int timeout) {
 	uint8_t data[284];
 	int len,data_len;
 	struct packet_header *h;
+	uint8_t cmo;
 
 	if (!s || !packet) return 1;
-	dprintf(1,"command: %d, timeout: %d\n", command, timeout);
+
+	dprintf(1,"command: %02x, count: %02x, timeout: %d\n", command, count, timeout);
+	cmo = (uint8_t) ((char) count) - 1;
+	dprintf(1,"cmo: %02x\n", cmo);
 
 	len = smanet_read_frame(s,data,sizeof(data),5);
 	if (len < 0) return -1;
@@ -68,7 +72,9 @@ int smanet_recv_packet(smanet_session_t *s, int command, smanet_packet_t *packet
 	dprintf(1,"src: %04x, dest: %04x, control: %02x, count: %d, command: %02x\n",
 		h->src, h->dest, h->control, h->count, h->command);
 	/* Not the packet we're looking for, re-q the request */
-	if (h->command != command) return 3;
+	dprintf(1,"h->command: %02x, command: %02x, test: %d\n", h->command, command, h->command != command);
+	dprintf(1,"h->count: %02x, cmo: %02x, test: %d\n", h->count, cmo, h->count && h->count != cmo);
+	if ((h->count && h->count != cmo) || h->command != command) return 3;
 	packet->src = h->src;
 	packet->dest = h->dest;
 	packet->control = h->control;

@@ -1,779 +1,1253 @@
-serial_new(64): target: /dev/ttyS0, speed: 19200, data: 8, parity: N, stop: 1
-main(34): tp_handle: 0x14b1154
-serial_open(152): target: /dev/ttyS0
-serial_open(160): path: /dev/ttyS0
-set_interface_attribs(74): fd: 3, speed: 19200, data: 8, parity: 0, stop: 1, vmin: 0, vtime: 1
-smanet_command(7): cmd: 6, packet: 0x7ed804bc, buf: (nil), buflen: 0
-smanet_send_packet(75): src: 0000, dest: 0000, ctrl: 80, cnt: 0, cmd: 06, buffer: (nil), buflen: 0
-copy2buf(172): returning: 7
-copy2buf(172): returning: 2
+../transports/serial.c(136) serial_new: target: /dev/ttyS0, speed: 19200, data: 8, parity: N, stop: 1
+try.c(47) main: tp_handle: 0x1832154
+../transports/serial.c(230) serial_open: target: /dev/ttyS0
+../transports/serial.c(238) serial_open: path: /dev/ttyS0
+../transports/serial.c(147) set_interface_attribs: fd: 3, speed: 19200, data: 8, parity: 0, stop: 1, vmin: 0, vtime: 1
+packet.c(22) smanet_alloc_packet: data_len: 12
+command.c(15) smanet_command: cmd: 6, packet: 0x183323c, buf: (nil), buflen: 0
+packet.c(108) smanet_send_packet: src: 0000, dest: 0000, ctrl: 80, cnt: 0, cmd: 06, buffer: (nil), buflen: 0
 put frame(15):
 0000: 7E FF 03 40 41 00 00 00 00 80 00 06 D7 C0 7E       ~..@A.........~ 
+packet.c(58) smanet_recv_packet: command: 06, count: 00, timeout: 0
+packet.c(60) smanet_recv_packet: cmo: ff
+frame.c(53) smanet_read_frame: buffer: 0x7ee00324, buflen: 284, timeout: 5
 get frame(25):
 0000: FF 03 40 41 01 00 00 00 40 00 06 B4 C4 1A 4B 53    ..@A....@.....KS
 0010: 49 36 30 34 38 55 4D E1 2D                         I6048UM.-       
-smanet_recv_packet(56): src: 0001, dest: 0000
-smanet_recv_packet(58): control: 40, count: 0, command: 06
-smanet_recv_packet(64): data_len: 12
-smanet_command(29): returning: 0
-smanet_get_net_start(42): type: 0x14b21cc, buflen: 31
-smanet_get_net_start(46): type: SI6048UM
-smanet_init(19): serial: 1260045492, type: SI6048UM
-smanet_command(7): cmd: 3, packet: 0x7ed804bc, buf: 0x7ed804b4, buflen: 6
-smanet_send_packet(75): src: 0000, dest: 0000, ctrl: 80, cnt: 0, cmd: 03, buffer: 0x7ed804b4, buflen: 6
-copy2buf(172): returning: 13
-copy2buf(172): returning: 2
+packet.c(73) smanet_recv_packet: src: 0001, dest: 0000, control: 40, count: 0, command: 06
+packet.c(75) smanet_recv_packet: h->command: 06, command: 06, test: 0
+packet.c(76) smanet_recv_packet: h->count: 00, cmo: ff, test: 0
+packet.c(87) smanet_recv_packet: sizeof(h): 7
+packet.c(89) smanet_recv_packet: data_len: 12
+command.c(28) smanet_command: r: 0
+command.c(38) smanet_command: p->command: 06, cmd: 06
+command.c(41) smanet_command: count: 0
+command.c(44) smanet_command: returning: 0
+command.c(57) smanet_get_net_start: type: 0x18331cc, buflen: 31
+command.c(61) smanet_get_net_start: type: SI6048UM
+init.c(27) smanet_init: serial: 1260045492, type: SI6048UM
+packet.c(22) smanet_alloc_packet: data_len: 4
+command.c(15) smanet_command: cmd: 3, packet: 0x1833274, buf: 0x7ee004b4, buflen: 6
+packet.c(108) smanet_send_packet: src: 0000, dest: 0000, ctrl: 80, cnt: 0, cmd: 03, buffer: 0x7ee004b4, buflen: 6
 put frame(21):
 0000: 7E FF 03 40 41 00 00 00 00 80 00 03 B4 C4 1A 4B    ~..@A..........K
 0010: 01 00 F7 88 7E                                     ....~           
+packet.c(58) smanet_recv_packet: command: 03, count: 00, timeout: 0
+packet.c(60) smanet_recv_packet: cmo: ff
+frame.c(53) smanet_read_frame: buffer: 0x7ee0032c, buflen: 284, timeout: 5
 get frame(17):
 0000: FF 03 40 41 01 00 00 00 40 00 03 B4 C4 1A 4B 7E    ..@A....@.....K~
 0010: 85                                                 .               
-smanet_recv_packet(56): src: 0001, dest: 0000
-smanet_recv_packet(58): control: 40, count: 0, command: 03
-smanet_recv_packet(64): data_len: 4
-smanet_command(29): returning: 0
-smanet_cfg_net_adr(62): setting addr to 1
-parse_channels(36): data_len: 14718
-parse_channels(52): newchan: num: 1, name: AutoStr, index: 01, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: , gain: 0.000000, offset: 10.000000
-parse_channels(52): newchan: num: 2, name: Dt, index: 02, mask: 0401, format: 0102, level: 0
-parse_channels(73): unit: yyyymmdd, gain: 20100100.000000, offset: 137563152.000000
-parse_channels(52): newchan: num: 3, name: Tm, index: 03, mask: 0401, format: 0102, level: 0
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 4, name: BatCpyNom, index: 04, mask: 0401, format: 0104, level: 2
-parse_channels(73): unit: Ah, gain: 50.000000, offset: 10000.000000
-parse_channels(52): newchan: num: 5, name: BatVtgNom, index: 05, mask: 0401, format: 0104, level: 2
-parse_channels(73): unit: V, gain: 42.000000, offset: 52.000000
-parse_channels(52): newchan: num: 6, name: BatChrgCurMax, index: 06, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: A, gain: 10.000000, offset: 1200.000000
-parse_channels(52): newchan: num: 7, name: BatTmpMax, index: 07, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: degC, gain: 0.000000, offset: 50.000000
-parse_channels(52): newchan: num: 8, name: BatTmpStr, index: 08, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: degC, gain: 0.000000, offset: 50.000000
-parse_channels(52): newchan: num: 9, name: BatWirRes, index: 09, mask: 0401, format: 0101, level: 17
-parse_channels(73): unit: mOhm, gain: 0.000000, offset: 50.000000
-parse_channels(52): newchan: num: 10, name: AptTmBoost, index: 0a, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: min, gain: 1.000000, offset: 600.000000
-parse_channels(52): newchan: num: 11, name: AptTmFul, index: 0b, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: h, gain: 1.000000, offset: 20.000000
-parse_channels(52): newchan: num: 12, name: AptTmEqu, index: 0c, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: h, gain: 1.000000, offset: 48.000000
-parse_channels(52): newchan: num: 13, name: CycTmFul, index: 0d, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: d, gain: 1.000000, offset: 180.000000
-parse_channels(52): newchan: num: 14, name: CycTmEqu, index: 0e, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: d, gain: 7.000000, offset: 365.000000
-parse_channels(52): newchan: num: 15, name: ChrgVtgBoost, index: 0f, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: V, gain: 0.000000, offset: 2.700000
-parse_channels(52): newchan: num: 16, name: ChrgVtgFul, index: 10, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: V, gain: 0.000000, offset: 2.700000
-parse_channels(52): newchan: num: 17, name: ChrgVtgEqu, index: 11, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: V, gain: 0.000000, offset: 2.700000
-parse_channels(52): newchan: num: 18, name: ChrgVtgFlo, index: 12, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: V, gain: 0.000000, offset: 2.400000
-parse_channels(52): newchan: num: 19, name: BatTmpCps, index: 13, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: mV/degC, gain: 0.000000, offset: 10.000000
-parse_channels(52): newchan: num: 20, name: GnAutoStr, index: 14, mask: 0401, format: 0100, level: 1
-parse_channels(73): unit: , gain: 0.000000, offset: 10.000000
-parse_channels(52): newchan: num: 21, name: GnSocTm1Str, index: 15, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
-parse_channels(52): newchan: num: 22, name: GnSocTm1Stp, index: 16, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
-parse_channels(52): newchan: num: 23, name: GnSocTm2Str, index: 17, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
-parse_channels(52): newchan: num: 24, name: GnSocTm2Stp, index: 18, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
-parse_channels(52): newchan: num: 25, name: GnTm1Str, index: 19, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 26, name: GnTm2Str, index: 1a, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 27, name: GnPwrStr, index: 1b, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: kW, gain: 5.000000, offset: 20.000000
-parse_channels(52): newchan: num: 28, name: GnPwrStp, index: 1c, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: kW, gain: 5.000000, offset: 20.000000
-parse_channels(52): newchan: num: 29, name: GnVtgMin, index: 1d, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: V, gain: 80.000000, offset: 132.000000
-parse_channels(52): newchan: num: 30, name: GnVtgMax, index: 1e, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: V, gain: 105.000000, offset: 150.000000
-parse_channels(52): newchan: num: 31, name: GnCurNom, index: 1f, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: A, gain: 0.000000, offset: 1000.000000
-parse_channels(52): newchan: num: 32, name: GnFrqNom, index: 20, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: Hz, gain: 50.000000, offset: 70.000000
-parse_channels(52): newchan: num: 33, name: GnFrqMin, index: 21, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: Hz, gain: 50.000000, offset: 66.000000
-parse_channels(52): newchan: num: 34, name: GnFrqMax, index: 22, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: Hz, gain: 54.000000, offset: 70.000000
-parse_channels(52): newchan: num: 35, name: GnPwrAvgTm, index: 23, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: sec, gain: 1.000000, offset: 900.000000
-parse_channels(52): newchan: num: 36, name: GnOpTmMin, index: 24, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: min, gain: 0.000000, offset: 360.000000
-parse_channels(52): newchan: num: 37, name: GnStpTmMin, index: 25, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: min, gain: 0.000000, offset: 360.000000
-parse_channels(52): newchan: num: 38, name: GnCoolTm, index: 26, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: min, gain: 0.000000, offset: 60.000000
-parse_channels(52): newchan: num: 39, name: GnErrStpTm, index: 27, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: h, gain: 0.000000, offset: 24.000000
-parse_channels(52): newchan: num: 40, name: GnWarmTm, index: 28, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: sec, gain: 5.000000, offset: 900.000000
-parse_channels(52): newchan: num: 41, name: GnRvPwr, index: 29, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: W, gain: 0.000000, offset: 5000.000000
-parse_channels(52): newchan: num: 42, name: GnRvTm, index: 2a, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: sec, gain: 0.000000, offset: 900.000000
-parse_channels(52): newchan: num: 43, name: GnTmOpStrDt, index: 2b, mask: 0401, format: 0102, level: 0
-parse_channels(73): unit: yyyymmdd, gain: 20100100.000000, offset: 137563152.000000
-parse_channels(52): newchan: num: 44, name: GnTmOpStrTm, index: 2c, mask: 0401, format: 0102, level: 0
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 45, name: GnTmOpRnDur, index: 2d, mask: 0401, format: 0102, level: 0
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 6503227.000000
-parse_channels(52): newchan: num: 46, name: GdVtgMin, index: 2e, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: V, gain: 80.000000, offset: 132.000000
-parse_channels(52): newchan: num: 47, name: GdVtgMax, index: 2f, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: V, gain: 105.000000, offset: 150.000000
-parse_channels(52): newchan: num: 48, name: GdCurNom, index: 30, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: A, gain: 0.000000, offset: 1000.000000
-parse_channels(52): newchan: num: 49, name: GdFrqNom, index: 31, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: Hz, gain: 50.000000, offset: 70.000000
-parse_channels(52): newchan: num: 50, name: GdFrqMin, index: 32, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: Hz, gain: 50.000000, offset: 60.500000
-parse_channels(52): newchan: num: 51, name: GdFrqMax, index: 33, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: Hz, gain: 59.300003, offset: 70.000000
-parse_channels(52): newchan: num: 52, name: GdVldTm, index: 34, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: sec, gain: 5.000000, offset: 900.000000
-parse_channels(52): newchan: num: 53, name: GdRvPwr, index: 35, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: W, gain: 0.000000, offset: 5000.000000
-parse_channels(52): newchan: num: 54, name: GdRvTm, index: 36, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: sec, gain: 0.000000, offset: 60.000000
-parse_channels(52): newchan: num: 55, name: GdVtgIncPro, index: 37, mask: 0401, format: 0104, level: 17
-parse_channels(73): unit: V, gain: 132.000000, offset: 138.000000
-parse_channels(52): newchan: num: 56, name: FedInSocStr, index: 38, mask: 0401, format: 0101, level: 17
-parse_channels(73): unit: %, gain: 1.000000, offset: 90.000000
-parse_channels(52): newchan: num: 57, name: FedInSocStp, index: 39, mask: 0401, format: 0101, level: 17
-parse_channels(73): unit: %, gain: 1.000000, offset: 90.000000
-parse_channels(52): newchan: num: 58, name: FedInTmStr, index: 3a, mask: 0401, format: 0102, level: 17
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 59, name: FedInTmStp, index: 3b, mask: 0401, format: 0102, level: 17
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 60, name: FedInCurAt, index: 3c, mask: 0401, format: 0104, level: 17
-parse_channels(73): unit: A, gain: -1000.000000, offset: 1000.000000
-parse_channels(52): newchan: num: 61, name: FedInCurRt, index: 3d, mask: 0401, format: 0104, level: 17
-parse_channels(73): unit: A, gain: -1000.000000, offset: 1000.000000
-parse_channels(52): newchan: num: 62, name: GdSocTm1Str, index: 3e, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
-parse_channels(52): newchan: num: 63, name: GdSocTm1Stp, index: 3f, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
-parse_channels(52): newchan: num: 64, name: GdSocTm2Str, index: 40, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
-parse_channels(52): newchan: num: 65, name: GdSocTm2Stp, index: 41, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
-parse_channels(52): newchan: num: 66, name: GdTm1Str, index: 42, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 67, name: GdTm2Str, index: 43, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 68, name: GdPwrStr, index: 44, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: kW, gain: 0.000000, offset: 20.000000
-parse_channels(52): newchan: num: 69, name: GdPwrStp, index: 45, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: kW, gain: 0.000000, offset: 20.000000
-parse_channels(52): newchan: num: 70, name: SlpStrTm, index: 46, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 71, name: SlpStpTm, index: 47, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 72, name: InvVtgNom, index: 48, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: V, gain: 80.000000, offset: 150.000000
-parse_channels(52): newchan: num: 73, name: InvChrgCurMax, index: 49, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: A, gain: 0.000000, offset: 50.000000
-parse_channels(52): newchan: num: 74, name: InvFrqNom, index: 4a, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: Hz, gain: 50.000000, offset: 70.000000
-parse_channels(52): newchan: num: 75, name: InvTmOpStrDt, index: 4b, mask: 0401, format: 0102, level: 0
-parse_channels(73): unit: yyyymmdd, gain: 20100100.000000, offset: 137563152.000000
-parse_channels(52): newchan: num: 76, name: InvTmOpStrTm, index: 4c, mask: 0401, format: 0102, level: 0
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 77, name: InvTmOpRnDur, index: 4d, mask: 0401, format: 0102, level: 0
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 6503168.000000
-parse_channels(52): newchan: num: 78, name: Lod1SocTm1Str, index: 4e, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 1.000000, offset: 90.000000
-parse_channels(52): newchan: num: 79, name: Lod1SocTm1Stp, index: 4f, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 1.000000, offset: 90.000000
-parse_channels(52): newchan: num: 80, name: Lod1SocTm2Str, index: 50, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 1.000000, offset: 90.000000
-parse_channels(52): newchan: num: 81, name: Lod1SocTm2Stp, index: 51, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 1.000000, offset: 90.000000
-parse_channels(52): newchan: num: 82, name: Lod1Tm1Str, index: 52, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 83, name: Lod1Tm2Str, index: 53, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 84, name: Lod2SocTm1Str, index: 54, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 1.000000, offset: 90.000000
-parse_channels(52): newchan: num: 85, name: Lod2SocTm1Stp, index: 55, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 1.000000, offset: 90.000000
-parse_channels(52): newchan: num: 86, name: Lod2SocTm2Str, index: 56, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 1.000000, offset: 90.000000
-parse_channels(52): newchan: num: 87, name: Lod2SocTm2Stp, index: 57, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 1.000000, offset: 90.000000
-parse_channels(52): newchan: num: 88, name: Lod2Tm1Str, index: 58, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 89, name: Lod2Tm2Str, index: 59, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 90, name: RlyTmr1StrDt, index: 5a, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: yyyymmdd, gain: 20100100.000000, offset: 137563152.000000
-parse_channels(52): newchan: num: 91, name: RlyTmr1StrTm, index: 5b, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 92, name: RlyTmr1Dur, index: 5c, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 6503168.000000
-parse_channels(52): newchan: num: 93, name: RlyTmr2StrDt, index: 5d, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: yyyymmdd, gain: 20100100.000000, offset: 137563152.000000
-parse_channels(52): newchan: num: 94, name: RlyTmr2StrTm, index: 5e, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 95, name: RlyTmr2Dur, index: 5f, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 6503168.000000
-parse_channels(52): newchan: num: 96, name: BatFanTmpStr, index: 60, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: degC, gain: 20.000000, offset: 50.000000
-parse_channels(52): newchan: num: 97, name: GnTmStr, index: 61, mask: 0401, format: 0102, level: 0
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 98, name: ExtLkTm, index: 62, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: min, gain: 0.000000, offset: 60.000000
-parse_channels(52): newchan: num: 99, name: SilentTmFlo, index: 63, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: h, gain: 1.000000, offset: 48.000000
-parse_channels(52): newchan: num: 100, name: SilentTmMax, index: 64, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: h, gain: 1.000000, offset: 168.000000
-parse_channels(52): newchan: num: 101, name: BatChrgVtgMan, index: 65, mask: 0401, format: 0104, level: 17
-parse_channels(73): unit: V, gain: 41.000000, offset: 63.000000
-parse_channels(52): newchan: num: 102, name: BatPro1TmStr, index: 66, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 103, name: BatPro1TmStp, index: 67, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 104, name: BatPro2TmStr, index: 68, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 105, name: BatPro2TmStp, index: 69, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 106, name: BatPro1Soc, index: 6a, mask: 0401, format: 0100, level: 1
-parse_channels(73): unit: %, gain: 0.000000, offset: 70.000000
-parse_channels(52): newchan: num: 107, name: BatPro2Soc, index: 6b, mask: 0401, format: 0100, level: 1
-parse_channels(73): unit: %, gain: 0.000000, offset: 70.000000
-parse_channels(52): newchan: num: 108, name: BatPro3Soc, index: 6c, mask: 0401, format: 0100, level: 1
-parse_channels(73): unit: %, gain: 0.000000, offset: 70.000000
-parse_channels(52): newchan: num: 109, name: SimSoc, index: 6d, mask: 0401, format: 0101, level: 17
-parse_channels(73): unit: %, gain: 0.000000, offset: 100.000000
-parse_channels(52): newchan: num: 110, name: AuthCode, index: 6e, mask: 0401, format: 0102, level: 17
-parse_channels(73): unit: , gain: 0.000000, offset: 4294967296.000000
-parse_channels(52): newchan: num: 111, name: Plimit, index: 6f, mask: 0401, format: 0101, level: 15
-parse_channels(73): unit: kW, gain: 0.000000, offset: 100.000000
-parse_channels(52): newchan: num: 112, name: ChpOpTmMin, index: 70, mask: 0401, format: 0100, level: 1
-parse_channels(73): unit: min, gain: 1.000000, offset: 600.000000
-parse_channels(52): newchan: num: 113, name: ChpStpTmMin, index: 71, mask: 0401, format: 0100, level: 1
-parse_channels(73): unit: min, gain: 1.000000, offset: 1440.000000
-parse_channels(52): newchan: num: 114, name: ChpSocTm1Str, index: 72, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
-parse_channels(52): newchan: num: 115, name: ChpSocTm1Stp, index: 73, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
-parse_channels(52): newchan: num: 116, name: ChpSocTm2Str, index: 74, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
-parse_channels(52): newchan: num: 117, name: ChpSocTm2Stp, index: 75, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 1.000000, offset: 95.000000
-parse_channels(52): newchan: num: 118, name: ChpTm1Str, index: 76, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 119, name: ChpTm2Str, index: 77, mask: 0401, format: 0102, level: 1
-parse_channels(73): unit: hhmmss, gain: 0.000000, offset: 1522491.000000
-parse_channels(52): newchan: num: 120, name: ChpPwrStr, index: 78, mask: 0401, format: 0104, level: 1
-parse_channels(73): unit: kW, gain: 0.000000, offset: 100.000000
-parse_channels(52): newchan: num: 121, name: ChpPwrStrDly, index: 79, mask: 0401, format: 0100, level: 1
-parse_channels(73): unit: min, gain: 1.000000, offset: 600.000000
-parse_channels(52): newchan: num: 122, name: PvEgyMtr, index: 7a, mask: 0401, format: 0102, level: 15
-parse_channels(73): unit: kWh, gain: 0.000000, offset: 2147483520.000000
-parse_channels(52): newchan: num: 123, name: FedInCurAtCom, index: 7b, mask: 0401, format: 0104, level: 17
-parse_channels(73): unit: A, gain: -54.200005, offset: 54.200005
-parse_channels(52): newchan: num: 124, name: FedInCurRtCom, index: 7c, mask: 0401, format: 0104, level: 17
-parse_channels(73): unit: A, gain: -54.200005, offset: 54.200005
-parse_channels(52): newchan: num: 125, name: SlfCsmpSOCMin, index: 7d, mask: 0401, format: 0101, level: 1
-parse_channels(73): unit: %, gain: 5.000000, offset: 90.000000
-parse_channels(52): newchan: num: 126, name: SN, index: 01, mask: 0404, format: 0102, level: 15
-parse_channels(89): unit: , gain: 1.000000
-parse_channels(52): newchan: num: 127, name: SNSlv1, index: 02, mask: 0404, format: 0102, level: 15
-parse_channels(89): unit: , gain: 1.000000
-parse_channels(52): newchan: num: 128, name: SNSlv2, index: 03, mask: 0404, format: 0102, level: 15
-parse_channels(89): unit: , gain: 1.000000
-parse_channels(52): newchan: num: 129, name: SNSlv3, index: 04, mask: 0404, format: 0102, level: 15
-parse_channels(89): unit: , gain: 1.000000
-parse_channels(52): newchan: num: 130, name: GdCsmpEgyMtr, index: 05, mask: 0404, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 1.000000
-parse_channels(52): newchan: num: 131, name: GdFeedEgyMtr, index: 06, mask: 0404, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 1.000000
-parse_channels(52): newchan: num: 132, name: BatTyp, index: 01, mask: 0408, format: 0100, level: 2
-parse_channels(94): newchan.size: 38
-parse_channels(103): fixed status: ---,VRLA,FLA,NiCd,LiIon_Ext-BMS,Other
-parse_channels(52): newchan: num: 133, name: AutoEquChrgEna, index: 02, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 19
-parse_channels(103): fixed status: ---,Disable,Enable
-parse_channels(52): newchan: num: 134, name: GnAutoEna, index: 03, mask: 0408, format: 0100, level: 0
-parse_channels(94): newchan.size: 11
-parse_channels(103): fixed status: ---,Off,On
-parse_channels(52): newchan: num: 135, name: GnPwrEna, index: 04, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 11
-parse_channels(103): fixed status: ---,Off,On
-parse_channels(52): newchan: num: 136, name: GnStrMod, index: 05, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 28
-parse_channels(103): fixed status: ---,Manual,Autostart,GenMan
-parse_channels(52): newchan: num: 137, name: GnTmOpEna, index: 06, mask: 0408, format: 0100, level: 0
-parse_channels(94): newchan.size: 19
-parse_channels(103): fixed status: ---,Disable,Enable
-parse_channels(52): newchan: num: 138, name: GnTmOpCyc, index: 07, mask: 0408, format: 0100, level: 0
-parse_channels(94): newchan.size: 24
-parse_channels(103): fixed status: ---,Single,Daily,Weekly
-parse_channels(52): newchan: num: 139, name: GdMod, index: 08, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 24
-parse_channels(103): fixed status: ---,GridCharge,GridFeed
-parse_channels(52): newchan: num: 140, name: SilentEna, index: 09, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 19
-parse_channels(103): fixed status: ---,Disable,Enable
-parse_channels(52): newchan: num: 141, name: GdAISns, index: 0a, mask: 0408, format: 0100, level: 17
-parse_channels(94): newchan.size: 27
-parse_channels(103): fixed status: ---,Low,Medium,Normal,High
-parse_channels(52): newchan: num: 142, name: GdVtgIncProEna, index: 0b, mask: 0408, format: 0100, level: 17
-parse_channels(94): newchan.size: 19
-parse_channels(103): fixed status: ---,Disable,Enable
-parse_channels(52): newchan: num: 143, name: Country, index: 0c, mask: 0408, format: 0100, level: 17
-parse_channels(94): newchan.size: 33
-parse_channels(103): fixed status: ---,GER_VDE0126_1_1,AS4777,Other
-parse_channels(52): newchan: num: 144, name: FedInMod, index: 0d, mask: 0408, format: 0100, level: 17
-parse_channels(94): newchan.size: 34
-parse_channels(103): fixed status: ---,Off,Time,Signal,Com,SignalCom
-parse_channels(52): newchan: num: 145, name: FedInCtl, index: 0e, mask: 0408, format: 0100, level: 17
-parse_channels(94): newchan.size: 18
-parse_channels(103): fixed status: ---,ExtCur,InvCur
-parse_channels(52): newchan: num: 146, name: GdSocEna, index: 0f, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 19
-parse_channels(103): fixed status: ---,Disable,Enable
-parse_channels(52): newchan: num: 147, name: GdPwrEna, index: 10, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 19
-parse_channels(103): fixed status: ---,Disable,Enable
-parse_channels(52): newchan: num: 148, name: GdManStr, index: 11, mask: 0408, format: 0100, level: 0
-parse_channels(94): newchan.size: 20
-parse_channels(103): fixed status: ---,Auto,Stop,Start
-parse_channels(52): newchan: num: 149, name: ClstCfg, index: 12, mask: 0408, format: 0100, level: 2
-parse_channels(94): newchan.size: 83
-parse_channels(103): fixed status: ---,HW,Slave1,Slave2,Slave3,1Phase1,1Phase2,1Phase3,1Phase4,2Phase2,3Phase,2Phase4
-parse_channels(52): newchan: num: 150, name: ComBaud, index: 13, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 25
-parse_channels(103): fixed status: ---,1200,4800,9600,19200
-parse_channels(52): newchan: num: 151, name: SleepEna, index: 14, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 19
-parse_channels(103): fixed status: ---,Disable,Enable
-parse_channels(52): newchan: num: 152, name: AfraEna, index: 15, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 19
-parse_channels(103): fixed status: ---,Disable,Enable
-parse_channels(52): newchan: num: 153, name: SlpAtNgt, index: 16, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 19
-parse_channels(103): fixed status: ---,Disable,Enable
-parse_channels(52): newchan: num: 154, name: InvRs, index: 17, mask: 0408, format: 0100, level: 0
-parse_channels(94): newchan.size: 12
-parse_channels(103): fixed status: ---,Restart
-parse_channels(52): newchan: num: 155, name: ParaSto, index: 18, mask: 0408, format: 0100, level: 0
-parse_channels(94): newchan.size: 14
-parse_channels(103): fixed status: ---,Set1,Set2
-parse_channels(52): newchan: num: 156, name: InvTmOpEna, index: 19, mask: 0408, format: 0100, level: 0
-parse_channels(94): newchan.size: 19
-parse_channels(103): fixed status: ---,Disable,Enable
-parse_channels(52): newchan: num: 157, name: InvTmOpCyc, index: 1a, mask: 0408, format: 0100, level: 0
-parse_channels(94): newchan.size: 24
-parse_channels(103): fixed status: ---,Single,Daily,Weekly
-parse_channels(52): newchan: num: 158, name: ManStr, index: 1b, mask: 0408, format: 0100, level: 0
-parse_channels(94): newchan.size: 15
-parse_channels(103): fixed status: ---,Start,Stop
-parse_channels(52): newchan: num: 159, name: ErrAckn, index: 1c, mask: 0408, format: 0100, level: 0
-parse_channels(94): newchan.size: 16
-parse_channels(103): fixed status: ---,Ackn,NoAckn
-parse_channels(52): newchan: num: 160, name: ParaLod, index: 1d, mask: 0408, format: 0100, level: 17
-parse_channels(94): newchan.size: 22
-parse_channels(103): fixed status: ---,Set1,Set2,Factory
-parse_channels(52): newchan: num: 161, name: CntRs, index: 1e, mask: 0408, format: 0100, level: 17
-parse_channels(94): newchan.size: 49
-parse_channels(103): fixed status: ---,Inv,Bat,Gn,Gd,All,Sic1,Sic2,Sic3,Sic4,SicAll
-parse_channels(52): newchan: num: 162, name: RlyTmr1Cyc, index: 1f, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 24
-parse_channels(103): fixed status: ---,Single,Daily,Weekly
-parse_channels(52): newchan: num: 163, name: RlyTmr2Cyc, index: 20, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 24
-parse_channels(103): fixed status: ---,Single,Daily,Weekly
-parse_channels(52): newchan: num: 164, name: Rly1Op, index: 21, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 176
-parse_channels(103): fixed status: ---,Off,On,AutoGn,AutoLodExt,AutoLod1Soc,AutoLod2Soc,Tmr1,Tmr2,ExtPwrDer,GnRn,ExtVfOk,GdOn,Error,Warn,Run,BatFan,AcdCir,MccBatFan,MccAutoLod,CHPreq,CHPAdd,SiComRemote,Overload
-parse_channels(52): newchan: num: 165, name: Rly1OpSlv1, index: 22, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 176
-parse_channels(103): fixed status: ---,Off,On,AutoGn,AutoLodExt,AutoLod1Soc,AutoLod2Soc,Tmr1,Tmr2,ExtPwrDer,GnRn,ExtVfOk,GdOn,Error,Warn,Run,BatFan,AcdCir,MccBatFan,MccAutoLod,CHPreq,CHPAdd,SiComRemote,Overload
-parse_channels(52): newchan: num: 166, name: Rly1OpSlv2, index: 23, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 176
-parse_channels(103): fixed status: ---,Off,On,AutoGn,AutoLodExt,AutoLod1Soc,AutoLod2Soc,Tmr1,Tmr2,ExtPwrDer,GnRn,ExtVfOk,GdOn,Error,Warn,Run,BatFan,AcdCir,MccBatFan,MccAutoLod,CHPreq,CHPAdd,SiComRemote,Overload
-parse_channels(52): newchan: num: 167, name: Rly2Op, index: 24, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 176
-parse_channels(103): fixed status: ---,Off,On,AutoGn,AutoLodExt,AutoLod1Soc,AutoLod2Soc,Tmr1,Tmr2,ExtPwrDer,GnRn,ExtVfOk,GdOn,Error,Warn,Run,BatFan,AcdCir,MccBatFan,MccAutoLod,CHPreq,CHPAdd,SiComRemote,Overload
-parse_channels(52): newchan: num: 168, name: Rly2OpSlv1, index: 25, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 176
-parse_channels(103): fixed status: ---,Off,On,AutoGn,AutoLodExt,AutoLod1Soc,AutoLod2Soc,Tmr1,Tmr2,ExtPwrDer,GnRn,ExtVfOk,GdOn,Error,Warn,Run,BatFan,AcdCir,MccBatFan,MccAutoLod,CHPreq,CHPAdd,SiComRemote,Overload
-parse_channels(52): newchan: num: 169, name: Rly2OpSlv2, index: 26, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 176
-parse_channels(103): fixed status: ---,Off,On,AutoGn,AutoLodExt,AutoLod1Soc,AutoLod2Soc,Tmr1,Tmr2,ExtPwrDer,GnRn,ExtVfOk,GdOn,Error,Warn,Run,BatFan,AcdCir,MccBatFan,MccAutoLod,CHPreq,CHPAdd,SiComRemote,Overload
-parse_channels(52): newchan: num: 170, name: GnManStr, index: 27, mask: 0408, format: 0100, level: 0
-parse_channels(94): newchan.size: 26
-parse_channels(103): fixed status: ---,Auto,Stop,Start,Run1h
-parse_channels(52): newchan: num: 171, name: GnAck, index: 28, mask: 0408, format: 0100, level: 0
-parse_channels(94): newchan.size: 9
-parse_channels(103): fixed status: ---,Ackn
-parse_channels(52): newchan: num: 172, name: ChrgSelMan, index: 29, mask: 0408, format: 0100, level: 0
-parse_channels(94): newchan.size: 20
-parse_channels(103): fixed status: ---,Idle,Start,Stop
-parse_channels(52): newchan: num: 173, name: GnCtlMod, index: 2a, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 15
-parse_channels(103): fixed status: ---,Cur,CurFrq
-parse_channels(52): newchan: num: 174, name: CardFunc, index: 2b, mask: 0408, format: 0100, level: 0
-parse_channels(94): newchan.size: 44
-parse_channels(103): fixed status: ---,ForcedWrite,StoEvtHis,StoFailHis,StoHis
-parse_channels(52): newchan: num: 175, name: GnAISns, index: 2c, mask: 0408, format: 0100, level: 17
-parse_channels(94): newchan.size: 27
-parse_channels(103): fixed status: ---,Low,Medium,Normal,High
-parse_channels(52): newchan: num: 176, name: BkupTst, index: 2d, mask: 0408, format: 0100, level: 0
-parse_channels(94): newchan.size: 15
-parse_channels(103): fixed status: ---,Stop,Start
-parse_channels(52): newchan: num: 177, name: ExtSrc, index: 2e, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 28
-parse_channels(103): fixed status: ---,PvOnly,Gen,Grid,GenGrid
-parse_channels(52): newchan: num: 178, name: LongChLstEna, index: 2f, mask: 0408, format: 0100, level: 18
-parse_channels(94): newchan.size: 19
-parse_channels(103): fixed status: ---,Disable,Enable
-parse_channels(52): newchan: num: 179, name: ChrgCtlOp, index: 30, mask: 0408, format: 0100, level: 17
-parse_channels(94): newchan.size: 20
-parse_channels(103): fixed status: ---,Auto,DCOnly,SMA
-parse_channels(52): newchan: num: 180, name: ChpPwrEna, index: 31, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 19
-parse_channels(103): fixed status: ---,Disable,Enable
-parse_channels(52): newchan: num: 181, name: ChpManStr, index: 32, mask: 0408, format: 0100, level: 0
-parse_channels(94): newchan.size: 16
-parse_channels(103): fixed status: Auto,Start,Stop
-parse_channels(52): newchan: num: 182, name: RnMod, index: 33, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 25
-parse_channels(103): fixed status: ---,RunAlways,StopAlways
-parse_channels(52): newchan: num: 183, name: SlfCsmpIncEna, index: 34, mask: 0408, format: 0100, level: 1
-parse_channels(94): newchan.size: 19
-parse_channels(103): fixed status: ---,Disable,Enable
-parse_channels(52): newchan: num: 184, name: SlfCsmpStdbyMod, index: 35, mask: 0408, format: 0100, level: 17
-parse_channels(94): newchan.size: 11
-parse_channels(103): fixed status: ---,Off,On
-parse_channels(52): newchan: num: 185, name: Msg, index: 01, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: , gain: 1.000000, offset: 0.000000
-parse_channels(52): newchan: num: 186, name: Soh, index: 02, mask: 0901, format: 0100, level: 15
-parse_channels(73): unit: %, gain: 1.000000, offset: 0.000000
-parse_channels(52): newchan: num: 187, name: TotInvPwrAt, index: 03, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 188, name: TotInvCur, index: 04, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 189, name: TotInvPwrRt, index: 05, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kVAr, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 190, name: BatSoc, index: 06, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: %, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 191, name: BatVtg, index: 07, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: V, gain: 0.100000, offset: 0.000000
-parse_channels(52): newchan: num: 192, name: BatChrgVtg, index: 08, mask: 0901, format: 0104, level: 15
-parse_channels(73): unit: V, gain: 0.100000, offset: 0.000000
-parse_channels(52): newchan: num: 193, name: AptTmRmg, index: 09, mask: 0901, format: 0102, level: 15
-parse_channels(73): unit: hhmmss, gain: 1.000000, offset: 0.000000
-parse_channels(52): newchan: num: 194, name: TotBatCur, index: 0a, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 195, name: BatTmp, index: 0b, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: degC, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 196, name: RmgTmFul, index: 0c, mask: 0901, format: 0102, level: 15
-parse_channels(73): unit: d, gain: 1.000000, offset: 0.000000
-parse_channels(52): newchan: num: 197, name: RmgTmEqu, index: 0d, mask: 0901, format: 0102, level: 15
-parse_channels(73): unit: d, gain: 1.000000, offset: 0.000000
-parse_channels(52): newchan: num: 198, name: BatSocErr, index: 0e, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: %, gain: 0.100000, offset: 0.000000
-parse_channels(52): newchan: num: 199, name: GnRmgTm, index: 0f, mask: 0901, format: 0102, level: 15
-parse_channels(73): unit: hhmmss, gain: 1.000000, offset: 0.000000
-parse_channels(52): newchan: num: 200, name: InvPwrAt, index: 10, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 201, name: InvPwrAtSlv1, index: 11, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 202, name: InvPwrAtSlv2, index: 12, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 203, name: InvPwrAtSlv3, index: 13, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 204, name: InvVtg, index: 14, mask: 0901, format: 0102, level: 15
-parse_channels(73): unit: V, gain: 0.001000, offset: 0.000000
-parse_channels(52): newchan: num: 205, name: InvVtgSlv1, index: 15, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: V, gain: 0.100000, offset: 0.000000
-parse_channels(52): newchan: num: 206, name: InvVtgSlv2, index: 16, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: V, gain: 0.100000, offset: 0.000000
-parse_channels(52): newchan: num: 207, name: InvVtgSlv3, index: 17, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: V, gain: 0.100000, offset: 0.000000
-parse_channels(52): newchan: num: 208, name: InvCur, index: 18, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 209, name: InvCurSlv1, index: 19, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 210, name: InvCurSlv2, index: 1a, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 211, name: InvCurSlv3, index: 1b, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 212, name: InvFrq, index: 1c, mask: 0901, format: 0102, level: 15
-parse_channels(73): unit: Hz, gain: 0.001000, offset: 0.000000
-parse_channels(52): newchan: num: 213, name: InvPwrRt, index: 1d, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kVAr, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 214, name: InvPwrRtSlv1, index: 1e, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kVAr, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 215, name: InvPwrRtSlv2, index: 1f, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kVAr, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 216, name: InvPwrRtSlv3, index: 20, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kVAr, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 217, name: ExtPwrAt, index: 21, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 218, name: ExtPwrAtSlv1, index: 22, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 219, name: ExtPwrAtSlv2, index: 23, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 220, name: ExtPwrAtSlv3, index: 24, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 221, name: ExtVtg, index: 25, mask: 0901, format: 0102, level: 15
-parse_channels(73): unit: V, gain: 0.001000, offset: 0.000000
-parse_channels(52): newchan: num: 222, name: ExtVtgSlv1, index: 26, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: V, gain: 0.100000, offset: 0.000000
-parse_channels(52): newchan: num: 223, name: ExtVtgSlv2, index: 27, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: V, gain: 0.100000, offset: 0.000000
-parse_channels(52): newchan: num: 224, name: ExtVtgSlv3, index: 28, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: V, gain: 0.100000, offset: 0.000000
-parse_channels(52): newchan: num: 225, name: ExtCur, index: 29, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 226, name: ExtCurSlv1, index: 2a, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 227, name: ExtCurSlv2, index: 2b, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 228, name: ExtCurSlv3, index: 2c, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 229, name: ExtFrq, index: 2d, mask: 0901, format: 0102, level: 15
-parse_channels(73): unit: Hz, gain: 0.001000, offset: 0.000000
-parse_channels(52): newchan: num: 230, name: ExtPwrRt, index: 2e, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kVAr, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 231, name: ExtPwrRtSlv1, index: 2f, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kVAr, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 232, name: ExtPwrRtSlv2, index: 30, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kVAr, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 233, name: ExtPwrRtSlv3, index: 31, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kVAr, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 234, name: TotExtPwrAt, index: 32, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 235, name: TotExtCur, index: 33, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 236, name: TotExtPwrRt, index: 34, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kVAr, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 237, name: TotLodPwr, index: 35, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 238, name: GdRmgTm, index: 36, mask: 0901, format: 0102, level: 15
-parse_channels(73): unit: hhmmss, gain: 1.000000, offset: 0.000000
-parse_channels(52): newchan: num: 239, name: Pac, index: 37, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 240, name: Firmware, index: 38, mask: 0901, format: 0102, level: 15
-parse_channels(73): unit: , gain: 0.001000, offset: 0.000000
-parse_channels(52): newchan: num: 241, name: Iac, index: 39, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 242, name: Vac, index: 3a, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: V, gain: 0.100000, offset: 0.000000
-parse_channels(52): newchan: num: 243, name: Fac, index: 3b, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: Hz, gain: 0.100000, offset: 0.000000
-parse_channels(52): newchan: num: 244, name: ChpPwrAt, index: 3c, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 245, name: ChpRmgTm, index: 3d, mask: 0901, format: 0102, level: 15
-parse_channels(73): unit: hhmmss, gain: 1.000000, offset: 0.000000
-parse_channels(52): newchan: num: 246, name: ChpStrRmgTm, index: 3e, mask: 0901, format: 0102, level: 15
-parse_channels(73): unit: hhmmss, gain: 1.000000, offset: 0.000000
-parse_channels(52): newchan: num: 247, name: Sic1PvPwr, index: 3f, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: W, gain: 1.000000, offset: -32767.000000
-parse_channels(52): newchan: num: 248, name: Sic2PvPwr, index: 40, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: W, gain: 1.000000, offset: -32767.000000
-parse_channels(52): newchan: num: 249, name: Sic3PvPwr, index: 41, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: W, gain: 1.000000, offset: -32767.000000
-parse_channels(52): newchan: num: 250, name: Sic4PvPwr, index: 42, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: W, gain: 1.000000, offset: -32767.000000
-parse_channels(52): newchan: num: 251, name: Sic1SWVers, index: 43, mask: 0901, format: 0101, level: 31
-parse_channels(73): unit: , gain: 0.010000, offset: -327.670013
-parse_channels(52): newchan: num: 252, name: Sic2SWVers, index: 44, mask: 0901, format: 0101, level: 31
-parse_channels(73): unit: , gain: 0.010000, offset: -327.670013
-parse_channels(52): newchan: num: 253, name: Sic3SWVers, index: 45, mask: 0901, format: 0101, level: 31
-parse_channels(73): unit: , gain: 0.010000, offset: -327.670013
-parse_channels(52): newchan: num: 254, name: Sic4SWVers, index: 46, mask: 0901, format: 0101, level: 31
-parse_channels(73): unit: , gain: 0.010000, offset: -327.670013
-parse_channels(52): newchan: num: 255, name: TotSicPvPwr, index: 47, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: W, gain: 1.000000, offset: -32767.000000
-parse_channels(52): newchan: num: 256, name: TotSicBatCur, index: 48, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: A, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 257, name: TotMccLodPwr, index: 49, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 258, name: TotPvPwrAt, index: 4a, mask: 0901, format: 0104, level: 15
-parse_channels(73): unit: kW, gain: 0.001000, offset: 0.000000
-parse_channels(52): newchan: num: 259, name: TotLodPwrAt, index: 4b, mask: 0901, format: 0104, level: 15
-parse_channels(73): unit: kW, gain: 0.001000, offset: 0.000000
-parse_channels(52): newchan: num: 260, name: SlfCsmpPwrAt, index: 4c, mask: 0901, format: 0104, level: 15
-parse_channels(73): unit: kW, gain: 0.001000, offset: 0.000000
-parse_channels(52): newchan: num: 261, name: SlfCsmpIncPwr, index: 4d, mask: 0901, format: 0104, level: 15
-parse_channels(73): unit: kW, gain: 0.001000, offset: 0.000000
-parse_channels(52): newchan: num: 262, name: BatCpyThrpCnt, index: 4e, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: , gain: 1.000000, offset: 0.000000
-parse_channels(52): newchan: num: 263, name: GdCsmpPwrAt, index: 4f, mask: 0901, format: 0104, level: 15
-parse_channels(73): unit: kW, gain: 0.001000, offset: 0.000000
-parse_channels(52): newchan: num: 264, name: GdFeedPwrAt, index: 50, mask: 0901, format: 0104, level: 15
-parse_channels(73): unit: kW, gain: 0.001000, offset: 0.000000
-parse_channels(52): newchan: num: 265, name: PacPV, index: 51, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 266, name: PacFeed-In, index: 52, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 267, name: PacConsumption, index: 53, mask: 0901, format: 0101, level: 15
-parse_channels(73): unit: kW, gain: 0.100000, offset: -3276.699951
-parse_channels(52): newchan: num: 268, name: kWhPV, index: 54, mask: 0901, format: 0102, level: 15
-parse_channels(73): unit: kWh, gain: 1.000000, offset: 0.000000
-parse_channels(52): newchan: num: 269, name: FwVer, index: 01, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: , gain: 0.001000
-parse_channels(52): newchan: num: 270, name: OnTmh, index: 02, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: h, gain: 0.100000
-parse_channels(52): newchan: num: 271, name: FwVer2, index: 03, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: , gain: 0.001000
-parse_channels(52): newchan: num: 272, name: EgyCntIn, index: 04, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 0.100000
-parse_channels(52): newchan: num: 273, name: EgyCntOut, index: 05, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 0.100000
-parse_channels(52): newchan: num: 274, name: EgyCntTm, index: 06, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: h, gain: 0.100000
-parse_channels(52): newchan: num: 275, name: GnEgyCnt, index: 07, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 0.100000
-parse_channels(52): newchan: num: 276, name: GnEgyTm, index: 08, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: h, gain: 0.100000
-parse_channels(52): newchan: num: 277, name: GnOpTmh, index: 09, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: h, gain: 0.100000
-parse_channels(52): newchan: num: 278, name: GnStrCnt, index: 0a, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: , gain: 1.000000
-parse_channels(52): newchan: num: 279, name: GdEgyCntIn, index: 0b, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 0.100000
-parse_channels(52): newchan: num: 280, name: GdEgyCntOut, index: 0c, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 0.100000
-parse_channels(52): newchan: num: 281, name: GdEgyTmh, index: 0d, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: h, gain: 0.100000
-parse_channels(52): newchan: num: 282, name: GdOpTmh, index: 0e, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: h, gain: 0.100000
-parse_channels(52): newchan: num: 283, name: GdCtcCnt, index: 0f, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: , gain: 1.000000
-parse_channels(52): newchan: num: 284, name: TotTmh, index: 10, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: h, gain: 0.100000
-parse_channels(52): newchan: num: 285, name: Sic1EgyCntIn, index: 11, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 0.100000
-parse_channels(52): newchan: num: 286, name: Sic2EgyCntIn, index: 12, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 0.100000
-parse_channels(52): newchan: num: 287, name: Sic3EgyCntIn, index: 13, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 0.100000
-parse_channels(52): newchan: num: 288, name: Sic4EgyCntIn, index: 14, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 0.100000
-parse_channels(52): newchan: num: 289, name: TotSicEgyCntIn, index: 15, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 0.100000
-parse_channels(52): newchan: num: 290, name: Sic1TdyEgyCntIn, index: 16, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 0.100000
-parse_channels(52): newchan: num: 291, name: Sic2TdyEgyCntIn, index: 17, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 0.100000
-parse_channels(52): newchan: num: 292, name: Sic3TdyEgyCntIn, index: 18, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 0.100000
-parse_channels(52): newchan: num: 293, name: Sic4TdyEgyCntIn, index: 19, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 0.100000
-parse_channels(52): newchan: num: 294, name: TotSicDyEgyCntI, index: 1a, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 0.100000
-parse_channels(52): newchan: num: 295, name: Serial Number, index: 1b, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: , gain: 1.000000
-parse_channels(52): newchan: num: 296, name: E-Total-In, index: 1c, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 0.100000
-parse_channels(52): newchan: num: 297, name: E-Total, index: 1d, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 0.100000
-parse_channels(52): newchan: num: 298, name: h-On, index: 1e, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: h, gain: 0.100000
-parse_channels(52): newchan: num: 299, name: TotLodEgyCnt, index: 1f, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 1.000000
-parse_channels(52): newchan: num: 300, name: SlfCsmpIncEgy, index: 20, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 1.000000
-parse_channels(52): newchan: num: 301, name: SlfCsmpEgy, index: 21, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 1.000000
-parse_channels(52): newchan: num: 302, name: SlfCsmpIncTdy, index: 22, mask: 0904, format: 0104, level: 15
-parse_channels(89): unit: kWh, gain: 0.001000
-parse_channels(52): newchan: num: 303, name: GdCsmpEgyTdy, index: 23, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 0.100000
-parse_channels(52): newchan: num: 304, name: kWhFeed-In, index: 24, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 1.000000
-parse_channels(52): newchan: num: 305, name: kWhConsumption, index: 25, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 1.000000
-parse_channels(52): newchan: num: 306, name: GdFeedEgyTdy, index: 26, mask: 0904, format: 0102, level: 15
-parse_channels(89): unit: kWh, gain: 0.100000
-parse_channels(52): newchan: num: 307, name: Adr, index: 01, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 32
-parse_channels(103): fixed status: ---,Master,Slave1,Slave2,Slave3
-parse_channels(52): newchan: num: 308, name: OpStt, index: 02, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 30
-parse_channels(103): fixed status: ---,Operating,Warning,Failure
-parse_channels(52): newchan: num: 309, name: OpSttSlv1, index: 03, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 30
-parse_channels(103): fixed status: ---,Operating,Warning,Failure
-parse_channels(52): newchan: num: 310, name: OpSttSlv2, index: 04, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 30
-parse_channels(103): fixed status: ---,Operating,Warning,Failure
-parse_channels(52): newchan: num: 311, name: OpSttSlv3, index: 05, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 30
-parse_channels(103): fixed status: ---,Operating,Warning,Failure
-parse_channels(52): newchan: num: 312, name: CardStt, index: 06, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 105
-parse_channels(103): fixed status: ---,Off,Operational,Mount,OutOfSpace,BadFileSys,Incomp,Parameter,ParamFailed,WriteLogData,WriteLogFailed
-parse_channels(52): newchan: num: 313, name: Prio, index: 07, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 29
-parse_channels(103): fixed status: ---,Ina,Prio_A,Prio_B,Prio_C
-parse_channels(52): newchan: num: 314, name: BatChrgOp, index: 08, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 77
-parse_channels(103): fixed status: ---,Boost,Full,Float,Equalize,Equalize,Silent,Float,Silent,---,LiIon_Ext-BMS
-parse_channels(52): newchan: num: 315, name: AptPhs, index: 09, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 11
-parse_channels(103): fixed status: ---,Off,On
-parse_channels(52): newchan: num: 316, name: GnDmdSrc, index: 0a, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 43
-parse_channels(103): fixed status: ---,None,Bat,Lod,Tim,Run1h,Start,ExtSrcReq
-parse_channels(52): newchan: num: 317, name: GnStt, index: 0b, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 92
-parse_channels(103): fixed status: ---,Off,Init,Ready,Warm,Connect,Run,Retry,Disconnect,Cool,Lock,Fail,FailLock,Reinit,GnRmgTm
-parse_channels(52): newchan: num: 318, name: InvOpStt, index: 0c, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 54
-parse_channels(103): fixed status: ---,Init,Standby,Run,Run,Error,Manual,Startup,KickOff
-parse_channels(52): newchan: num: 319, name: InvOpSttSlv1, index: 0d, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 54
-parse_channels(103): fixed status: ---,Init,Standby,Run,Run,Error,Manual,Startup,KickOff
-parse_channels(52): newchan: num: 320, name: InvOpSttSlv2, index: 0e, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 54
-parse_channels(103): fixed status: ---,Init,Standby,Run,Run,Error,Manual,Startup,KickOff
-parse_channels(52): newchan: num: 321, name: InvOpSttSlv3, index: 0f, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 54
-parse_channels(103): fixed status: ---,Init,Standby,Run,Run,Error,Manual,Startup,KickOff
-parse_channels(52): newchan: num: 322, name: Rly1Stt, index: 10, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 11
-parse_channels(103): fixed status: ---,Off,On
-parse_channels(52): newchan: num: 323, name: Rly2Stt, index: 11, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 11
-parse_channels(103): fixed status: ---,Off,On
-parse_channels(52): newchan: num: 324, name: GnRnStt, index: 12, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 11
-parse_channels(103): fixed status: ---,Off,On
-parse_channels(52): newchan: num: 325, name: Mode, index: 13, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 40
-parse_channels(103): fixed status: ---,Operation,Warning,Disturbance,Error
-parse_channels(52): newchan: num: 326, name: Error, index: 14, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 84
-parse_channels(103): fixed status: -----,1xx INV,2xx BAT,3xx EXT,4xx GEN,5xx GRD,6xx RLY,7xx SYS,8xx AS/MC Box,85x SIC
-parse_channels(52): newchan: num: 327, name: ChpStt, index: 15, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 18
-parse_channels(103): fixed status: ---,Idle,Run,Lock
-parse_channels(52): newchan: num: 328, name: PvGdConStt, index: 16, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 20
-parse_channels(103): fixed status: ---,Off,Grid,Backup
-parse_channels(52): newchan: num: 329, name: LodGdConStt, index: 17, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 31
-parse_channels(103): fixed status: ---,Off,Grid,Backup,GridBypass
-parse_channels(52): newchan: num: 330, name: BatMntStt, index: 18, mask: 0908, format: 0100, level: 15
-parse_channels(94): newchan.size: 16
-parse_channels(103): fixed status: ---,On,Wait,Off
-main(40): count: 330
-smanet_save_channels(192): path: mychans.dat
-smanet_load_channels(231): path: mychans.dat
-main(44): count: 330
-timeouts: 0, commands: 2
+packet.c(73) smanet_recv_packet: src: 0001, dest: 0000, control: 40, count: 0, command: 03
+packet.c(75) smanet_recv_packet: h->command: 03, command: 03, test: 0
+packet.c(76) smanet_recv_packet: h->count: 00, cmo: ff, test: 0
+packet.c(87) smanet_recv_packet: sizeof(h): 7
+packet.c(89) smanet_recv_packet: data_len: 4
+command.c(28) smanet_command: r: 0
+command.c(38) smanet_command: p->command: 03, cmd: 03
+command.c(41) smanet_command: count: 0
+command.c(44) smanet_command: returning: 0
+command.c(77) smanet_cfg_net_adr: setting addr to 1
+init.c(30) smanet_init: back
+channel.c(245) smanet_load_channels: path: mychans.dat
+channel.c(271) smanet_load_channels: newchan: name: AutoStr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Dt, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Tm, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: BatCpyNom, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: BatVtgNom, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: BatChrgCurMax, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: BatTmpMax, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: BatTmpStr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: BatWirRes, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: AptTmBoost, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: AptTmFul, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: AptTmEqu, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: CycTmFul, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: CycTmEqu, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ChrgVtgBoost, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ChrgVtgFul, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ChrgVtgEqu, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ChrgVtgFlo, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: BatTmpCps, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnAutoStr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnSocTm1Str, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnSocTm1Stp, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnSocTm2Str, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnSocTm2Stp, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnTm1Str, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnTm2Str, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnPwrStr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnPwrStp, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnVtgMin, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnVtgMax, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnCurNom, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnFrqNom, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnFrqMin, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnFrqMax, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnPwrAvgTm, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnOpTmMin, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnStpTmMin, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnCoolTm, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnErrStpTm, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnWarmTm, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnRvPwr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnRvTm, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnTmOpStrDt, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnTmOpStrTm, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnTmOpRnDur, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdVtgMin, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdVtgMax, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdCurNom, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdFrqNom, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdFrqMin, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdFrqMax, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdVldTm, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdRvPwr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdRvTm, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdVtgIncPro, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: FedInSocStr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: FedInSocStp, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: FedInTmStr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: FedInTmStp, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: FedInCurAt, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: FedInCurRt, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdSocTm1Str, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdSocTm1Stp, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdSocTm2Str, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdSocTm2Stp, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdTm1Str, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdTm2Str, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdPwrStr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdPwrStp, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: SlpStrTm, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: SlpStpTm, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: InvVtgNom, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: InvChrgCurMax, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: InvFrqNom, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: InvTmOpStrDt, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: InvTmOpStrTm, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: InvTmOpRnDur, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Lod1SocTm1Str, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Lod1SocTm1Stp, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Lod1SocTm2Str, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Lod1SocTm2Stp, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Lod1Tm1Str, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Lod1Tm2Str, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Lod2SocTm1Str, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Lod2SocTm1Stp, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Lod2SocTm2Str, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Lod2SocTm2Stp, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Lod2Tm1Str, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Lod2Tm2Str, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: RlyTmr1StrDt, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: RlyTmr1StrTm, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: RlyTmr1Dur, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: RlyTmr2StrDt, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: RlyTmr2StrTm, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: RlyTmr2Dur, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: BatFanTmpStr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnTmStr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ExtLkTm, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: SilentTmFlo, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: SilentTmMax, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: BatChrgVtgMan, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: BatPro1TmStr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: BatPro1TmStp, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: BatPro2TmStr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: BatPro2TmStp, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: BatPro1Soc, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: BatPro2Soc, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: BatPro3Soc, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: SimSoc, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: AuthCode, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Plimit, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ChpOpTmMin, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ChpStpTmMin, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ChpSocTm1Str, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ChpSocTm1Stp, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ChpSocTm2Str, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ChpSocTm2Stp, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ChpTm1Str, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ChpTm2Str, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ChpPwrStr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ChpPwrStrDly, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: PvEgyMtr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: FedInCurAtCom, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: FedInCurRtCom, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: SlfCsmpSOCMin, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: SN, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: SNSlv1, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: SNSlv2, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: SNSlv3, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdCsmpEgyMtr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdFeedEgyMtr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: BatTyp, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: AutoEquChrgEna, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnAutoEna, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnPwrEna, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnStrMod, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnTmOpEna, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnTmOpCyc, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdMod, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: SilentEna, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdAISns, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdVtgIncProEna, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Country, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: FedInMod, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: FedInCtl, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdSocEna, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdPwrEna, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GdManStr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ClstCfg, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ComBaud, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: SleepEna, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: AfraEna, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: SlpAtNgt, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: InvRs, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ParaSto, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: InvTmOpEna, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: InvTmOpCyc, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ManStr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ErrAckn, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ParaLod, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: CntRs, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: RlyTmr1Cyc, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: RlyTmr2Cyc, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Rly1Op, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Rly1OpSlv1, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Rly1OpSlv2, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Rly2Op, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Rly2OpSlv1, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Rly2OpSlv2, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnManStr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnAck, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ChrgSelMan, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnCtlMod, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: CardFunc, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: GnAISns, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: BkupTst, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ExtSrc, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: LongChLstEna, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ChrgCtlOp, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ChpPwrEna, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: ChpManStr, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: RnMod, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: SlfCsmpIncEna, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: SlfCsmpStdbyMod, timestamp: 1618630649
+channel.c(271) smanet_load_channels: newchan: name: Msg, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Soh, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: TotInvPwrAt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: TotInvCur, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: TotInvPwrRt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: BatSoc, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: BatVtg, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: BatChrgVtg, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: AptTmRmg, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: TotBatCur, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: BatTmp, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: RmgTmFul, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: RmgTmEqu, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: BatSocErr, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: GnRmgTm, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvPwrAt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvPwrAtSlv1, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvPwrAtSlv2, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvPwrAtSlv3, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvVtg, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvVtgSlv1, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvVtgSlv2, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvVtgSlv3, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvCur, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvCurSlv1, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvCurSlv2, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvCurSlv3, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvFrq, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvPwrRt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvPwrRtSlv1, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvPwrRtSlv2, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvPwrRtSlv3, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ExtPwrAt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ExtPwrAtSlv1, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ExtPwrAtSlv2, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ExtPwrAtSlv3, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ExtVtg, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ExtVtgSlv1, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ExtVtgSlv2, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ExtVtgSlv3, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ExtCur, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ExtCurSlv1, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ExtCurSlv2, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ExtCurSlv3, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ExtFrq, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ExtPwrRt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ExtPwrRtSlv1, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ExtPwrRtSlv2, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ExtPwrRtSlv3, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: TotExtPwrAt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: TotExtCur, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: TotExtPwrRt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: TotLodPwr, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: GdRmgTm, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Pac, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Firmware, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Iac, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Vac, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Fac, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ChpPwrAt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ChpRmgTm, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ChpStrRmgTm, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Sic1PvPwr, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Sic2PvPwr, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Sic3PvPwr, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Sic4PvPwr, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Sic1SWVers, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Sic2SWVers, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Sic3SWVers, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Sic4SWVers, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: TotSicPvPwr, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: TotSicBatCur, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: TotMccLodPwr, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: TotPvPwrAt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: TotLodPwrAt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: SlfCsmpPwrAt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: SlfCsmpIncPwr, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: BatCpyThrpCnt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: GdCsmpPwrAt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: GdFeedPwrAt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: PacPV, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: PacFeed-In, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: PacConsumption, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: kWhPV, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: FwVer, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: OnTmh, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: FwVer2, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: EgyCntIn, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: EgyCntOut, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: EgyCntTm, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: GnEgyCnt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: GnEgyTm, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: GnOpTmh, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: GnStrCnt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: GdEgyCntIn, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: GdEgyCntOut, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: GdEgyTmh, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: GdOpTmh, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: GdCtcCnt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: TotTmh, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Sic1EgyCntIn, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Sic2EgyCntIn, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Sic3EgyCntIn, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Sic4EgyCntIn, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: TotSicEgyCntIn, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Sic1TdyEgyCntIn, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Sic2TdyEgyCntIn, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Sic3TdyEgyCntIn, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Sic4TdyEgyCntIn, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: TotSicDyEgyCntI, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Serial Number, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: E-Total-In, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: E-Total, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: h-On, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: TotLodEgyCnt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: SlfCsmpIncEgy, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: SlfCsmpEgy, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: SlfCsmpIncTdy, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: GdCsmpEgyTdy, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: kWhFeed-In, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: kWhConsumption, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: GdFeedEgyTdy, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Adr, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: OpStt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: OpSttSlv1, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: OpSttSlv2, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: OpSttSlv3, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: CardStt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Prio, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: BatChrgOp, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: AptPhs, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: GnDmdSrc, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: GnStt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvOpStt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvOpSttSlv1, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvOpSttSlv2, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: InvOpSttSlv3, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Rly1Stt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Rly2Stt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: GnRnStt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Mode, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: Error, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: ChpStt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: PvGdConStt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: LodGdConStt, timestamp: 0
+channel.c(271) smanet_load_channels: newchan: name: BatMntStt, timestamp: 0
+try.c(58) main: count: 330
+value.c(227) smanet_get_optionbyname: name: GnManStr
+value.c(230) smanet_get_optionbyname: c: 0x183e684
+value.c(233) smanet_get_optionbyname: timestamp: 0
+value.c(53) _smanet_getvals: id: 170, c->id, c->type: 0408, index: 27
+packet.c(22) smanet_alloc_packet: data_len: 2048
+command.c(15) smanet_command: cmd: 11, packet: 0x183340c, buf: 0x7ee00488, buflen: 3
+packet.c(108) smanet_send_packet: src: 0000, dest: 0001, ctrl: 00, cnt: 0, cmd: 0b, buffer: 0x7ee00488, buflen: 3
+put frame(18):
+0000: 7E FF 03 40 41 00 00 01 00 00 00 0B 0F 04 00 59    ~..@A..........Y
+0010: 2D 7E                                              -~              
+packet.c(58) smanet_recv_packet: command: 0b, count: 00, timeout: 0
+packet.c(60) smanet_recv_packet: cmo: ff
+frame.c(53) smanet_read_frame: buffer: 0x7ee002f4, buflen: 284, timeout: 5
+get frame(141):
+0000: FF 03 40 41 01 00 00 00 40 FF 0B 0F 04 00 01 00    ..@A....@.......
+0010: 03 00 EF 62 34 01 3B 43 03 00 00 00 F0 42 00 00    ...b4.;C.....B..
+0020: 40 42 00 00 00 00 00 00 34 42 00 00 20 42 00 00    @B......4B.. B..
+0030: 00 00 F0 42 00 00 A0 40 00 00 20 41 00 00 60 41    ...B...@.. A..`A
+0040: 00 00 34 43 9A 99 19 40 9A 99 19 40 9A 99 19 40    ..4C...@...@...@
+0050: 00 00 10 40 00 00 80 40 03 28 00 50 00 28 00 50    ...@...@.(.P.(.P
+0060: 00 00 00 00 00 00 00 00 00 00 00 B0 40 00 00 A0    ............@...
+0070: 40 00 00 A0 42 00 00 16 43 00 00 F0 41 00 00 70    @...B...C...A..p
+0080: 42 00 00 58 42 00 00 84 42 3C 00 1B 35             B..XB...B<..5   
+packet.c(73) smanet_recv_packet: src: 0001, dest: 0000, control: 40, count: 255, command: 0b
+packet.c(75) smanet_recv_packet: h->command: 0b, command: 0b, test: 0
+packet.c(76) smanet_recv_packet: h->count: ff, cmo: ff, test: 0
+packet.c(87) smanet_recv_packet: sizeof(h): 7
+packet.c(89) smanet_recv_packet: data_len: 128
+command.c(28) smanet_command: r: 0
+command.c(38) smanet_command: p->command: 0b, cmd: 0b
+command.c(41) smanet_command: count: 255
+packet.c(108) smanet_send_packet: src: 0000, dest: 0001, ctrl: 00, cnt: 255, cmd: 0b, buffer: 0x7ee00488, buflen: 3
+put frame(18):
+0000: 7E FF 03 40 41 00 00 01 00 00 FF 0B 0F 04 00 03    ~..@A...........
+0010: D8 7E                                              .~              
+packet.c(58) smanet_recv_packet: command: 0b, count: ff, timeout: 0
+packet.c(60) smanet_recv_packet: cmo: fe
+frame.c(53) smanet_read_frame: buffer: 0x7ee002f4, buflen: 284, timeout: 5
+get frame(18):
+0000: FF 03 40 41 01 00 00 00 80 00 28 01 65 65 65 07    ..@A......(.eee.
+0010: 87 AD                                              ..              
+packet.c(73) smanet_recv_packet: src: 0001, dest: 0000, control: 80, count: 0, command: 28
+packet.c(75) smanet_recv_packet: h->command: 28, command: 0b, test: 1
+packet.c(76) smanet_recv_packet: h->count: 00, cmo: fe, test: 0
+command.c(28) smanet_command: r: 3
+packet.c(108) smanet_send_packet: src: 0000, dest: 0001, ctrl: 00, cnt: 255, cmd: 0b, buffer: 0x7ee00488, buflen: 3
+put frame(18):
+0000: 7E FF 03 40 41 00 00 01 00 00 FF 0B 0F 04 00 03    ~..@A...........
+0010: D8 7E                                              .~              
+packet.c(58) smanet_recv_packet: command: 0b, count: ff, timeout: 0
+packet.c(60) smanet_recv_packet: cmo: fe
+frame.c(53) smanet_read_frame: buffer: 0x7ee002f4, buflen: 284, timeout: 5
+get frame(141):
+0000: FF 03 40 41 01 00 00 00 40 FE 0B 0F 00 0F 00 06    ..@A....@.......
+0010: 00 01 00 3C 00 64 00 00 00 F0 41 05 B4 32 01 00    ...<.d....A..2..
+0020: 00 00 00 00 00 00 00 34 33 D3 42 00 00 04 43 00    .......43.B...C.
+0030: 00 F0 41 00 00 70 42 34 33 6D 42 00 00 72 42 78    ..A..pB43mB..rBx
+0040: 00 64 00 05 00 00 00 04 43 46 00 3C 00 00 00 00    .d......CF.<....
+0050: 00 00 00 00 00 00 00 F0 41 00 00 00 00 19 00 55    ........A......U
+0060: 00 28 00 50 00 00 00 00 00 00 00 00 00 00 00 80    .(.P............
+0070: 40 00 00 00 40 40 0D 03 00 50 C3 00 00 00 00 F0    @...@@...P......
+0080: 42 00 00 40 42 00 00 70 42 05 B4 59 77             B..@B..pB..Yw   
+packet.c(73) smanet_recv_packet: src: 0001, dest: 0000, control: 40, count: 254, command: 0b
+packet.c(75) smanet_recv_packet: h->command: 0b, command: 0b, test: 0
+packet.c(76) smanet_recv_packet: h->count: fe, cmo: fe, test: 0
+packet.c(87) smanet_recv_packet: sizeof(h): 7
+packet.c(89) smanet_recv_packet: data_len: 128
+command.c(28) smanet_command: r: 0
+command.c(38) smanet_command: p->command: 0b, cmd: 0b
+command.c(41) smanet_command: count: 254
+packet.c(108) smanet_send_packet: src: 0000, dest: 0001, ctrl: 00, cnt: 254, cmd: 0b, buffer: 0x7ee00488, buflen: 3
+put frame(18):
+0000: 7E FF 03 40 41 00 00 01 00 00 FE 0B 0F 04 00 47    ~..@A..........G
+0010: D3 7E                                              .~              
+packet.c(58) smanet_recv_packet: command: 0b, count: fe, timeout: 0
+packet.c(60) smanet_recv_packet: cmo: fd
+frame.c(53) smanet_read_frame: buffer: 0x7ee002f4, buflen: 284, timeout: 5
+get frame(141):
+0000: FF 03 40 41 01 00 00 00 40 FD 0B 32 01 00 00 00    ..@A....@..2....
+0010: 00 00 00 00 00 1E 00 32 00 1E 00 32 00 00 00 00    .......2...2....
+0020: 00 00 00 00 00 1E 00 32 00 1E 00 32 00 00 00 00    .......2...2....
+0030: 00 00 00 00 00 05 B4 32 01 00 00 00 00 00 00 00    .......2........
+0040: 00 05 B4 32 01 00 00 00 00 00 00 00 00 28 00 00    ...2.........(..
+0050: 00 00 00 14 00 03 00 0C 00 00 00 58 42 60 5B 03    ...........XB`[.
+0060: 00 60 EA 00 00 10 98 02 00 90 5F 01 00 14 0F 03    .`........_.....
+0070: 4A 00 00 00 00 00 0B 00 3C 0A 28 00 50 00 28 00    J.......<.(.P.(.
+0080: 50 00 00 00 00 00 00 00 00 00 00 0F 50             P...........P   
+packet.c(73) smanet_recv_packet: src: 0001, dest: 0000, control: 40, count: 253, command: 0b
+packet.c(75) smanet_recv_packet: h->command: 0b, command: 0b, test: 0
+packet.c(76) smanet_recv_packet: h->count: fd, cmo: fd, test: 0
+packet.c(87) smanet_recv_packet: sizeof(h): 7
+packet.c(89) smanet_recv_packet: data_len: 128
+command.c(28) smanet_command: r: 0
+command.c(38) smanet_command: p->command: 0b, cmd: 0b
+command.c(41) smanet_command: count: 253
+packet.c(108) smanet_send_packet: src: 0000, dest: 0001, ctrl: 00, cnt: 253, cmd: 0b, buffer: 0x7ee00488, buflen: 3
+put frame(18):
+0000: 7E FF 03 40 41 00 00 01 00 00 FD 0B 0F 04 00 8B    ~..@A...........
+0010: CE 7E                                              .~              
+packet.c(58) smanet_recv_packet: command: 0b, count: fd, timeout: 0
+packet.c(60) smanet_recv_packet: cmo: fc
+frame.c(53) smanet_read_frame: buffer: 0x7ee002f4, buflen: 284, timeout: 5
+get frame(108):
+0000: FF 03 40 41 01 00 00 00 40 00 0B 00 80 40 05 00    ..@A....@....@..
+0010: 00 00 00 00 00 00 00 00 00 00 00 32 00 B4 C4 1A    ...........2....
+0020: 4B E8 C4 1A 4B 00 00 00 00 00 00 00 00 00 00 00    K...K...........
+0030: 00 00 00 00 00 04 02 02 01 02 01 01 02 01 03 01    ................
+0040: 00 01 01 02 01 00 09 04 02 02 01 00 00 01 01 00    ................
+0050: 00 00 00 01 01 03 01 01 04 01 01 01 00 00 01 00    ................
+0060: 03 00 03 01 01 01 00 01 01 01 64 4C                ..........dL    
+packet.c(73) smanet_recv_packet: src: 0001, dest: 0000, control: 40, count: 0, command: 0b
+packet.c(75) smanet_recv_packet: h->command: 0b, command: 0b, test: 0
+packet.c(76) smanet_recv_packet: h->count: 00, cmo: fc, test: 0
+packet.c(87) smanet_recv_packet: sizeof(h): 7
+packet.c(89) smanet_recv_packet: data_len: 95
+command.c(28) smanet_command: r: 0
+command.c(38) smanet_command: p->command: 0b, cmd: 0b
+command.c(41) smanet_command: count: 0
+command.c(44) smanet_command: returning: 0
+values(479):
+0000: 0F 04 00 01 00 03 00 EF 62 34 01 3B 43 03 00 00    ........b4.;C...
+0010: 00 F0 42 00 00 40 42 00 00 00 00 00 00 34 42 00    ..B..@B......4B.
+0020: 00 20 42 00 00 00 00 F0 42 00 00 A0 40 00 00 20    . B.....B...@.. 
+0030: 41 00 00 60 41 00 00 34 43 9A 99 19 40 9A 99 19    A..`A..4C...@...
+0040: 40 9A 99 19 40 00 00 10 40 00 00 80 40 03 28 00    @...@...@...@.(.
+0050: 50 00 28 00 50 00 00 00 00 00 00 00 00 00 00 00    P.(.P...........
+0060: B0 40 00 00 A0 40 00 00 A0 42 00 00 16 43 00 00    .@...@...B...C..
+0070: F0 41 00 00 70 42 00 00 58 42 00 00 84 42 3C 00    .A..pB..XB...B<.
+0080: 0F 00 0F 00 06 00 01 00 3C 00 64 00 00 00 F0 41    ........<.d....A
+0090: 05 B4 32 01 00 00 00 00 00 00 00 00 34 33 D3 42    ..2.........43.B
+00A0: 00 00 04 43 00 00 F0 41 00 00 70 42 34 33 6D 42    ...C...A..pB43mB
+00B0: 00 00 72 42 78 00 64 00 05 00 00 00 04 43 46 00    ..rBx.d......CF.
+00C0: 3C 00 00 00 00 00 00 00 00 00 00 00 F0 41 00 00    <............A..
+00D0: 00 00 19 00 55 00 28 00 50 00 00 00 00 00 00 00    ....U.(.P.......
+00E0: 00 00 00 00 80 40 00 00 00 40 40 0D 03 00 50 C3    .....@...@@...P.
+00F0: 00 00 00 00 F0 42 00 00 40 42 00 00 70 42 05 B4    .....B..@B..pB..
+0100: 32 01 00 00 00 00 00 00 00 00 1E 00 32 00 1E 00    2...........2...
+0110: 32 00 00 00 00 00 00 00 00 00 1E 00 32 00 1E 00    2...........2...
+0120: 32 00 00 00 00 00 00 00 00 00 05 B4 32 01 00 00    2...........2...
+0130: 00 00 00 00 00 00 05 B4 32 01 00 00 00 00 00 00    ........2.......
+0140: 00 00 28 00 00 00 00 00 14 00 03 00 0C 00 00 00    ..(.............
+0150: 58 42 60 5B 03 00 60 EA 00 00 10 98 02 00 90 5F    XB`[..`........_
+0160: 01 00 14 0F 03 4A 00 00 00 00 00 0B 00 3C 0A 28    .....J.......<.(
+0170: 00 50 00 28 00 50 00 00 00 00 00 00 00 00 00 00    .P.(.P..........
+0180: 00 80 40 05 00 00 00 00 00 00 00 00 00 00 00 00    ..@.............
+0190: 32 00 B4 C4 1A 4B E8 C4 1A 4B 00 00 00 00 00 00    2....K...K......
+01A0: 00 00 00 00 00 00 00 00 00 00 04 02 02 01 02 01    ................
+01B0: 01 02 01 03 01 00 01 01 02 01 00 09 04 02 02 01    ................
+01C0: 00 00 01 01 00 00 00 00 01 01 03 01 01 04 01 01    ................
+01D0: 01 00 00 01 00 03 00 03 01 01 01 00 01 01 01       ............... 
+value.c(76) _smanet_getvals: mask: 040f, index: 00, count: 1
+value.c(89) _smanet_getvals: vc->name: AutoStr, format: 0101
+value.c(99) _smanet_getvals: wval: 3 (0003)
+value.c(89) _smanet_getvals: vc->name: Dt, format: 0102
+value.c(105) _smanet_getvals: lval: 25380022 (00000000)
+value.c(89) _smanet_getvals: vc->name: Tm, format: 0102
+value.c(105) _smanet_getvals: lval: 25380150 (00000000)
+value.c(89) _smanet_getvals: vc->name: BatCpyNom, format: 0104
+value.c(111) _smanet_getvals: lval: 120.000000
+value.c(89) _smanet_getvals: vc->name: BatVtgNom, format: 0104
+value.c(111) _smanet_getvals: lval: 48.000000
+value.c(89) _smanet_getvals: vc->name: BatChrgCurMax, format: 0104
+value.c(111) _smanet_getvals: lval: 0.000000
+value.c(89) _smanet_getvals: vc->name: BatTmpMax, format: 0104
+value.c(111) _smanet_getvals: lval: 45.000000
+value.c(89) _smanet_getvals: vc->name: BatTmpStr, format: 0104
+value.c(111) _smanet_getvals: lval: 40.000000
+value.c(89) _smanet_getvals: vc->name: BatWirRes, format: 0101
+value.c(99) _smanet_getvals: wval: 0 (0000)
+value.c(89) _smanet_getvals: vc->name: AptTmBoost, format: 0104
+value.c(111) _smanet_getvals: lval: 120.000000
+value.c(89) _smanet_getvals: vc->name: AptTmFul, format: 0104
+value.c(111) _smanet_getvals: lval: 5.000000
+value.c(89) _smanet_getvals: vc->name: AptTmEqu, format: 0104
+value.c(111) _smanet_getvals: lval: 10.000000
+value.c(89) _smanet_getvals: vc->name: CycTmFul, format: 0104
+value.c(111) _smanet_getvals: lval: 14.000000
+value.c(89) _smanet_getvals: vc->name: CycTmEqu, format: 0104
+value.c(111) _smanet_getvals: lval: 180.000000
+value.c(89) _smanet_getvals: vc->name: ChrgVtgBoost, format: 0104
+value.c(111) _smanet_getvals: lval: 2.400000
+value.c(89) _smanet_getvals: vc->name: ChrgVtgFul, format: 0104
+value.c(111) _smanet_getvals: lval: 2.400000
+value.c(89) _smanet_getvals: vc->name: ChrgVtgEqu, format: 0104
+value.c(111) _smanet_getvals: lval: 2.400000
+value.c(89) _smanet_getvals: vc->name: ChrgVtgFlo, format: 0104
+value.c(111) _smanet_getvals: lval: 2.250000
+value.c(89) _smanet_getvals: vc->name: BatTmpCps, format: 0104
+value.c(111) _smanet_getvals: lval: 4.000000
+value.c(89) _smanet_getvals: vc->name: GnAutoStr, format: 0100
+value.c(94) _smanet_getvals: bval: 3 (03)
+value.c(89) _smanet_getvals: vc->name: GnSocTm1Str, format: 0101
+value.c(99) _smanet_getvals: wval: 40 (0028)
+value.c(89) _smanet_getvals: vc->name: GnSocTm1Stp, format: 0101
+value.c(99) _smanet_getvals: wval: 80 (0050)
+value.c(89) _smanet_getvals: vc->name: GnSocTm2Str, format: 0101
+value.c(99) _smanet_getvals: wval: 40 (0028)
+value.c(89) _smanet_getvals: vc->name: GnSocTm2Stp, format: 0101
+value.c(99) _smanet_getvals: wval: 80 (0050)
+value.c(89) _smanet_getvals: vc->name: GnTm1Str, format: 0102
+value.c(105) _smanet_getvals: lval: 25382966 (00000000)
+value.c(89) _smanet_getvals: vc->name: GnTm2Str, format: 0102
+value.c(105) _smanet_getvals: lval: 25383094 (00000000)
+value.c(89) _smanet_getvals: vc->name: GnPwrStr, format: 0104
+value.c(111) _smanet_getvals: lval: 5.500000
+value.c(89) _smanet_getvals: vc->name: GnPwrStp, format: 0104
+value.c(111) _smanet_getvals: lval: 5.000000
+value.c(89) _smanet_getvals: vc->name: GnVtgMin, format: 0104
+value.c(111) _smanet_getvals: lval: 80.000000
+value.c(89) _smanet_getvals: vc->name: GnVtgMax, format: 0104
+value.c(111) _smanet_getvals: lval: 150.000000
+value.c(89) _smanet_getvals: vc->name: GnCurNom, format: 0104
+value.c(111) _smanet_getvals: lval: 30.000000
+value.c(89) _smanet_getvals: vc->name: GnFrqNom, format: 0104
+value.c(111) _smanet_getvals: lval: 60.000000
+value.c(89) _smanet_getvals: vc->name: GnFrqMin, format: 0104
+value.c(111) _smanet_getvals: lval: 54.000000
+value.c(89) _smanet_getvals: vc->name: GnFrqMax, format: 0104
+value.c(111) _smanet_getvals: lval: 66.000000
+value.c(89) _smanet_getvals: vc->name: GnPwrAvgTm, format: 0101
+value.c(99) _smanet_getvals: wval: 60 (003c)
+value.c(89) _smanet_getvals: vc->name: GnOpTmMin, format: 0101
+value.c(99) _smanet_getvals: wval: 15 (000f)
+value.c(89) _smanet_getvals: vc->name: GnStpTmMin, format: 0101
+value.c(99) _smanet_getvals: wval: 15 (000f)
+value.c(89) _smanet_getvals: vc->name: GnCoolTm, format: 0101
+value.c(99) _smanet_getvals: wval: 6 (0006)
+value.c(89) _smanet_getvals: vc->name: GnErrStpTm, format: 0101
+value.c(99) _smanet_getvals: wval: 1 (0001)
+value.c(89) _smanet_getvals: vc->name: GnWarmTm, format: 0101
+value.c(99) _smanet_getvals: wval: 60 (003c)
+value.c(89) _smanet_getvals: vc->name: GnRvPwr, format: 0101
+value.c(99) _smanet_getvals: wval: 100 (0064)
+value.c(89) _smanet_getvals: vc->name: GnRvTm, format: 0104
+value.c(111) _smanet_getvals: lval: 30.000000
+value.c(89) _smanet_getvals: vc->name: GnTmOpStrDt, format: 0102
+value.c(105) _smanet_getvals: lval: 25385270 (40000000)
+value.c(89) _smanet_getvals: vc->name: GnTmOpStrTm, format: 0102
+value.c(105) _smanet_getvals: lval: 25385398 (00000000)
+value.c(89) _smanet_getvals: vc->name: GnTmOpRnDur, format: 0102
+value.c(105) _smanet_getvals: lval: 25385526 (00000000)
+value.c(89) _smanet_getvals: vc->name: GdVtgMin, format: 0104
+value.c(111) _smanet_getvals: lval: 105.600006
+value.c(89) _smanet_getvals: vc->name: GdVtgMax, format: 0104
+value.c(111) _smanet_getvals: lval: 132.000000
+value.c(89) _smanet_getvals: vc->name: GdCurNom, format: 0104
+value.c(111) _smanet_getvals: lval: 30.000000
+value.c(89) _smanet_getvals: vc->name: GdFrqNom, format: 0104
+value.c(111) _smanet_getvals: lval: 60.000000
+value.c(89) _smanet_getvals: vc->name: GdFrqMin, format: 0104
+value.c(111) _smanet_getvals: lval: 59.300003
+value.c(89) _smanet_getvals: vc->name: GdFrqMax, format: 0104
+value.c(111) _smanet_getvals: lval: 60.500000
+value.c(89) _smanet_getvals: vc->name: GdVldTm, format: 0101
+value.c(99) _smanet_getvals: wval: 120 (0078)
+value.c(89) _smanet_getvals: vc->name: GdRvPwr, format: 0101
+value.c(99) _smanet_getvals: wval: 100 (0064)
+value.c(89) _smanet_getvals: vc->name: GdRvTm, format: 0101
+value.c(99) _smanet_getvals: wval: 5 (0005)
+value.c(89) _smanet_getvals: vc->name: GdVtgIncPro, format: 0104
+value.c(111) _smanet_getvals: lval: 132.000000
+value.c(89) _smanet_getvals: vc->name: FedInSocStr, format: 0101
+value.c(99) _smanet_getvals: wval: 70 (0046)
+value.c(89) _smanet_getvals: vc->name: FedInSocStp, format: 0101
+value.c(99) _smanet_getvals: wval: 60 (003c)
+value.c(89) _smanet_getvals: vc->name: FedInTmStr, format: 0102
+value.c(105) _smanet_getvals: lval: 25387190 (00000000)
+value.c(89) _smanet_getvals: vc->name: FedInTmStp, format: 0102
+value.c(105) _smanet_getvals: lval: 25387318 (00000000)
+value.c(89) _smanet_getvals: vc->name: FedInCurAt, format: 0104
+value.c(111) _smanet_getvals: lval: 30.000000
+value.c(89) _smanet_getvals: vc->name: FedInCurRt, format: 0104
+value.c(111) _smanet_getvals: lval: 0.000000
+value.c(89) _smanet_getvals: vc->name: GdSocTm1Str, format: 0101
+value.c(99) _smanet_getvals: wval: 25 (0019)
+value.c(89) _smanet_getvals: vc->name: GdSocTm1Stp, format: 0101
+value.c(99) _smanet_getvals: wval: 85 (0055)
+value.c(89) _smanet_getvals: vc->name: GdSocTm2Str, format: 0101
+value.c(99) _smanet_getvals: wval: 40 (0028)
+value.c(89) _smanet_getvals: vc->name: GdSocTm2Stp, format: 0101
+value.c(99) _smanet_getvals: wval: 80 (0050)
+value.c(89) _smanet_getvals: vc->name: GdTm1Str, format: 0102
+value.c(105) _smanet_getvals: lval: 25388214 (00000000)
+value.c(89) _smanet_getvals: vc->name: GdTm2Str, format: 0102
+value.c(105) _smanet_getvals: lval: 25388342 (00000000)
+value.c(89) _smanet_getvals: vc->name: GdPwrStr, format: 0104
+value.c(111) _smanet_getvals: lval: 4.000000
+value.c(89) _smanet_getvals: vc->name: GdPwrStp, format: 0104
+value.c(111) _smanet_getvals: lval: 2.000000
+value.c(89) _smanet_getvals: vc->name: SlpStrTm, format: 0102
+value.c(105) _smanet_getvals: lval: 25388726 (00000000)
+value.c(89) _smanet_getvals: vc->name: SlpStpTm, format: 0102
+value.c(105) _smanet_getvals: lval: 25388854 (00000000)
+value.c(89) _smanet_getvals: vc->name: InvVtgNom, format: 0104
+value.c(111) _smanet_getvals: lval: 120.000000
+value.c(89) _smanet_getvals: vc->name: InvChrgCurMax, format: 0104
+value.c(111) _smanet_getvals: lval: 48.000000
+value.c(89) _smanet_getvals: vc->name: InvFrqNom, format: 0104
+value.c(111) _smanet_getvals: lval: 60.000000
+value.c(89) _smanet_getvals: vc->name: InvTmOpStrDt, format: 0102
+value.c(105) _smanet_getvals: lval: 25389366 (40000000)
+value.c(89) _smanet_getvals: vc->name: InvTmOpStrTm, format: 0102
+value.c(105) _smanet_getvals: lval: 25389494 (00000000)
+value.c(89) _smanet_getvals: vc->name: InvTmOpRnDur, format: 0102
+value.c(105) _smanet_getvals: lval: 25389622 (00000000)
+value.c(89) _smanet_getvals: vc->name: Lod1SocTm1Str, format: 0101
+value.c(99) _smanet_getvals: wval: 30 (001e)
+value.c(89) _smanet_getvals: vc->name: Lod1SocTm1Stp, format: 0101
+value.c(99) _smanet_getvals: wval: 50 (0032)
+value.c(89) _smanet_getvals: vc->name: Lod1SocTm2Str, format: 0101
+value.c(99) _smanet_getvals: wval: 30 (001e)
+value.c(89) _smanet_getvals: vc->name: Lod1SocTm2Stp, format: 0101
+value.c(99) _smanet_getvals: wval: 50 (0032)
+value.c(89) _smanet_getvals: vc->name: Lod1Tm1Str, format: 0102
+value.c(105) _smanet_getvals: lval: 25390262 (00000000)
+value.c(89) _smanet_getvals: vc->name: Lod1Tm2Str, format: 0102
+value.c(105) _smanet_getvals: lval: 25390390 (00000000)
+value.c(89) _smanet_getvals: vc->name: Lod2SocTm1Str, format: 0101
+value.c(99) _smanet_getvals: wval: 30 (001e)
+value.c(89) _smanet_getvals: vc->name: Lod2SocTm1Stp, format: 0101
+value.c(99) _smanet_getvals: wval: 50 (0032)
+value.c(89) _smanet_getvals: vc->name: Lod2SocTm2Str, format: 0101
+value.c(99) _smanet_getvals: wval: 30 (001e)
+value.c(89) _smanet_getvals: vc->name: Lod2SocTm2Stp, format: 0101
+value.c(99) _smanet_getvals: wval: 50 (0032)
+value.c(89) _smanet_getvals: vc->name: Lod2Tm1Str, format: 0102
+value.c(105) _smanet_getvals: lval: 25391030 (00000000)
+value.c(89) _smanet_getvals: vc->name: Lod2Tm2Str, format: 0102
+value.c(105) _smanet_getvals: lval: 25391158 (00000000)
+value.c(89) _smanet_getvals: vc->name: RlyTmr1StrDt, format: 0102
+value.c(105) _smanet_getvals: lval: 25391286 (40000000)
+value.c(89) _smanet_getvals: vc->name: RlyTmr1StrTm, format: 0102
+value.c(105) _smanet_getvals: lval: 25391414 (00000000)
+value.c(89) _smanet_getvals: vc->name: RlyTmr1Dur, format: 0102
+value.c(105) _smanet_getvals: lval: 25391542 (00000000)
+value.c(89) _smanet_getvals: vc->name: RlyTmr2StrDt, format: 0102
+value.c(105) _smanet_getvals: lval: 25391670 (40000000)
+value.c(89) _smanet_getvals: vc->name: RlyTmr2StrTm, format: 0102
+value.c(105) _smanet_getvals: lval: 25391798 (00000000)
+value.c(89) _smanet_getvals: vc->name: RlyTmr2Dur, format: 0102
+value.c(105) _smanet_getvals: lval: 25391926 (00000000)
+value.c(89) _smanet_getvals: vc->name: BatFanTmpStr, format: 0101
+value.c(99) _smanet_getvals: wval: 40 (0028)
+value.c(89) _smanet_getvals: vc->name: GnTmStr, format: 0102
+value.c(105) _smanet_getvals: lval: 25392182 (00000000)
+value.c(89) _smanet_getvals: vc->name: ExtLkTm, format: 0101
+value.c(99) _smanet_getvals: wval: 20 (0014)
+value.c(89) _smanet_getvals: vc->name: SilentTmFlo, format: 0101
+value.c(99) _smanet_getvals: wval: 3 (0003)
+value.c(89) _smanet_getvals: vc->name: SilentTmMax, format: 0101
+value.c(99) _smanet_getvals: wval: 12 (000c)
+value.c(89) _smanet_getvals: vc->name: BatChrgVtgMan, format: 0104
+value.c(111) _smanet_getvals: lval: 54.000000
+value.c(89) _smanet_getvals: vc->name: BatPro1TmStr, format: 0102
+value.c(105) _smanet_getvals: lval: 25392822 (00000000)
+value.c(89) _smanet_getvals: vc->name: BatPro1TmStp, format: 0102
+value.c(105) _smanet_getvals: lval: 25392950 (00000000)
+value.c(89) _smanet_getvals: vc->name: BatPro2TmStr, format: 0102
+value.c(105) _smanet_getvals: lval: 25393078 (00000000)
+value.c(89) _smanet_getvals: vc->name: BatPro2TmStp, format: 0102
+value.c(105) _smanet_getvals: lval: 25393206 (00000000)
+value.c(89) _smanet_getvals: vc->name: BatPro1Soc, format: 0100
+value.c(94) _smanet_getvals: bval: 20 (14)
+value.c(89) _smanet_getvals: vc->name: BatPro2Soc, format: 0100
+value.c(94) _smanet_getvals: bval: 15 (0F)
+value.c(89) _smanet_getvals: vc->name: BatPro3Soc, format: 0100
+value.c(94) _smanet_getvals: bval: 3 (03)
+value.c(89) _smanet_getvals: vc->name: SimSoc, format: 0101
+value.c(99) _smanet_getvals: wval: 74 (004a)
+value.c(89) _smanet_getvals: vc->name: AuthCode, format: 0102
+value.c(105) _smanet_getvals: lval: 25393846 (00000000)
+value.c(89) _smanet_getvals: vc->name: Plimit, format: 0101
+value.c(99) _smanet_getvals: wval: 11 (000b)
+value.c(89) _smanet_getvals: vc->name: ChpOpTmMin, format: 0100
+value.c(94) _smanet_getvals: bval: 60 (3C)
+value.c(89) _smanet_getvals: vc->name: ChpStpTmMin, format: 0100
+value.c(94) _smanet_getvals: bval: 10 (0A)
+value.c(89) _smanet_getvals: vc->name: ChpSocTm1Str, format: 0101
+value.c(99) _smanet_getvals: wval: 40 (0028)
+value.c(89) _smanet_getvals: vc->name: ChpSocTm1Stp, format: 0101
+value.c(99) _smanet_getvals: wval: 80 (0050)
+value.c(89) _smanet_getvals: vc->name: ChpSocTm2Str, format: 0101
+value.c(99) _smanet_getvals: wval: 40 (0028)
+value.c(89) _smanet_getvals: vc->name: ChpSocTm2Stp, format: 0101
+value.c(99) _smanet_getvals: wval: 80 (0050)
+value.c(89) _smanet_getvals: vc->name: ChpTm1Str, format: 0102
+value.c(105) _smanet_getvals: lval: 25394870 (00000000)
+value.c(89) _smanet_getvals: vc->name: ChpTm2Str, format: 0102
+value.c(105) _smanet_getvals: lval: 25394998 (00000000)
+value.c(89) _smanet_getvals: vc->name: ChpPwrStr, format: 0104
+value.c(111) _smanet_getvals: lval: 4.000000
+value.c(89) _smanet_getvals: vc->name: ChpPwrStrDly, format: 0100
+value.c(94) _smanet_getvals: bval: 5 (05)
+value.c(89) _smanet_getvals: vc->name: PvEgyMtr, format: 0102
+value.c(105) _smanet_getvals: lval: 25395382 (00000000)
+value.c(89) _smanet_getvals: vc->name: FedInCurAtCom, format: 0104
+value.c(111) _smanet_getvals: lval: 0.000000
+value.c(89) _smanet_getvals: vc->name: FedInCurRtCom, format: 0104
+value.c(111) _smanet_getvals: lval: 0.000000
+value.c(89) _smanet_getvals: vc->name: SlfCsmpSOCMin, format: 0101
+value.c(99) _smanet_getvals: wval: 50 (0032)
+value.c(89) _smanet_getvals: vc->name: SN, format: 0102
+value.c(105) _smanet_getvals: lval: 25395894 (20000000)
+value.c(89) _smanet_getvals: vc->name: SNSlv1, format: 0102
+value.c(105) _smanet_getvals: lval: 25396022 (40000000)
+value.c(89) _smanet_getvals: vc->name: SNSlv2, format: 0102
+value.c(105) _smanet_getvals: lval: 25396150 (00000000)
+value.c(89) _smanet_getvals: vc->name: SNSlv3, format: 0102
+value.c(105) _smanet_getvals: lval: 25396278 (00000000)
+value.c(89) _smanet_getvals: vc->name: GdCsmpEgyMtr, format: 0102
+value.c(105) _smanet_getvals: lval: 25396406 (00000000)
+value.c(89) _smanet_getvals: vc->name: GdFeedEgyMtr, format: 0102
+value.c(105) _smanet_getvals: lval: 25396534 (00000000)
+value.c(89) _smanet_getvals: vc->name: BatTyp, format: 0100
+value.c(94) _smanet_getvals: bval: 4 (04)
+value.c(89) _smanet_getvals: vc->name: AutoEquChrgEna, format: 0100
+value.c(94) _smanet_getvals: bval: 2 (02)
+value.c(89) _smanet_getvals: vc->name: GnAutoEna, format: 0100
+value.c(94) _smanet_getvals: bval: 2 (02)
+value.c(89) _smanet_getvals: vc->name: GnPwrEna, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: GnStrMod, format: 0100
+value.c(94) _smanet_getvals: bval: 2 (02)
+value.c(89) _smanet_getvals: vc->name: GnTmOpEna, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: GnTmOpCyc, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: GdMod, format: 0100
+value.c(94) _smanet_getvals: bval: 2 (02)
+value.c(89) _smanet_getvals: vc->name: SilentEna, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: GdAISns, format: 0100
+value.c(94) _smanet_getvals: bval: 3 (03)
+value.c(89) _smanet_getvals: vc->name: GdVtgIncProEna, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: Country, format: 0100
+value.c(94) _smanet_getvals: bval: 0 (00)
+value.c(89) _smanet_getvals: vc->name: FedInMod, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: FedInCtl, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: GdSocEna, format: 0100
+value.c(94) _smanet_getvals: bval: 2 (02)
+value.c(89) _smanet_getvals: vc->name: GdPwrEna, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: GdManStr, format: 0100
+value.c(94) _smanet_getvals: bval: 0 (00)
+value.c(89) _smanet_getvals: vc->name: ClstCfg, format: 0100
+value.c(94) _smanet_getvals: bval: 9 (09)
+value.c(89) _smanet_getvals: vc->name: ComBaud, format: 0100
+value.c(94) _smanet_getvals: bval: 4 (04)
+value.c(89) _smanet_getvals: vc->name: SleepEna, format: 0100
+value.c(94) _smanet_getvals: bval: 2 (02)
+value.c(89) _smanet_getvals: vc->name: AfraEna, format: 0100
+value.c(94) _smanet_getvals: bval: 2 (02)
+value.c(89) _smanet_getvals: vc->name: SlpAtNgt, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: InvRs, format: 0100
+value.c(94) _smanet_getvals: bval: 0 (00)
+value.c(89) _smanet_getvals: vc->name: ParaSto, format: 0100
+value.c(94) _smanet_getvals: bval: 0 (00)
+value.c(89) _smanet_getvals: vc->name: InvTmOpEna, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: InvTmOpCyc, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: ManStr, format: 0100
+value.c(94) _smanet_getvals: bval: 0 (00)
+value.c(89) _smanet_getvals: vc->name: ErrAckn, format: 0100
+value.c(94) _smanet_getvals: bval: 0 (00)
+value.c(89) _smanet_getvals: vc->name: ParaLod, format: 0100
+value.c(94) _smanet_getvals: bval: 0 (00)
+value.c(89) _smanet_getvals: vc->name: CntRs, format: 0100
+value.c(94) _smanet_getvals: bval: 0 (00)
+value.c(89) _smanet_getvals: vc->name: RlyTmr1Cyc, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: RlyTmr2Cyc, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: Rly1Op, format: 0100
+value.c(94) _smanet_getvals: bval: 3 (03)
+value.c(89) _smanet_getvals: vc->name: Rly1OpSlv1, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: Rly1OpSlv2, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: Rly2Op, format: 0100
+value.c(94) _smanet_getvals: bval: 4 (04)
+value.c(89) _smanet_getvals: vc->name: Rly2OpSlv1, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: Rly2OpSlv2, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: GnManStr, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: GnAck, format: 0100
+value.c(94) _smanet_getvals: bval: 0 (00)
+value.c(89) _smanet_getvals: vc->name: ChrgSelMan, format: 0100
+value.c(94) _smanet_getvals: bval: 0 (00)
+value.c(89) _smanet_getvals: vc->name: GnCtlMod, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: CardFunc, format: 0100
+value.c(94) _smanet_getvals: bval: 0 (00)
+value.c(89) _smanet_getvals: vc->name: GnAISns, format: 0100
+value.c(94) _smanet_getvals: bval: 3 (03)
+value.c(89) _smanet_getvals: vc->name: BkupTst, format: 0100
+value.c(94) _smanet_getvals: bval: 0 (00)
+value.c(89) _smanet_getvals: vc->name: ExtSrc, format: 0100
+value.c(94) _smanet_getvals: bval: 3 (03)
+value.c(89) _smanet_getvals: vc->name: LongChLstEna, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: ChrgCtlOp, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: ChpPwrEna, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: ChpManStr, format: 0100
+value.c(94) _smanet_getvals: bval: 0 (00)
+value.c(89) _smanet_getvals: vc->name: RnMod, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: SlfCsmpIncEna, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(89) _smanet_getvals: vc->name: SlfCsmpStdbyMod, format: 0100
+value.c(94) _smanet_getvals: bval: 1 (01)
+value.c(365) smanet_get_value: ts: 1618630725
+value.c(386) smanet_get_value: returning: 1.000000
+value.c(236) smanet_get_optionbyname: index: 1
+value.c(240) smanet_get_optionbyname: p: ---
+value.c(240) smanet_get_optionbyname: p: Auto
+try.c(85) main: value: Auto
+value.c(257) smanet_set_optionbyname: name: GnManStr, opt: Auto
+value.c(263) smanet_set_optionbyname: c: 0x183e684
+value.c(266) smanet_set_optionbyname: count: 24
+value.c(271) smanet_set_optionbyname: option: ---
+value.c(271) smanet_set_optionbyname: option: Auto
+value.c(278) smanet_set_optionbyname: found: 1
+value.c(280) smanet_set_optionbyname: i: 1
+value.c(143) _smanet_setval: id: 170, name: GnManStr
+value.c(365) smanet_get_value: ts: 1618630725
+value.c(386) smanet_get_value: returning: 1.000000
+value.c(365) smanet_get_value: ts: 1618630725
+value.c(386) smanet_get_value: returning: 1.000000
+value.c(146) _smanet_setval: v1: 1.000000, v2: 1.000000
+channel.c(196) smanet_save_channels: path: mychans.dat
+channel.c(219) smanet_save_channels: c: name: AutoStr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Dt, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Tm, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: BatCpyNom, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: BatVtgNom, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: BatChrgCurMax, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: BatTmpMax, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: BatTmpStr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: BatWirRes, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: AptTmBoost, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: AptTmFul, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: AptTmEqu, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: CycTmFul, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: CycTmEqu, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ChrgVtgBoost, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ChrgVtgFul, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ChrgVtgEqu, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ChrgVtgFlo, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: BatTmpCps, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnAutoStr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnSocTm1Str, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnSocTm1Stp, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnSocTm2Str, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnSocTm2Stp, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnTm1Str, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnTm2Str, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnPwrStr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnPwrStp, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnVtgMin, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnVtgMax, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnCurNom, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnFrqNom, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnFrqMin, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnFrqMax, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnPwrAvgTm, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnOpTmMin, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnStpTmMin, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnCoolTm, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnErrStpTm, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnWarmTm, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnRvPwr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnRvTm, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnTmOpStrDt, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnTmOpStrTm, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnTmOpRnDur, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdVtgMin, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdVtgMax, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdCurNom, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdFrqNom, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdFrqMin, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdFrqMax, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdVldTm, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdRvPwr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdRvTm, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdVtgIncPro, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: FedInSocStr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: FedInSocStp, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: FedInTmStr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: FedInTmStp, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: FedInCurAt, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: FedInCurRt, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdSocTm1Str, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdSocTm1Stp, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdSocTm2Str, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdSocTm2Stp, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdTm1Str, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdTm2Str, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdPwrStr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdPwrStp, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: SlpStrTm, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: SlpStpTm, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: InvVtgNom, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: InvChrgCurMax, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: InvFrqNom, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: InvTmOpStrDt, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: InvTmOpStrTm, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: InvTmOpRnDur, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Lod1SocTm1Str, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Lod1SocTm1Stp, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Lod1SocTm2Str, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Lod1SocTm2Stp, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Lod1Tm1Str, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Lod1Tm2Str, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Lod2SocTm1Str, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Lod2SocTm1Stp, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Lod2SocTm2Str, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Lod2SocTm2Stp, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Lod2Tm1Str, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Lod2Tm2Str, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: RlyTmr1StrDt, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: RlyTmr1StrTm, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: RlyTmr1Dur, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: RlyTmr2StrDt, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: RlyTmr2StrTm, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: RlyTmr2Dur, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: BatFanTmpStr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnTmStr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ExtLkTm, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: SilentTmFlo, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: SilentTmMax, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: BatChrgVtgMan, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: BatPro1TmStr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: BatPro1TmStp, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: BatPro2TmStr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: BatPro2TmStp, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: BatPro1Soc, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: BatPro2Soc, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: BatPro3Soc, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: SimSoc, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: AuthCode, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Plimit, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ChpOpTmMin, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ChpStpTmMin, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ChpSocTm1Str, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ChpSocTm1Stp, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ChpSocTm2Str, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ChpSocTm2Stp, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ChpTm1Str, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ChpTm2Str, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ChpPwrStr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ChpPwrStrDly, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: PvEgyMtr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: FedInCurAtCom, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: FedInCurRtCom, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: SlfCsmpSOCMin, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: SN, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: SNSlv1, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: SNSlv2, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: SNSlv3, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdCsmpEgyMtr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdFeedEgyMtr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: BatTyp, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: AutoEquChrgEna, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnAutoEna, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnPwrEna, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnStrMod, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnTmOpEna, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnTmOpCyc, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdMod, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: SilentEna, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdAISns, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdVtgIncProEna, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Country, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: FedInMod, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: FedInCtl, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdSocEna, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdPwrEna, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GdManStr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ClstCfg, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ComBaud, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: SleepEna, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: AfraEna, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: SlpAtNgt, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: InvRs, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ParaSto, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: InvTmOpEna, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: InvTmOpCyc, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ManStr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ErrAckn, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ParaLod, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: CntRs, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: RlyTmr1Cyc, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: RlyTmr2Cyc, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Rly1Op, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Rly1OpSlv1, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Rly1OpSlv2, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Rly2Op, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Rly2OpSlv1, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Rly2OpSlv2, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnManStr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnAck, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ChrgSelMan, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnCtlMod, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: CardFunc, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: GnAISns, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: BkupTst, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ExtSrc, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: LongChLstEna, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ChrgCtlOp, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ChpPwrEna, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: ChpManStr, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: RnMod, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: SlfCsmpIncEna, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: SlfCsmpStdbyMod, timestamp: 1618630725
+channel.c(219) smanet_save_channels: c: name: Msg, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Soh, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: TotInvPwrAt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: TotInvCur, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: TotInvPwrRt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: BatSoc, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: BatVtg, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: BatChrgVtg, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: AptTmRmg, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: TotBatCur, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: BatTmp, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: RmgTmFul, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: RmgTmEqu, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: BatSocErr, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: GnRmgTm, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvPwrAt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvPwrAtSlv1, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvPwrAtSlv2, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvPwrAtSlv3, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvVtg, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvVtgSlv1, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvVtgSlv2, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvVtgSlv3, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvCur, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvCurSlv1, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvCurSlv2, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvCurSlv3, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvFrq, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvPwrRt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvPwrRtSlv1, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvPwrRtSlv2, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvPwrRtSlv3, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ExtPwrAt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ExtPwrAtSlv1, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ExtPwrAtSlv2, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ExtPwrAtSlv3, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ExtVtg, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ExtVtgSlv1, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ExtVtgSlv2, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ExtVtgSlv3, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ExtCur, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ExtCurSlv1, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ExtCurSlv2, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ExtCurSlv3, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ExtFrq, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ExtPwrRt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ExtPwrRtSlv1, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ExtPwrRtSlv2, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ExtPwrRtSlv3, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: TotExtPwrAt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: TotExtCur, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: TotExtPwrRt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: TotLodPwr, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: GdRmgTm, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Pac, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Firmware, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Iac, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Vac, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Fac, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ChpPwrAt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ChpRmgTm, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ChpStrRmgTm, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Sic1PvPwr, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Sic2PvPwr, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Sic3PvPwr, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Sic4PvPwr, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Sic1SWVers, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Sic2SWVers, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Sic3SWVers, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Sic4SWVers, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: TotSicPvPwr, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: TotSicBatCur, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: TotMccLodPwr, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: TotPvPwrAt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: TotLodPwrAt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: SlfCsmpPwrAt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: SlfCsmpIncPwr, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: BatCpyThrpCnt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: GdCsmpPwrAt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: GdFeedPwrAt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: PacPV, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: PacFeed-In, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: PacConsumption, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: kWhPV, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: FwVer, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: OnTmh, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: FwVer2, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: EgyCntIn, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: EgyCntOut, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: EgyCntTm, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: GnEgyCnt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: GnEgyTm, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: GnOpTmh, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: GnStrCnt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: GdEgyCntIn, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: GdEgyCntOut, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: GdEgyTmh, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: GdOpTmh, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: GdCtcCnt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: TotTmh, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Sic1EgyCntIn, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Sic2EgyCntIn, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Sic3EgyCntIn, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Sic4EgyCntIn, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: TotSicEgyCntIn, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Sic1TdyEgyCntIn, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Sic2TdyEgyCntIn, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Sic3TdyEgyCntIn, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Sic4TdyEgyCntIn, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: TotSicDyEgyCntI, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Serial Number, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: E-Total-In, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: E-Total, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: h-On, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: TotLodEgyCnt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: SlfCsmpIncEgy, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: SlfCsmpEgy, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: SlfCsmpIncTdy, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: GdCsmpEgyTdy, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: kWhFeed-In, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: kWhConsumption, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: GdFeedEgyTdy, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Adr, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: OpStt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: OpSttSlv1, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: OpSttSlv2, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: OpSttSlv3, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: CardStt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Prio, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: BatChrgOp, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: AptPhs, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: GnDmdSrc, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: GnStt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvOpStt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvOpSttSlv1, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvOpSttSlv2, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: InvOpSttSlv3, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Rly1Stt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Rly2Stt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: GnRnStt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Mode, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: Error, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: ChpStt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: PvGdConStt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: LodGdConStt, timestamp: 0
+channel.c(219) smanet_save_channels: c: name: BatMntStt, timestamp: 0
+timeouts: 0, commands: 7

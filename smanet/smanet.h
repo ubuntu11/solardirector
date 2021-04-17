@@ -12,22 +12,6 @@ LICENSE file in the root directory of this source tree.
 
 #include "module.h"
 
-enum SMANET_CHANCLASS {
-	SMANET_CHANCLASS_UNKNOWN,
-	SMANET_CHANCLASS_ANALOG,
-	SMANET_CHANCLASS_DIGITAL,
-	SMANET_CHANCLASS_COUNTER,
-	SMANET_CHANCLASS_STATUS
-};
-
-enum SMANET_CHANTYPE {
-	SMANET_CHANTYPE_UNKNOWN,
-	SMANET_CHANTYPE_PARAMETER,
-	SMANET_CHANTYPE_SPOTVALUE,
-	SMANET_CHANTYPE_ARCHIVE,
-	SMANET_CHANTYPE_TEST
-};
-
 #if 0
    /* Nur bei analogen Parameterkanaelen sinnvoll! */
    if ((chan->wCType & CH_PARA) &&
@@ -68,7 +52,7 @@ enum SMANET_CHANTYPE {
 
 struct smanet_value {
 	long timestamp;
-	uint8_t type;
+	enum DATA_TYPE type;
 	union {
 		uint8_t bval;
 		short wval;
@@ -120,9 +104,11 @@ int smanet_get_optionbyname(smanet_session_t *s, char *, char *, int);
 int smanet_set_optionbyname(smanet_session_t *s, char *, char *);
 
 double smanet_get_value(smanet_value_t *);
+char *smanet_get_option(smanet_channel_t *);
 int smanet_get_valuebyid(smanet_session_t *s, int, double *);
 int smanet_set_valuebyid(smanet_session_t *s, int, double);
 int smanet_get_valuebyname(smanet_session_t *s, char *, smanet_value_t *);
 int smanet_set_valuebyname(smanet_session_t *s, char *, double);
+void smanet_clear_values(smanet_session_t *);
 
 #endif
