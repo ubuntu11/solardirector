@@ -46,7 +46,7 @@ enum DEVSERVER_FUNC {
         DEVSERVER_CLOSE,
 };
 
-int devserver_send(int fd, uint8_t opcode, uint8_t unit, uint16_t control, void *data, int datasz);
+int devserver_send(int fd, uint8_t opcode, uint8_t unit, uint16_t control, void *data, uint16_t data_len);
 int devserver_recv(int fd, uint8_t *opcode, uint8_t *unit, uint16_t *control, void *data, int datasz, int timeout);
 int devserver_request(int fd, uint8_t opcode, uint8_t unit, uint16_t control, void *data, int len);
 int devserver_add_unit(devserver_config_t *, devserver_io_t *);

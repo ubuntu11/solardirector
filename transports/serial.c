@@ -30,7 +30,7 @@ struct serial_session {
 	int fd;
 #endif
 	char target[SOLARD_AGENT_TARGET_LEN+1];
-	int speed,data,stop,parity;
+	int speed,data,stop,parity,vmin,vtime;
 #if USE_BUFFER
 	buffer_t *buffer;
 #endif
@@ -133,7 +133,18 @@ static void *serial_new(void *conf, void *target, void *topts) {
 	s->stop = atoi(p);
 	if (!s->stop) s->stop = 1;
 
-	dprintf(1,"target: %s, speed: %d, data: %d, parity: %c, stop: %d\n", s->target, s->speed, s->data, s->parity == 0 ? 'N' : s->parity == 2 ? 'O' : 'E', s->stop);
+	/* vmin */
+	p = strele(4,",",topts);
+	s->vmin = atoi(p);
+	if (!s->vmin) s->vmin = 0;
+
+	/* vtime */
+	p = strele(5,",",topts);
+	s->vtime = atoi(p);
+	if (!s->vtime) s->vtime = 5;
+
+	dprintf(1,"target: %s, speed: %d, data: %d, parity: %c, stop: %d, vmin: %d, vtime: %d\n",
+		s->target, s->speed, s->data, s->parity == 0 ? 'N' : s->parity == 2 ? 'O' : 'E', s->stop, s->vmin, s->vtime);
 
 	return s;
 }
@@ -242,13 +253,14 @@ static int serial_open(void *handle) {
 		log_write(LOG_SYSERR,"open %s\n", path);
 		return 1;
 	}
-	set_interface_attribs(s->fd, s->speed, s->data, s->parity, s->stop, 0, 1);
+	set_interface_attribs(s->fd, s->speed, s->data, s->parity, s->stop, s->vmin, s->vtime);
 
 	return 0;
 }
 #else
 static int set_interface_attribs (HANDLE h, int speed, int data, int parity, int stop, int vmin, int vtime) {
 	DCB Dcb;
+	COMMTIMEOUTS timeout;
 
 	GetCommState (h, &Dcb); 
 
@@ -264,12 +276,12 @@ static int set_interface_attribs (HANDLE h, int speed, int data, int parity, int
 
 	/* Parity (0=none, 1=even, 2=odd */
 	switch(parity) {
-		case 1: Dcb.Parity = EVENPARITY; break;
-		case 2: Dcb.Parity = ODDPARITY; break;
-		default: Dcb.Parity = NOPARITY; break;
+		case 1: Dcb.Parity = EVENPARITY; dcb.fParity = 1; break;
+		case 2: Dcb.Parity = ODDPARITY; dcb.fParity = 1; break;
+		default: Dcb.Parity = NOPARITY; dcb.fParity = 0; break;
 	}
 
-	Dcb.fParity         = 0;
+	Dcb.fBinary = 1;
 	Dcb.fOutxCtsFlow    = 0;
 	Dcb.fOutxDsrFlow    = 0;
 	Dcb.fDsrSensitivity = 0;
@@ -283,6 +295,25 @@ static int set_interface_attribs (HANDLE h, int speed, int data, int parity, int
 	Dcb.fDtrControl     = DTR_CONTROL_DISABLE;
 
 	SetCommState (h, &Dcb); 
+
+	//Set read timeouts
+	if(vtime > 0) {
+		if(vmin > 0) {	//Intercharacter timeout
+			timeout.ReadIntervalTimeout = vtime * 100;	//Deciseconds to milliseconds
+		} else {				//Total timeout
+			timeout.ReadTotalTimeoutConstant = vtime * 100;	//Deciseconds to milliseconds
+		}
+	} else {
+		if(vmin > 0) {	//Counted read
+			//Handled by length parameter of serialRead(); timeouts remain 0 (unused)
+		} else {				//"Nonblocking" read
+			timeout.ReadTotalTimeoutConstant = 1;	//Wait as little as possible for a blocking read (1 millisecond)
+		}
+	}
+	if(!SetCommTimeouts(handle, &timeout)) {
+		printf("Error setting serial port timeout: %lu\n", GetLastError());
+		throw std::runtime_error("serial initialization failed");
+	}
 	return 0;
 }
 
@@ -304,7 +335,7 @@ static int serial_open(void *handle) {
 	dprintf(1,"h: %p\n", s->h);
 	if (s->h == INVALID_HANDLE_VALUE) return 1;
 
-	set_interface_attribs(s->h, s->speed, s->data, s->parity, s->stop, 0, 1);
+	set_interface_attribs(s->h, s->speed, s->data, s->parity, s->stop, s->vmin, s->vtime);
 
 	dprintf(1,"done!\n");
 	return 0;

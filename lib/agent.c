@@ -216,7 +216,8 @@ int agent_sub(solard_agent_t *ap, char *name, char *func, char *action, char *id
 
 solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, solard_module_t *driver) {
 	solard_agent_t *ap;
-	char tp_info[128],mqtt_info[200],*info,*p;
+	char info[65536];
+	char tp_info[128],mqtt_info[200],*p;
 	char configfile[256];
 	mqtt_config_t mqtt_config;
 	char transport[SOLARD_AGENT_TRANSPORT_LEN+1];
@@ -346,7 +347,7 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 	/* Get info */
 	ap->info = ap->role->info(ap->role_handle);
 	if (!ap->info) goto agent_init_error;
-	info = json_dumps(ap->info,0);
+	json_dumps_r(ap->info,info,sizeof(info));
 
 	/* If info flag, dump info then exit */
 	dprintf(1,"info_flag: %d\n", info_flag);
@@ -363,7 +364,6 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 	/* Publish our Info */
 	sprintf(mqtt_info,"%s/%s/%s/%s",SOLARD_TOPIC_ROOT,ap->role->name,ap->name,SOLARD_FUNC_INFO);
 	mqtt_pub(ap->m,mqtt_info,info,1);
-	json_free_string(info);
 
 	names = list_create();
 	list_add(names,"all",4);

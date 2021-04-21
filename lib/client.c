@@ -243,10 +243,7 @@ solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,cha
 		}
 	} else {
 		dprintf(1,"mqtt_info: %s\n", mqtt_info);
-		if (!strlen(mqtt_info)) {
-			log_write(LOG_ERROR,"either configfile or mqtt info must be specified.\n");
-			goto client_init_error;
-		}
+		if (!strlen(mqtt_info)) strcpy(mqtt_info,"localhost");
 		memset(&mqtt_config,0,sizeof(mqtt_config));
 		strncat(mqtt_config.host,strele(0,",",mqtt_info),sizeof(mqtt_config.host)-1);
 		strncat(mqtt_config.clientid,strele(1,",",mqtt_info),sizeof(mqtt_config.clientid)-1);

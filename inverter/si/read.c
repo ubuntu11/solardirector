@@ -229,8 +229,9 @@ int si_read(si_session_t *s, void *buf, int buflen) {
 //	s->get_data(s,0x30a,data,sizeof(data));
 
 	/* Calc SOC if possible */
-
-	inv->soc = s->soc < 0.0 ? ( ( inv->battery_voltage - inv->discharge_voltage) / (inv->charge_voltage - inv->discharge_voltage) ) * 100.0 : s->soc;
+	dprintf(1,"user_soc: %.1f, battery_voltage: %.1f, discharge_voltage: %.1f, charge_voltage: %.1f\n",
+		s->user_soc, inv->battery_voltage, inv->discharge_voltage, inv->charge_voltage);
+	inv->soc = s->user_soc < 0.0 ? ( ( inv->battery_voltage - inv->discharge_voltage) / (inv->charge_voltage - inv->discharge_voltage) ) * 100.0 : s->user_soc;
 	lprintf(0,"SoC: %.1f\n", inv->soc);
 	inv->soh = 100.0;
 	return 0;

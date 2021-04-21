@@ -20,16 +20,6 @@ enum SI_PARAM_SOURCE {
 	SI_PARAM_SOURCE_SI
 };
 
-#if 0
-struct inv_param {
-	char *name;
-	enum DATA_TYPE type;
-	void *ptr;
-	int len;
-};
-typedef struct inv_param inv_param_t;
-#endif
-
 struct si_param {
 	char name[32];
 	enum SI_PARAM_SOURCE source;
@@ -41,14 +31,19 @@ struct si_param {
 		short wval;
 		long lval;
 		float fval;
+		double dval;
+		char sval[128];
 	};
 };
 typedef struct si_param si_param_t;
 
 struct si_session {
-	solard_agent_t *conf;
+	solard_agent_t *ap;
 	smanet_session_t *smanet;
+	char channels_path[256];
+	list desc;
 	pthread_t th;
+	int startup;
 	/* 0x300 to 0x30F */
 	struct can_frame frames[16];
 	uint32_t bitmap;
@@ -57,12 +52,11 @@ struct si_session {
 	solard_module_t *tty;
 	void *tty_handle;
 	int (*get_data)(struct si_session *, int id, uint8_t *data, int len);
-	list desc;
 	uint16_t state;
 	json_proctab_t idata;
 	si_param_t pdata;
 	float save_charge_amps;
-	float soc;
+	float user_soc;
 	struct {
 		unsigned relay1: 1;
 		unsigned relay2: 1;
@@ -114,7 +108,7 @@ int si_read(si_session_t *,void *,int);
 int si_write(si_session_t *,void *,int);
 int si_config(void *,char *,char *,list);
 json_value_t *si_info(void *);
-int si_config_add_params(json_value_t *j);
+int si_config_add_info(si_session_t *s, json_value_t *j);
 
 #define si_getshort(v) (short)( ((v)[1]) << 8 | ((v)[0]) )
 #define si_putshort(p,v) { float tmp; *((p+1)) = ((int)(tmp = v) >> 8); *((p)) = (int)(tmp = v); }

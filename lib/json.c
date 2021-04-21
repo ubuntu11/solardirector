@@ -110,8 +110,20 @@ json_object_t *json_create_descriptor(json_descriptor_t d) {
 	case DATA_TYPE_BOOL:
 		json_object_set_string(to,"type","bool");
 		break;
+	case DATA_TYPE_BYTE:
+		json_object_set_string(to,"type","u8");
+		break;
+	case DATA_TYPE_SHORT:
+		json_object_set_string(to,"type","i16");
+		break;
 	case DATA_TYPE_INT:
 		json_object_set_string(to,"type","i32");
+		break;
+	case DATA_TYPE_FLOAT:
+		json_object_set_string(to,"type","f32");
+		break;
+	case DATA_TYPE_DOUBLE:
+		json_object_set_string(to,"type","f64");
 		break;
 	case DATA_TYPE_STRING:
 		json_object_set_string(to,"type","string");
@@ -227,6 +239,10 @@ int json_tostring(json_value_t *j, char *dest, int dest_len, int pretty) {
 
 char *json_dumps(json_value_t *o, int pretty) {
 	return (pretty ? json_serialize_to_string_pretty(o) : json_serialize_to_string(o));
+}
+
+int json_dumps_r(json_value_t *v, char *buf, int buflen) {
+	return json_serialize_to_buffer(v,buf,buflen);
 }
 
 #if 0

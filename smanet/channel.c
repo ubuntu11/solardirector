@@ -235,7 +235,7 @@ int smanet_load_channels(smanet_session_t *s, char *path) {
 
 	fp = fopen(path,"rb");
 	if (!fp) {
-		log_write(LOG_SYSERR,"smanet_save_channels: fopen %s",path);
+		log_write(LOG_SYSERR,"smanet_load_channels: fopen %s",path);
 		return 1;
 	}
 
@@ -246,7 +246,7 @@ int smanet_load_channels(smanet_session_t *s, char *path) {
 	while(!feof(fp)) {
 		bytes = fread(&newchan,1,sizeof(newchan),fp);
 		if (bytes < 0) {
-			log_write(LOG_SYSERR,"smanet_save_channels: fread");
+			log_write(LOG_SYSERR,"smanet_load_channels: fread");
 			goto smanet_load_channels_error;
 		} else if (bytes == 0) break;
 		if (newchan.mask & CH_STATUS) {

@@ -26,7 +26,7 @@ void usage(char *myname) {
 int main(int argc, char **argv) {
 	smanet_session_t *s;
 	int param,list,all;
-	char configfile[256],tpinfo[128];
+	char configfile[256],tpinfo[128],chanpath[256];
 	char transport[32],target[64],topts[32];
 	opt_proctab_t opts[] = {
                 /* Spec, dest, type len, reqd, default val, have */
@@ -36,6 +36,7 @@ int main(int argc, char **argv) {
 		{ "-a|list all",&all,DATA_TYPE_BOOL,0,0,"N" },
 		{ "-t::|<transport,target,topts>",&tpinfo,DATA_TYPE_STRING,sizeof(tpinfo)-1,0,"" },
 		{ "-c::|configfile",&configfile,DATA_TYPE_STRING,sizeof(configfile)-1,0,"" },
+		{ "-p::|channels path",&chanpath,DATA_TYPE_STRING,sizeof(chanpath)-1,0,"" },
 		OPTS_END
 	};
 	cfg_proctab_t tab[] = {
@@ -49,6 +50,8 @@ int main(int argc, char **argv) {
 	int logopts = LOG_INFO|LOG_WARNING|LOG_ERROR|LOG_SYSERR|_ST_DEBUG;
 	int type,i,action;
 	cfg_info_t *cfg;
+	smanet_channel_t *c;
+	smanet_value_t *v,nv;
 
 	log_open("siutil",0,logopts);
 
@@ -131,22 +134,60 @@ int main(int argc, char **argv) {
 	if (!tp_handle) return 1;
 	s = smanet_init(tp, tp_handle);
 	if (!s) return 1;
-	smanet_get_channels(s);
 
-#if 0
+	dprintf(1,"chanpath: %s\n", chanpath);
+	if (!strlen(chanpath)) sprintf(chanpath,"%s/%s.dat",LIBDIR,s->type);
+	if (smanet_load_channels(s,chanpath) != 0) {
+		dprintf(1,"count: %d\n", list_count(s->channels));
+		if (!list_count(s->channels)) {
+			log_write(LOG_INFO,"Downloading channels...\n");
+			smanet_get_channels(s);
+			smanet_save_channels(s,chanpath);
+		}
+	}
+
 	dprintf(1,"action: %d\n", action);
 	switch(action) {
 	case 0:
-		dolist(s->dev_handle, type, (argc ? argv[0] : 0));
+		list_reset(s->channels);
+		while((c = list_get_next(s->channels)) != 0) printf("%s\n",c->name);
 		break;
 	case 1:
-		getparm(s->dev_handle, argv[0]);
+		c = smanet_get_channelbyname(s,argv[0]);
+		if (!c) {
+			log_write(LOG_ERROR,"%s: not found\n",argv[0]);
+			return 1;
+		}
+		if (c->mask & CH_STATUS) {
+			smanet_get_optionbyname(s,c->name,tpinfo,sizeof(tpinfo)-1);
+			printf("%s: %s\n", c->name, tpinfo);
+		} else {
+			v = smanet_get_value(s,c);
+			if (!v) {
+				log_write(LOG_ERROR,"%s: error getting value\n",c->name);
+				return 1;
+			}
+			conv_type(DATA_TYPE_STRING,tpinfo,sizeof(tpinfo)-1,v->type,&v->bval,0);
+		}
 		break;
 	case 2:
-		setparm(s->dev_handle, argv[0], argv[1]);
+		c = smanet_get_channelbyname(s,argv[0]);
+		if (!c) {
+			log_write(LOG_ERROR,"%s: not found\n",argv[0]);
+			return 1;
+		}
+		if (c->mask & CH_STATUS) {
+			smanet_set_optionbyname(s,c->name,argv[1]);
+		} else {
+			v = smanet_get_value(s,c);
+			if (!v) {
+				log_write(LOG_ERROR,"%s: error getting value\n",c->name);
+				return 1;
+			}
+			conv_type(v->type,&v->bval,0,DATA_TYPE_STRING,argv[1],strlen(argv[1]));
+		}
 		break;
 	}
-#endif
 
 	return 0;
 }

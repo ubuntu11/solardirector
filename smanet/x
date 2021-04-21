@@ -1,440 +1,218 @@
-../transports/serial.c(136) serial_new: target: /dev/ttyS0, speed: 19200, data: 8, parity: N, stop: 1
-try.c(47) main: tp_handle: 0x1832154
-../transports/serial.c(230) serial_open: target: /dev/ttyS0
-../transports/serial.c(238) serial_open: path: /dev/ttyS0
-../transports/serial.c(147) set_interface_attribs: fd: 3, speed: 19200, data: 8, parity: 0, stop: 1, vmin: 0, vtime: 1
+../transports/serial.c(147) serial_new: target: /dev/ttyS0, speed: 19200, data: 8, parity: N, stop: 1, vmin: 0, vtime: 5
+try.c(48) main: tp_handle: 0x1186154
+../transports/serial.c(241) serial_open: target: /dev/ttyS0
+../transports/serial.c(249) serial_open: path: /dev/ttyS0
+../transports/serial.c(158) set_interface_attribs: fd: 3, speed: 19200, data: 8, parity: 0, stop: 1, vmin: 0, vtime: 5
 packet.c(22) smanet_alloc_packet: data_len: 12
-command.c(15) smanet_command: cmd: 6, packet: 0x183323c, buf: (nil), buflen: 0
+command.c(15) smanet_command: src: 0000, dest: 0000, cmd: 6, packet: 0x1187374, buf: (nil), buflen: 0
+buf(0):
 packet.c(108) smanet_send_packet: src: 0000, dest: 0000, ctrl: 80, cnt: 0, cmd: 06, buffer: (nil), buflen: 0
+buffer(0):
+HEADER(5):
+0000: 7E FF 03 40 41                                     ~..@A           
+frame.c(213) smanet_write_frame: HEADER fcs: 7b9e
+frame.c(215) smanet_write_frame: MESSAGE fcs: 340b
+frame.c(217) smanet_write_frame: END fcs: cbf4
+copy2buf(7):
+0000: 00 00 00 00 80 00 06                               .......         
+fcs buffer(11):
+0000: FF 03 40 41 00 00 00 00 80 00 06                   ..@A.......     
+frame.c(40) calcfcs: FCS: c0d7
+frame.c(221) smanet_write_frame: REAL fcs: c0d7
+copy2buf(2):
+0000: D7 C0                                              ..              
 put frame(15):
 0000: 7E FF 03 40 41 00 00 00 00 80 00 06 D7 C0 7E       ~..@A.........~ 
 packet.c(58) smanet_recv_packet: command: 06, count: 00, timeout: 0
 packet.c(60) smanet_recv_packet: cmo: ff
-frame.c(53) smanet_read_frame: buffer: 0x7ee00324, buflen: 284, timeout: 5
+frame.c(56) smanet_read_frame: buffer: 0x7ef5c32c, buflen: 284, timeout: 5
 get frame(25):
-0000: FF 03 40 41 01 00 00 00 40 00 06 B4 C4 1A 4B 53    ..@A....@.....KS
-0010: 49 36 30 34 38 55 4D E1 2D                         I6048UM.-       
-packet.c(73) smanet_recv_packet: src: 0001, dest: 0000, control: 40, count: 0, command: 06
+0000: FF 03 40 41 02 00 00 00 40 00 06 B4 C4 1A 4B 53    ..@A....@.....KS
+0010: 49 36 30 34 38 55 4D 2B 90                         I6048UM+.       
+fcs buffer(23):
+0000: FF 03 40 41 02 00 00 00 40 00 06 B4 C4 1A 4B 53    ..@A....@.....KS
+0010: 49 36 30 34 38 55 4D                               I6048UM         
+frame.c(40) calcfcs: FCS: 902b
+packet.c(73) smanet_recv_packet: src: 0002, dest: 0000, control: 40, count: 0, command: 06
 packet.c(75) smanet_recv_packet: h->command: 06, command: 06, test: 0
 packet.c(76) smanet_recv_packet: h->count: 00, cmo: ff, test: 0
 packet.c(87) smanet_recv_packet: sizeof(h): 7
 packet.c(89) smanet_recv_packet: data_len: 12
-command.c(28) smanet_command: r: 0
-command.c(38) smanet_command: p->command: 06, cmd: 06
-command.c(41) smanet_command: count: 0
-command.c(44) smanet_command: returning: 0
-command.c(57) smanet_get_net_start: type: 0x18331cc, buflen: 31
-command.c(61) smanet_get_net_start: type: SI6048UM
-init.c(27) smanet_init: serial: 1260045492, type: SI6048UM
+command.c(30) smanet_command: r: 0
+command.c(40) smanet_command: p->command: 06, cmd: 06
+command.c(43) smanet_command: count: 0
+command.c(46) smanet_command: returning: 0
+command.c(59) smanet_get_net_start: type: 0x11871dc, buflen: 31
+command.c(63) smanet_get_net_start: type: SI6048UM
+init.c(42) smanet_init: serial: 1260045492, type: SI6048UM
 packet.c(22) smanet_alloc_packet: data_len: 4
-command.c(15) smanet_command: cmd: 3, packet: 0x1833274, buf: 0x7ee004b4, buflen: 6
-packet.c(108) smanet_send_packet: src: 0000, dest: 0000, ctrl: 80, cnt: 0, cmd: 03, buffer: 0x7ee004b4, buflen: 6
+command.c(76) smanet_cfg_net_adr: setting addr to 2
+command.c(15) smanet_command: src: 0000, dest: 0000, cmd: 3, packet: 0x11873ac, buf: 0x7ef5c4c4, buflen: 6
+buf(6):
+0000: B4 C4 1A 4B 02 00                                  ...K..          
+packet.c(108) smanet_send_packet: src: 0000, dest: 0000, ctrl: 80, cnt: 0, cmd: 03, buffer: 0x7ef5c4c4, buflen: 6
+buffer(6):
+0000: B4 C4 1A 4B 02 00                                  ...K..          
+HEADER(5):
+0000: 7E FF 03 40 41                                     ~..@A           
+frame.c(213) smanet_write_frame: HEADER fcs: 7b9e
+frame.c(215) smanet_write_frame: MESSAGE fcs: 9391
+frame.c(217) smanet_write_frame: END fcs: 6c6e
+copy2buf(13):
+0000: 00 00 00 00 80 00 03 B4 C4 1A 4B 02 00             ..........K..   
+fcs buffer(17):
+0000: FF 03 40 41 00 00 00 00 80 00 03 B4 C4 1A 4B 02    ..@A..........K.
+0010: 00                                                 .               
+frame.c(40) calcfcs: FCS: a29f
+frame.c(221) smanet_write_frame: REAL fcs: a29f
+copy2buf(2):
+0000: 9F A2                                              ..              
 put frame(21):
 0000: 7E FF 03 40 41 00 00 00 00 80 00 03 B4 C4 1A 4B    ~..@A..........K
-0010: 01 00 F7 88 7E                                     ....~           
+0010: 02 00 9F A2 7E                                     ....~           
 packet.c(58) smanet_recv_packet: command: 03, count: 00, timeout: 0
 packet.c(60) smanet_recv_packet: cmo: ff
-frame.c(53) smanet_read_frame: buffer: 0x7ee0032c, buflen: 284, timeout: 5
+frame.c(56) smanet_read_frame: buffer: 0x7ef5c334, buflen: 284, timeout: 5
 get frame(17):
-0000: FF 03 40 41 01 00 00 00 40 00 03 B4 C4 1A 4B 7E    ..@A....@.....K~
-0010: 85                                                 .               
-packet.c(73) smanet_recv_packet: src: 0001, dest: 0000, control: 40, count: 0, command: 03
+0000: FF 03 40 41 02 00 00 00 40 00 03 B4 C4 1A 4B CD    ..@A....@.....K.
+0010: 7B                                                 {               
+fcs buffer(15):
+0000: FF 03 40 41 02 00 00 00 40 00 03 B4 C4 1A 4B       ..@A....@.....K 
+frame.c(40) calcfcs: FCS: 7bcd
+packet.c(73) smanet_recv_packet: src: 0002, dest: 0000, control: 40, count: 0, command: 03
 packet.c(75) smanet_recv_packet: h->command: 03, command: 03, test: 0
 packet.c(76) smanet_recv_packet: h->count: 00, cmo: ff, test: 0
 packet.c(87) smanet_recv_packet: sizeof(h): 7
 packet.c(89) smanet_recv_packet: data_len: 4
-command.c(28) smanet_command: r: 0
-command.c(38) smanet_command: p->command: 03, cmd: 03
-command.c(41) smanet_command: count: 0
-command.c(44) smanet_command: returning: 0
-command.c(77) smanet_cfg_net_adr: setting addr to 1
-init.c(30) smanet_init: back
-channel.c(245) smanet_load_channels: path: mychans.dat
-channel.c(271) smanet_load_channels: newchan: name: AutoStr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Dt, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Tm, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: BatCpyNom, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: BatVtgNom, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: BatChrgCurMax, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: BatTmpMax, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: BatTmpStr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: BatWirRes, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: AptTmBoost, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: AptTmFul, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: AptTmEqu, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: CycTmFul, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: CycTmEqu, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ChrgVtgBoost, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ChrgVtgFul, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ChrgVtgEqu, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ChrgVtgFlo, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: BatTmpCps, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnAutoStr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnSocTm1Str, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnSocTm1Stp, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnSocTm2Str, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnSocTm2Stp, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnTm1Str, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnTm2Str, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnPwrStr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnPwrStp, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnVtgMin, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnVtgMax, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnCurNom, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnFrqNom, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnFrqMin, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnFrqMax, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnPwrAvgTm, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnOpTmMin, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnStpTmMin, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnCoolTm, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnErrStpTm, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnWarmTm, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnRvPwr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnRvTm, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnTmOpStrDt, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnTmOpStrTm, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnTmOpRnDur, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdVtgMin, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdVtgMax, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdCurNom, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdFrqNom, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdFrqMin, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdFrqMax, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdVldTm, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdRvPwr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdRvTm, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdVtgIncPro, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: FedInSocStr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: FedInSocStp, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: FedInTmStr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: FedInTmStp, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: FedInCurAt, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: FedInCurRt, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdSocTm1Str, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdSocTm1Stp, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdSocTm2Str, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdSocTm2Stp, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdTm1Str, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdTm2Str, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdPwrStr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdPwrStp, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: SlpStrTm, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: SlpStpTm, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: InvVtgNom, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: InvChrgCurMax, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: InvFrqNom, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: InvTmOpStrDt, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: InvTmOpStrTm, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: InvTmOpRnDur, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Lod1SocTm1Str, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Lod1SocTm1Stp, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Lod1SocTm2Str, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Lod1SocTm2Stp, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Lod1Tm1Str, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Lod1Tm2Str, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Lod2SocTm1Str, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Lod2SocTm1Stp, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Lod2SocTm2Str, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Lod2SocTm2Stp, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Lod2Tm1Str, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Lod2Tm2Str, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: RlyTmr1StrDt, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: RlyTmr1StrTm, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: RlyTmr1Dur, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: RlyTmr2StrDt, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: RlyTmr2StrTm, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: RlyTmr2Dur, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: BatFanTmpStr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnTmStr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ExtLkTm, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: SilentTmFlo, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: SilentTmMax, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: BatChrgVtgMan, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: BatPro1TmStr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: BatPro1TmStp, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: BatPro2TmStr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: BatPro2TmStp, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: BatPro1Soc, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: BatPro2Soc, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: BatPro3Soc, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: SimSoc, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: AuthCode, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Plimit, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ChpOpTmMin, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ChpStpTmMin, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ChpSocTm1Str, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ChpSocTm1Stp, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ChpSocTm2Str, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ChpSocTm2Stp, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ChpTm1Str, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ChpTm2Str, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ChpPwrStr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ChpPwrStrDly, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: PvEgyMtr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: FedInCurAtCom, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: FedInCurRtCom, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: SlfCsmpSOCMin, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: SN, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: SNSlv1, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: SNSlv2, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: SNSlv3, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdCsmpEgyMtr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdFeedEgyMtr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: BatTyp, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: AutoEquChrgEna, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnAutoEna, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnPwrEna, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnStrMod, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnTmOpEna, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnTmOpCyc, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdMod, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: SilentEna, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdAISns, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdVtgIncProEna, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Country, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: FedInMod, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: FedInCtl, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdSocEna, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdPwrEna, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GdManStr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ClstCfg, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ComBaud, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: SleepEna, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: AfraEna, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: SlpAtNgt, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: InvRs, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ParaSto, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: InvTmOpEna, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: InvTmOpCyc, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ManStr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ErrAckn, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ParaLod, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: CntRs, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: RlyTmr1Cyc, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: RlyTmr2Cyc, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Rly1Op, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Rly1OpSlv1, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Rly1OpSlv2, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Rly2Op, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Rly2OpSlv1, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Rly2OpSlv2, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnManStr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnAck, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ChrgSelMan, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnCtlMod, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: CardFunc, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: GnAISns, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: BkupTst, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ExtSrc, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: LongChLstEna, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ChrgCtlOp, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ChpPwrEna, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: ChpManStr, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: RnMod, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: SlfCsmpIncEna, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: SlfCsmpStdbyMod, timestamp: 1618630649
-channel.c(271) smanet_load_channels: newchan: name: Msg, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Soh, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: TotInvPwrAt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: TotInvCur, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: TotInvPwrRt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: BatSoc, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: BatVtg, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: BatChrgVtg, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: AptTmRmg, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: TotBatCur, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: BatTmp, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: RmgTmFul, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: RmgTmEqu, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: BatSocErr, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: GnRmgTm, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvPwrAt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvPwrAtSlv1, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvPwrAtSlv2, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvPwrAtSlv3, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvVtg, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvVtgSlv1, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvVtgSlv2, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvVtgSlv3, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvCur, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvCurSlv1, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvCurSlv2, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvCurSlv3, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvFrq, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvPwrRt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvPwrRtSlv1, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvPwrRtSlv2, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvPwrRtSlv3, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ExtPwrAt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ExtPwrAtSlv1, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ExtPwrAtSlv2, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ExtPwrAtSlv3, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ExtVtg, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ExtVtgSlv1, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ExtVtgSlv2, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ExtVtgSlv3, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ExtCur, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ExtCurSlv1, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ExtCurSlv2, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ExtCurSlv3, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ExtFrq, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ExtPwrRt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ExtPwrRtSlv1, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ExtPwrRtSlv2, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ExtPwrRtSlv3, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: TotExtPwrAt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: TotExtCur, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: TotExtPwrRt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: TotLodPwr, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: GdRmgTm, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Pac, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Firmware, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Iac, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Vac, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Fac, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ChpPwrAt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ChpRmgTm, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ChpStrRmgTm, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Sic1PvPwr, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Sic2PvPwr, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Sic3PvPwr, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Sic4PvPwr, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Sic1SWVers, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Sic2SWVers, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Sic3SWVers, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Sic4SWVers, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: TotSicPvPwr, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: TotSicBatCur, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: TotMccLodPwr, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: TotPvPwrAt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: TotLodPwrAt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: SlfCsmpPwrAt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: SlfCsmpIncPwr, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: BatCpyThrpCnt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: GdCsmpPwrAt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: GdFeedPwrAt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: PacPV, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: PacFeed-In, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: PacConsumption, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: kWhPV, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: FwVer, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: OnTmh, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: FwVer2, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: EgyCntIn, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: EgyCntOut, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: EgyCntTm, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: GnEgyCnt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: GnEgyTm, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: GnOpTmh, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: GnStrCnt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: GdEgyCntIn, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: GdEgyCntOut, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: GdEgyTmh, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: GdOpTmh, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: GdCtcCnt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: TotTmh, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Sic1EgyCntIn, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Sic2EgyCntIn, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Sic3EgyCntIn, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Sic4EgyCntIn, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: TotSicEgyCntIn, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Sic1TdyEgyCntIn, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Sic2TdyEgyCntIn, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Sic3TdyEgyCntIn, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Sic4TdyEgyCntIn, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: TotSicDyEgyCntI, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Serial Number, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: E-Total-In, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: E-Total, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: h-On, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: TotLodEgyCnt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: SlfCsmpIncEgy, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: SlfCsmpEgy, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: SlfCsmpIncTdy, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: GdCsmpEgyTdy, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: kWhFeed-In, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: kWhConsumption, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: GdFeedEgyTdy, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Adr, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: OpStt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: OpSttSlv1, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: OpSttSlv2, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: OpSttSlv3, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: CardStt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Prio, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: BatChrgOp, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: AptPhs, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: GnDmdSrc, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: GnStt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvOpStt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvOpSttSlv1, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvOpSttSlv2, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: InvOpSttSlv3, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Rly1Stt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Rly2Stt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: GnRnStt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Mode, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: Error, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: ChpStt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: PvGdConStt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: LodGdConStt, timestamp: 0
-channel.c(271) smanet_load_channels: newchan: name: BatMntStt, timestamp: 0
-try.c(58) main: count: 330
-value.c(227) smanet_get_optionbyname: name: GnManStr
-value.c(230) smanet_get_optionbyname: c: 0x183e684
-value.c(233) smanet_get_optionbyname: timestamp: 0
-value.c(53) _smanet_getvals: id: 170, c->id, c->type: 0408, index: 27
+command.c(30) smanet_command: r: 0
+command.c(40) smanet_command: p->command: 03, cmd: 03
+command.c(43) smanet_command: count: 0
+command.c(46) smanet_command: returning: 0
+init.c(45) smanet_init: back
+channel.c(234) smanet_load_channels: path: mychans.dat
+try.c(59) main: count: 330
+value.c(375) smanet_set_optionbyname: name: GdManStr, opt: Start
+value.c(381) smanet_set_optionbyname: c: 0x118d72c
+value.c(384) smanet_set_optionbyname: count: 6
+value.c(389) smanet_set_optionbyname: option: ---
+value.c(389) smanet_set_optionbyname: option: Auto
+value.c(389) smanet_set_optionbyname: option: Stop
+value.c(389) smanet_set_optionbyname: option: Start
+value.c(396) smanet_set_optionbyname: found: 1
+value.c(398) smanet_set_optionbyname: i: 3
+value.c(237) _smanet_setval: id: 148, name: GdManStr, mask: 0408, index: 11
+value.c(108) _smanet_getvals: id: 148, c->id, c->type: 0408, index: 11
 packet.c(22) smanet_alloc_packet: data_len: 2048
-command.c(15) smanet_command: cmd: 11, packet: 0x183340c, buf: 0x7ee00488, buflen: 3
-packet.c(108) smanet_send_packet: src: 0000, dest: 0001, ctrl: 00, cnt: 0, cmd: 0b, buffer: 0x7ee00488, buflen: 3
+command.c(15) smanet_command: src: 0000, dest: 0002, cmd: 11, packet: 0x1187544, buf: 0x7ef5c414, buflen: 3
+buf(3):
+0000: 0F 04 00                                           ...             
+packet.c(108) smanet_send_packet: src: 0000, dest: 0002, ctrl: 00, cnt: 0, cmd: 0b, buffer: 0x7ef5c414, buflen: 3
+buffer(3):
+0000: 0F 04 00                                           ...             
+HEADER(5):
+0000: 7E FF 03 40 41                                     ~..@A           
+frame.c(213) smanet_write_frame: HEADER fcs: 7b9e
+frame.c(215) smanet_write_frame: MESSAGE fcs: 5081
+frame.c(217) smanet_write_frame: END fcs: af7e
+copy2buf(10):
+0000: 00 00 02 00 00 00 0B 0F 04 00                      ..........      
+fcs buffer(14):
+0000: FF 03 40 41 00 00 02 00 00 00 0B 0F 04 00          ..@A..........  
+frame.c(40) calcfcs: FCS: a789
+frame.c(221) smanet_write_frame: REAL fcs: a789
+copy2buf(2):
+0000: 89 A7                                              ..              
 put frame(18):
-0000: 7E FF 03 40 41 00 00 01 00 00 00 0B 0F 04 00 59    ~..@A..........Y
-0010: 2D 7E                                              -~              
+0000: 7E FF 03 40 41 00 00 02 00 00 00 0B 0F 04 00 89    ~..@A...........
+0010: A7 7E                                              .~              
 packet.c(58) smanet_recv_packet: command: 0b, count: 00, timeout: 0
 packet.c(60) smanet_recv_packet: cmo: ff
-frame.c(53) smanet_read_frame: buffer: 0x7ee002f4, buflen: 284, timeout: 5
+frame.c(56) smanet_read_frame: buffer: 0x7ef5c274, buflen: 284, timeout: 5
+get frame(18):
+0000: FF 03 40 41 02 00 00 00 80 00 28 01 65 65 65 07    ..@A......(.eee.
+0010: 69 2A                                              i*              
+fcs buffer(16):
+0000: FF 03 40 41 02 00 00 00 80 00 28 01 65 65 65 07    ..@A......(.eee.
+frame.c(40) calcfcs: FCS: 2a69
+packet.c(73) smanet_recv_packet: src: 0002, dest: 0000, control: 80, count: 0, command: 28
+packet.c(75) smanet_recv_packet: h->command: 28, command: 0b, test: 1
+packet.c(76) smanet_recv_packet: h->count: 00, cmo: ff, test: 0
+command.c(30) smanet_command: r: 3
+packet.c(108) smanet_send_packet: src: 0000, dest: 0002, ctrl: 00, cnt: 0, cmd: 0b, buffer: 0x7ef5c414, buflen: 3
+buffer(3):
+0000: 0F 04 00                                           ...             
+HEADER(5):
+0000: 7E FF 03 40 41                                     ~..@A           
+frame.c(213) smanet_write_frame: HEADER fcs: 7b9e
+frame.c(215) smanet_write_frame: MESSAGE fcs: 5081
+frame.c(217) smanet_write_frame: END fcs: af7e
+copy2buf(10):
+0000: 00 00 02 00 00 00 0B 0F 04 00                      ..........      
+fcs buffer(14):
+0000: FF 03 40 41 00 00 02 00 00 00 0B 0F 04 00          ..@A..........  
+frame.c(40) calcfcs: FCS: a789
+frame.c(221) smanet_write_frame: REAL fcs: a789
+copy2buf(2):
+0000: 89 A7                                              ..              
+put frame(18):
+0000: 7E FF 03 40 41 00 00 02 00 00 00 0B 0F 04 00 89    ~..@A...........
+0010: A7 7E                                              .~              
+packet.c(58) smanet_recv_packet: command: 0b, count: 00, timeout: 0
+packet.c(60) smanet_recv_packet: cmo: ff
+frame.c(56) smanet_read_frame: buffer: 0x7ef5c274, buflen: 284, timeout: 5
 get frame(141):
-0000: FF 03 40 41 01 00 00 00 40 FF 0B 0F 04 00 01 00    ..@A....@.......
-0010: 03 00 EF 62 34 01 3B 43 03 00 00 00 F0 42 00 00    ...b4.;C.....B..
+0000: FF 03 40 41 02 00 00 00 40 FF 0B 0F 04 00 01 00    ..@A....@.......
+0010: 03 00 F3 62 34 01 E0 F0 02 00 00 00 F0 42 00 00    ...b4........B..
 0020: 40 42 00 00 00 00 00 00 34 42 00 00 20 42 00 00    @B......4B.. B..
 0030: 00 00 F0 42 00 00 A0 40 00 00 20 41 00 00 60 41    ...B...@.. A..`A
 0040: 00 00 34 43 9A 99 19 40 9A 99 19 40 9A 99 19 40    ..4C...@...@...@
 0050: 00 00 10 40 00 00 80 40 03 28 00 50 00 28 00 50    ...@...@.(.P.(.P
 0060: 00 00 00 00 00 00 00 00 00 00 00 B0 40 00 00 A0    ............@...
 0070: 40 00 00 A0 42 00 00 16 43 00 00 F0 41 00 00 70    @...B...C...A..p
-0080: 42 00 00 58 42 00 00 84 42 3C 00 1B 35             B..XB...B<..5   
-packet.c(73) smanet_recv_packet: src: 0001, dest: 0000, control: 40, count: 255, command: 0b
+0080: 42 00 00 58 42 00 00 84 42 3C 00 BF 09             B..XB...B<...   
+fcs buffer(139):
+0000: FF 03 40 41 02 00 00 00 40 FF 0B 0F 04 00 01 00    ..@A....@.......
+0010: 03 00 F3 62 34 01 E0 F0 02 00 00 00 F0 42 00 00    ...b4........B..
+0020: 40 42 00 00 00 00 00 00 34 42 00 00 20 42 00 00    @B......4B.. B..
+0030: 00 00 F0 42 00 00 A0 40 00 00 20 41 00 00 60 41    ...B...@.. A..`A
+0040: 00 00 34 43 9A 99 19 40 9A 99 19 40 9A 99 19 40    ..4C...@...@...@
+0050: 00 00 10 40 00 00 80 40 03 28 00 50 00 28 00 50    ...@...@.(.P.(.P
+0060: 00 00 00 00 00 00 00 00 00 00 00 B0 40 00 00 A0    ............@...
+0070: 40 00 00 A0 42 00 00 16 43 00 00 F0 41 00 00 70    @...B...C...A..p
+0080: 42 00 00 58 42 00 00 84 42 3C 00                   B..XB...B<.     
+frame.c(40) calcfcs: FCS: 09bf
+packet.c(73) smanet_recv_packet: src: 0002, dest: 0000, control: 40, count: 255, command: 0b
 packet.c(75) smanet_recv_packet: h->command: 0b, command: 0b, test: 0
 packet.c(76) smanet_recv_packet: h->count: ff, cmo: ff, test: 0
 packet.c(87) smanet_recv_packet: sizeof(h): 7
 packet.c(89) smanet_recv_packet: data_len: 128
-command.c(28) smanet_command: r: 0
-command.c(38) smanet_command: p->command: 0b, cmd: 0b
-command.c(41) smanet_command: count: 255
-packet.c(108) smanet_send_packet: src: 0000, dest: 0001, ctrl: 00, cnt: 255, cmd: 0b, buffer: 0x7ee00488, buflen: 3
+command.c(30) smanet_command: r: 0
+command.c(40) smanet_command: p->command: 0b, cmd: 0b
+command.c(43) smanet_command: count: 255
+packet.c(108) smanet_send_packet: src: 0000, dest: 0002, ctrl: 00, cnt: 255, cmd: 0b, buffer: 0x7ef5c414, buflen: 3
+buffer(3):
+0000: 0F 04 00                                           ...             
+HEADER(5):
+0000: 7E FF 03 40 41                                     ~..@A           
+frame.c(213) smanet_write_frame: HEADER fcs: 7b9e
+frame.c(215) smanet_write_frame: MESSAGE fcs: a5db
+frame.c(217) smanet_write_frame: END fcs: 5a24
+copy2buf(10):
+0000: 00 00 02 00 00 FF 0B 0F 04 00                      ..........      
+fcs buffer(14):
+0000: FF 03 40 41 00 00 02 00 00 FF 0B 0F 04 00          ..@A..........  
+frame.c(40) calcfcs: FCS: 52d3
+frame.c(221) smanet_write_frame: REAL fcs: 52d3
+copy2buf(2):
+0000: D3 52                                              .R              
 put frame(18):
-0000: 7E FF 03 40 41 00 00 01 00 00 FF 0B 0F 04 00 03    ~..@A...........
-0010: D8 7E                                              .~              
+0000: 7E FF 03 40 41 00 00 02 00 00 FF 0B 0F 04 00 D3    ~..@A...........
+0010: 52 7E                                              R~              
 packet.c(58) smanet_recv_packet: command: 0b, count: ff, timeout: 0
 packet.c(60) smanet_recv_packet: cmo: fe
-frame.c(53) smanet_read_frame: buffer: 0x7ee002f4, buflen: 284, timeout: 5
-get frame(18):
-0000: FF 03 40 41 01 00 00 00 80 00 28 01 65 65 65 07    ..@A......(.eee.
-0010: 87 AD                                              ..              
-packet.c(73) smanet_recv_packet: src: 0001, dest: 0000, control: 80, count: 0, command: 28
-packet.c(75) smanet_recv_packet: h->command: 28, command: 0b, test: 1
-packet.c(76) smanet_recv_packet: h->count: 00, cmo: fe, test: 0
-command.c(28) smanet_command: r: 3
-packet.c(108) smanet_send_packet: src: 0000, dest: 0001, ctrl: 00, cnt: 255, cmd: 0b, buffer: 0x7ee00488, buflen: 3
-put frame(18):
-0000: 7E FF 03 40 41 00 00 01 00 00 FF 0B 0F 04 00 03    ~..@A...........
-0010: D8 7E                                              .~              
-packet.c(58) smanet_recv_packet: command: 0b, count: ff, timeout: 0
-packet.c(60) smanet_recv_packet: cmo: fe
-frame.c(53) smanet_read_frame: buffer: 0x7ee002f4, buflen: 284, timeout: 5
+frame.c(56) smanet_read_frame: buffer: 0x7ef5c274, buflen: 284, timeout: 5
 get frame(141):
-0000: FF 03 40 41 01 00 00 00 40 FE 0B 0F 00 0F 00 06    ..@A....@.......
+0000: FF 03 40 41 02 00 00 00 40 FE 0B 0F 00 0F 00 06    ..@A....@.......
 0010: 00 01 00 3C 00 64 00 00 00 F0 41 05 B4 32 01 00    ...<.d....A..2..
 0020: 00 00 00 00 00 00 00 34 33 D3 42 00 00 04 43 00    .......43.B...C.
 0030: 00 F0 41 00 00 70 42 34 33 6D 42 00 00 72 42 78    ..A..pB43mB..rBx
@@ -442,66 +220,127 @@ get frame(141):
 0050: 00 00 00 00 00 00 00 F0 41 00 00 00 00 19 00 55    ........A......U
 0060: 00 28 00 50 00 00 00 00 00 00 00 00 00 00 00 80    .(.P............
 0070: 40 00 00 00 40 40 0D 03 00 50 C3 00 00 00 00 F0    @...@@...P......
-0080: 42 00 00 40 42 00 00 70 42 05 B4 59 77             B..@B..pB..Yw   
-packet.c(73) smanet_recv_packet: src: 0001, dest: 0000, control: 40, count: 254, command: 0b
+0080: 42 00 00 40 42 00 00 70 42 05 B4 B6 10             B..@B..pB....   
+fcs buffer(139):
+0000: FF 03 40 41 02 00 00 00 40 FE 0B 0F 00 0F 00 06    ..@A....@.......
+0010: 00 01 00 3C 00 64 00 00 00 F0 41 05 B4 32 01 00    ...<.d....A..2..
+0020: 00 00 00 00 00 00 00 34 33 D3 42 00 00 04 43 00    .......43.B...C.
+0030: 00 F0 41 00 00 70 42 34 33 6D 42 00 00 72 42 78    ..A..pB43mB..rBx
+0040: 00 64 00 05 00 00 00 04 43 46 00 3C 00 00 00 00    .d......CF.<....
+0050: 00 00 00 00 00 00 00 F0 41 00 00 00 00 19 00 55    ........A......U
+0060: 00 28 00 50 00 00 00 00 00 00 00 00 00 00 00 80    .(.P............
+0070: 40 00 00 00 40 40 0D 03 00 50 C3 00 00 00 00 F0    @...@@...P......
+0080: 42 00 00 40 42 00 00 70 42 05 B4                   B..@B..pB..     
+frame.c(40) calcfcs: FCS: 10b6
+packet.c(73) smanet_recv_packet: src: 0002, dest: 0000, control: 40, count: 254, command: 0b
 packet.c(75) smanet_recv_packet: h->command: 0b, command: 0b, test: 0
 packet.c(76) smanet_recv_packet: h->count: fe, cmo: fe, test: 0
 packet.c(87) smanet_recv_packet: sizeof(h): 7
 packet.c(89) smanet_recv_packet: data_len: 128
-command.c(28) smanet_command: r: 0
-command.c(38) smanet_command: p->command: 0b, cmd: 0b
-command.c(41) smanet_command: count: 254
-packet.c(108) smanet_send_packet: src: 0000, dest: 0001, ctrl: 00, cnt: 254, cmd: 0b, buffer: 0x7ee00488, buflen: 3
+command.c(30) smanet_command: r: 0
+command.c(40) smanet_command: p->command: 0b, cmd: 0b
+command.c(43) smanet_command: count: 254
+packet.c(108) smanet_send_packet: src: 0000, dest: 0002, ctrl: 00, cnt: 254, cmd: 0b, buffer: 0x7ef5c414, buflen: 3
+buffer(3):
+0000: 0F 04 00                                           ...             
+HEADER(5):
+0000: 7E FF 03 40 41                                     ~..@A           
+frame.c(213) smanet_write_frame: HEADER fcs: 7b9e
+frame.c(215) smanet_write_frame: MESSAGE fcs: ae9f
+frame.c(217) smanet_write_frame: END fcs: 5160
+copy2buf(10):
+0000: 00 00 02 00 00 FE 0B 0F 04 00                      ..........      
+fcs buffer(14):
+0000: FF 03 40 41 00 00 02 00 00 FE 0B 0F 04 00          ..@A..........  
+frame.c(40) calcfcs: FCS: 5997
+frame.c(221) smanet_write_frame: REAL fcs: 5997
+copy2buf(2):
+0000: 97 59                                              .Y              
 put frame(18):
-0000: 7E FF 03 40 41 00 00 01 00 00 FE 0B 0F 04 00 47    ~..@A..........G
-0010: D3 7E                                              .~              
+0000: 7E FF 03 40 41 00 00 02 00 00 FE 0B 0F 04 00 97    ~..@A...........
+0010: 59 7E                                              Y~              
 packet.c(58) smanet_recv_packet: command: 0b, count: fe, timeout: 0
 packet.c(60) smanet_recv_packet: cmo: fd
-frame.c(53) smanet_read_frame: buffer: 0x7ee002f4, buflen: 284, timeout: 5
+frame.c(56) smanet_read_frame: buffer: 0x7ef5c274, buflen: 284, timeout: 5
 get frame(141):
-0000: FF 03 40 41 01 00 00 00 40 FD 0B 32 01 00 00 00    ..@A....@..2....
+0000: FF 03 40 41 02 00 00 00 40 FD 0B 32 01 00 00 00    ..@A....@..2....
 0010: 00 00 00 00 00 1E 00 32 00 1E 00 32 00 00 00 00    .......2...2....
 0020: 00 00 00 00 00 1E 00 32 00 1E 00 32 00 00 00 00    .......2...2....
 0030: 00 00 00 00 00 05 B4 32 01 00 00 00 00 00 00 00    .......2........
 0040: 00 05 B4 32 01 00 00 00 00 00 00 00 00 28 00 00    ...2.........(..
 0050: 00 00 00 14 00 03 00 0C 00 00 00 58 42 60 5B 03    ...........XB`[.
 0060: 00 60 EA 00 00 10 98 02 00 90 5F 01 00 14 0F 03    .`........_.....
-0070: 4A 00 00 00 00 00 0B 00 3C 0A 28 00 50 00 28 00    J.......<.(.P.(.
-0080: 50 00 00 00 00 00 00 00 00 00 00 0F 50             P...........P   
-packet.c(73) smanet_recv_packet: src: 0001, dest: 0000, control: 40, count: 253, command: 0b
+0070: 45 00 00 00 00 00 0B 00 3C 0A 28 00 50 00 28 00    E.......<.(.P.(.
+0080: 50 00 00 00 00 00 00 00 00 00 00 6B 02             P..........k.   
+fcs buffer(139):
+0000: FF 03 40 41 02 00 00 00 40 FD 0B 32 01 00 00 00    ..@A....@..2....
+0010: 00 00 00 00 00 1E 00 32 00 1E 00 32 00 00 00 00    .......2...2....
+0020: 00 00 00 00 00 1E 00 32 00 1E 00 32 00 00 00 00    .......2...2....
+0030: 00 00 00 00 00 05 B4 32 01 00 00 00 00 00 00 00    .......2........
+0040: 00 05 B4 32 01 00 00 00 00 00 00 00 00 28 00 00    ...2.........(..
+0050: 00 00 00 14 00 03 00 0C 00 00 00 58 42 60 5B 03    ...........XB`[.
+0060: 00 60 EA 00 00 10 98 02 00 90 5F 01 00 14 0F 03    .`........_.....
+0070: 45 00 00 00 00 00 0B 00 3C 0A 28 00 50 00 28 00    E.......<.(.P.(.
+0080: 50 00 00 00 00 00 00 00 00 00 00                   P..........     
+frame.c(40) calcfcs: FCS: 026b
+packet.c(73) smanet_recv_packet: src: 0002, dest: 0000, control: 40, count: 253, command: 0b
 packet.c(75) smanet_recv_packet: h->command: 0b, command: 0b, test: 0
 packet.c(76) smanet_recv_packet: h->count: fd, cmo: fd, test: 0
 packet.c(87) smanet_recv_packet: sizeof(h): 7
 packet.c(89) smanet_recv_packet: data_len: 128
-command.c(28) smanet_command: r: 0
-command.c(38) smanet_command: p->command: 0b, cmd: 0b
-command.c(41) smanet_command: count: 253
-packet.c(108) smanet_send_packet: src: 0000, dest: 0001, ctrl: 00, cnt: 253, cmd: 0b, buffer: 0x7ee00488, buflen: 3
+command.c(30) smanet_command: r: 0
+command.c(40) smanet_command: p->command: 0b, cmd: 0b
+command.c(43) smanet_command: count: 253
+packet.c(108) smanet_send_packet: src: 0000, dest: 0002, ctrl: 00, cnt: 253, cmd: 0b, buffer: 0x7ef5c414, buflen: 3
+buffer(3):
+0000: 0F 04 00                                           ...             
+HEADER(5):
+0000: 7E FF 03 40 41                                     ~..@A           
+frame.c(213) smanet_write_frame: HEADER fcs: 7b9e
+frame.c(215) smanet_write_frame: MESSAGE fcs: b353
+frame.c(217) smanet_write_frame: END fcs: 4cac
+copy2buf(10):
+0000: 00 00 02 00 00 FD 0B 0F 04 00                      ..........      
+fcs buffer(14):
+0000: FF 03 40 41 00 00 02 00 00 FD 0B 0F 04 00          ..@A..........  
+frame.c(40) calcfcs: FCS: 445b
+frame.c(221) smanet_write_frame: REAL fcs: 445b
+copy2buf(2):
+0000: 5B 44                                              [D              
 put frame(18):
-0000: 7E FF 03 40 41 00 00 01 00 00 FD 0B 0F 04 00 8B    ~..@A...........
-0010: CE 7E                                              .~              
+0000: 7E FF 03 40 41 00 00 02 00 00 FD 0B 0F 04 00 5B    ~..@A..........[
+0010: 44 7E                                              D~              
 packet.c(58) smanet_recv_packet: command: 0b, count: fd, timeout: 0
 packet.c(60) smanet_recv_packet: cmo: fc
-frame.c(53) smanet_read_frame: buffer: 0x7ee002f4, buflen: 284, timeout: 5
+frame.c(56) smanet_read_frame: buffer: 0x7ef5c274, buflen: 284, timeout: 5
 get frame(108):
-0000: FF 03 40 41 01 00 00 00 40 00 0B 00 80 40 05 00    ..@A....@....@..
+0000: FF 03 40 41 02 00 00 00 40 00 0B 00 80 40 05 00    ..@A....@....@..
 0010: 00 00 00 00 00 00 00 00 00 00 00 32 00 B4 C4 1A    ...........2....
 0020: 4B E8 C4 1A 4B 00 00 00 00 00 00 00 00 00 00 00    K...K...........
 0030: 00 00 00 00 00 04 02 02 01 02 01 01 02 01 03 01    ................
-0040: 00 01 01 02 01 00 09 04 02 02 01 00 00 01 01 00    ................
+0040: 00 01 01 02 01 03 09 04 02 02 01 00 00 01 01 00    ................
 0050: 00 00 00 01 01 03 01 01 04 01 01 01 00 00 01 00    ................
-0060: 03 00 03 01 01 01 00 01 01 01 64 4C                ..........dL    
-packet.c(73) smanet_recv_packet: src: 0001, dest: 0000, control: 40, count: 0, command: 0b
+0060: 03 00 03 01 01 01 00 01 01 01 76 D6                ..........v.    
+fcs buffer(106):
+0000: FF 03 40 41 02 00 00 00 40 00 0B 00 80 40 05 00    ..@A....@....@..
+0010: 00 00 00 00 00 00 00 00 00 00 00 32 00 B4 C4 1A    ...........2....
+0020: 4B E8 C4 1A 4B 00 00 00 00 00 00 00 00 00 00 00    K...K...........
+0030: 00 00 00 00 00 04 02 02 01 02 01 01 02 01 03 01    ................
+0040: 00 01 01 02 01 03 09 04 02 02 01 00 00 01 01 00    ................
+0050: 00 00 00 01 01 03 01 01 04 01 01 01 00 00 01 00    ................
+0060: 03 00 03 01 01 01 00 01 01 01                      ..........      
+frame.c(40) calcfcs: FCS: d676
+packet.c(73) smanet_recv_packet: src: 0002, dest: 0000, control: 40, count: 0, command: 0b
 packet.c(75) smanet_recv_packet: h->command: 0b, command: 0b, test: 0
 packet.c(76) smanet_recv_packet: h->count: 00, cmo: fc, test: 0
 packet.c(87) smanet_recv_packet: sizeof(h): 7
 packet.c(89) smanet_recv_packet: data_len: 95
-command.c(28) smanet_command: r: 0
-command.c(38) smanet_command: p->command: 0b, cmd: 0b
-command.c(41) smanet_command: count: 0
-command.c(44) smanet_command: returning: 0
+command.c(30) smanet_command: r: 0
+command.c(40) smanet_command: p->command: 0b, cmd: 0b
+command.c(43) smanet_command: count: 0
+command.c(46) smanet_command: returning: 0
 values(479):
-0000: 0F 04 00 01 00 03 00 EF 62 34 01 3B 43 03 00 00    ........b4.;C...
+0000: 0F 04 00 01 00 03 00 F3 62 34 01 E0 F0 02 00 00    ........b4......
 0010: 00 F0 42 00 00 40 42 00 00 00 00 00 00 34 42 00    ..B..@B......4B.
 0020: 00 20 42 00 00 00 00 F0 42 00 00 A0 40 00 00 20    . B.....B...@.. 
 0030: 41 00 00 60 41 00 00 34 43 9A 99 19 40 9A 99 19    A..`A..4C...@...
@@ -523,731 +362,537 @@ values(479):
 0130: 00 00 00 00 00 00 05 B4 32 01 00 00 00 00 00 00    ........2.......
 0140: 00 00 28 00 00 00 00 00 14 00 03 00 0C 00 00 00    ..(.............
 0150: 58 42 60 5B 03 00 60 EA 00 00 10 98 02 00 90 5F    XB`[..`........_
-0160: 01 00 14 0F 03 4A 00 00 00 00 00 0B 00 3C 0A 28    .....J.......<.(
+0160: 01 00 14 0F 03 45 00 00 00 00 00 0B 00 3C 0A 28    .....E.......<.(
 0170: 00 50 00 28 00 50 00 00 00 00 00 00 00 00 00 00    .P.(.P..........
 0180: 00 80 40 05 00 00 00 00 00 00 00 00 00 00 00 00    ..@.............
 0190: 32 00 B4 C4 1A 4B E8 C4 1A 4B 00 00 00 00 00 00    2....K...K......
 01A0: 00 00 00 00 00 00 00 00 00 00 04 02 02 01 02 01    ................
-01B0: 01 02 01 03 01 00 01 01 02 01 00 09 04 02 02 01    ................
+01B0: 01 02 01 03 01 00 01 01 02 01 03 09 04 02 02 01    ................
 01C0: 00 00 01 01 00 00 00 00 01 01 03 01 01 04 01 01    ................
 01D0: 01 00 00 01 00 03 00 03 01 01 01 00 01 01 01       ............... 
-value.c(76) _smanet_getvals: mask: 040f, index: 00, count: 1
-value.c(89) _smanet_getvals: vc->name: AutoStr, format: 0101
-value.c(99) _smanet_getvals: wval: 3 (0003)
-value.c(89) _smanet_getvals: vc->name: Dt, format: 0102
-value.c(105) _smanet_getvals: lval: 25380022 (00000000)
-value.c(89) _smanet_getvals: vc->name: Tm, format: 0102
-value.c(105) _smanet_getvals: lval: 25380150 (00000000)
-value.c(89) _smanet_getvals: vc->name: BatCpyNom, format: 0104
-value.c(111) _smanet_getvals: lval: 120.000000
-value.c(89) _smanet_getvals: vc->name: BatVtgNom, format: 0104
-value.c(111) _smanet_getvals: lval: 48.000000
-value.c(89) _smanet_getvals: vc->name: BatChrgCurMax, format: 0104
-value.c(111) _smanet_getvals: lval: 0.000000
-value.c(89) _smanet_getvals: vc->name: BatTmpMax, format: 0104
-value.c(111) _smanet_getvals: lval: 45.000000
-value.c(89) _smanet_getvals: vc->name: BatTmpStr, format: 0104
-value.c(111) _smanet_getvals: lval: 40.000000
-value.c(89) _smanet_getvals: vc->name: BatWirRes, format: 0101
-value.c(99) _smanet_getvals: wval: 0 (0000)
-value.c(89) _smanet_getvals: vc->name: AptTmBoost, format: 0104
-value.c(111) _smanet_getvals: lval: 120.000000
-value.c(89) _smanet_getvals: vc->name: AptTmFul, format: 0104
-value.c(111) _smanet_getvals: lval: 5.000000
-value.c(89) _smanet_getvals: vc->name: AptTmEqu, format: 0104
-value.c(111) _smanet_getvals: lval: 10.000000
-value.c(89) _smanet_getvals: vc->name: CycTmFul, format: 0104
-value.c(111) _smanet_getvals: lval: 14.000000
-value.c(89) _smanet_getvals: vc->name: CycTmEqu, format: 0104
-value.c(111) _smanet_getvals: lval: 180.000000
-value.c(89) _smanet_getvals: vc->name: ChrgVtgBoost, format: 0104
-value.c(111) _smanet_getvals: lval: 2.400000
-value.c(89) _smanet_getvals: vc->name: ChrgVtgFul, format: 0104
-value.c(111) _smanet_getvals: lval: 2.400000
-value.c(89) _smanet_getvals: vc->name: ChrgVtgEqu, format: 0104
-value.c(111) _smanet_getvals: lval: 2.400000
-value.c(89) _smanet_getvals: vc->name: ChrgVtgFlo, format: 0104
-value.c(111) _smanet_getvals: lval: 2.250000
-value.c(89) _smanet_getvals: vc->name: BatTmpCps, format: 0104
-value.c(111) _smanet_getvals: lval: 4.000000
-value.c(89) _smanet_getvals: vc->name: GnAutoStr, format: 0100
-value.c(94) _smanet_getvals: bval: 3 (03)
-value.c(89) _smanet_getvals: vc->name: GnSocTm1Str, format: 0101
-value.c(99) _smanet_getvals: wval: 40 (0028)
-value.c(89) _smanet_getvals: vc->name: GnSocTm1Stp, format: 0101
-value.c(99) _smanet_getvals: wval: 80 (0050)
-value.c(89) _smanet_getvals: vc->name: GnSocTm2Str, format: 0101
-value.c(99) _smanet_getvals: wval: 40 (0028)
-value.c(89) _smanet_getvals: vc->name: GnSocTm2Stp, format: 0101
-value.c(99) _smanet_getvals: wval: 80 (0050)
-value.c(89) _smanet_getvals: vc->name: GnTm1Str, format: 0102
-value.c(105) _smanet_getvals: lval: 25382966 (00000000)
-value.c(89) _smanet_getvals: vc->name: GnTm2Str, format: 0102
-value.c(105) _smanet_getvals: lval: 25383094 (00000000)
-value.c(89) _smanet_getvals: vc->name: GnPwrStr, format: 0104
-value.c(111) _smanet_getvals: lval: 5.500000
-value.c(89) _smanet_getvals: vc->name: GnPwrStp, format: 0104
-value.c(111) _smanet_getvals: lval: 5.000000
-value.c(89) _smanet_getvals: vc->name: GnVtgMin, format: 0104
-value.c(111) _smanet_getvals: lval: 80.000000
-value.c(89) _smanet_getvals: vc->name: GnVtgMax, format: 0104
-value.c(111) _smanet_getvals: lval: 150.000000
-value.c(89) _smanet_getvals: vc->name: GnCurNom, format: 0104
-value.c(111) _smanet_getvals: lval: 30.000000
-value.c(89) _smanet_getvals: vc->name: GnFrqNom, format: 0104
-value.c(111) _smanet_getvals: lval: 60.000000
-value.c(89) _smanet_getvals: vc->name: GnFrqMin, format: 0104
-value.c(111) _smanet_getvals: lval: 54.000000
-value.c(89) _smanet_getvals: vc->name: GnFrqMax, format: 0104
-value.c(111) _smanet_getvals: lval: 66.000000
-value.c(89) _smanet_getvals: vc->name: GnPwrAvgTm, format: 0101
-value.c(99) _smanet_getvals: wval: 60 (003c)
-value.c(89) _smanet_getvals: vc->name: GnOpTmMin, format: 0101
-value.c(99) _smanet_getvals: wval: 15 (000f)
-value.c(89) _smanet_getvals: vc->name: GnStpTmMin, format: 0101
-value.c(99) _smanet_getvals: wval: 15 (000f)
-value.c(89) _smanet_getvals: vc->name: GnCoolTm, format: 0101
-value.c(99) _smanet_getvals: wval: 6 (0006)
-value.c(89) _smanet_getvals: vc->name: GnErrStpTm, format: 0101
-value.c(99) _smanet_getvals: wval: 1 (0001)
-value.c(89) _smanet_getvals: vc->name: GnWarmTm, format: 0101
-value.c(99) _smanet_getvals: wval: 60 (003c)
-value.c(89) _smanet_getvals: vc->name: GnRvPwr, format: 0101
-value.c(99) _smanet_getvals: wval: 100 (0064)
-value.c(89) _smanet_getvals: vc->name: GnRvTm, format: 0104
-value.c(111) _smanet_getvals: lval: 30.000000
-value.c(89) _smanet_getvals: vc->name: GnTmOpStrDt, format: 0102
-value.c(105) _smanet_getvals: lval: 25385270 (40000000)
-value.c(89) _smanet_getvals: vc->name: GnTmOpStrTm, format: 0102
-value.c(105) _smanet_getvals: lval: 25385398 (00000000)
-value.c(89) _smanet_getvals: vc->name: GnTmOpRnDur, format: 0102
-value.c(105) _smanet_getvals: lval: 25385526 (00000000)
-value.c(89) _smanet_getvals: vc->name: GdVtgMin, format: 0104
-value.c(111) _smanet_getvals: lval: 105.600006
-value.c(89) _smanet_getvals: vc->name: GdVtgMax, format: 0104
-value.c(111) _smanet_getvals: lval: 132.000000
-value.c(89) _smanet_getvals: vc->name: GdCurNom, format: 0104
-value.c(111) _smanet_getvals: lval: 30.000000
-value.c(89) _smanet_getvals: vc->name: GdFrqNom, format: 0104
-value.c(111) _smanet_getvals: lval: 60.000000
-value.c(89) _smanet_getvals: vc->name: GdFrqMin, format: 0104
-value.c(111) _smanet_getvals: lval: 59.300003
-value.c(89) _smanet_getvals: vc->name: GdFrqMax, format: 0104
-value.c(111) _smanet_getvals: lval: 60.500000
-value.c(89) _smanet_getvals: vc->name: GdVldTm, format: 0101
-value.c(99) _smanet_getvals: wval: 120 (0078)
-value.c(89) _smanet_getvals: vc->name: GdRvPwr, format: 0101
-value.c(99) _smanet_getvals: wval: 100 (0064)
-value.c(89) _smanet_getvals: vc->name: GdRvTm, format: 0101
-value.c(99) _smanet_getvals: wval: 5 (0005)
-value.c(89) _smanet_getvals: vc->name: GdVtgIncPro, format: 0104
-value.c(111) _smanet_getvals: lval: 132.000000
-value.c(89) _smanet_getvals: vc->name: FedInSocStr, format: 0101
-value.c(99) _smanet_getvals: wval: 70 (0046)
-value.c(89) _smanet_getvals: vc->name: FedInSocStp, format: 0101
-value.c(99) _smanet_getvals: wval: 60 (003c)
-value.c(89) _smanet_getvals: vc->name: FedInTmStr, format: 0102
-value.c(105) _smanet_getvals: lval: 25387190 (00000000)
-value.c(89) _smanet_getvals: vc->name: FedInTmStp, format: 0102
-value.c(105) _smanet_getvals: lval: 25387318 (00000000)
-value.c(89) _smanet_getvals: vc->name: FedInCurAt, format: 0104
-value.c(111) _smanet_getvals: lval: 30.000000
-value.c(89) _smanet_getvals: vc->name: FedInCurRt, format: 0104
-value.c(111) _smanet_getvals: lval: 0.000000
-value.c(89) _smanet_getvals: vc->name: GdSocTm1Str, format: 0101
-value.c(99) _smanet_getvals: wval: 25 (0019)
-value.c(89) _smanet_getvals: vc->name: GdSocTm1Stp, format: 0101
-value.c(99) _smanet_getvals: wval: 85 (0055)
-value.c(89) _smanet_getvals: vc->name: GdSocTm2Str, format: 0101
-value.c(99) _smanet_getvals: wval: 40 (0028)
-value.c(89) _smanet_getvals: vc->name: GdSocTm2Stp, format: 0101
-value.c(99) _smanet_getvals: wval: 80 (0050)
-value.c(89) _smanet_getvals: vc->name: GdTm1Str, format: 0102
-value.c(105) _smanet_getvals: lval: 25388214 (00000000)
-value.c(89) _smanet_getvals: vc->name: GdTm2Str, format: 0102
-value.c(105) _smanet_getvals: lval: 25388342 (00000000)
-value.c(89) _smanet_getvals: vc->name: GdPwrStr, format: 0104
-value.c(111) _smanet_getvals: lval: 4.000000
-value.c(89) _smanet_getvals: vc->name: GdPwrStp, format: 0104
-value.c(111) _smanet_getvals: lval: 2.000000
-value.c(89) _smanet_getvals: vc->name: SlpStrTm, format: 0102
-value.c(105) _smanet_getvals: lval: 25388726 (00000000)
-value.c(89) _smanet_getvals: vc->name: SlpStpTm, format: 0102
-value.c(105) _smanet_getvals: lval: 25388854 (00000000)
-value.c(89) _smanet_getvals: vc->name: InvVtgNom, format: 0104
-value.c(111) _smanet_getvals: lval: 120.000000
-value.c(89) _smanet_getvals: vc->name: InvChrgCurMax, format: 0104
-value.c(111) _smanet_getvals: lval: 48.000000
-value.c(89) _smanet_getvals: vc->name: InvFrqNom, format: 0104
-value.c(111) _smanet_getvals: lval: 60.000000
-value.c(89) _smanet_getvals: vc->name: InvTmOpStrDt, format: 0102
-value.c(105) _smanet_getvals: lval: 25389366 (40000000)
-value.c(89) _smanet_getvals: vc->name: InvTmOpStrTm, format: 0102
-value.c(105) _smanet_getvals: lval: 25389494 (00000000)
-value.c(89) _smanet_getvals: vc->name: InvTmOpRnDur, format: 0102
-value.c(105) _smanet_getvals: lval: 25389622 (00000000)
-value.c(89) _smanet_getvals: vc->name: Lod1SocTm1Str, format: 0101
-value.c(99) _smanet_getvals: wval: 30 (001e)
-value.c(89) _smanet_getvals: vc->name: Lod1SocTm1Stp, format: 0101
-value.c(99) _smanet_getvals: wval: 50 (0032)
-value.c(89) _smanet_getvals: vc->name: Lod1SocTm2Str, format: 0101
-value.c(99) _smanet_getvals: wval: 30 (001e)
-value.c(89) _smanet_getvals: vc->name: Lod1SocTm2Stp, format: 0101
-value.c(99) _smanet_getvals: wval: 50 (0032)
-value.c(89) _smanet_getvals: vc->name: Lod1Tm1Str, format: 0102
-value.c(105) _smanet_getvals: lval: 25390262 (00000000)
-value.c(89) _smanet_getvals: vc->name: Lod1Tm2Str, format: 0102
-value.c(105) _smanet_getvals: lval: 25390390 (00000000)
-value.c(89) _smanet_getvals: vc->name: Lod2SocTm1Str, format: 0101
-value.c(99) _smanet_getvals: wval: 30 (001e)
-value.c(89) _smanet_getvals: vc->name: Lod2SocTm1Stp, format: 0101
-value.c(99) _smanet_getvals: wval: 50 (0032)
-value.c(89) _smanet_getvals: vc->name: Lod2SocTm2Str, format: 0101
-value.c(99) _smanet_getvals: wval: 30 (001e)
-value.c(89) _smanet_getvals: vc->name: Lod2SocTm2Stp, format: 0101
-value.c(99) _smanet_getvals: wval: 50 (0032)
-value.c(89) _smanet_getvals: vc->name: Lod2Tm1Str, format: 0102
-value.c(105) _smanet_getvals: lval: 25391030 (00000000)
-value.c(89) _smanet_getvals: vc->name: Lod2Tm2Str, format: 0102
-value.c(105) _smanet_getvals: lval: 25391158 (00000000)
-value.c(89) _smanet_getvals: vc->name: RlyTmr1StrDt, format: 0102
-value.c(105) _smanet_getvals: lval: 25391286 (40000000)
-value.c(89) _smanet_getvals: vc->name: RlyTmr1StrTm, format: 0102
-value.c(105) _smanet_getvals: lval: 25391414 (00000000)
-value.c(89) _smanet_getvals: vc->name: RlyTmr1Dur, format: 0102
-value.c(105) _smanet_getvals: lval: 25391542 (00000000)
-value.c(89) _smanet_getvals: vc->name: RlyTmr2StrDt, format: 0102
-value.c(105) _smanet_getvals: lval: 25391670 (40000000)
-value.c(89) _smanet_getvals: vc->name: RlyTmr2StrTm, format: 0102
-value.c(105) _smanet_getvals: lval: 25391798 (00000000)
-value.c(89) _smanet_getvals: vc->name: RlyTmr2Dur, format: 0102
-value.c(105) _smanet_getvals: lval: 25391926 (00000000)
-value.c(89) _smanet_getvals: vc->name: BatFanTmpStr, format: 0101
-value.c(99) _smanet_getvals: wval: 40 (0028)
-value.c(89) _smanet_getvals: vc->name: GnTmStr, format: 0102
-value.c(105) _smanet_getvals: lval: 25392182 (00000000)
-value.c(89) _smanet_getvals: vc->name: ExtLkTm, format: 0101
-value.c(99) _smanet_getvals: wval: 20 (0014)
-value.c(89) _smanet_getvals: vc->name: SilentTmFlo, format: 0101
-value.c(99) _smanet_getvals: wval: 3 (0003)
-value.c(89) _smanet_getvals: vc->name: SilentTmMax, format: 0101
-value.c(99) _smanet_getvals: wval: 12 (000c)
-value.c(89) _smanet_getvals: vc->name: BatChrgVtgMan, format: 0104
-value.c(111) _smanet_getvals: lval: 54.000000
-value.c(89) _smanet_getvals: vc->name: BatPro1TmStr, format: 0102
-value.c(105) _smanet_getvals: lval: 25392822 (00000000)
-value.c(89) _smanet_getvals: vc->name: BatPro1TmStp, format: 0102
-value.c(105) _smanet_getvals: lval: 25392950 (00000000)
-value.c(89) _smanet_getvals: vc->name: BatPro2TmStr, format: 0102
-value.c(105) _smanet_getvals: lval: 25393078 (00000000)
-value.c(89) _smanet_getvals: vc->name: BatPro2TmStp, format: 0102
-value.c(105) _smanet_getvals: lval: 25393206 (00000000)
-value.c(89) _smanet_getvals: vc->name: BatPro1Soc, format: 0100
-value.c(94) _smanet_getvals: bval: 20 (14)
-value.c(89) _smanet_getvals: vc->name: BatPro2Soc, format: 0100
-value.c(94) _smanet_getvals: bval: 15 (0F)
-value.c(89) _smanet_getvals: vc->name: BatPro3Soc, format: 0100
-value.c(94) _smanet_getvals: bval: 3 (03)
-value.c(89) _smanet_getvals: vc->name: SimSoc, format: 0101
-value.c(99) _smanet_getvals: wval: 74 (004a)
-value.c(89) _smanet_getvals: vc->name: AuthCode, format: 0102
-value.c(105) _smanet_getvals: lval: 25393846 (00000000)
-value.c(89) _smanet_getvals: vc->name: Plimit, format: 0101
-value.c(99) _smanet_getvals: wval: 11 (000b)
-value.c(89) _smanet_getvals: vc->name: ChpOpTmMin, format: 0100
-value.c(94) _smanet_getvals: bval: 60 (3C)
-value.c(89) _smanet_getvals: vc->name: ChpStpTmMin, format: 0100
-value.c(94) _smanet_getvals: bval: 10 (0A)
-value.c(89) _smanet_getvals: vc->name: ChpSocTm1Str, format: 0101
-value.c(99) _smanet_getvals: wval: 40 (0028)
-value.c(89) _smanet_getvals: vc->name: ChpSocTm1Stp, format: 0101
-value.c(99) _smanet_getvals: wval: 80 (0050)
-value.c(89) _smanet_getvals: vc->name: ChpSocTm2Str, format: 0101
-value.c(99) _smanet_getvals: wval: 40 (0028)
-value.c(89) _smanet_getvals: vc->name: ChpSocTm2Stp, format: 0101
-value.c(99) _smanet_getvals: wval: 80 (0050)
-value.c(89) _smanet_getvals: vc->name: ChpTm1Str, format: 0102
-value.c(105) _smanet_getvals: lval: 25394870 (00000000)
-value.c(89) _smanet_getvals: vc->name: ChpTm2Str, format: 0102
-value.c(105) _smanet_getvals: lval: 25394998 (00000000)
-value.c(89) _smanet_getvals: vc->name: ChpPwrStr, format: 0104
-value.c(111) _smanet_getvals: lval: 4.000000
-value.c(89) _smanet_getvals: vc->name: ChpPwrStrDly, format: 0100
-value.c(94) _smanet_getvals: bval: 5 (05)
-value.c(89) _smanet_getvals: vc->name: PvEgyMtr, format: 0102
-value.c(105) _smanet_getvals: lval: 25395382 (00000000)
-value.c(89) _smanet_getvals: vc->name: FedInCurAtCom, format: 0104
-value.c(111) _smanet_getvals: lval: 0.000000
-value.c(89) _smanet_getvals: vc->name: FedInCurRtCom, format: 0104
-value.c(111) _smanet_getvals: lval: 0.000000
-value.c(89) _smanet_getvals: vc->name: SlfCsmpSOCMin, format: 0101
-value.c(99) _smanet_getvals: wval: 50 (0032)
-value.c(89) _smanet_getvals: vc->name: SN, format: 0102
-value.c(105) _smanet_getvals: lval: 25395894 (20000000)
-value.c(89) _smanet_getvals: vc->name: SNSlv1, format: 0102
-value.c(105) _smanet_getvals: lval: 25396022 (40000000)
-value.c(89) _smanet_getvals: vc->name: SNSlv2, format: 0102
-value.c(105) _smanet_getvals: lval: 25396150 (00000000)
-value.c(89) _smanet_getvals: vc->name: SNSlv3, format: 0102
-value.c(105) _smanet_getvals: lval: 25396278 (00000000)
-value.c(89) _smanet_getvals: vc->name: GdCsmpEgyMtr, format: 0102
-value.c(105) _smanet_getvals: lval: 25396406 (00000000)
-value.c(89) _smanet_getvals: vc->name: GdFeedEgyMtr, format: 0102
-value.c(105) _smanet_getvals: lval: 25396534 (00000000)
-value.c(89) _smanet_getvals: vc->name: BatTyp, format: 0100
-value.c(94) _smanet_getvals: bval: 4 (04)
-value.c(89) _smanet_getvals: vc->name: AutoEquChrgEna, format: 0100
-value.c(94) _smanet_getvals: bval: 2 (02)
-value.c(89) _smanet_getvals: vc->name: GnAutoEna, format: 0100
-value.c(94) _smanet_getvals: bval: 2 (02)
-value.c(89) _smanet_getvals: vc->name: GnPwrEna, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: GnStrMod, format: 0100
-value.c(94) _smanet_getvals: bval: 2 (02)
-value.c(89) _smanet_getvals: vc->name: GnTmOpEna, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: GnTmOpCyc, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: GdMod, format: 0100
-value.c(94) _smanet_getvals: bval: 2 (02)
-value.c(89) _smanet_getvals: vc->name: SilentEna, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: GdAISns, format: 0100
-value.c(94) _smanet_getvals: bval: 3 (03)
-value.c(89) _smanet_getvals: vc->name: GdVtgIncProEna, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: Country, format: 0100
-value.c(94) _smanet_getvals: bval: 0 (00)
-value.c(89) _smanet_getvals: vc->name: FedInMod, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: FedInCtl, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: GdSocEna, format: 0100
-value.c(94) _smanet_getvals: bval: 2 (02)
-value.c(89) _smanet_getvals: vc->name: GdPwrEna, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: GdManStr, format: 0100
-value.c(94) _smanet_getvals: bval: 0 (00)
-value.c(89) _smanet_getvals: vc->name: ClstCfg, format: 0100
-value.c(94) _smanet_getvals: bval: 9 (09)
-value.c(89) _smanet_getvals: vc->name: ComBaud, format: 0100
-value.c(94) _smanet_getvals: bval: 4 (04)
-value.c(89) _smanet_getvals: vc->name: SleepEna, format: 0100
-value.c(94) _smanet_getvals: bval: 2 (02)
-value.c(89) _smanet_getvals: vc->name: AfraEna, format: 0100
-value.c(94) _smanet_getvals: bval: 2 (02)
-value.c(89) _smanet_getvals: vc->name: SlpAtNgt, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: InvRs, format: 0100
-value.c(94) _smanet_getvals: bval: 0 (00)
-value.c(89) _smanet_getvals: vc->name: ParaSto, format: 0100
-value.c(94) _smanet_getvals: bval: 0 (00)
-value.c(89) _smanet_getvals: vc->name: InvTmOpEna, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: InvTmOpCyc, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: ManStr, format: 0100
-value.c(94) _smanet_getvals: bval: 0 (00)
-value.c(89) _smanet_getvals: vc->name: ErrAckn, format: 0100
-value.c(94) _smanet_getvals: bval: 0 (00)
-value.c(89) _smanet_getvals: vc->name: ParaLod, format: 0100
-value.c(94) _smanet_getvals: bval: 0 (00)
-value.c(89) _smanet_getvals: vc->name: CntRs, format: 0100
-value.c(94) _smanet_getvals: bval: 0 (00)
-value.c(89) _smanet_getvals: vc->name: RlyTmr1Cyc, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: RlyTmr2Cyc, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: Rly1Op, format: 0100
-value.c(94) _smanet_getvals: bval: 3 (03)
-value.c(89) _smanet_getvals: vc->name: Rly1OpSlv1, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: Rly1OpSlv2, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: Rly2Op, format: 0100
-value.c(94) _smanet_getvals: bval: 4 (04)
-value.c(89) _smanet_getvals: vc->name: Rly2OpSlv1, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: Rly2OpSlv2, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: GnManStr, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: GnAck, format: 0100
-value.c(94) _smanet_getvals: bval: 0 (00)
-value.c(89) _smanet_getvals: vc->name: ChrgSelMan, format: 0100
-value.c(94) _smanet_getvals: bval: 0 (00)
-value.c(89) _smanet_getvals: vc->name: GnCtlMod, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: CardFunc, format: 0100
-value.c(94) _smanet_getvals: bval: 0 (00)
-value.c(89) _smanet_getvals: vc->name: GnAISns, format: 0100
-value.c(94) _smanet_getvals: bval: 3 (03)
-value.c(89) _smanet_getvals: vc->name: BkupTst, format: 0100
-value.c(94) _smanet_getvals: bval: 0 (00)
-value.c(89) _smanet_getvals: vc->name: ExtSrc, format: 0100
-value.c(94) _smanet_getvals: bval: 3 (03)
-value.c(89) _smanet_getvals: vc->name: LongChLstEna, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: ChrgCtlOp, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: ChpPwrEna, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: ChpManStr, format: 0100
-value.c(94) _smanet_getvals: bval: 0 (00)
-value.c(89) _smanet_getvals: vc->name: RnMod, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: SlfCsmpIncEna, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(89) _smanet_getvals: vc->name: SlfCsmpStdbyMod, format: 0100
-value.c(94) _smanet_getvals: bval: 1 (01)
-value.c(365) smanet_get_value: ts: 1618630725
-value.c(386) smanet_get_value: returning: 1.000000
-value.c(236) smanet_get_optionbyname: index: 1
-value.c(240) smanet_get_optionbyname: p: ---
-value.c(240) smanet_get_optionbyname: p: Auto
-try.c(85) main: value: Auto
-value.c(257) smanet_set_optionbyname: name: GnManStr, opt: Auto
-value.c(263) smanet_set_optionbyname: c: 0x183e684
-value.c(266) smanet_set_optionbyname: count: 24
-value.c(271) smanet_set_optionbyname: option: ---
-value.c(271) smanet_set_optionbyname: option: Auto
-value.c(278) smanet_set_optionbyname: found: 1
-value.c(280) smanet_set_optionbyname: i: 1
-value.c(143) _smanet_setval: id: 170, name: GnManStr
-value.c(365) smanet_get_value: ts: 1618630725
-value.c(386) smanet_get_value: returning: 1.000000
-value.c(365) smanet_get_value: ts: 1618630725
-value.c(386) smanet_get_value: returning: 1.000000
-value.c(146) _smanet_setval: v1: 1.000000, v2: 1.000000
-channel.c(196) smanet_save_channels: path: mychans.dat
-channel.c(219) smanet_save_channels: c: name: AutoStr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Dt, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Tm, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: BatCpyNom, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: BatVtgNom, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: BatChrgCurMax, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: BatTmpMax, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: BatTmpStr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: BatWirRes, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: AptTmBoost, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: AptTmFul, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: AptTmEqu, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: CycTmFul, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: CycTmEqu, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ChrgVtgBoost, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ChrgVtgFul, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ChrgVtgEqu, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ChrgVtgFlo, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: BatTmpCps, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnAutoStr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnSocTm1Str, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnSocTm1Stp, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnSocTm2Str, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnSocTm2Stp, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnTm1Str, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnTm2Str, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnPwrStr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnPwrStp, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnVtgMin, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnVtgMax, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnCurNom, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnFrqNom, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnFrqMin, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnFrqMax, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnPwrAvgTm, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnOpTmMin, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnStpTmMin, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnCoolTm, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnErrStpTm, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnWarmTm, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnRvPwr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnRvTm, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnTmOpStrDt, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnTmOpStrTm, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnTmOpRnDur, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdVtgMin, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdVtgMax, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdCurNom, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdFrqNom, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdFrqMin, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdFrqMax, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdVldTm, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdRvPwr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdRvTm, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdVtgIncPro, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: FedInSocStr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: FedInSocStp, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: FedInTmStr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: FedInTmStp, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: FedInCurAt, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: FedInCurRt, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdSocTm1Str, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdSocTm1Stp, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdSocTm2Str, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdSocTm2Stp, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdTm1Str, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdTm2Str, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdPwrStr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdPwrStp, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: SlpStrTm, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: SlpStpTm, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: InvVtgNom, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: InvChrgCurMax, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: InvFrqNom, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: InvTmOpStrDt, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: InvTmOpStrTm, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: InvTmOpRnDur, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Lod1SocTm1Str, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Lod1SocTm1Stp, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Lod1SocTm2Str, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Lod1SocTm2Stp, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Lod1Tm1Str, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Lod1Tm2Str, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Lod2SocTm1Str, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Lod2SocTm1Stp, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Lod2SocTm2Str, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Lod2SocTm2Stp, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Lod2Tm1Str, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Lod2Tm2Str, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: RlyTmr1StrDt, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: RlyTmr1StrTm, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: RlyTmr1Dur, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: RlyTmr2StrDt, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: RlyTmr2StrTm, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: RlyTmr2Dur, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: BatFanTmpStr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnTmStr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ExtLkTm, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: SilentTmFlo, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: SilentTmMax, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: BatChrgVtgMan, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: BatPro1TmStr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: BatPro1TmStp, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: BatPro2TmStr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: BatPro2TmStp, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: BatPro1Soc, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: BatPro2Soc, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: BatPro3Soc, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: SimSoc, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: AuthCode, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Plimit, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ChpOpTmMin, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ChpStpTmMin, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ChpSocTm1Str, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ChpSocTm1Stp, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ChpSocTm2Str, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ChpSocTm2Stp, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ChpTm1Str, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ChpTm2Str, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ChpPwrStr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ChpPwrStrDly, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: PvEgyMtr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: FedInCurAtCom, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: FedInCurRtCom, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: SlfCsmpSOCMin, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: SN, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: SNSlv1, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: SNSlv2, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: SNSlv3, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdCsmpEgyMtr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdFeedEgyMtr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: BatTyp, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: AutoEquChrgEna, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnAutoEna, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnPwrEna, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnStrMod, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnTmOpEna, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnTmOpCyc, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdMod, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: SilentEna, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdAISns, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdVtgIncProEna, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Country, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: FedInMod, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: FedInCtl, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdSocEna, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdPwrEna, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GdManStr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ClstCfg, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ComBaud, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: SleepEna, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: AfraEna, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: SlpAtNgt, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: InvRs, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ParaSto, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: InvTmOpEna, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: InvTmOpCyc, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ManStr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ErrAckn, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ParaLod, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: CntRs, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: RlyTmr1Cyc, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: RlyTmr2Cyc, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Rly1Op, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Rly1OpSlv1, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Rly1OpSlv2, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Rly2Op, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Rly2OpSlv1, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Rly2OpSlv2, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnManStr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnAck, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ChrgSelMan, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnCtlMod, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: CardFunc, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: GnAISns, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: BkupTst, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ExtSrc, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: LongChLstEna, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ChrgCtlOp, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ChpPwrEna, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: ChpManStr, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: RnMod, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: SlfCsmpIncEna, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: SlfCsmpStdbyMod, timestamp: 1618630725
-channel.c(219) smanet_save_channels: c: name: Msg, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Soh, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: TotInvPwrAt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: TotInvCur, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: TotInvPwrRt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: BatSoc, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: BatVtg, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: BatChrgVtg, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: AptTmRmg, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: TotBatCur, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: BatTmp, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: RmgTmFul, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: RmgTmEqu, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: BatSocErr, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: GnRmgTm, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvPwrAt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvPwrAtSlv1, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvPwrAtSlv2, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvPwrAtSlv3, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvVtg, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvVtgSlv1, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvVtgSlv2, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvVtgSlv3, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvCur, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvCurSlv1, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvCurSlv2, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvCurSlv3, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvFrq, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvPwrRt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvPwrRtSlv1, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvPwrRtSlv2, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvPwrRtSlv3, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ExtPwrAt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ExtPwrAtSlv1, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ExtPwrAtSlv2, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ExtPwrAtSlv3, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ExtVtg, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ExtVtgSlv1, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ExtVtgSlv2, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ExtVtgSlv3, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ExtCur, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ExtCurSlv1, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ExtCurSlv2, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ExtCurSlv3, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ExtFrq, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ExtPwrRt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ExtPwrRtSlv1, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ExtPwrRtSlv2, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ExtPwrRtSlv3, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: TotExtPwrAt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: TotExtCur, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: TotExtPwrRt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: TotLodPwr, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: GdRmgTm, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Pac, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Firmware, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Iac, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Vac, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Fac, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ChpPwrAt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ChpRmgTm, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ChpStrRmgTm, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Sic1PvPwr, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Sic2PvPwr, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Sic3PvPwr, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Sic4PvPwr, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Sic1SWVers, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Sic2SWVers, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Sic3SWVers, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Sic4SWVers, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: TotSicPvPwr, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: TotSicBatCur, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: TotMccLodPwr, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: TotPvPwrAt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: TotLodPwrAt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: SlfCsmpPwrAt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: SlfCsmpIncPwr, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: BatCpyThrpCnt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: GdCsmpPwrAt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: GdFeedPwrAt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: PacPV, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: PacFeed-In, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: PacConsumption, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: kWhPV, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: FwVer, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: OnTmh, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: FwVer2, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: EgyCntIn, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: EgyCntOut, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: EgyCntTm, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: GnEgyCnt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: GnEgyTm, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: GnOpTmh, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: GnStrCnt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: GdEgyCntIn, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: GdEgyCntOut, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: GdEgyTmh, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: GdOpTmh, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: GdCtcCnt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: TotTmh, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Sic1EgyCntIn, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Sic2EgyCntIn, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Sic3EgyCntIn, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Sic4EgyCntIn, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: TotSicEgyCntIn, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Sic1TdyEgyCntIn, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Sic2TdyEgyCntIn, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Sic3TdyEgyCntIn, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Sic4TdyEgyCntIn, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: TotSicDyEgyCntI, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Serial Number, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: E-Total-In, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: E-Total, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: h-On, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: TotLodEgyCnt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: SlfCsmpIncEgy, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: SlfCsmpEgy, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: SlfCsmpIncTdy, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: GdCsmpEgyTdy, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: kWhFeed-In, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: kWhConsumption, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: GdFeedEgyTdy, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Adr, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: OpStt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: OpSttSlv1, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: OpSttSlv2, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: OpSttSlv3, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: CardStt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Prio, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: BatChrgOp, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: AptPhs, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: GnDmdSrc, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: GnStt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvOpStt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvOpSttSlv1, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvOpSttSlv2, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: InvOpSttSlv3, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Rly1Stt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Rly2Stt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: GnRnStt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Mode, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: Error, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: ChpStt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: PvGdConStt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: LodGdConStt, timestamp: 0
-channel.c(219) smanet_save_channels: c: name: BatMntStt, timestamp: 0
-timeouts: 0, commands: 7
+value.c(141) _smanet_getvals: mask: 040f, index: 00, count: 1
+value.c(154) _smanet_getvals: vc->name: AutoStr, format: 0101
+value.c(165) _smanet_getvals: wval: 3 (0003)
+value.c(154) _smanet_getvals: vc->name: Dt, format: 0102
+value.c(171) _smanet_getvals: lval: 18384350 (40000000)
+value.c(154) _smanet_getvals: vc->name: Tm, format: 0102
+value.c(171) _smanet_getvals: lval: 18384462 (00000000)
+value.c(154) _smanet_getvals: vc->name: BatCpyNom, format: 0104
+value.c(177) _smanet_getvals: lval: 120.000000
+value.c(154) _smanet_getvals: vc->name: BatVtgNom, format: 0104
+value.c(177) _smanet_getvals: lval: 48.000000
+value.c(154) _smanet_getvals: vc->name: BatChrgCurMax, format: 0104
+value.c(177) _smanet_getvals: lval: 0.000000
+value.c(154) _smanet_getvals: vc->name: BatTmpMax, format: 0104
+value.c(177) _smanet_getvals: lval: 45.000000
+value.c(154) _smanet_getvals: vc->name: BatTmpStr, format: 0104
+value.c(177) _smanet_getvals: lval: 40.000000
+value.c(154) _smanet_getvals: vc->name: BatWirRes, format: 0101
+value.c(165) _smanet_getvals: wval: 0 (0000)
+value.c(154) _smanet_getvals: vc->name: AptTmBoost, format: 0104
+value.c(177) _smanet_getvals: lval: 120.000000
+value.c(154) _smanet_getvals: vc->name: AptTmFul, format: 0104
+value.c(177) _smanet_getvals: lval: 5.000000
+value.c(154) _smanet_getvals: vc->name: AptTmEqu, format: 0104
+value.c(177) _smanet_getvals: lval: 10.000000
+value.c(154) _smanet_getvals: vc->name: CycTmFul, format: 0104
+value.c(177) _smanet_getvals: lval: 14.000000
+value.c(154) _smanet_getvals: vc->name: CycTmEqu, format: 0104
+value.c(177) _smanet_getvals: lval: 180.000000
+value.c(154) _smanet_getvals: vc->name: ChrgVtgBoost, format: 0104
+value.c(177) _smanet_getvals: lval: 2.400000
+value.c(154) _smanet_getvals: vc->name: ChrgVtgFul, format: 0104
+value.c(177) _smanet_getvals: lval: 2.400000
+value.c(154) _smanet_getvals: vc->name: ChrgVtgEqu, format: 0104
+value.c(177) _smanet_getvals: lval: 2.400000
+value.c(154) _smanet_getvals: vc->name: ChrgVtgFlo, format: 0104
+value.c(177) _smanet_getvals: lval: 2.250000
+value.c(154) _smanet_getvals: vc->name: BatTmpCps, format: 0104
+value.c(177) _smanet_getvals: lval: 4.000000
+value.c(154) _smanet_getvals: vc->name: GnAutoStr, format: 0100
+value.c(160) _smanet_getvals: bval: 3 (03)
+value.c(154) _smanet_getvals: vc->name: GnSocTm1Str, format: 0101
+value.c(165) _smanet_getvals: wval: 40 (0028)
+value.c(154) _smanet_getvals: vc->name: GnSocTm1Stp, format: 0101
+value.c(165) _smanet_getvals: wval: 80 (0050)
+value.c(154) _smanet_getvals: vc->name: GnSocTm2Str, format: 0101
+value.c(165) _smanet_getvals: wval: 40 (0028)
+value.c(154) _smanet_getvals: vc->name: GnSocTm2Stp, format: 0101
+value.c(165) _smanet_getvals: wval: 80 (0050)
+value.c(154) _smanet_getvals: vc->name: GnTm1Str, format: 0102
+value.c(171) _smanet_getvals: lval: 18386926 (00000000)
+value.c(154) _smanet_getvals: vc->name: GnTm2Str, format: 0102
+value.c(171) _smanet_getvals: lval: 18387038 (00000000)
+value.c(154) _smanet_getvals: vc->name: GnPwrStr, format: 0104
+value.c(177) _smanet_getvals: lval: 5.500000
+value.c(154) _smanet_getvals: vc->name: GnPwrStp, format: 0104
+value.c(177) _smanet_getvals: lval: 5.000000
+value.c(154) _smanet_getvals: vc->name: GnVtgMin, format: 0104
+value.c(177) _smanet_getvals: lval: 80.000000
+value.c(154) _smanet_getvals: vc->name: GnVtgMax, format: 0104
+value.c(177) _smanet_getvals: lval: 150.000000
+value.c(154) _smanet_getvals: vc->name: GnCurNom, format: 0104
+value.c(177) _smanet_getvals: lval: 30.000000
+value.c(154) _smanet_getvals: vc->name: GnFrqNom, format: 0104
+value.c(177) _smanet_getvals: lval: 60.000000
+value.c(154) _smanet_getvals: vc->name: GnFrqMin, format: 0104
+value.c(177) _smanet_getvals: lval: 54.000000
+value.c(154) _smanet_getvals: vc->name: GnFrqMax, format: 0104
+value.c(177) _smanet_getvals: lval: 66.000000
+value.c(154) _smanet_getvals: vc->name: GnPwrAvgTm, format: 0101
+value.c(165) _smanet_getvals: wval: 60 (003c)
+value.c(154) _smanet_getvals: vc->name: GnOpTmMin, format: 0101
+value.c(165) _smanet_getvals: wval: 15 (000f)
+value.c(154) _smanet_getvals: vc->name: GnStpTmMin, format: 0101
+value.c(165) _smanet_getvals: wval: 15 (000f)
+value.c(154) _smanet_getvals: vc->name: GnCoolTm, format: 0101
+value.c(165) _smanet_getvals: wval: 6 (0006)
+value.c(154) _smanet_getvals: vc->name: GnErrStpTm, format: 0101
+value.c(165) _smanet_getvals: wval: 1 (0001)
+value.c(154) _smanet_getvals: vc->name: GnWarmTm, format: 0101
+value.c(165) _smanet_getvals: wval: 60 (003c)
+value.c(154) _smanet_getvals: vc->name: GnRvPwr, format: 0101
+value.c(165) _smanet_getvals: wval: 100 (0064)
+value.c(154) _smanet_getvals: vc->name: GnRvTm, format: 0104
+value.c(177) _smanet_getvals: lval: 30.000000
+value.c(154) _smanet_getvals: vc->name: GnTmOpStrDt, format: 0102
+value.c(171) _smanet_getvals: lval: 18388942 (40000000)
+value.c(154) _smanet_getvals: vc->name: GnTmOpStrTm, format: 0102
+value.c(171) _smanet_getvals: lval: 18389054 (00000000)
+value.c(154) _smanet_getvals: vc->name: GnTmOpRnDur, format: 0102
+value.c(171) _smanet_getvals: lval: 18389166 (00000000)
+value.c(154) _smanet_getvals: vc->name: GdVtgMin, format: 0104
+value.c(177) _smanet_getvals: lval: 105.600006
+value.c(154) _smanet_getvals: vc->name: GdVtgMax, format: 0104
+value.c(177) _smanet_getvals: lval: 132.000000
+value.c(154) _smanet_getvals: vc->name: GdCurNom, format: 0104
+value.c(177) _smanet_getvals: lval: 30.000000
+value.c(154) _smanet_getvals: vc->name: GdFrqNom, format: 0104
+value.c(177) _smanet_getvals: lval: 60.000000
+value.c(154) _smanet_getvals: vc->name: GdFrqMin, format: 0104
+value.c(177) _smanet_getvals: lval: 59.300003
+value.c(154) _smanet_getvals: vc->name: GdFrqMax, format: 0104
+value.c(177) _smanet_getvals: lval: 60.500000
+value.c(154) _smanet_getvals: vc->name: GdVldTm, format: 0101
+value.c(165) _smanet_getvals: wval: 120 (0078)
+value.c(154) _smanet_getvals: vc->name: GdRvPwr, format: 0101
+value.c(165) _smanet_getvals: wval: 100 (0064)
+value.c(154) _smanet_getvals: vc->name: GdRvTm, format: 0101
+value.c(165) _smanet_getvals: wval: 5 (0005)
+value.c(154) _smanet_getvals: vc->name: GdVtgIncPro, format: 0104
+value.c(177) _smanet_getvals: lval: 132.000000
+value.c(154) _smanet_getvals: vc->name: FedInSocStr, format: 0101
+value.c(165) _smanet_getvals: wval: 70 (0046)
+value.c(154) _smanet_getvals: vc->name: FedInSocStp, format: 0101
+value.c(165) _smanet_getvals: wval: 60 (003c)
+value.c(154) _smanet_getvals: vc->name: FedInTmStr, format: 0102
+value.c(171) _smanet_getvals: lval: 18390622 (00000000)
+value.c(154) _smanet_getvals: vc->name: FedInTmStp, format: 0102
+value.c(171) _smanet_getvals: lval: 18390734 (00000000)
+value.c(154) _smanet_getvals: vc->name: FedInCurAt, format: 0104
+value.c(177) _smanet_getvals: lval: 30.000000
+value.c(154) _smanet_getvals: vc->name: FedInCurRt, format: 0104
+value.c(177) _smanet_getvals: lval: 0.000000
+value.c(154) _smanet_getvals: vc->name: GdSocTm1Str, format: 0101
+value.c(165) _smanet_getvals: wval: 25 (0019)
+value.c(154) _smanet_getvals: vc->name: GdSocTm1Stp, format: 0101
+value.c(165) _smanet_getvals: wval: 85 (0055)
+value.c(154) _smanet_getvals: vc->name: GdSocTm2Str, format: 0101
+value.c(165) _smanet_getvals: wval: 40 (0028)
+value.c(154) _smanet_getvals: vc->name: GdSocTm2Stp, format: 0101
+value.c(165) _smanet_getvals: wval: 80 (0050)
+value.c(154) _smanet_getvals: vc->name: GdTm1Str, format: 0102
+value.c(171) _smanet_getvals: lval: 18391518 (00000000)
+value.c(154) _smanet_getvals: vc->name: GdTm2Str, format: 0102
+value.c(171) _smanet_getvals: lval: 18391630 (00000000)
+value.c(154) _smanet_getvals: vc->name: GdPwrStr, format: 0104
+value.c(177) _smanet_getvals: lval: 4.000000
+value.c(154) _smanet_getvals: vc->name: GdPwrStp, format: 0104
+value.c(177) _smanet_getvals: lval: 2.000000
+value.c(154) _smanet_getvals: vc->name: SlpStrTm, format: 0102
+value.c(171) _smanet_getvals: lval: 18391966 (00000000)
+value.c(154) _smanet_getvals: vc->name: SlpStpTm, format: 0102
+value.c(171) _smanet_getvals: lval: 18392078 (00000000)
+value.c(154) _smanet_getvals: vc->name: InvVtgNom, format: 0104
+value.c(177) _smanet_getvals: lval: 120.000000
+value.c(154) _smanet_getvals: vc->name: InvChrgCurMax, format: 0104
+value.c(177) _smanet_getvals: lval: 48.000000
+value.c(154) _smanet_getvals: vc->name: InvFrqNom, format: 0104
+value.c(177) _smanet_getvals: lval: 60.000000
+value.c(154) _smanet_getvals: vc->name: InvTmOpStrDt, format: 0102
+value.c(171) _smanet_getvals: lval: 18392526 (40000000)
+value.c(154) _smanet_getvals: vc->name: InvTmOpStrTm, format: 0102
+value.c(171) _smanet_getvals: lval: 18392638 (00000000)
+value.c(154) _smanet_getvals: vc->name: InvTmOpRnDur, format: 0102
+value.c(171) _smanet_getvals: lval: 18392750 (00000000)
+value.c(154) _smanet_getvals: vc->name: Lod1SocTm1Str, format: 0101
+value.c(165) _smanet_getvals: wval: 30 (001e)
+value.c(154) _smanet_getvals: vc->name: Lod1SocTm1Stp, format: 0101
+value.c(165) _smanet_getvals: wval: 50 (0032)
+value.c(154) _smanet_getvals: vc->name: Lod1SocTm2Str, format: 0101
+value.c(165) _smanet_getvals: wval: 30 (001e)
+value.c(154) _smanet_getvals: vc->name: Lod1SocTm2Stp, format: 0101
+value.c(165) _smanet_getvals: wval: 50 (0032)
+value.c(154) _smanet_getvals: vc->name: Lod1Tm1Str, format: 0102
+value.c(171) _smanet_getvals: lval: 18393310 (00000000)
+value.c(154) _smanet_getvals: vc->name: Lod1Tm2Str, format: 0102
+value.c(171) _smanet_getvals: lval: 18393422 (00000000)
+value.c(154) _smanet_getvals: vc->name: Lod2SocTm1Str, format: 0101
+value.c(165) _smanet_getvals: wval: 30 (001e)
+value.c(154) _smanet_getvals: vc->name: Lod2SocTm1Stp, format: 0101
+value.c(165) _smanet_getvals: wval: 50 (0032)
+value.c(154) _smanet_getvals: vc->name: Lod2SocTm2Str, format: 0101
+value.c(165) _smanet_getvals: wval: 30 (001e)
+value.c(154) _smanet_getvals: vc->name: Lod2SocTm2Stp, format: 0101
+value.c(165) _smanet_getvals: wval: 50 (0032)
+value.c(154) _smanet_getvals: vc->name: Lod2Tm1Str, format: 0102
+value.c(171) _smanet_getvals: lval: 18393982 (00000000)
+value.c(154) _smanet_getvals: vc->name: Lod2Tm2Str, format: 0102
+value.c(171) _smanet_getvals: lval: 18394094 (00000000)
+value.c(154) _smanet_getvals: vc->name: RlyTmr1StrDt, format: 0102
+value.c(171) _smanet_getvals: lval: 18394206 (40000000)
+value.c(154) _smanet_getvals: vc->name: RlyTmr1StrTm, format: 0102
+value.c(171) _smanet_getvals: lval: 18394318 (00000000)
+value.c(154) _smanet_getvals: vc->name: RlyTmr1Dur, format: 0102
+value.c(171) _smanet_getvals: lval: 18394430 (00000000)
+value.c(154) _smanet_getvals: vc->name: RlyTmr2StrDt, format: 0102
+value.c(171) _smanet_getvals: lval: 18394542 (40000000)
+value.c(154) _smanet_getvals: vc->name: RlyTmr2StrTm, format: 0102
+value.c(171) _smanet_getvals: lval: 18394654 (00000000)
+value.c(154) _smanet_getvals: vc->name: RlyTmr2Dur, format: 0102
+value.c(171) _smanet_getvals: lval: 18394766 (00000000)
+value.c(154) _smanet_getvals: vc->name: BatFanTmpStr, format: 0101
+value.c(165) _smanet_getvals: wval: 40 (0028)
+value.c(154) _smanet_getvals: vc->name: GnTmStr, format: 0102
+value.c(171) _smanet_getvals: lval: 18394990 (00000000)
+value.c(154) _smanet_getvals: vc->name: ExtLkTm, format: 0101
+value.c(165) _smanet_getvals: wval: 20 (0014)
+value.c(154) _smanet_getvals: vc->name: SilentTmFlo, format: 0101
+value.c(165) _smanet_getvals: wval: 3 (0003)
+value.c(154) _smanet_getvals: vc->name: SilentTmMax, format: 0101
+value.c(165) _smanet_getvals: wval: 12 (000c)
+value.c(154) _smanet_getvals: vc->name: BatChrgVtgMan, format: 0104
+value.c(177) _smanet_getvals: lval: 54.000000
+value.c(154) _smanet_getvals: vc->name: BatPro1TmStr, format: 0102
+value.c(171) _smanet_getvals: lval: 18395550 (00000000)
+value.c(154) _smanet_getvals: vc->name: BatPro1TmStp, format: 0102
+value.c(171) _smanet_getvals: lval: 18395662 (00000000)
+value.c(154) _smanet_getvals: vc->name: BatPro2TmStr, format: 0102
+value.c(171) _smanet_getvals: lval: 18395774 (00000000)
+value.c(154) _smanet_getvals: vc->name: BatPro2TmStp, format: 0102
+value.c(171) _smanet_getvals: lval: 18395886 (00000000)
+value.c(154) _smanet_getvals: vc->name: BatPro1Soc, format: 0100
+value.c(160) _smanet_getvals: bval: 20 (14)
+value.c(154) _smanet_getvals: vc->name: BatPro2Soc, format: 0100
+value.c(160) _smanet_getvals: bval: 15 (0F)
+value.c(154) _smanet_getvals: vc->name: BatPro3Soc, format: 0100
+value.c(160) _smanet_getvals: bval: 3 (03)
+value.c(154) _smanet_getvals: vc->name: SimSoc, format: 0101
+value.c(165) _smanet_getvals: wval: 69 (0045)
+value.c(154) _smanet_getvals: vc->name: AuthCode, format: 0102
+value.c(171) _smanet_getvals: lval: 18396446 (00000000)
+value.c(154) _smanet_getvals: vc->name: Plimit, format: 0101
+value.c(165) _smanet_getvals: wval: 11 (000b)
+value.c(154) _smanet_getvals: vc->name: ChpOpTmMin, format: 0100
+value.c(160) _smanet_getvals: bval: 60 (3C)
+value.c(154) _smanet_getvals: vc->name: ChpStpTmMin, format: 0100
+value.c(160) _smanet_getvals: bval: 10 (0A)
+value.c(154) _smanet_getvals: vc->name: ChpSocTm1Str, format: 0101
+value.c(165) _smanet_getvals: wval: 40 (0028)
+value.c(154) _smanet_getvals: vc->name: ChpSocTm1Stp, format: 0101
+value.c(165) _smanet_getvals: wval: 80 (0050)
+value.c(154) _smanet_getvals: vc->name: ChpSocTm2Str, format: 0101
+value.c(165) _smanet_getvals: wval: 40 (0028)
+value.c(154) _smanet_getvals: vc->name: ChpSocTm2Stp, format: 0101
+value.c(165) _smanet_getvals: wval: 80 (0050)
+value.c(154) _smanet_getvals: vc->name: ChpTm1Str, format: 0102
+value.c(171) _smanet_getvals: lval: 18397342 (00000000)
+value.c(154) _smanet_getvals: vc->name: ChpTm2Str, format: 0102
+value.c(171) _smanet_getvals: lval: 18397454 (00000000)
+value.c(154) _smanet_getvals: vc->name: ChpPwrStr, format: 0104
+value.c(177) _smanet_getvals: lval: 4.000000
+value.c(154) _smanet_getvals: vc->name: ChpPwrStrDly, format: 0100
+value.c(160) _smanet_getvals: bval: 5 (05)
+value.c(154) _smanet_getvals: vc->name: PvEgyMtr, format: 0102
+value.c(171) _smanet_getvals: lval: 18397790 (00000000)
+value.c(154) _smanet_getvals: vc->name: FedInCurAtCom, format: 0104
+value.c(177) _smanet_getvals: lval: 0.000000
+value.c(154) _smanet_getvals: vc->name: FedInCurRtCom, format: 0104
+value.c(177) _smanet_getvals: lval: 0.000000
+value.c(154) _smanet_getvals: vc->name: SlfCsmpSOCMin, format: 0101
+value.c(165) _smanet_getvals: wval: 50 (0032)
+value.c(154) _smanet_getvals: vc->name: SN, format: 0102
+value.c(171) _smanet_getvals: lval: 18398238 (20000000)
+value.c(154) _smanet_getvals: vc->name: SNSlv1, format: 0102
+value.c(171) _smanet_getvals: lval: 18398350 (40000000)
+value.c(154) _smanet_getvals: vc->name: SNSlv2, format: 0102
+value.c(171) _smanet_getvals: lval: 18398462 (00000000)
+value.c(154) _smanet_getvals: vc->name: SNSlv3, format: 0102
+value.c(171) _smanet_getvals: lval: 18398574 (00000000)
+value.c(154) _smanet_getvals: vc->name: GdCsmpEgyMtr, format: 0102
+value.c(171) _smanet_getvals: lval: 18398686 (00000000)
+value.c(154) _smanet_getvals: vc->name: GdFeedEgyMtr, format: 0102
+value.c(171) _smanet_getvals: lval: 18398798 (00000000)
+value.c(154) _smanet_getvals: vc->name: BatTyp, format: 0100
+value.c(160) _smanet_getvals: bval: 4 (04)
+value.c(154) _smanet_getvals: vc->name: AutoEquChrgEna, format: 0100
+value.c(160) _smanet_getvals: bval: 2 (02)
+value.c(154) _smanet_getvals: vc->name: GnAutoEna, format: 0100
+value.c(160) _smanet_getvals: bval: 2 (02)
+value.c(154) _smanet_getvals: vc->name: GnPwrEna, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: GnStrMod, format: 0100
+value.c(160) _smanet_getvals: bval: 2 (02)
+value.c(154) _smanet_getvals: vc->name: GnTmOpEna, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: GnTmOpCyc, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: GdMod, format: 0100
+value.c(160) _smanet_getvals: bval: 2 (02)
+value.c(154) _smanet_getvals: vc->name: SilentEna, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: GdAISns, format: 0100
+value.c(160) _smanet_getvals: bval: 3 (03)
+value.c(154) _smanet_getvals: vc->name: GdVtgIncProEna, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: Country, format: 0100
+value.c(160) _smanet_getvals: bval: 0 (00)
+value.c(154) _smanet_getvals: vc->name: FedInMod, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: FedInCtl, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: GdSocEna, format: 0100
+value.c(160) _smanet_getvals: bval: 2 (02)
+value.c(154) _smanet_getvals: vc->name: GdPwrEna, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: GdManStr, format: 0100
+value.c(160) _smanet_getvals: bval: 3 (03)
+value.c(154) _smanet_getvals: vc->name: ClstCfg, format: 0100
+value.c(160) _smanet_getvals: bval: 9 (09)
+value.c(154) _smanet_getvals: vc->name: ComBaud, format: 0100
+value.c(160) _smanet_getvals: bval: 4 (04)
+value.c(154) _smanet_getvals: vc->name: SleepEna, format: 0100
+value.c(160) _smanet_getvals: bval: 2 (02)
+value.c(154) _smanet_getvals: vc->name: AfraEna, format: 0100
+value.c(160) _smanet_getvals: bval: 2 (02)
+value.c(154) _smanet_getvals: vc->name: SlpAtNgt, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: InvRs, format: 0100
+value.c(160) _smanet_getvals: bval: 0 (00)
+value.c(154) _smanet_getvals: vc->name: ParaSto, format: 0100
+value.c(160) _smanet_getvals: bval: 0 (00)
+value.c(154) _smanet_getvals: vc->name: InvTmOpEna, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: InvTmOpCyc, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: ManStr, format: 0100
+value.c(160) _smanet_getvals: bval: 0 (00)
+value.c(154) _smanet_getvals: vc->name: ErrAckn, format: 0100
+value.c(160) _smanet_getvals: bval: 0 (00)
+value.c(154) _smanet_getvals: vc->name: ParaLod, format: 0100
+value.c(160) _smanet_getvals: bval: 0 (00)
+value.c(154) _smanet_getvals: vc->name: CntRs, format: 0100
+value.c(160) _smanet_getvals: bval: 0 (00)
+value.c(154) _smanet_getvals: vc->name: RlyTmr1Cyc, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: RlyTmr2Cyc, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: Rly1Op, format: 0100
+value.c(160) _smanet_getvals: bval: 3 (03)
+value.c(154) _smanet_getvals: vc->name: Rly1OpSlv1, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: Rly1OpSlv2, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: Rly2Op, format: 0100
+value.c(160) _smanet_getvals: bval: 4 (04)
+value.c(154) _smanet_getvals: vc->name: Rly2OpSlv1, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: Rly2OpSlv2, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: GnManStr, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: GnAck, format: 0100
+value.c(160) _smanet_getvals: bval: 0 (00)
+value.c(154) _smanet_getvals: vc->name: ChrgSelMan, format: 0100
+value.c(160) _smanet_getvals: bval: 0 (00)
+value.c(154) _smanet_getvals: vc->name: GnCtlMod, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: CardFunc, format: 0100
+value.c(160) _smanet_getvals: bval: 0 (00)
+value.c(154) _smanet_getvals: vc->name: GnAISns, format: 0100
+value.c(160) _smanet_getvals: bval: 3 (03)
+value.c(154) _smanet_getvals: vc->name: BkupTst, format: 0100
+value.c(160) _smanet_getvals: bval: 0 (00)
+value.c(154) _smanet_getvals: vc->name: ExtSrc, format: 0100
+value.c(160) _smanet_getvals: bval: 3 (03)
+value.c(154) _smanet_getvals: vc->name: LongChLstEna, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: ChrgCtlOp, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: ChpPwrEna, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: ChpManStr, format: 0100
+value.c(160) _smanet_getvals: bval: 0 (00)
+value.c(154) _smanet_getvals: vc->name: RnMod, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: SlfCsmpIncEna, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(154) _smanet_getvals: vc->name: SlfCsmpStdbyMod, format: 0100
+value.c(160) _smanet_getvals: bval: 1 (01)
+value.c(206) _getval: ts: 1618968481
+value.c(227) _getval: returning: 3.000000
+value.c(206) _getval: ts: 1618968478
+value.c(227) _getval: returning: 3.000000
+value.c(244) _smanet_setval: v1: 3.000000, v2: 3.000000
+packet.c(22) smanet_alloc_packet: data_len: 16
+value.c(254) _smanet_setval: type: 3 (BYTE)
+data(6):
+0000: 08 04 11 01 00 03                                  ......          
+command.c(15) smanet_command: src: 0000, dest: 0002, cmd: 12, packet: 0x1187564, buf: 0x7ef5c474, buflen: 6
+buf(6):
+0000: 08 04 11 01 00 03                                  ......          
+packet.c(108) smanet_send_packet: src: 0000, dest: 0002, ctrl: 00, cnt: 0, cmd: 0c, buffer: 0x7ef5c474, buflen: 6
+buffer(6):
+0000: 08 04 11 01 00 03                                  ......          
+HEADER(5):
+0000: 7E FF 03 40 41                                     ~..@A           
+frame.c(213) smanet_write_frame: HEADER fcs: 7b9e
+frame.c(215) smanet_write_frame: MESSAGE fcs: e953
+frame.c(217) smanet_write_frame: END fcs: 16ac
+copy2buf(13):
+0000: 00 00 02 00 00 00 0C 08 04 11 01 00 03             .............   
+fcs buffer(18):
+0000: FF 03 40 41 00 00 02 00 00 00 0C 08 04 7D 31 01    ..@A.........}1.
+0010: 00 03                                              ..              
+frame.c(40) calcfcs: FCS: a19e
+frame.c(221) smanet_write_frame: REAL fcs: a19e
+copy2buf(2):
+0000: 9E A1                                              ..              
+put frame(22):
+0000: 7E FF 03 40 41 00 00 02 00 00 00 0C 08 04 7D 31    ~..@A.........}1
+0010: 01 00 03 9E A1 7E                                  .....~          
+packet.c(58) smanet_recv_packet: command: 0c, count: 00, timeout: 0
+packet.c(60) smanet_recv_packet: cmo: ff
+frame.c(56) smanet_read_frame: buffer: 0x7ef5c2cc, buflen: 284, timeout: 5
+frame.c(68) smanet_read_frame: timeout!
+packet.c(65) smanet_recv_packet: timeout!
+command.c(30) smanet_command: r: 2
+packet.c(108) smanet_send_packet: src: 0000, dest: 0002, ctrl: 00, cnt: 0, cmd: 0c, buffer: 0x7ef5c474, buflen: 6
+buffer(6):
+0000: 08 04 11 01 00 03                                  ......          
+HEADER(5):
+0000: 7E FF 03 40 41                                     ~..@A           
+frame.c(213) smanet_write_frame: HEADER fcs: 7b9e
+frame.c(215) smanet_write_frame: MESSAGE fcs: e953
+frame.c(217) smanet_write_frame: END fcs: 16ac
+copy2buf(13):
+0000: 00 00 02 00 00 00 0C 08 04 11 01 00 03             .............   
+fcs buffer(18):
+0000: FF 03 40 41 00 00 02 00 00 00 0C 08 04 7D 31 01    ..@A.........}1.
+0010: 00 03                                              ..              
+frame.c(40) calcfcs: FCS: a19e
+frame.c(221) smanet_write_frame: REAL fcs: a19e
+copy2buf(2):
+0000: 9E A1                                              ..              
+put frame(22):
+0000: 7E FF 03 40 41 00 00 02 00 00 00 0C 08 04 7D 31    ~..@A.........}1
+0010: 01 00 03 9E A1 7E                                  .....~          
+packet.c(58) smanet_recv_packet: command: 0c, count: 00, timeout: 0
+packet.c(60) smanet_recv_packet: cmo: ff
+frame.c(56) smanet_read_frame: buffer: 0x7ef5c2cc, buflen: 284, timeout: 5
+get frame(18):
+0000: FF 03 40 41 02 00 00 00 80 00 28 01 65 65 65 07    ..@A......(.eee.
+0010: 69 2A                                              i*              
+fcs buffer(16):
+0000: FF 03 40 41 02 00 00 00 80 00 28 01 65 65 65 07    ..@A......(.eee.
+frame.c(40) calcfcs: FCS: 2a69
+packet.c(73) smanet_recv_packet: src: 0002, dest: 0000, control: 80, count: 0, command: 28
+packet.c(75) smanet_recv_packet: h->command: 28, command: 0c, test: 1
+packet.c(76) smanet_recv_packet: h->count: 00, cmo: ff, test: 0
+command.c(30) smanet_command: r: 3
+packet.c(108) smanet_send_packet: src: 0000, dest: 0002, ctrl: 00, cnt: 0, cmd: 0c, buffer: 0x7ef5c474, buflen: 6
+buffer(6):
+0000: 08 04 11 01 00 03                                  ......          
+HEADER(5):
+0000: 7E FF 03 40 41                                     ~..@A           
+frame.c(213) smanet_write_frame: HEADER fcs: 7b9e
+frame.c(215) smanet_write_frame: MESSAGE fcs: e953
+frame.c(217) smanet_write_frame: END fcs: 16ac
+copy2buf(13):
+0000: 00 00 02 00 00 00 0C 08 04 11 01 00 03             .............   
+fcs buffer(18):
+0000: FF 03 40 41 00 00 02 00 00 00 0C 08 04 7D 31 01    ..@A.........}1.
+0010: 00 03                                              ..              
+frame.c(40) calcfcs: FCS: a19e
+frame.c(221) smanet_write_frame: REAL fcs: a19e
+copy2buf(2):
+0000: 9E A1                                              ..              
+put frame(22):
+0000: 7E FF 03 40 41 00 00 02 00 00 00 0C 08 04 7D 31    ~..@A.........}1
+0010: 01 00 03 9E A1 7E                                  .....~          
+packet.c(58) smanet_recv_packet: command: 0c, count: 00, timeout: 0
+packet.c(60) smanet_recv_packet: cmo: ff
+frame.c(56) smanet_read_frame: buffer: 0x7ef5c2cc, buflen: 284, timeout: 5
+frame.c(68) smanet_read_frame: timeout!
+packet.c(65) smanet_recv_packet: timeout!
+command.c(30) smanet_command: r: 2
+packet.c(108) smanet_send_packet: src: 0000, dest: 0002, ctrl: 00, cnt: 0, cmd: 0c, buffer: 0x7ef5c474, buflen: 6
+buffer(6):
+0000: 08 04 11 01 00 03                                  ......          
+HEADER(5):
+0000: 7E FF 03 40 41                                     ~..@A           
+frame.c(213) smanet_write_frame: HEADER fcs: 7b9e
+frame.c(215) smanet_write_frame: MESSAGE fcs: e953
+frame.c(217) smanet_write_frame: END fcs: 16ac
+copy2buf(13):
+0000: 00 00 02 00 00 00 0C 08 04 11 01 00 03             .............   
+fcs buffer(18):
+0000: FF 03 40 41 00 00 02 00 00 00 0C 08 04 7D 31 01    ..@A.........}1.
+0010: 00 03                                              ..              
+frame.c(40) calcfcs: FCS: a19e
+frame.c(221) smanet_write_frame: REAL fcs: a19e
+copy2buf(2):
+0000: 9E A1                                              ..              
+put frame(22):
+0000: 7E FF 03 40 41 00 00 02 00 00 00 0C 08 04 7D 31    ~..@A.........}1
+0010: 01 00 03 9E A1 7E                                  .....~          
+packet.c(58) smanet_recv_packet: command: 0c, count: 00, timeout: 0
+packet.c(60) smanet_recv_packet: cmo: ff
+frame.c(56) smanet_read_frame: buffer: 0x7ef5c2cc, buflen: 284, timeout: 5
+get frame(18):
+0000: FF 03 40 41 02 00 00 00 80 00 28 01 65 65 65 07    ..@A......(.eee.
+0010: 69 2A                                              i*              
+fcs buffer(16):
+0000: FF 03 40 41 02 00 00 00 80 00 28 01 65 65 65 07    ..@A......(.eee.
+frame.c(40) calcfcs: FCS: 2a69
+packet.c(73) smanet_recv_packet: src: 0002, dest: 0000, control: 80, count: 0, command: 28
+packet.c(75) smanet_recv_packet: h->command: 28, command: 0c, test: 1
+packet.c(76) smanet_recv_packet: h->count: 00, cmo: ff, test: 0
+command.c(30) smanet_command: r: 3
+packet.c(108) smanet_send_packet: src: 0000, dest: 0002, ctrl: 00, cnt: 0, cmd: 0c, buffer: 0x7ef5c474, buflen: 6
+buffer(6):
+0000: 08 04 11 01 00 03                                  ......          
+HEADER(5):
+0000: 7E FF 03 40 41                                     ~..@A           
+frame.c(213) smanet_write_frame: HEADER fcs: 7b9e
+frame.c(215) smanet_write_frame: MESSAGE fcs: e953
+frame.c(217) smanet_write_frame: END fcs: 16ac
+copy2buf(13):
+0000: 00 00 02 00 00 00 0C 08 04 11 01 00 03             .............   
+fcs buffer(18):
+0000: FF 03 40 41 00 00 02 00 00 00 0C 08 04 7D 31 01    ..@A.........}1.
+0010: 00 03                                              ..              
+frame.c(40) calcfcs: FCS: a19e
+frame.c(221) smanet_write_frame: REAL fcs: a19e
+copy2buf(2):
+0000: 9E A1                                              ..              
+put frame(22):
+0000: 7E FF 03 40 41 00 00 02 00 00 00 0C 08 04 7D 31    ~..@A.........}1
+0010: 01 00 03 9E A1 7E                                  .....~          
+packet.c(58) smanet_recv_packet: command: 0c, count: 00, timeout: 0
+packet.c(60) smanet_recv_packet: cmo: ff
+frame.c(56) smanet_read_frame: buffer: 0x7ef5c2cc, buflen: 284, timeout: 5
+frame.c(68) smanet_read_frame: timeout!
+packet.c(65) smanet_recv_packet: timeout!
+command.c(30) smanet_command: r: 2
+timeouts: 6, commands: 12

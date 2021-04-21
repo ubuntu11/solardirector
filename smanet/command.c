@@ -12,17 +12,17 @@ LICENSE file in the root directory of this source tree.
 int smanet_command(smanet_session_t *s, int cmd, smanet_packet_t *p, uint8_t *buf, int buflen) {
 	int control,count,r;
 
-	dprintf(1,"cmd: %d, packet: %p, buf: %p, buflen: %d\n", cmd, p, buf, buflen);
+	dprintf(1,"src: %04x, dest: %04x, cmd: %d, packet: %p, buf: %p, buflen: %d\n", s->src, s->dest, cmd, p, buf, buflen);
 
 	if (!p) return 1;
 	if (cmd <= 0 || cmd > 60) return 1;
 
 	count = 0;
 	s->timeouts = 0;
+	control = s->dest ? 0 : 0x80;
 	while(1) {
 		s->commands++;
-		control = s->addr ? 0 : 0x80;
-		if (smanet_send_packet(s,0,s->addr,control,count,cmd,buf,buflen)) return 1;
+		if (smanet_send_packet(s,s->src,s->dest,control,count,cmd,buf,buflen)) return 1;
 		usleep(550000);
 		r = smanet_recv_packet(s,count,cmd,p,0);
 		dprintf(1,"r: %d\n", r);
@@ -51,7 +51,7 @@ int smanet_get_net_start(smanet_session_t *s, long *sn, char *type, int typesz) 
 	p = smanet_alloc_packet(12);
 	if (!p) return 0;
 
-	s->addr = 0;
+	s->dest = 0;
 	if (smanet_command(s,CMD_GET_NET_START,p,0,0)) return 1;
 	*sn = getlong(p->data);
 	dprintf(1,"type: %p, buflen: %d\n", type, typesz);
@@ -71,11 +71,11 @@ int smanet_cfg_net_adr(smanet_session_t *s, int addr) {
 	p = smanet_alloc_packet(4);
 	if (!p) return 0;
 
+	dprintf(1,"setting addr to %d\n", addr);
 	putlong(&data[0],s->serial);
 	putlong(&data[4],addr);
 	if (smanet_command(s,CMD_CFG_NETADR,p,data,sizeof(data))) return 1;
-	dprintf(1,"setting addr to %d\n", addr);
-	s->addr = addr;
+	s->dest = addr;
 	smanet_free_packet(p);
 	return 0;
 }
@@ -84,5 +84,5 @@ int smanet_syn_online(smanet_session_t *s) {
 	uint8_t data[4];
 
 	time((time_t *)data);
-	return smanet_send_packet(s,0,s->addr,0x80,0,CMD_SYN_ONLINE,data,sizeof(data));
+	return smanet_send_packet(s,s->src,0,0x80,0,CMD_SYN_ONLINE,data,sizeof(data));
 }

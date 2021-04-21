@@ -11,6 +11,7 @@ LICENSE file in the root directory of this source tree.
 #define __SMANET_H
 
 #include "module.h"
+#include "buffer.h"
 
 #if 0
    /* Nur bei analogen Parameterkanaelen sinnvoll! */
@@ -82,11 +83,22 @@ struct smanet_channel {
 		char txthi[17];		/* Digital */
 		list strings;		/* Status */
 	};
-	smanet_value_t value;
 };
 typedef struct smanet_channel smanet_channel_t;
 
-
+struct smanet_session {
+	buffer_t *b;
+	list channels;
+	smanet_value_t *values;
+	solard_module_t *tp;
+	void *tp_handle;
+	long serial;
+	char type[32];
+	uint16_t src;
+	uint16_t dest;
+	int timeouts;
+	int commands;
+};
 typedef struct smanet_session smanet_session_t;
 
 smanet_session_t *smanet_init(solard_module_t *, void *);
@@ -103,12 +115,16 @@ int smanet_set_optionbyid(smanet_session_t *s, char *, char *);
 int smanet_get_optionbyname(smanet_session_t *s, char *, char *, int);
 int smanet_set_optionbyname(smanet_session_t *s, char *, char *);
 
-double smanet_get_value(smanet_value_t *);
-char *smanet_get_option(smanet_channel_t *);
-int smanet_get_valuebyid(smanet_session_t *s, int, double *);
-int smanet_set_valuebyid(smanet_session_t *s, int, double);
-int smanet_get_valuebyname(smanet_session_t *s, char *, smanet_value_t *);
-int smanet_set_valuebyname(smanet_session_t *s, char *, double);
+smanet_value_t *smanet_get_value(smanet_session_t *, smanet_channel_t *);
+int smanet_get_optionval(smanet_session_t *, smanet_channel_t *, char *);
+char *smanet_get_option(smanet_session_t *,smanet_channel_t *);
+
+smanet_value_t *smanet_get_valuebyid(smanet_session_t *s, int);
+int smanet_set_valuebyid(smanet_session_t *s, int, smanet_value_t *);
+
+smanet_value_t *smanet_get_valuebyname(smanet_session_t *s, char *);
+int smanet_set_valuebyname(smanet_session_t *s, char *, smanet_value_t *);
+
 void smanet_clear_values(smanet_session_t *);
 
 #endif

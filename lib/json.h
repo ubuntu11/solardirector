@@ -133,6 +133,7 @@ int json_array_add_descriptor(json_value_t *,json_descriptor_t);
 
 int json_tostring(json_value_t *,char *,int,int);
 char *json_dumps(json_value_t *,int);
+int json_dumps_r(json_value_t *,char *,int);
 const char  *   json_string (const JSON_Value *value);
 void        json_free_serialized_string(char *string);
 #define json_free_string(s) json_free_serialized_string(s)

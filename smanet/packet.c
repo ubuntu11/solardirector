@@ -65,7 +65,7 @@ int smanet_recv_packet(smanet_session_t *s, uint8_t count, int command, smanet_p
 		dprintf(1,"timeout!\n");
 		return 2;
 	}
-//	if (debug >= dlevel) bindump("packet",data,len);
+	if (debug >= dlevel) bindump("recv packet",data,len);
 
 	/* This method works on little endian */
 	h = (struct packet_header *) data; 
@@ -108,11 +108,9 @@ int smanet_send_packet(smanet_session_t *s, uint16_t src, uint16_t dest, uint8_t
 		src,dest,ctrl,cnt,cmd,buffer,buflen);
 	if (buflen > 255) return 1;
 
-	i = 0;
-	putshort(&data[i],src);
-	i += 2;
-	putshort(&data[i],dest);
-	i += 2;
+	*((uint16_t *)&data[0]) = src;
+	*((uint16_t *)&data[2]) = dest;
+	i = 4;
 	data[i++] = ctrl;
 	data[i++] = cnt;
 	data[i++] = cmd;

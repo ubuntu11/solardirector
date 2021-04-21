@@ -29,11 +29,23 @@ typedef int socket_t;
 #define INVALID_SOCKET -1
 #endif
 
+struct __attribute__((packed, aligned(1))) devserver_header {
+	union {
+		uint8_t opcode;
+		uint8_t status;
+	};
+	uint8_t unit;
+	uint16_t control;
+	uint16_t len;
+};
+
+#if 0
 //#define devserver_get16(p) (uint16_t)(*(p) | (*((p)+1) << 8))
 #define devserver_get16(p) (uint16_t)(*(p) | (*((p)+1) << 8))
 #define devserver_put16(p,v) { float tmp; *(p) = ((uint16_t)(tmp = (v))); *((p)+1) = ((uint16_t)(tmp = (v)) >> 8); }
 #define devserver_get32(p) (uint16_t)(*(p) | (*((p)+1) << 8) | (*((p)+2) << 16) | (*((p)+3) << 24))
 #define devserver_put32(p,v) *(p) = ((int)(v) & 0xFF); *((p)+1) = ((int)(v) >> 8) & 0xFF; *((p)+2) = ((int)(v) >> 16) & 0xFF; *((p)+3) = ((int)(v) >> 24) & 0xFF
+#endif
 
 struct devserver_funcs {
 	uint8_t opcode;
@@ -41,17 +53,14 @@ struct devserver_funcs {
 	int (*func)(devserver_config_t *,int,uint8_t,uint16_t,uint8_t *,int);
 };
 
-#define PACKET_START	0xD5
-#define PACKET_END	0xEB
-#ifdef CHKSUM
-#define PACKET_MIN	7
-#else
-#define PACKET_MIN	5
+#if 0
+#define PACKET_START		0xD5
+#define PACKET_END		0xEB
+#define PACKET_ESC		0xAA
+#define PACKET_ESC_START 	0x01
+#define PACKET_ESC_END		0x02
+#define PACKET_ESC_ESC		0x03
 #endif
-#define PACKET_ESC	0xAA
-#define PACKET_ESC_START 0x01
-#define PACKET_ESC_END	 0x02
-#define PACKET_ESC_ESC 	 0x03
 
 #ifdef CHKSUM
 static uint16_t chksum(uint8_t *data, uint16_t datasz) {
@@ -65,77 +74,172 @@ static uint16_t chksum(uint8_t *data, uint16_t datasz) {
 }
 #endif
 
-int devserver_send(socket_t fd, uint8_t opcode, uint8_t unit, uint16_t control, void *data, int datasz) {
-	uint8_t pkt[256],*dptr;
-	int bytes,len;
-	register int i,j;
+#if 0
+static uint8_t *_frame_add(uint8_t *frame, uint8_t *data, int len) {
+	register int i;
 
-	dprintf(5,"fd: %d, opcode: %d, unit: %d, control: %d, data: %p, datasz: %d\n",
-		fd, opcode, unit, control, data, datasz);
-	if (fd < 0) return -1;
-
-	i = 0;
-	/* byte 0: start */
-	pkt[i++] = PACKET_START;
-	/* byte 1: opcode */
-	pkt[i++] = opcode;
-	/* byte 2: unit # */
-	pkt[i++] = unit;
-	/* byte 3+4: control code */
-	devserver_put16(&pkt[i],control);
-	i += 2;
-	/* byte 5: data length */
-	len = datasz > 255 ? 255 : datasz;
-	pkt[i++] = len;
-//	devserver_put16(&pkt[i],datasz);
-//	i += 2;
-//	devserver_put32(&pkt[i],datasz);
-//	i += 4;
-	/* byte 6+: data */
-	if (data && datasz) {
-		for(j=0; j < len; j++) {
-			dptr = data;
-			if (dptr[j] == PACKET_START || dptr[j] == PACKET_END || dptr[j] == PACKET_ESC) {
-				dprintf(1,"****** ESCAPING *****\n");
-				pkt[i++] = PACKET_ESC; 
-				switch(dptr[j]) {
-				case PACKET_START:
-					pkt[i++] = 0x01;
-					break;
-				case PACKET_END:
-					pkt[i++] = 0x02;
-					break;
-				case PACKET_ESC:
-					pkt[i++] = 0x03;
-					break;
-				}
-			} else {
-				pkt[i++] = dptr[j];
+	for(i=0; i < len; i++) {
+		if (data[i] == PACKET_START || data[i] == PACKET_END || data[i] == PACKET_ESC) {
+			dprintf(1,"****** ESCAPING *****\n");
+			*frame++ = PACKET_ESC;
+			switch(data[i]) {
+			case PACKET_START:
+				*frame++ = PACKET_ESC_START;
+				break;
+			case PACKET_END:
+				*frame++ = PACKET_ESC_END; 
+				break;
+			case PACKET_ESC:
+				*frame++ = PACKET_ESC_ESC; 
+				break;
 			}
+		} else {
+			*frame++ = data[i];
 		}
 	}
+	return frame;
+}
+#endif
+
+int devserver_send(socket_t fd, uint8_t opcode, uint8_t unit, uint16_t control, void *data, uint16_t data_len) {
+	uint8_t header[8],*hptr;
+	int bytes,sent;
+
+	dprintf(5,"fd: %d, opcode: %d, unit: %d, control: %d, data: %p, datasz: %d\n",
+		fd, opcode, unit, control, data, data_len);
+	if (fd < 0) return -1;
+
+	sent = 0;
+	hptr = header;
+	*hptr++ = opcode;
+	*hptr++ = unit;
+	*(uint16_t *)hptr = control;
+	hptr += 2;
+	*(uint16_t *)hptr = data_len;
+	hptr += 2;
+	if (debug >= 5) bindump("SENDING",header,hptr - header);
+	bytes = send(fd,header,hptr - header, 0);
+	dprintf(5,"bytes: %d\n", bytes);
+	if (bytes < 0) return -1;
+	sent += bytes;
+	if (debug >= 5) bindump("SENDING",data,data_len);
+	bytes = send(fd,data,data_len,0);
+	dprintf(5,"bytes: %d\n", bytes);
+	if (bytes < 0) return -1;
+	sent += bytes;
+
+	dprintf(1,"returning: %d\n", sent);
+	return sent;
+#if 0
+	/* Assume every byte needs escaped */
+	fptr = frame = malloc((data_len*2)+2);
+	if (!frame) {
+		log_write(LOG_SYSERR,"malloc(%d)\n",(data_len*2)+2);
+		return -1;
+	}
+
+//	/* Start */
+//	*fptr++ = PACKET_START;
+	/* byte 1: opcode */
+//	fptr =_frame_add(fptr,&opcode,1);
+	/* byte 2: unit # */
+//	fptr = _frame_add(fptr,&unit,1);
+	/* byte 3+4: control code */
+//	fptr = _frame_add(fptr,(uint8_t *)&control,2);
+	/* byte 5+6: data length */
+//	fptr = _frame_add(fptr,(uint8_t *)&data_len,2);
+	*(uint16_t *)fptr = data_len;
+	fptr += 2;
+	/* byte 7+: data */
+	if (data && data_len) fptr = _frame_add(fptr,data,data_len);
 #ifdef CHKSUM
 	/* byte n: checksum */
-	devserver_putshort(&pkt[i],chksum(data,datasz));
-	i += 2;
+	fptr = _frame_add(fptr,(uint16_t *)&sum,2);
 #endif
 	/* byte n: end */
-	pkt[i++] = PACKET_END;
+	*fptr++ = PACKET_END;
 
-	if (debug >= 5) bindump("SENDING",pkt,i);
-	bytes = send(fd, pkt, i, 0);
+	if (debug >= 5) bindump("SENDING",frame,fptr - frame);
+	bytes = send(fd, frame, fptr - frame, 0);
+	dprintf(5,"bytes: %d\n", bytes);
+	free(frame);
+	return bytes;
+#endif
+}
+
+#if 0
+static int _read_frame(socket_t fd, uint8_t *data, int len) {
+	uint8_t header[8], ch, *frame;
+	register int i,j;
+	int bytes;
+
+	ch = PACKET_START;
+	send(fd, &ch, 1, 0);
+	for(i=j=0; i < len; i++) {
+		if (data[i] == PACKET_START || data[i] == PACKET_END || data[i] == PACKET_ESC) {
+			dprintf(1,"****** ESCAPING *****\n");
+			frame[j++] = PACKET_ESC;
+			switch(data[i]) {
+			case PACKET_START:
+				frame[j++] = PACKET_ESC_START;
+				break;
+			case PACKET_END:
+				frame[j++] = PACKET_ESC_END; 
+				break;
+			case PACKET_ESC:
+				frame[j++] = PACKET_ESC_ESC; 
+				break;
+			}
+		} else {
+			data[j++] = data[i];
+		}
+	}
+
+	if (debug >= 5) bindump("SENDING",frame,j);
+	bytes = send(fd, frame, j, 0);
 	dprintf(5,"bytes: %d\n", bytes);
 	return bytes;
 }
+#endif
 
 int devserver_recv(socket_t fd, uint8_t *opcode, uint8_t *unit, uint16_t *control, void *data, int datasz, int timeout) {
+	uint8_t *frame,*fptr;
 	int bytes,len,bytes_left;
 	uint8_t ch,pkt[256],*dptr;
+	struct devserver_header h;
 	register int i,j;
 
-	dprintf(5,"opcode: %d, unit: %d, control: %d, data: %p, datasz: %d, timeout: %d\n",
-		*opcode, *unit, *control, data, datasz, timeout);
+//	dprintf(5,"opcode: %d, unit: %d, control: %d, data: %p, datasz: %d, timeout: %d\n",
+//		*opcode, *unit, *control, data, datasz, timeout);
 
+	/* Read the header */
+	bytes = recv(fd, &h, sizeof(h), 0);
+	dprintf(5,"bytes: %d\n", bytes);
+	if (bytes < 0) return -1;
+	dprintf(1,"header: opcode: %02x, unit: %d, control: %04x, len: %d\n", h.opcode, h.unit, h.control, h.len);
+	if (debug >= 5) bindump("RECEIVED",&h,sizeof(h));
+
+	/* Read the data */
+	len = h.len;
+	if (len > datasz) len = datasz;
+	dprintf(1,"len: %d\n",len);
+	bytes_left = h.len - len;
+	dprintf(1,"bytes_left: %d\n", bytes_left);
+	if (data && len) {
+		bytes = recv(fd, data, len, 0);
+		dprintf(5,"bytes: %d\n", bytes);
+		if (bytes < 0) return -1;
+		if (debug >= 5) bindump("RECEIVED",data,bytes);
+		/* XXX */
+		if (bytes != len) return 0;
+	}
+	for(i=0; i < bytes_left; i++) recv(fd, &ch, 1, 0);
+	dprintf(5,"returning: %d\n", bytes);
+	*opcode = h.opcode;
+	*unit = h.unit;
+	*control = h.control;
+	return bytes;
+#if 0
 	bytes = read(fd,&ch,1);
 	dprintf(5,"bytes: %d\n", bytes);
 	if (bytes < 0) perror("read");
@@ -161,7 +265,8 @@ int devserver_recv(socket_t fd, uint8_t *opcode, uint8_t *unit, uint16_t *contro
 	bytes = read(fd,&pkt[i],2);
 	dprintf(5,"bytes: %d\n", bytes);
 	if (bytes < 1) return -1;
-	*control = devserver_get16(&pkt[i]);
+//	*control = devserver_get16(&pkt[i]);
+	*control = *(unsigned short *) &pkt[i];
 	i += 2;
 	dprintf(5,"control: %d\n", *control);
 
@@ -182,26 +287,31 @@ int devserver_recv(socket_t fd, uint8_t *opcode, uint8_t *unit, uint16_t *contro
 	if (data && datasz && len) {
 		if (len > datasz) len = datasz;
 		dptr = data;
-		for(j=0; i < len; j++) {
+		dprintf(1,"getting data...\n");
+		for(j=0; j < len; j++) {
 			bytes = recv(fd,&ch,1,0);
 			dprintf(5,"bytes: %d\n", bytes);
 			if (bytes < 1) return -1;
+			dprintf(1,"ch: %02x\n", ch);
 			if (ch == PACKET_ESC) {
 				dprintf(1,"***** ESC ******\n");
 				bytes = recv(fd,&ch,1,0);
 				dprintf(5,"bytes: %d\n", bytes);
 				if (bytes < 1) return -1;
+				dprintf(1,"ch: %02x\n", ch);
 				switch(ch) {
 				case PACKET_ESC_START:
-					dptr[j++] = PACKET_START;
+					dptr[j] = PACKET_START;
 					break;
 				case PACKET_ESC_END:
-					dptr[j++] = PACKET_END;
+					dptr[j] = PACKET_END;
 					break;
 				case PACKET_ESC_ESC:
-					dptr[j++] = PACKET_ESC;
+					dptr[j] = PACKET_ESC;
 					break;
 				}
+			} else {
+				dptr[j] = ch;
 			}
 		}
 		bytes_left -= len;
@@ -244,6 +354,7 @@ int devserver_recv(socket_t fd, uint8_t *opcode, uint8_t *unit, uint16_t *contro
 		*opcode, *unit, *control, data, datasz, timeout);
 	/* Return total bytes written into buffer */
 	dprintf(5,"returning: %d\n", 1);
+#endif
 	return 1;
 }
 
@@ -363,7 +474,7 @@ int devserver_write(devserver_config_t *conf, int c, uint8_t unit, uint16_t cont
 	}
 	dprintf(5,"bytes: %d\n", bytes);
 	/* control has bytes written */
-	return bytes < 0 ? devserver_error(c,errno) : devserver_reply(c,DEVSERVER_SUCCESS,unit,bytes,data,bytes);
+	return bytes < 0 ? devserver_error(c,errno) : devserver_reply(c,DEVSERVER_SUCCESS,unit,bytes,0,0);
 }
 
 static struct devserver_funcs devserver_funcs[] = {

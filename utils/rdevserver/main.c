@@ -195,6 +195,8 @@ int main(int argc,char **argv) {
 //	solard_common_init(nargs,args,opts,0xffff);
 	solard_common_init(argc,argv,opts,logopts);
 
+	debug = 9;
+
 	if (!strlen(configfile)) {
 		log_write(LOG_ERROR,"configfile required.\n");
 		return 1;

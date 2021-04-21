@@ -9,7 +9,7 @@ LICENSE file in the root directory of this source tree.
 
 #include "si.h"
 
-static int write_data(si_session_t *s, int id, uint8_t *data, int data_len) {
+static int _can_write(si_session_t *s, int id, uint8_t *data, int data_len) {
 	struct can_frame frame;
 	int len;
 
@@ -20,7 +20,8 @@ static int write_data(si_session_t *s, int id, uint8_t *data, int data_len) {
 	frame.can_id = id;
 	frame.can_dlc = len;
 	memcpy(&frame.data,data,len);
-	return s->can->write(s->can_handle,&frame,sizeof(frame));
+//	return s->can->write(s->can_handle,&frame,sizeof(frame));
+	return 0;
 }
 
 int si_write(si_session_t *s, void *buf, int buflen) {
@@ -35,14 +36,19 @@ int si_write(si_session_t *s, void *buf, int buflen) {
 	}
 
 	/* Calculate SOC */
-	if (solard_check_state(s,SI_STATE_STARTUP)) {
+	if (s->startup == 1) {
 		soc = 99.9;
 		/* Save a copy of charge_amps */
 		s->save_charge_amps = inv->charge_amps;
 		inv->charge_amps = 0.1;
-	} else {
-		soc = inv->soc >= 0.0 ? inv->soc : ( ( inv->battery_voltage - inv->discharge_voltage) / (inv->charge_voltage - inv->discharge_voltage) ) * 100.0;
+		s->startup++;
+	} else if (s->startup == 2) {
 		inv->charge_amps = s->save_charge_amps;
+		s->startup++;
+	} else {
+		dprintf(1,"soc: %.1f, battery_voltage: %.1f, discharge_voltage: %.1f, charge_voltage: %.1f\n",
+			inv->soc, inv->battery_voltage, inv->discharge_voltage, inv->charge_voltage);
+		soc = inv->soc >= 0.0 ? inv->soc : ( ( inv->battery_voltage - inv->discharge_voltage) / (inv->charge_voltage - inv->discharge_voltage) ) * 100.0;
 	}
         lprintf(0,"SoC: %.1f\n", soc);
         inv->soh = 100.0;
@@ -53,13 +59,13 @@ int si_write(si_session_t *s, void *buf, int buflen) {
 	si_putshort(&data[2],(inv->charge_amps * 10.0));
 	si_putshort(&data[4],(inv->discharge_amps * 10.0));
 	si_putshort(&data[6],(inv->discharge_voltage * 10.0));
-//	if (write_data(s,0x351,data,8) < 0) return 1;
+	if (_can_write(s,0x351,data,8) < 0) return 1;
 
 	dprintf(1,"0x355: SOC: %.1f, SOH: %.1f\n", soc, inv->soh);
 	si_putshort(&data[0],soc);
 	si_putlong(&data[4],(soc * 100.0));
 	si_putshort(&data[2],inv->soh);
-//	if (write_data(s,0x355,data,8) < 0) return 1;
+	if (_can_write(s,0x355,data,8) < 0) return 1;
 
 #if 0
 	dprintf(1,"0x356: battery_voltage: %3.2f, battery_current: %3.2f, battery_temp: %3.2f\n",
@@ -67,23 +73,23 @@ int si_write(si_session_t *s, void *buf, int buflen) {
 	si_putshort(&data[0],inv->battery_voltage * 100.0);
 	si_putshort(&data[2],inv->battery_current * 10.0);
 	si_putshort(&data[4],inv->battery_temp * 10.0);
-	if (write_data(s,0x356,data,8) < 0) return 1;
+	if (_can_write(s,0x356,data,8) < 0) return 1;
 #endif
 
 	/* Alarms/Warnings */
 	memset(data,0,sizeof(data));
-//	if (write_data(s,0x35A,data,8) < 0) return 1;
+//	if (_can_write(s,0x35A,data,8) < 0) return 1;
 
 	/* Events */
 	memset(data,0,sizeof(data));
-//	if (write_data(s,0x35B,data,8)) return 1;
+	if (_can_write(s,0x35B,data,8)) return 1;
 
 #if 0
 	/* MFG Name */
 	memset(data,' ',sizeof(data));
 #define MFG_NAME "RSW"
 	memcpy(data,MFG_NAME,strlen(MFG_NAME));
-	if (write_data(s,0x35E,data,8) < 0) return 1;
+	if (_can_write(s,0x35E,data,8) < 0) return 1;
 
 	/* 0x35F - Bat-Type / BMS Version / Bat-Capacity / reserved Manufacturer ID */
 	si_putshort(&data[0],1);
@@ -91,7 +97,7 @@ int si_write(si_session_t *s, void *buf, int buflen) {
 	si_putshort(&data[2],10000);
 	si_putshort(&data[4],inv->battery_capacity);
 	si_putshort(&data[6],1);
-//	if (write_data(s,0x35F,data,8) < 0) return 1;
+	if (_can_write(s,0x35F,data,8) < 0) return 1;
 #endif
 
 	solard_clear_state(s,SI_STATE_STARTUP);

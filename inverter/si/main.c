@@ -20,7 +20,7 @@ void *si_new(void *conf, void *driver, void *driver_handle) {
 		perror("si_new: calloc");
 		return 0;
 	}
-	s->conf = conf;
+	s->ap = conf;
 	s->can = driver;
 	s->can_handle = driver_handle;
 	s->desc = list_create();
@@ -115,6 +115,7 @@ static solard_module_t si_driver = {
 	0,				/* Get private */
 };
 
+#if 0
 int si_callback(solard_agent_t *ap) {
 	si_session_t *s = agent_get_driver_handle(ap);
 	solard_inverter_t *inv = ap->role_data;
@@ -163,32 +164,44 @@ int si_callback(solard_agent_t *ap) {
 	inv->soh = 100.0;
 	return 0;
 }
+#endif
+
+static void getconf(si_session_t *s) {
+	cfg_proctab_t mytab[] = {
+		{ "si", "soc", 0, DATA_TYPE_FLOAT, &s->user_soc, 0, "-1" },
+		CFG_PROCTAB_END
+	};
+
+        cfg_get_tab(s->ap->cfg,mytab);
+        if (debug) cfg_disp_tab(mytab,"si",1);
+}
 
 int main(int argc, char **argv) {
 	opt_proctab_t opts[] = {
 		OPTS_END
 	};
 	solard_agent_t *ap;
-	char *args[] = { "t2", "-d", "7", "-c", "si.conf" };
+	char *args[] = { "t2", "-d", "5", "-c", "si.conf" };
 	#define nargs (sizeof(args)/sizeof(char *))
 	si_session_t *s;
 
 //	si_driver.read = 0;
 //	si_driver.info = 0;
 
-	ap = agent_init(nargs,args,opts,&si_driver);
-//	ap = agent_init(argc,argv,opts,&si_driver);
+//	ap = agent_init(nargs,args,opts,&si_driver);
+	ap = agent_init(argc,argv,opts,&si_driver);
 	dprintf(1,"ap: %p\n",ap);
 	if (!ap) return 1;
 
+
 	/* Read and write intervals are 10s */
-	ap->read_interval = ap->write_interval = 5;
+	ap->read_interval = ap->write_interval = 10;
 
 	/* Get our session */
 	s = agent_get_driver_handle(ap);
 
-	/* Do we have RS485? */
-	if (load_tp_from_cfg(&s->tty,&s->tty_handle,ap->cfg,"config")) return 1;
+	/* Read our specific config */
+	getconf(s);
 
 #if 1
 	{
@@ -201,8 +214,7 @@ int main(int argc, char **argv) {
 	}
 #endif
 
-	/* Set startup */
-	solard_set_state(s,SI_STATE_STARTUP);
+	s->startup = 1;
 
 	/* Go */
 	agent_run(ap);

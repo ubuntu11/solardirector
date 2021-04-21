@@ -31,8 +31,9 @@ int main(int argc,char **argv) {
 	char *args[] = { "t2", "-d", "6" };
 	#define nargs (sizeof(args)/sizeof(char *))
 	smanet_session_t *s;
-	smanet_value_t v;
+	smanet_value_t *v;
 	char temp[256];
+		smanet_channel_t *c;
 
 	solard_common_init(nargs,args,0,logopts);
 //	solard_common_init(argc,argv,opts,logopts);
@@ -58,12 +59,11 @@ int main(int argc,char **argv) {
 	dprintf(1,"count: %d\n", list_count(s->channels));
 #if 0
 	{
-		smanet_channel_t *c;
 		list_reset(s->channels);
 		while((c = list_get_next(s->channels)) != 0) {
 			dprintf(1,"chan: id: %d, mask: %04x, index: %d, name: %s, format: %04x, level: %d\n",
 				c->id, c->mask, c->index, c->name, c->format, c->level);
-//			smanet_get_valuebyname(s,c->name,&v);
+			smanet_get_valuebyname(s,c->name,&v);
 		}
 	}
 #endif
@@ -81,12 +81,18 @@ int main(int argc,char **argv) {
 	smanet_get_valuebyname(s,"SNSlv3",&v);
 	dprintf(1,"SNSlv3: %d\n", (int) smanet_get_value(&v));
 #endif
+	smanet_set_optionbyname(s,"GdManStr","Start");
 //	smanet_clear_values(s);
-	if (smanet_get_optionbyname(s,"GnManStr",temp,sizeof(temp)-1) == 0) dprintf(1,"value: %s\n", temp);
-	smanet_set_optionbyname(s,"GnManStr","Auto");
+//	if (smanet_get_optionbyname(s,"GnManStr",temp,sizeof(temp)-1) == 0) dprintf(1,"value: %s\n", temp);
 //	smanet_set_valuebyname(s,"GnManStr",0);
 
-	smanet_save_channels(s,"mychans.dat");
+//	smanet_save_channels(s,"mychans.dat");
+//	smanet_syn_online(s);
+
+//	c = smanet_get_channelbyname(s,"GnManStr");
+//	smanet_getval(s,c);
+//	v = smanet_get_value(s,c);
+//	smanet_set_value(s,c);
 
 	printf("timeouts: %d, commands: %d\n", s->timeouts, s->commands);
 	return 0;
