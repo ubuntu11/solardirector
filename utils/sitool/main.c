@@ -332,21 +332,15 @@ int init_inv(mybmm_inverter_t *inv, mybmm_config_t *c, char *type, char *transpo
 
 int si_start(si_session_t *s) {
 	int retries;
-	unsigned char data[8];
-	struct can_frame wr_frame, rd_frame;
+	unsigned char data[8],b;
 
-	memset(&wr_frame,0,sizeof(wr_frame));
-	wr_frame.can_id = 0x35c;
-	wr_frame.can_dlc = 1;
-	wr_frame.data[0] = 0x01;
+	dprintf(1,"s->tp: %p, tp_handle: %p\n", s->tp, s->tp_handle);
 
-	memset(&rd_frame,0,sizeof(rd_frame));
-	rd_frame.can_id = 0x307;
-
+	b = 1;
 	retries=10;
 	while(retries--) {
 		dprintf(1,"writing...\n");
-		s->tp->write(s->tp_handle,&wr_frame,sizeof(wr_frame));
+		s->tp->write(s->tp_handle,0x35c,&b,1);
 		dprintf(1,"reading...\n");
 		if (s->get_data(s,0x307,data,8) == 0) {
 			if (debug >= 3) bindump("data",data,8);
@@ -360,17 +354,12 @@ int si_start(si_session_t *s) {
 
 int si_stop(si_session_t *s) {
 	int retries;
-	unsigned char data[8];
-	struct can_frame wr_frame;
+	unsigned char data[8],b;
 
-	memset(&wr_frame,0,sizeof(wr_frame));
-	wr_frame.can_id = 0x35c;
-	wr_frame.can_dlc = 1;
-	wr_frame.data[0] = 0x02;
-
+	b = 2;
 	retries=10;
 	while(retries--) {
-		s->tp->write(s->tp_handle,&wr_frame,sizeof(wr_frame));
+		s->tp->write(s->tp_handle,0x35c,&b,1);
 		if (s->get_data(s,0x307,data,8) == 0) {
 			if (debug >= 3) bindump("data",data,8);
 			if ((data[3] & 0x0002) == 0) return 0;
@@ -511,6 +500,7 @@ int main(int argc, char **argv) {
 	}
 #endif
 
+	dprintf(1,"action: %d\n", action);
 	switch(action) {
 	case SITOOL_ACTION_INFO:
 		if (inv.open(inv.handle)) return 1;

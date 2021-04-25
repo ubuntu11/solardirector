@@ -9,6 +9,8 @@ LICENSE file in the root directory of this source tree.
 
 #include "si.h"
 
+extern char *si_agent_version_string;
+
 json_value_t *si_info(void *handle) {
 	si_session_t *s = handle;
 	json_value_t *v;
@@ -30,7 +32,7 @@ json_value_t *si_info(void *handle) {
 	json_add_string(v,"agent_name","si");
 	json_add_string(v,"agent_role",SOLARD_ROLE_INVERTER);
 	json_add_string(v,"agent_description","Sunny Island Agent");
-	json_add_string(v,"agent_version","1.0");
+	json_add_string(v,"agent_version",si_agent_version_string);
 	json_add_string(v,"agent_author","Stephen P. Shoecraft");
 	json_add_string(v,"device_manufacturer","SMA");
 	if (s->smanet) {

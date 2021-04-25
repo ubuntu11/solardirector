@@ -51,12 +51,10 @@ struct si_session {
 	void *can_handle;
 	solard_module_t *tty;
 	void *tty_handle;
-	int (*get_data)(struct si_session *, int id, uint8_t *data, int len);
+	int (*can_read)(struct si_session *, int id, uint8_t *data, int len);
 	uint16_t state;
 	json_proctab_t idata;
 	si_param_t pdata;
-	float save_charge_amps;
-	float user_soc;
 	struct {
 		unsigned relay1: 1;
 		unsigned relay2: 1;
@@ -93,6 +91,22 @@ struct si_session {
 		unsigned Current: 1;
 		unsigned FeedSelfC: 1;
 	} bits;
+	int have_battery_temp;
+	float charge_voltage;
+	float charge_amps;
+	float charge_min_amps;
+	float save_charge_amps;
+	int charge_mode;
+	float start_temp;
+	float user_soc;
+	float tvolt;
+	int sim;
+	float sim_step;
+	int interval;
+	int charge_creep;
+	float last_battery_voltage, last_soc;
+	float last_charge_voltage, last_battery_amps;
+	time_t cv_start_time;
 };
 typedef struct si_session si_session_t;
 
@@ -105,10 +119,23 @@ void *si_recv_thread(void *handle);
 int si_get_local_can_data(si_session_t *s, int id, uint8_t *data, int len);
 int si_get_remote_can_data(si_session_t *s, int id, uint8_t *data, int len);
 int si_read(si_session_t *,void *,int);
+int si_can_write(si_session_t *s, int id, uint8_t *data, int data_len);
 int si_write(si_session_t *,void *,int);
+int si_control(void *handle,char *op, char *id, json_value_t *actions);
 int si_config(void *,char *,char *,list);
 json_value_t *si_info(void *);
 int si_config_add_info(si_session_t *s, json_value_t *j);
+
+/* Charging */
+void charge_init(si_session_t *s);
+void charge_max_start(si_session_t *s);
+void charge_max_stop(si_session_t *s);
+void charge_stop(si_session_t *s, int rep);
+void charge_start(si_session_t *s, int rep);
+void charge_start_cv(si_session_t *s, int rep);
+void charge_check(si_session_t *s);
+
+int si_startstop(si_session_t *s, int);
 
 #define si_getshort(v) (short)( ((v)[1]) << 8 | ((v)[0]) )
 #define si_putshort(p,v) { float tmp; *((p+1)) = ((int)(tmp = v) >> 8); *((p)) = (int)(tmp = v); }
@@ -117,6 +144,6 @@ int si_config_add_info(si_session_t *s, json_value_t *j);
 #define SI_VOLTAGE_MIN	36.0
 #define SI_VOLTAGE_MAX	64.0
 
-#define si_isvrange(v) ((v >= SI_VOLTAGE_MIN) && (v  <= SI_VOLTAGE_MAX))
+//#define si_isvrange(v) ((v >= SI_VOLTAGE_MIN) && (v  <= SI_VOLTAGE_MAX))
 
 #endif /* __SOLARD_SI_H */

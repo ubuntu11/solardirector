@@ -28,30 +28,32 @@ struct solard_inverter {
 	char id[INVERTER_ID_LEN];
 	char name[INVERTER_NAME_LEN];
 	enum INVERTER_TYPE type;
-	float charge_voltage;
-	float charge_max_voltage;	/* inc voltage to this in order to mainint charge amps */
-	int charge_at_max;		/* Always charge at max voltage */
+	float system_voltage;		/* System nominal voltage (48, 400, whatever) */
+	float max_voltage;		/* Dont go above this voltage */
+	float min_voltage;		/* Dont go below this voltage */
+	float charge_start_voltage;	/* Voltage to start charging (empty voltage) */
+	float charge_end_voltage;	/* Voltage to end charging (full voltage) */
+	int charge_at_max;		/* Charge at max_voltage until battery_voltage >= charge_end_voltage */
 	float charge_amps;
-	float discharge_voltage;
 	float discharge_amps;
-	float battery_voltage;		/* Really? I need to comment this? */
-	float battery_current;		/* batt power, in amps */
-	float battery_power;		/* batt power, in watts */
-	float battery_temp;		/* batt temp */
+	float battery_voltage;
+	float battery_amps;
+	float battery_watts;
+	float battery_temp;
 	float soc;			/* State of Charge */
 	float soh;			/* State of Health */
-	solard_power_t grid_voltage;
+	solard_power_t grid_voltage;	/* Grid/Gen power */
 	float grid_frequency;
-	solard_power_t grid_current;
+	solard_power_t grid_amps;
 	solard_power_t grid_watts;
-	solard_power_t load_voltage;
+	solard_power_t load_voltage;	/* Load power */
 	float load_frequency;
-	solard_power_t load_current;
+	solard_power_t load_amps;
 	solard_power_t load_watts;
-	solard_power_t pv_voltage;
-	solard_power_t pv_current;
-	solard_power_t pv_watts;
-	double yeild;			/* Total PV yeild */
+	solard_power_t site_voltage;	/* On-site power source (PV/Wind/CAES/etc) */
+	float site_frequency;
+	solard_power_t site_amps;
+	solard_power_t site_watts;
 	int errcode;			/* Inverter Error code, 0 if none */
 	char errmsg[256];		/* Inverter Error message */
 	uint16_t state;			/* Inverter State */
@@ -71,5 +73,6 @@ extern solard_module_t inverter;
 void inverter_dump(solard_inverter_t *,int);
 int inverter_from_json(solard_inverter_t *, char *);
 json_value_t *inverter_to_json(solard_inverter_t *);
+int inverter_check_parms(solard_inverter_t *);
 
 #endif /* __SOLARD_INVERTER_H */

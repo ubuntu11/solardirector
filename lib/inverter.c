@@ -27,11 +27,13 @@ static int inverter_init(void *conf, char *section_name) {
 static int inverter_get_config(inverter_session_t *s, char *section_name) {
 	solard_inverter_t *inv = &s->info;
 	struct cfg_proctab tab[] = {
-		{ section_name, "charge_voltage", 0, DATA_TYPE_FLOAT, &inv->charge_voltage, 0, 0 },
-		{ section_name, "charge_max_voltage", 0, DATA_TYPE_FLOAT, &inv->charge_max_voltage, 0, 0 },
+		{ section_name, "system_voltage", 0, DATA_TYPE_FLOAT, &inv->system_voltage, 0, "48" },
+		{ section_name, "max_voltage", 0, DATA_TYPE_FLOAT, &inv->max_voltage, 0, 0 },
+		{ section_name, "min_voltage", 0, DATA_TYPE_FLOAT, &inv->min_voltage, 0, 0 },
+		{ section_name, "charge_start_voltage", 0, DATA_TYPE_FLOAT, &inv->charge_start_voltage, 0, 0 },
+		{ section_name, "charge_end_voltage", 0, DATA_TYPE_FLOAT, &inv->charge_end_voltage, 0, 0 },
 		{ section_name, "charge_at_max", 0, DATA_TYPE_BOOL, &inv->charge_at_max, 0, 0 },
 		{ section_name, "charge_amps", 0, DATA_TYPE_FLOAT, &inv->charge_amps, 0, 0 },
-		{ section_name, "discharge_voltage", 0, DATA_TYPE_FLOAT, &inv->discharge_voltage, 0, 0 },
 		{ section_name, "discharge_amps", 0, DATA_TYPE_FLOAT, &inv->discharge_amps, 0, 0 },
 		{ section_name, "soc", 0, DATA_TYPE_FLOAT, &inv->soc, 0, "-1" },
 		CFG_PROCTAB_END
@@ -156,43 +158,63 @@ static void _set_state(char *name, void *dest, int len, json_value_t *v) {
 	json_add_string(v, "states", temp);
 }
 
+/* XXX these dont need to be reported via MQTT */
+#if 0
+		{ "max_voltage",DATA_TYPE_FLOAT,&inv->max_voltage,0,0 }, \
+		{ "min_voltage",DATA_TYPE_FLOAT,&inv->min_voltage,0,0 }, \
+		{ "charge_start_voltage",DATA_TYPE_FLOAT,&inv->charge_start_voltage,0,0 }, \
+		{ "charge_end_voltage",DATA_TYPE_FLOAT,&inv->charge_end_voltage,0,0 }, \
+		{ "charge_at_max",DATA_TYPE_BOOL,&inv->charge_at_max,0,0 }, \
+		{ "charge_amps",DATA_TYPE_FLOAT,&inv->charge_amps,0,0 }, \
+		{ "discharge_amps",DATA_TYPE_FLOAT,&inv->discharge_amps,0,0 },
+		{ "soh",DATA_TYPE_FLOAT,&inv->soh,0,0 },
+#endif
 #define INVERTER_TAB(ACTION) \
 		{ "id",DATA_TYPE_STRING,&inv->id,sizeof(inv->id)-1,0 }, \
 		{ "name",DATA_TYPE_STRING,&inv->name,sizeof(inv->name)-1,0 }, \
 		{ "type",DATA_TYPE_INT,&inv->type,0,0 }, \
-		{ "charge_voltage",DATA_TYPE_FLOAT,&inv->charge_voltage,0,0 }, \
-		{ "charge_max_voltage",DATA_TYPE_FLOAT,&inv->charge_max_voltage,0,0 }, \
-		{ "charge_at_max",DATA_TYPE_BOOL,&inv->charge_at_max,0,0 }, \
-		{ "charge_amps",DATA_TYPE_FLOAT,&inv->charge_amps,0,0 }, \
-		{ "discharge_voltage",DATA_TYPE_FLOAT,&inv->discharge_voltage,0,0 }, \
-		{ "discharge_amps",DATA_TYPE_FLOAT,&inv->discharge_amps,0,0 }, \
 		{ "battery_voltage",DATA_TYPE_FLOAT,&inv->battery_voltage,0,0 }, \
-		{ "battery_current",DATA_TYPE_FLOAT,&inv->battery_current,0,0 }, \
-		{ "battery_power",DATA_TYPE_FLOAT,&inv->battery_power,0,0 }, \
+		{ "battery_amps",DATA_TYPE_FLOAT,&inv->battery_amps,0,0 }, \
+		{ "battery_watts",DATA_TYPE_FLOAT,&inv->battery_watts,0,0 }, \
 		{ "battery_temp",DATA_TYPE_FLOAT,&inv->battery_temp,0,0 }, \
-		{ "soc",DATA_TYPE_FLOAT,&inv->soc,0,0 }, \
-		{ "soh",DATA_TYPE_FLOAT,&inv->soh,0,0 }, \
+		{ "capacity",DATA_TYPE_FLOAT,&inv->soc,0,0 }, \
 		{ "grid_voltage_l1",DATA_TYPE_FLOAT,&inv->grid_voltage.l1,0,0 }, \
 		{ "grid_voltage_l2",DATA_TYPE_FLOAT,&inv->grid_voltage.l2,0,0 }, \
 		{ "grid_voltage_l3",DATA_TYPE_FLOAT,&inv->grid_voltage.l3,0,0 }, \
+		{ "grid_voltage_total",DATA_TYPE_FLOAT,&inv->grid_voltage.total,0,0 }, \
 		{ "grid_frequency",DATA_TYPE_FLOAT,&inv->grid_frequency,0,0 }, \
-		{ "grid_current_l1",DATA_TYPE_FLOAT,&inv->grid_current.l1,0,0 }, \
-		{ "grid_current_l2",DATA_TYPE_FLOAT,&inv->grid_current.l2,0,0 }, \
-		{ "grid_current_l3",DATA_TYPE_FLOAT,&inv->grid_current.l3,0,0 }, \
+		{ "grid_amps_l1",DATA_TYPE_FLOAT,&inv->grid_amps.l1,0,0 }, \
+		{ "grid_amps_l2",DATA_TYPE_FLOAT,&inv->grid_amps.l2,0,0 }, \
+		{ "grid_amps_l3",DATA_TYPE_FLOAT,&inv->grid_amps.l3,0,0 }, \
+		{ "grid_amps_total",DATA_TYPE_FLOAT,&inv->grid_amps.total,0,0 }, \
+		{ "grid_watts_l1",DATA_TYPE_FLOAT,&inv->grid_watts.l1,0,0 }, \
+		{ "grid_watts_l2",DATA_TYPE_FLOAT,&inv->grid_watts.l2,0,0 }, \
+		{ "grid_watts_l3",DATA_TYPE_FLOAT,&inv->grid_watts.l3,0,0 }, \
+		{ "grid_watts_total",DATA_TYPE_FLOAT,&inv->grid_watts.total,0,0 }, \
 		{ "load_voltage_l1",DATA_TYPE_FLOAT,&inv->load_voltage.l1,0,0 }, \
 		{ "load_voltage_l2",DATA_TYPE_FLOAT,&inv->load_voltage.l2,0,0 }, \
 		{ "load_voltage_l3",DATA_TYPE_FLOAT,&inv->load_voltage.l3,0,0 }, \
+		{ "load_voltage_total",DATA_TYPE_FLOAT,&inv->load_voltage.total,0,0 }, \
 		{ "load_frequency",DATA_TYPE_FLOAT,&inv->load_frequency,0,0 }, \
-		{ "load_current_l1",DATA_TYPE_FLOAT,&inv->load_current.l1,0,0 }, \
-		{ "load_current_l2",DATA_TYPE_FLOAT,&inv->load_current.l2,0,0 }, \
-		{ "load_current_l3",DATA_TYPE_FLOAT,&inv->load_current.l3,0,0 }, \
-		{ "pv_voltage_a",DATA_TYPE_FLOAT,&inv->pv_voltage.a,0,0 }, \
-		{ "pv_voltage_b",DATA_TYPE_FLOAT,&inv->pv_voltage.b,0,0 }, \
-		{ "pv_voltage_c",DATA_TYPE_FLOAT,&inv->pv_voltage.c,0,0 }, \
-		{ "pv_current_a",DATA_TYPE_FLOAT,&inv->pv_current.a,0,0 }, \
-		{ "pv_current_b",DATA_TYPE_FLOAT,&inv->pv_current.b,0,0 }, \
-		{ "pv_current_c",DATA_TYPE_FLOAT,&inv->pv_current.c,0,0 }, \
-		{ "yeild",DATA_TYPE_DOUBLE,&inv->yeild,0,0 }, \
+		{ "load_amps_l1",DATA_TYPE_FLOAT,&inv->load_amps.l1,0,0 }, \
+		{ "load_amps_l2",DATA_TYPE_FLOAT,&inv->load_amps.l2,0,0 }, \
+		{ "load_amps_l3",DATA_TYPE_FLOAT,&inv->load_amps.l3,0,0 }, \
+		{ "load_watts_l1",DATA_TYPE_FLOAT,&inv->load_watts.l1,0,0 }, \
+		{ "load_watts_l2",DATA_TYPE_FLOAT,&inv->load_watts.l2,0,0 }, \
+		{ "load_watts_l3",DATA_TYPE_FLOAT,&inv->load_watts.l3,0,0 }, \
+		{ "load_watts_total",DATA_TYPE_FLOAT,&inv->load_watts.total,0,0 }, \
+		{ "site_voltage_l1",DATA_TYPE_FLOAT,&inv->site_voltage.l1,0,0 }, \
+		{ "site_voltage_l2",DATA_TYPE_FLOAT,&inv->site_voltage.l2,0,0 }, \
+		{ "site_voltage_l3",DATA_TYPE_FLOAT,&inv->site_voltage.l3,0,0 }, \
+		{ "site_voltage_total",DATA_TYPE_FLOAT,&inv->site_voltage.total,0,0 }, \
+		{ "site_frequency",DATA_TYPE_FLOAT,&inv->site_frequency,0,0 }, \
+		{ "site_amps_l1",DATA_TYPE_FLOAT,&inv->site_amps.l1,0,0 }, \
+		{ "site_amps_l2",DATA_TYPE_FLOAT,&inv->site_amps.l2,0,0 }, \
+		{ "site_amps_l3",DATA_TYPE_FLOAT,&inv->site_amps.l3,0,0 }, \
+		{ "site_watts_l1",DATA_TYPE_FLOAT,&inv->site_watts.l1,0,0 }, \
+		{ "site_watts_l2",DATA_TYPE_FLOAT,&inv->site_watts.l2,0,0 }, \
+		{ "site_watts_l3",DATA_TYPE_FLOAT,&inv->site_watts.l3,0,0 }, \
+		{ "site_watts_total",DATA_TYPE_FLOAT,&inv->site_watts.total,0,0 }, \
 		{ "errcode",DATA_TYPE_INT,&inv->errcode,0,0 }, \
 		{ "errmsg",DATA_TYPE_STRING,&inv->errmsg,sizeof(inv->errmsg)-1,0 }, \
 		{ "state",0,inv,0,ACTION }, \
@@ -258,6 +280,7 @@ int inverter_send_mqtt(inverter_session_t *s) {
 	char temp[256],*p;
 	json_value_t *v;
 
+	dprintf(1,"sending mqtt...\n");
 //	strcpy(inv->id,s->id);
 	strcpy(inv->name,s->name);
 	v = inverter_to_json(inv);
@@ -316,6 +339,26 @@ static int inverter_write(inverter_session_t *s) {
 	return r;
 }
 
+int inverter_control(void *handle, char *action, char *id, json_value_t *actions) {
+	inverter_session_t *s = handle;
+	int r;
+
+	dprintf(1,"actions->type: %d\n", actions->type);
+
+	dprintf(1,"s->driver->control: %p\n", s->driver->control);
+	if (!s->driver->control) return 1;
+
+	dprintf(4,"%s: opening...\n", s->name);
+	if (s->driver->open(s->handle)) {
+		dprintf(1,"%s: open error\n",s->name);
+		return 0;
+	}
+	r = s->driver->control(s->handle,action,id,actions);
+	dprintf(4,"%s: closing\n", s->name);
+	s->driver->close(s->handle);
+	return r;
+}
+
 int inverter_config(void *handle, char *action, char *caller, list lp) {
 	inverter_session_t *s = handle;
 	int r;
@@ -359,8 +402,69 @@ solard_module_t inverter = {
 	(solard_module_close_t)inverter_close,		/* Close */
 	0,						/* Free */
 	0,						/* Shutdown */
-	(solard_module_control_t)0,			/* Control */
+	(solard_module_control_t)inverter_control,	/* Control */
 	(solard_module_config_t)inverter_config,	/* Config */
 	(solard_module_get_handle_t)inverter_get_handle,
 	(solard_module_get_handle_t)inverter_get_info,
 };
+
+#define isvrange(v) ((v >= 1.0) && (v  <= 1000.0))
+
+int inverter_check_parms(solard_inverter_t *inv) {
+	int r;
+	char *msg;
+
+	r = 1;
+	/* min and max must be set */
+	dprintf(1,"min_voltage: %.1f, max_voltage: %.1f\n", inv->min_voltage, inv->max_voltage);
+	if (!isvrange(inv->min_voltage)) {
+		msg = "min_voltage not set or out of range\n";
+		goto inverter_check_parms_error;
+	}
+	if (!isvrange(inv->max_voltage)) {
+		msg = "max_voltage not set or out of range\n";
+		goto inverter_check_parms_error;
+	}
+	/* min must be < max */
+	if (inv->min_voltage >= inv->max_voltage) {
+		msg = "min_voltage > max_voltage\n";
+		goto inverter_check_parms_error;
+	}
+	/* max must be > min */
+	if (inv->max_voltage <= inv->min_voltage) {
+		msg = "min_voltage > max_voltage\n";
+		goto inverter_check_parms_error;
+	}
+	/* charge_start_voltage must be >= min */
+	dprintf(1,"charge_start_voltage: %.1f, charge_end_voltage: %.1f\n", inv->charge_start_voltage, inv->charge_end_voltage);
+	if (inv->charge_start_voltage < inv->min_voltage) {
+		msg = "charge_start_voltage < min_voltage\n";
+		goto inverter_check_parms_error;
+	}
+	/* charge_start_voltage must be <= max */
+	if (inv->charge_start_voltage > inv->max_voltage) {
+		msg = "charge_start_voltage > max_voltage\n";
+		goto inverter_check_parms_error;
+	}
+	/* charge_end_voltage must be >= min */
+	if (inv->charge_end_voltage < inv->min_voltage) {
+		msg = "charge_end_voltage < min_voltage\n";
+		goto inverter_check_parms_error;
+	}
+	/* charge_end_voltage must be <= max */
+	if (inv->charge_end_voltage > inv->max_voltage) {
+		msg = "charge_end_voltage > max_voltage\n";
+		goto inverter_check_parms_error;
+	}
+	/* charge_start_voltage must be < charge_end_voltage */
+	if (inv->charge_start_voltage > inv->charge_end_voltage) {
+		goto inverter_check_parms_error;
+	}
+	r = 0;
+	msg = "";
+
+inverter_check_parms_error:
+	strcpy(inv->errmsg,msg);
+	return r;
+}
+

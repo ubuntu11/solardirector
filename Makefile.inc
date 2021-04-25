@@ -277,13 +277,27 @@ $(PROG): $(OBJS) $(DEPS)
 debug: $(PROG)
 	gdb ./$(PROG)
 
+SERVICE=$(PROGNAME).service
+PROGCONF=$(PROGNAME).conf
+
+ifneq ("$(wildcard $(SERVICE))","")
+install: $(PROG) /etc/systemd/system/$(SERVICE)
+else
 install: $(PROG)
-ifneq ($(CONFIGFILE),)
+endif
+ifneq ("$(wildcard $(PROGCONF))","")
 	sudo mkdir -p $(ETCDIR)
-	sudo $(INSTALL) -m 644 -o root -g root $(CONFIGFILE) $(ETCDIR)/$(CONFIGFILE)
+	sudo $(INSTALL) -m 644 -o root -g root $(PROGCONF) $(ETCDIR)/$(PROGCONF)
 endif
 	sudo mkdir -p $(BINDIR)
 	sudo $(INSTALL) -m 755 -o root -g root $(PROG) $(BINDIR)/$(PROG)
+endif
+
+ifneq ("$(wildcard $(SERVICE))","")
+/etc/systemd/system/$(SERVICE): $(SERVICE)
+	sudo $(INSTALL) -m 644 -o root -g root $< $@
+	sudo systemctl daemon-reload
+	sudo systemctl enable $(SERVICE)
 endif
 
 clean:

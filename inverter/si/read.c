@@ -11,6 +11,7 @@ LICENSE file in the root directory of this source tree.
 #include <pthread.h>
 #include <linux/can.h>
 #include <sys/signal.h>
+#include <math.h>
 
 void *si_recv_thread(void *handle) {
 	si_session_t *s = handle;
@@ -98,7 +99,8 @@ int si_get_remote_can_data(si_session_t *s, int id, uint8_t *data, int datasz) {
 	return (retries > 0 ? 0 : 1);
 }
 
-void dump_bits(char *label, uint8_t bits) {
+#ifdef DEBUG
+void _dump_bits(char *label, uint8_t bits) {
 	register uint8_t i,mask;
 	char bitstr[9];
 
@@ -111,20 +113,18 @@ void dump_bits(char *label, uint8_t bits) {
 	bitstr[i] = 0;
 	dprintf(1,"%s(%02x): %s\n",label,bits,bitstr);
 }
+#define dump_bits(l,b) if (debug >= 5) _dump_bits(l,b)
+#else
+#define dump_bits(l,b) /* noop */
+#endif
 
 int si_read(si_session_t *s, void *buf, int buflen) {
 	solard_inverter_t *inv = buf;
 	uint8_t data[8];
 	uint8_t bits;
 
-	dprintf(1,"charge_voltage: %.1f, discharge_voltage: %.1f\n", inv->charge_voltage, inv->discharge_voltage);
-	if (!si_isvrange(inv->discharge_voltage) || !si_isvrange(inv->charge_voltage)) {
-		log_write(LOG_ERROR,"charge_voltage and/or discharge_voltage not set\n");
-		return 1;
-	}
-
 	/* 0x300 Active power grid/gen L1/L2/L3 */
-	if (s->get_data(s,0x300,data,sizeof(data))) return 1;
+	if (s->can_read(s,0x300,data,sizeof(data))) return 1;
 	inv->grid_watts.l1 = (si_getshort(&data[0]) * 100.0);
 	inv->grid_watts.l2 = (si_getshort(&data[2]) * 100.0);
 	inv->grid_watts.l3 = (si_getshort(&data[4]) * 100.0);
@@ -137,29 +137,31 @@ int si_read(si_session_t *s, void *buf, int buflen) {
 
 	/* 0x304 Voltage L1 Voltage L2 Voltage L3 Frequency */
 	/* AC1 = My output */
-	if (s->get_data(s,0x304,data,sizeof(data))) return 1;
+	if (s->can_read(s,0x304,data,sizeof(data))) return 1;
 	inv->load_voltage.l1 = (si_getshort(&data[0]) / 10.0);
 	inv->load_voltage.l2 = (si_getshort(&data[2]) / 10.0);
 	inv->load_voltage.l3 = (si_getshort(&data[4]) / 10.0);
-	inv->load_voltage.total = inv->load_voltage.l1 + inv->load_voltage.l2 + inv->load_voltage.l3;
+	/* XXX voltage total should only be 1st 2? */
+//	inv->load_voltage.total = inv->load_voltage.l1 + inv->load_voltage.l2 + inv->load_voltage.l3;
+	inv->load_voltage.total = inv->load_voltage.l1 + inv->load_voltage.l2;
 	inv->load_frequency = (si_getshort(&data[6]) / 100.0);
 	dprintf(1,"load_voltage: %3.2f, frequency: %3.2f\n",inv->load_voltage.total, inv->load_frequency);
 
 	/* 0x305 Battery voltage / Battery current / Battery temperature / SOC battery */
-	if (s->get_data(s,0x305,data,sizeof(data))) return 1;
+	if (s->can_read(s,0x305,data,sizeof(data))) return 1;
 	inv->battery_voltage = si_getshort(&data[0]) / 10.0;
-	inv->battery_current = si_getshort(&data[2]) / 10.0;
+	inv->battery_amps = si_getshort(&data[2]) / 10.0;
 	inv->battery_temp = si_getshort(&data[4]) / 10.0;
-	dprintf(1,"battery_voltage: %2.2f, battery_current: %2.2f, battery_temp: %2.1f\n",
-		inv->battery_voltage, inv->battery_current, inv->battery_temp);
-	inv->battery_power = inv->battery_current * inv->battery_voltage;
-	dprintf(1,"battery_power: %3.2f\n",inv->battery_power);
+	dprintf(1,"battery_voltage: %2.2f, battery_amps: %2.2f, battery_temp: %2.1f\n",
+		inv->battery_voltage, inv->battery_amps, inv->battery_temp);
+	inv->battery_watts = inv->battery_voltage * inv->battery_amps;
+	dprintf(1,"battery_watts: %3.2f\n",inv->battery_watts);
 
 	/* 0x306 SOH battery Charging procedure / Operating state / active Error Message / Battery Charge Volt-age Set-point */
 
 	/* 0x307 Relay state / Relay function bit 1 / Relay function bit 2 / Synch-Bits */
-	s->get_data(s,0x307,data,8);
-#define SET(m,b) { s->bits.m = ((bits & b) != 0); dprintf(1,"bits.%s: %d\n",#m,s->bits.m); }
+	s->can_read(s,0x307,data,8);
+#define SET(m,b) { s->bits.m = ((bits & b) != 0); dprintf(5,"bits.%s: %d\n",#m,s->bits.m); }
 	bits = data[0];
 	dump_bits("data[0]",bits);
 	SET(relay1,   0x0001);
@@ -208,7 +210,7 @@ int si_read(si_session_t *s, void *buf, int buflen) {
 	SET(FeedSelfC, 0x0008);
 
 	/* 0x308 TotLodPwr L1/L2/L3 */
-	if (s->get_data(s,0x308,data,sizeof(data))) return 1;
+	if (s->can_read(s,0x308,data,sizeof(data))) return 1;
 	inv->load_watts.l1 = (si_getshort(&data[0]) * 100.0);
 	inv->load_watts.l2 = (si_getshort(&data[2]) * 100.0);
 	inv->load_watts.l3 = (si_getshort(&data[4]) * 100.0);
@@ -217,22 +219,62 @@ int si_read(si_session_t *s, void *buf, int buflen) {
 
 	/* 0x309 AC2 Voltage L1 AC2 Voltage L2 AC2 Voltage L3 AC2 Frequency */
 	/* AC2 = Grid/Gen */
-	if (s->get_data(s,0x309,data,sizeof(data))) return 1;
+	if (s->can_read(s,0x309,data,sizeof(data))) return 1;
 	inv->grid_voltage.l1 = (si_getshort(&data[0]) / 10.0);
 	inv->grid_voltage.l2 = (si_getshort(&data[2]) / 10.0);
 	inv->grid_voltage.l3 = (si_getshort(&data[4]) / 10.0);
-	inv->grid_voltage.total = inv->grid_voltage.l1 + inv->grid_voltage.l2 + inv->grid_voltage.l3;
+	/* XXX voltage total should only be 1st 2? */
+//	inv->grid_voltage.total = inv->grid_voltage.l1 + inv->grid_voltage.l2 + inv->grid_voltage.l3;
+	inv->grid_voltage.total = inv->grid_voltage.l1 + inv->grid_voltage.l2;
 	inv->grid_frequency = (si_getshort(&data[6]) / 100.0);
 	dprintf(1,"grid_voltage: %3.2f, frequency: %3.2f\n",inv->grid_voltage.total, inv->grid_frequency);
 
 	/* 0x30A PVPwrAt / GdCsmpPwrAt / GdFeedPwr */
-//	s->get_data(s,0x30a,data,sizeof(data));
+//	s->can_read(s,0x30a,data,sizeof(data));
+
+	/* Calc grid amps */
+	inv->grid_amps.l1 = inv->grid_voltage.l1 * inv->grid_watts.l1;
+	inv->grid_amps.l2 = inv->grid_voltage.l2 * inv->grid_watts.l2;
+	inv->grid_amps.l3 = inv->grid_voltage.l3 * inv->grid_watts.l3;
+	inv->grid_amps.total = inv->grid_amps.l1 + inv->grid_amps.l2 + inv->grid_amps.l3;
+
+	/* Calc load amps */
+	inv->load_amps.l1 = inv->load_voltage.l1 * inv->load_watts.l1;
+	inv->load_amps.l2 = inv->load_voltage.l2 * inv->load_watts.l2;
+	inv->load_amps.l3 = inv->load_voltage.l3 * inv->load_watts.l3;
+	inv->load_amps.total = inv->load_amps.l1 + inv->load_amps.l2 + inv->load_amps.l3;
 
 	/* Calc SOC if possible */
-	dprintf(1,"user_soc: %.1f, battery_voltage: %.1f, discharge_voltage: %.1f, charge_voltage: %.1f\n",
-		s->user_soc, inv->battery_voltage, inv->discharge_voltage, inv->charge_voltage);
-	inv->soc = s->user_soc < 0.0 ? ( ( inv->battery_voltage - inv->discharge_voltage) / (inv->charge_voltage - inv->discharge_voltage) ) * 100.0 : s->user_soc;
-	lprintf(0,"SoC: %.1f\n", inv->soc);
+	if (inverter_check_parms(inv)) {
+		log_write(LOG_ERROR,"%s, unable to calculate SoC!\n",inv->errmsg);
+		return 1;
+	}
+
+	/* Sim? */
+	if (s->sim) {
+		if (s->startup == 1) s->tvolt = inv->battery_voltage;
+		else if (s->charge_mode == 0) inv->battery_voltage = (s->tvolt -= .1);
+		else if (s->charge_mode == 1) inv->battery_voltage = (s->tvolt += .1);
+		else if (s->charge_mode == 2) {
+			inv->battery_voltage = s->tvolt;
+			s->cv_start_time -= 3600;
+		}
+	}
+
+	dprintf(1,"battery_voltage: %.1f\n", inv->battery_voltage);
+	inv->soc = s->user_soc < 0.0 ? ( ( inv->battery_voltage - inv->min_voltage) / (inv->max_voltage - inv->min_voltage) ) * 100.0 : s->user_soc;
+	if (inv->battery_voltage != s->last_battery_voltage || inv->soc != s->last_soc) {
+		lprintf(0,"%s%sBattery Voltage: %.1fV, SoC: %.1f%%\n", (s->bits.Run ? "[Running] " : ""), (s->sim ? "(SIM) " : ""), inv->battery_voltage, inv->soc);
+		s->last_battery_voltage = inv->battery_voltage;
+		s->last_soc = inv->soc;
+	}
+	if (solard_check_state(s,SI_STATE_CHARGING)) {
+		if (s->charge_voltage != s->last_charge_voltage || inv->battery_amps != s->last_battery_amps) {
+			lprintf(0,"Charge Voltage: %.1f, Battery Amps: %.1f\n",s->charge_voltage,inv->battery_amps);
+			s->last_charge_voltage = s->charge_voltage;
+			s->last_battery_amps = inv->battery_amps;
+		}
+	}
 	inv->soh = 100.0;
 	return 0;
 }

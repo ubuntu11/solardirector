@@ -244,7 +244,6 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 
 	opts = opt_addopts(std_opts,agent_opts);
 	if (!opts) return 0;
-//	*tp_info = *mqtt_info = *configfile = 0;
 	if (solard_common_init(argc,argv,opts,logopts)) return 0;
 
 	ap = calloc(1,sizeof(*ap));
@@ -313,8 +312,8 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 	dprintf(1,"host: %s, clientid: %s, user: %s, pass: %s\n",
 		mqtt_config.host, mqtt_config.clientid, mqtt_config.user, mqtt_config.pass);
 	if (!strlen(mqtt_config.host)) {
-		log_write(LOG_ERROR,"mqtt host must be specified\n");
-		goto agent_init_error;
+		log_write(LOG_WARNING,"mqtt host not specified, using localhost\n");
+		strcpy(mqtt_config.host,"localhost");
 	}
 	if (!strlen(mqtt_config.clientid)) strncat(mqtt_config.clientid,ap->name,MQTT_CLIENTID_LEN-1);
 	ap->m = mqtt_new(&mqtt_config, solard_getmsg, ap->mq);
@@ -411,12 +410,12 @@ int agent_run(solard_agent_t *ap) {
 		/* Call read func */
 		time(&cur);
 		diff = cur - last_read;
-		dprintf(3,"diff: %d, read_interval: %d\n", (int)diff, ap->read_interval);
+		dprintf(5,"diff: %d, read_interval: %d\n", (int)diff, ap->read_interval);
 		if (suspend_read == 0 && diff >= ap->read_interval) {
-			dprintf(1,"reading...\n");
+			dprintf(5,"reading...\n");
 			read_status = ap->role->read(ap->role_handle,0,0);
 			time(&last_read);
-			dprintf(1,"used: %ld\n", mem_used() - mem_start);
+			dprintf(5,"used: %ld\n", mem_used() - mem_start);
 		}
 
 		/* Process messages */
@@ -438,12 +437,12 @@ int agent_run(solard_agent_t *ap) {
 		/* Call write func */
 		time(&cur);
 		diff = cur - last_write;
-		dprintf(3,"diff: %d, write_interval: %d\n", (int)diff, ap->write_interval);
+		dprintf(5,"diff: %d, write_interval: %d\n", (int)diff, ap->write_interval);
 		if (read_status == 0 && suspend_write == 0 && diff >= ap->write_interval) {
-			dprintf(1,"writing...\n");
+			dprintf(5,"writing...\n");
 			ap->role->write(ap->role_handle,0,0);
 			time(&last_write);
-			dprintf(1,"used: %ld\n", mem_used() - mem_start);
+			dprintf(5,"used: %ld\n", mem_used() - mem_start);
 		}
 		sleep(1);
 	}

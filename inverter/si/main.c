@@ -10,10 +10,15 @@ LICENSE file in the root directory of this source tree.
 #include "si.h"
 #include <pthread.h>
 
+char *si_agent_version_string = "1.0";
+
 int si_open(si_session_t *s);
 
 void *si_new(void *conf, void *driver, void *driver_handle) {
 	si_session_t *s;
+
+	log_write(LOG_INFO,"SMA Sunny Island Agent version %s\n",si_agent_version_string);
+	log_write(LOG_INFO,"Starting up...\n");
 
 	s = calloc(1,sizeof(*s));
 	if (!s) {
@@ -45,10 +50,10 @@ void *si_new(void *conf, void *driver, void *driver_handle) {
 			goto si_new_error;
 		}
 		dprintf(1,"setting func to local data\n");
-		s->get_data = si_get_local_can_data;
+		s->can_read = si_get_local_can_data;
 	} else {
 		dprintf(1,"setting func to remote data\n");
-		s->get_data = si_get_remote_can_data;
+		s->can_read = si_get_remote_can_data;
 	}
 
 	/* Go ahead and open (and keep open) the can bus */
@@ -109,66 +114,47 @@ static solard_module_t si_driver = {
 	(solard_module_close_t)si_close,			/* Close */
 	0,				/* Free */
 	0,				/* Shutdown */
-	0,				/* Control */
+	si_control,			/* Control */
 	si_config,			/* Config */
-	0,				/* Get handle */
+	0,			/* Get handle */
 	0,				/* Get private */
 };
 
-#if 0
-int si_callback(solard_agent_t *ap) {
-	si_session_t *s = agent_get_driver_handle(ap);
-	solard_inverter_t *inv = ap->role_data;
-	dprintf(1,"s: %p\n", s);
+int si_startstop(si_session_t *s, int op) {
+	int retries;
+	uint8_t data[8],b;
 
-#if 0
-	conf->battery_temp = packs_reported ? (pack_temp_total / packs_reported) : (inv_reported ? inv->battery_temp : 25.0);
-	if (packs_reported && (conf->use_packv || !inv_reported)) {
-		conf->battery_voltage = pack_voltage_total / packs_reported;
-		conf->battery_amps = pack_current_total / packs_reported;
-	} else if (inv_reported) {
-		conf->battery_voltage = inv->battery_voltage;
-		conf->battery_amps = inv->battery_amps;
+	dprintf(1,"op: %d\n", op);
+
+	b = (op ? 1 : 2);
+	dprintf(1,"b: %d\n", b);
+	retries=10;
+	while(retries--) {
+		dprintf(1,"writing...\n");
+		if (si_can_write(s,0x35c,&b,1) < 0) return 1;
+		dprintf(1,"reading...\n");
+		if (s->can_read(s,0x307,data,8) == 0) {
+			if (debug >= 3) bindump("data",data,8);
+			dprintf(1,"*** data[3] & 2: %d\n", data[3] & 0x0002);
+			if (op) {
+				if (data[3] & 0x0002) return 0;
+			} else {
+				if ((data[3] & 0x0002) == 0) return 0;
+			}
+		}
+		sleep(1);
 	}
-#endif
-#if 0
-	/* XXX SIM */
-	if (!(int)conf->tvolt) conf->tvolt = conf->battery_voltage;
-	if (mybmm_check_state(conf,MYBMM_CHARGING)) {
-		if (conf->charge_mode == 1) conf->tvolt += 1;
-		else if (conf->charge_mode == 2) conf->cv_start_time -= (30 * 60);
-	} else {
-		conf->tvolt -= 1;
-	}
-	conf->battery_voltage = conf->tvolt;
-
-	/* Charge */
-	dprintf(2,"user_charge_voltage: %.1f, user_charge_amps: %.1f\n", s->user_charge_voltage, s->user_charge_amps);
-	inv->charge_voltage = s->user_charge_voltage < 0.0 ? s->charge_voltage : s->user_charge_voltage;
-	inv->charge_amps = s->user_charge_amps < 0.0 ? s->charge_amps : s->user_charge_amps;
-	lprintf(0,"Charge voltage: %.1f, Charge amps: %.1f\n", inv->charge_voltage, inv->charge_amps);
-
-	/* Discharge */
-	dprintf(2,"user_discharge_voltage: %.1f, user_discharge_amps: %.1f\n",inv->user_discharge_voltage,inv->user_discharge_amps);
-	inv->discharge_voltage = s->user_discharge_voltage < 0.0 ? s->discharge_voltage : s->user_discharge_voltage;
-	inv->discharge_amps = s->user_discharge_amps < 0.0 ? inv->e_rate * inv->capacity : inv->user_discharge_amps;
-	lprintf(0,"Discharge voltage: %.1f, Discharge amps: %.1f\n", inv->discharge_voltage, inv->discharge_amps);
-
-
-
-	lprintf(0,"Battery: voltage: %.1f, current: %.1f, temp: %.1f\n", inv->battery_voltage, inv->battery_amps, inv->battery_temp);
-#endif
-
-	inv->soc = s->soc < 0.0 ? ( ( inv->battery_voltage - inv->discharge_voltage) / (inv->charge_voltage - inv->discharge_voltage) ) * 100.0 : s->soc;
-	lprintf(0,"SoC: %.1f\n", inv->soc);
-	inv->soh = 100.0;
-	return 0;
+	if (retries < 0) printf("start failed.\n");
+	return (retries < 0 ? 1 : 0);
 }
-#endif
 
 static void getconf(si_session_t *s) {
 	cfg_proctab_t mytab[] = {
 		{ "si", "soc", 0, DATA_TYPE_FLOAT, &s->user_soc, 0, "-1" },
+		{ "si", "charge_min_amps", 0, DATA_TYPE_FLOAT, &s->charge_min_amps, 0, "-1" },
+		{ "si", "charge_focus_amps", "Increase charge voltage in order to maintain charge amps", DATA_TYPE_BOOL, &s->charge_creep, 0, "Y" },
+		{ "si", "sim_step", 0, DATA_TYPE_FLOAT, &s->sim_step, 0, ".1" },
+		{ "si", "interval", 0, DATA_TYPE_INT, &s->interval, 0, "10" },
 		CFG_PROCTAB_END
 	};
 
@@ -194,16 +180,17 @@ int main(int argc, char **argv) {
 	if (!ap) return 1;
 
 
-	/* Read and write intervals are 10s */
-	ap->read_interval = ap->write_interval = 10;
-
 	/* Get our session */
 	s = agent_get_driver_handle(ap);
 
 	/* Read our specific config */
 	getconf(s);
+	charge_init(s);
 
-#if 1
+	/* Read and write intervals are 10s */
+	ap->read_interval = ap->write_interval = s->interval;
+
+#if 0
 	{
 		list lp;
 		lp = list_create();
@@ -217,6 +204,7 @@ int main(int argc, char **argv) {
 	s->startup = 1;
 
 	/* Go */
+	log_write(LOG_INFO,"Agent Running!\n");
 	agent_run(ap);
 	return 0;
 }

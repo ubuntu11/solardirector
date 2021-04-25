@@ -10,12 +10,17 @@ LICENSE file in the root directory of this source tree.
 #include "si.h"
 
 static json_descriptor_t charge_params[] = {
-	{ "charge_voltage", DATA_TYPE_FLOAT, "range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 }, 1, (char *[]){ "Charge Voltage" }, "V", 1, "%2.1f" },
+	{ "max_voltage", DATA_TYPE_FLOAT, "range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 }, 1, (char *[]){ "Max Battery Voltage" }, "V", 1, "%2.1f" },
+	{ "min_voltage", DATA_TYPE_FLOAT, "range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 }, 1, (char *[]){ "Min Battery Voltage" }, "V", 1, "%2.1f" },
+	{ "charge_start_voltage", DATA_TYPE_FLOAT, "range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 }, 1, (char *[]){ "Charge start voltage" }, "V", 1, "%2.1f" },
+	{ "charge_end_voltage", DATA_TYPE_FLOAT, "range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 }, 1, (char *[]){ "Charge end voltage" }, "V", 1, "%2.1f" },
 	{ "charge_amps", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Charge Amps" }, "A", 1, "%.1f" },
-	{ "charge_max_voltage", DATA_TYPE_FLOAT, "range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 }, 1, (char *[]){ "Charge Maximum Voltage" }, "V", 1, "%2.1f" },
-	{ "charge_at_max", DATA_TYPE_BOOL, 0, 0, 0, 1, (char *[]){ "Always charge at max voltage" }, 0, 0 },
-	{ "discharge_voltage", DATA_TYPE_FLOAT, "range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 }, 1, (char *[]){ "Discharge Voltage" }, "V", 1, "%2.1f" },
+	{ "charge_mode", DATA_TYPE_INT, "select", 3, (int []){ 0, 1, 2 }, 1, (char *[]){ "Off","CC","CV" }, 0, 1, 0 },
 	{ "discharge_amps", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Discharge Amps" }, "A", 1, "%.1f" },
+	{ "charge_min_amps", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Minimum charge amps" }, "A", 1, "%.1f" },
+	{ "charge_focus_amps", DATA_TYPE_BOOL, 0, 0, 0, 1, (char *[]){ "Increase voltage to maintain charge amps" }, 0, 0 },
+	{ "sim_step", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "SIM Voltage Step" }, "V", 1, "%.1f" },
+	{ "interval", DATA_TYPE_INT, "range", 3, (int []){ 0, 10000, 1 }, 0, 0, 0, 1, 0 },
 };
 #define NCHG (sizeof(charge_params)/sizeof(json_descriptor_t))
 
@@ -214,12 +219,17 @@ int si_config_add_info(si_session_t *s, json_value_t *j) {
 static json_proctab_t *_getinv(si_session_t *s, char *name) {
 	solard_inverter_t *inv = s->ap->role_data;
 	json_proctab_t params[] = {
-                { "charge_voltage",DATA_TYPE_FLOAT,&inv->charge_voltage,0 },
+                { "max_voltage",DATA_TYPE_FLOAT,&inv->max_voltage,0 },
+                { "min_voltage",DATA_TYPE_FLOAT,&inv->min_voltage,0 },
+                { "charge_start_voltage",DATA_TYPE_FLOAT,&inv->charge_start_voltage,0 },
+                { "charge_end_voltage",DATA_TYPE_FLOAT,&inv->charge_end_voltage,0 },
                 { "charge_amps",DATA_TYPE_FLOAT,&inv->charge_amps,0 },
-                { "charge_max_voltage",DATA_TYPE_FLOAT,&inv->charge_max_voltage,0 },
-                { "charge_at_max",DATA_TYPE_BOOL,&inv->charge_at_max,0 },
-                { "discharge_voltage",DATA_TYPE_FLOAT,&inv->discharge_voltage,0 },
+                { "charge_mode",DATA_TYPE_INT,&s->charge_mode,0 },
                 { "discharge_amps",DATA_TYPE_FLOAT,&inv->discharge_amps,0 },
+		{ "charge_min_amps", DATA_TYPE_FLOAT, &s->charge_min_amps,0 },
+		{ "charge_focus_amps", DATA_TYPE_BOOL, &s->charge_creep, 0 },
+		{ "sim_step", DATA_TYPE_FLOAT, &s->sim_step, 0 },
+		{ "interval", DATA_TYPE_INT, &s->interval, 0 },
 		JSON_PROCTAB_END
 	};
 	json_proctab_t *invp;
@@ -260,7 +270,6 @@ si_param_t *_getp(si_session_t *s, char *name) {
 		dprintf(1,"inv: name: %s, type: %d, ptr: %p, len: %d\n", invp->field, invp->type, invp->ptr, invp->len);
 		dprintf(1,"invp->type: %d\n", invp->type);
 
-//		strncat(pinfo->name,invp->name,sizeof(pinfo->name)-1);
 		strncat(pinfo->name,invp->field,sizeof(pinfo->name)-1);
 		pinfo->type = invp->type;
 		pinfo->source = 1;
@@ -292,6 +301,7 @@ si_param_t *_getp(si_session_t *s, char *name) {
 	}
 
 	/* Is it from the SI? */
+	if (!s->smanet) goto _getp_done;
 	dprintf(1,"NOT found, checking smanet\n");
 	c = smanet_get_channelbyname(s->smanet,name);
 	if (c) {
@@ -325,6 +335,7 @@ si_param_t *_getp(si_session_t *s, char *name) {
 		return pinfo;
 	}
 
+_getp_done:
 	dprintf(1,"NOT found\n");
 	return 0;
 }
