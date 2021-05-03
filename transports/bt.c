@@ -136,7 +136,11 @@ static int bt_close(void *handle) {
 
 	dprintf(1,"s->c: %p\n",s->c);
 	if (s->c) {
-		if (s->not) gattlib_notification_stop(s->c, &s->uuid);
+		if (s->not == 9999) {
+			dprintf(1,"stopping notifications\n");
+			gattlib_notification_stop(s->c, &s->uuid);
+		}
+		dprintf(1,"disconnecting...\n");
 		gattlib_disconnect(s->c);
 		s->c = 0;
 	}

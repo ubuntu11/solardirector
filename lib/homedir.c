@@ -9,6 +9,23 @@ LICENSE file in the root directory of this source tree.
 
 #include "utils.h"
 
+#include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
+#include <string.h>
+
+int gethomedir(char *dest, int dest_len) {
+	struct passwd *pw;
+
+	pw = getpwuid(getuid());
+	if (!pw) return 1;
+
+	*dest = 0;
+	strncat(dest,pw->pw_dir,dest_len);
+	return 0;
+}
+
+#if 0
 int gethomedir(long uid, char *dest, int destlen) {
 	FILE *fp;
 	char line[256],*p,*s;
@@ -59,4 +76,4 @@ getmyhomedir_error:
 	fclose(fp);
 	return 1;
 }
-
+#endif

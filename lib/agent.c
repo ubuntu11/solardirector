@@ -18,6 +18,7 @@ LICENSE file in the root directory of this source tree.
 #include <time.h>
 #include <ctype.h>
 #include "agent.h"
+#include "uuid.h"
 
 static int suspend_read = 0;
 static int suspend_write = 0;
@@ -220,9 +221,11 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 	char tp_info[128],mqtt_info[200],*p;
 	char configfile[256];
 	mqtt_config_t mqtt_config;
-	char transport[SOLARD_AGENT_TRANSPORT_LEN+1];
-	char target[SOLARD_AGENT_TARGET_LEN+1];
-	char topts[64];
+	char name[SOLARD_NAME_LEN];
+	char transport[SOLARD_TRANSPORT_LEN];
+	char target[SOLARD_TARGET_LEN];
+	char topts[SOLARD_TOPTS_LEN];
+//	char id[SOLARD_ID_LEN];
 	char sname[64];
 	int info_flag,pretty_flag,read_interval,write_interval;
 	opt_proctab_t std_opts[] = {
@@ -230,10 +233,12 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 		{ "-t::|transport,target,opts",&tp_info,DATA_TYPE_STRING,sizeof(tp_info)-1,0,"" },
 		{ "-m::|mqtt host,clientid[,user[,pass]]",&mqtt_info,DATA_TYPE_STRING,sizeof(mqtt_info)-1,0,"" },
 		{ "-c:%|config file",&configfile,DATA_TYPE_STRING,sizeof(configfile)-1,0,"" },
-		{ "-n::|config section name",&sname,DATA_TYPE_STRING,sizeof(sname)-1,0,"" },
+		{ "-s::|config section name",&sname,DATA_TYPE_STRING,sizeof(sname)-1,0,"" },
+		{ "-n::|agent name",&name,DATA_TYPE_STRING,sizeof(name)-1,0,"" },
+//		{ "-i:#|instance ID",&id,DATA_TYPE_STRING,sizeof(id),0,"" },
 		{ "-I|agent info",&info_flag,DATA_TYPE_LOGICAL,0,0,"0" },
 		{ "-P|pretty print json output",&pretty_flag,DATA_TYPE_LOGICAL,0,0,0 },
-		{ "-i:#|reporting interval",&read_interval,DATA_TYPE_INT,0,0,"30" },
+		{ "-r:#|reporting interval",&read_interval,DATA_TYPE_INT,0,0,"30" },
 		{ "-w:#|update (write) interval",&write_interval,DATA_TYPE_INT,0,0,"30" },
 		OPTS_END
 	}, *opts;
@@ -241,6 +246,11 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 	solard_module_t *tp;
 	void *tp_handle,*driver_handle;
 	list names;
+
+	if (!driver) {
+		printf("driver is null, aborting\n");
+		exit(0);
+	}
 
 	opts = opt_addopts(std_opts,agent_opts);
 	if (!opts) return 0;
@@ -257,6 +267,9 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 	ap->read_interval = read_interval;
 	ap->write_interval = write_interval;
 
+	/* Agent name is driver name */
+	strncat(ap->name,driver->name,sizeof(ap->name)-1);
+
 	/* Could load these as modules, but not really needed here */
 	switch(driver->type) {
 	case SOLARD_MODTYPE_BATTERY:
@@ -271,26 +284,32 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 
 	memset(&mqtt_config,0,sizeof(mqtt_config));
 
-	strncat(ap->section_name,strlen(sname) ? sname : driver->name,sizeof(ap->section_name)-1);
+	strncpy(ap->section_name,strlen(sname) ? sname : (strlen(name) ? name : driver->name), sizeof(ap->section_name)-1);
 	dprintf(1,"section_name: %s\n", ap->section_name);
 	dprintf(1,"configfile: %s\n", configfile);
 	*transport = *target = *topts = 0;
 	if (strlen(configfile)) {
 		cfg_proctab_t agent_tab[] = {
-			{ ap->section_name, "id", "Agent ID", DATA_TYPE_STRING,&ap->id,sizeof(ap->id), 0 },
-			{ ap->section_name, "name", "Agent name", DATA_TYPE_STRING,&ap->name,sizeof(ap->name), 0 },
+			{ ap->section_name, "name", 0, DATA_TYPE_STRING,&ap->instance_name,sizeof(ap->instance_name)-1, 0 },
+			{ ap->section_name, "debug", 0, DATA_TYPE_INT,&debug,0, 0 },
 			{ ap->section_name, "transport", "Transport", DATA_TYPE_STRING,&transport,sizeof(transport), 0 },
 			{ ap->section_name, "target", "Transport address/interface/device", DATA_TYPE_STRING,&target,sizeof(target), 0 },
 			{ ap->section_name, "topts", "Transport specific options", DATA_TYPE_STRING,&topts,sizeof(topts), 0 },
 			CFG_PROCTAB_END
 		};
-		transport[0] = target[0] = topts[0] = 0;
+		*transport = *target = *topts = 0;
 		ap->cfg = cfg_read(configfile);
 		if (!ap->cfg) goto agent_init_error;
 		cfg_get_tab(ap->cfg,agent_tab);
 		if (debug) cfg_disp_tab(agent_tab,"agent",0);
 		if (mqtt_get_config(ap->cfg,&mqtt_config)) goto agent_init_error;
 	} 
+
+	/* Name specified on command line overrides configfile */
+	if (strlen(name)) strcpy(ap->instance_name,name);
+
+	/* If still no instance name, set it to driver name */
+	if (!strlen(ap->instance_name)) strncpy(ap->instance_name,driver->name,sizeof(ap->instance_name)-1);
 
 	dprintf(1,"tp_info: %s\n", tp_info);
 	if (strlen(tp_info)) {
@@ -299,34 +318,11 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 		strncat(topts,strele(2,",",tp_info),sizeof(topts)-1);
 	}
 
-	dprintf(1,"mqtt_info: %s\n", mqtt_info);
-	if (strlen(mqtt_info)) {
-		strncat(mqtt_config.host,strele(0,",",mqtt_info),sizeof(mqtt_config.host)-1);
-		strncat(mqtt_config.clientid,strele(1,",",mqtt_info),sizeof(mqtt_config.clientid)-1);
-		strncat(mqtt_config.user,strele(2,",",mqtt_info),sizeof(mqtt_config.user)-1);
-		strncat(mqtt_config.pass,strele(3,",",mqtt_info),sizeof(mqtt_config.pass)-1);
-	}
-	if (!strlen(ap->name)) strcpy(ap->name,ap->section_name);
-
-	/* MQTT Init */
-	dprintf(1,"host: %s, clientid: %s, user: %s, pass: %s\n",
-		mqtt_config.host, mqtt_config.clientid, mqtt_config.user, mqtt_config.pass);
-	if (!strlen(mqtt_config.host)) {
-		log_write(LOG_WARNING,"mqtt host not specified, using localhost\n");
-		strcpy(mqtt_config.host,"localhost");
-	}
-	if (!strlen(mqtt_config.clientid)) strncat(mqtt_config.clientid,ap->name,MQTT_CLIENTID_LEN-1);
-	ap->m = mqtt_new(&mqtt_config, solard_getmsg, ap->mq);
-	if (mqtt_connect(ap->m,20)) goto agent_init_error;
-	mqtt_disconnect(ap->m,10);
-
 	/* Role Init */
 	if (!strlen(transport) || !strlen(target)) {
 		log_write(LOG_ERROR,"transport and target must be specified\n");
 		goto agent_init_error;
 	}
-	dprintf(1,"target: %s\n", target);
-	if (!strlen(target)) return 0;
 
 	dprintf(1,"transport: %s, target: %s, topts: %s\n", transport, target, topts);
 	/* Load the transport driver */
@@ -335,6 +331,8 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 
 	/* Create an instance of the transport driver */
 	tp_handle = tp->new(ap,target,topts);
+	dprintf(1,"tp_handle: %p\n", tp_handle);
+	if (!tp_handle) goto agent_init_error;
 
 	/* Create an instance of the agent driver */
 	driver_handle = driver->new(ap,tp,tp_handle);
@@ -352,23 +350,52 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 	dprintf(1,"info_flag: %d\n", info_flag);
 	if (info_flag) {
 		printf("%s\n",info);
-		free(ap);
-		return 0;
+//		free(ap);
+		exit(0);
 	}
+
+	dprintf(1,"mqtt_info: %s\n", mqtt_info);
+	if (strlen(mqtt_info)) {
+		strncat(mqtt_config.host,strele(0,",",mqtt_info),sizeof(mqtt_config.host)-1);
+		strncat(mqtt_config.clientid,strele(1,",",mqtt_info),sizeof(mqtt_config.clientid)-1);
+		strncat(mqtt_config.user,strele(2,",",mqtt_info),sizeof(mqtt_config.user)-1);
+		strncat(mqtt_config.pass,strele(3,",",mqtt_info),sizeof(mqtt_config.pass)-1);
+	}
+
+	/* MQTT Init */
+	dprintf(1,"host: %s, clientid: %s, user: %s, pass: %s\n",
+		mqtt_config.host, mqtt_config.clientid, mqtt_config.user, mqtt_config.pass);
+	if (!strlen(mqtt_config.host)) {
+		log_write(LOG_WARNING,"mqtt host not specified, using localhost\n");
+		strcpy(mqtt_config.host,"localhost");
+	}
+
+	/* MQTT requires a unique ClientID for connections */
+	if (!strlen(mqtt_config.clientid)) {
+		uint8_t uuid[16];
+
+		dprintf(1,"gen'ing MQTT ClientID...\n");
+		uuid_generate_random(uuid);
+		my_uuid_unparse(uuid, mqtt_config.clientid);
+		dprintf(4,"clientid: %s\n",mqtt_config.clientid);
+	}
+	ap->m = mqtt_new(&mqtt_config, solard_getmsg, ap->mq);
 
 	/* Callback - must be done before connect */
 //	if (mqtt_setcb(ap->m,ap,0,agent_callback0)) return 0;
-	mqtt_connect(ap->m,20);
+
+	/* Connect to the server */
+	if (mqtt_connect(ap->m,20)) goto agent_init_error;
 
 	/* Publish our Info */
-	sprintf(mqtt_info,"%s/%s/%s/%s",SOLARD_TOPIC_ROOT,ap->role->name,ap->name,SOLARD_FUNC_INFO);
+	sprintf(mqtt_info,"%s/%s/%s/%s",SOLARD_TOPIC_ROOT,ap->role->name,ap->instance_name,SOLARD_FUNC_INFO);
 	mqtt_pub(ap->m,mqtt_info,info,1);
 
 	names = list_create();
 	list_add(names,"all",4);
 	list_add(names,"All",4);
-	if (strcmp(ap->name,driver->name) != 0) list_add(names,driver->name,strlen(driver->name)+1);
 	list_add(names,ap->name,strlen(ap->name)+1);
+	list_add(names,ap->instance_name,strlen(ap->instance_name)+1);
 	p = json_get_string(ap->info,"device_model");
 	dprintf(1,"p: %s\n", p);
 	if (p && strlen(p)) list_add(names,p,strlen(p)+1);

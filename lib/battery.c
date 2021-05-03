@@ -10,7 +10,7 @@ LICENSE file in the root directory of this source tree.
 #include "battery.h"
 
 struct battery_session {
-	char name[BATTERY_NAME_LEN+1];
+	char name[SOLARD_NAME_LEN];
 	solard_agent_t *ap;
 	solard_module_t *driver;
 	void *handle;
@@ -18,15 +18,17 @@ struct battery_session {
 };
 typedef struct battery_session battery_session_t;
 
-int battery_get_config(battery_session_t *s, char *section_name) {
+int battery_get_config(battery_session_t *s) {
+	solard_battery_t *bp = &s->info;
+	char *section_name = s->ap->section_name;
 	struct cfg_proctab packtab[] = {
-		{ section_name, "capacity", "Pack Capacity in AH", DATA_TYPE_FLOAT,&s->info.capacity, 0, 0 },
+		{ section_name, "name", 0, DATA_TYPE_STRING,&bp->name,sizeof(bp->name)-1, s->ap->instance_name },
+		{ section_name, "capacity", 0, DATA_TYPE_FLOAT,&bp->capacity, 0, 0 },
 		CFG_PROCTAB_END
 	};
 
 	cfg_get_tab(s->ap->cfg,packtab);
-	if (debug >= 3) cfg_disp_tab(packtab,s->name,1);
-
+	if (debug >= 3) cfg_disp_tab(packtab,s->info.name,1);
 	return 0;
 }
 
@@ -47,14 +49,14 @@ void *battery_new(void *handle, void *driver, void *driver_handle) {
 	s->driver = driver;
 	s->handle = driver_handle;
 
+	/* Get our specific config */
+	battery_get_config(s);
+
 	/* Update the role_data in agent conf */
 	conf->role_data = &s->info;
 
 	/* Save a copy of the name */
-	strncat(s->name,s->ap->name,sizeof(s->name)-1);
-
-	/* Get specific config */
-	battery_get_config(s,conf->section_name);
+	strncpy(s->name,s->info.name,sizeof(s->name)-1);
 
 	return s;
 }
@@ -166,7 +168,6 @@ static void _set_state(char *name, void *dest, int len, json_value_t *v) {
 }
 
 #define BATTERY_TAB(NTEMP,NBAT,ACTION,STATE) \
-		{ "id",DATA_TYPE_STRING,&bp->id,sizeof(bp->id)-1,0 }, \
 		{ "name",DATA_TYPE_STRING,&bp->name,sizeof(bp->name)-1,0 }, \
 		{ "capacity",DATA_TYPE_FLOAT,&bp->capacity,0,0 }, \
 		{ "voltage",DATA_TYPE_FLOAT,&bp->voltage,0,0 }, \
@@ -251,7 +252,7 @@ int battery_from_json(solard_battery_t *bp, char *str) {
 	v = json_parse(str);
 	memset(bp,0,sizeof(*bp));
 	json_to_tab(battery_tab,v);
-	battery_dump(bp,3);
+//	battery_dump(bp,3);
 	json_destroy(v);
 	return 0;
 };
@@ -262,13 +263,17 @@ int battery_send_mqtt(battery_session_t *s) {
 	json_value_t *v;
 
 //	strcpy(pp->id,s->id);
-	strcpy(pp->name,s->name);
+//	strcpy(pp->name,s->name);
 	v = battery_to_json(pp);
 	if (!v) return 1;
 	p = json_dumps(v,0);
 	sprintf(temp,"%s/%s/%s/%s",SOLARD_TOPIC_ROOT,SOLARD_ROLE_BATTERY,s->name,SOLARD_FUNC_DATA);
 	dprintf(2,"sending mqtt data...\n");
-	mqtt_pub(s->ap->m, temp, p, 0);
+	if (mqtt_pub(s->ap->m, temp, p, 0)) {
+		log_write(LOG_ERROR,"unable to publish to mqtt, reconnecting");
+		mqtt_disconnect(s->ap->m,5);
+		mqtt_connect(s->ap->m,20);
+	}
 	free(p);
 	json_destroy(v);
 	return 0;

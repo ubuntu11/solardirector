@@ -37,7 +37,7 @@ typedef int socket_t;
 
 struct ip_session {
 	socket_t sock;
-	char target[SOLARD_AGENT_TARGET_LEN+1];
+	char target[SOLARD_TARGET_LEN];
 	int port;
 };
 typedef struct ip_session ip_session_t;
@@ -54,7 +54,7 @@ static void *ip_new(void *conf, void *target, void *topts) {
 	s->sock = INVALID_SOCKET;
 	p = strchr((char *)target,':');
 	if (p) *p = 0;
-	strncat(s->target,(char *)target,SOLARD_AGENT_TARGET_LEN);
+	strncat(s->target,(char *)target,SOLARD_TARGET_LEN-1);
 	if (p) {
 		p++;
 		s->port = atoi(p);
@@ -69,7 +69,7 @@ static int ip_open(void *handle) {
 	struct sockaddr_in addr;
 	socklen_t sin_size;
 	struct hostent *he;
-	char temp[SOLARD_AGENT_TARGET_LEN];
+	char temp[SOLARD_TARGET_LEN];
 	uint8_t *ptr;
 
 	if (s->sock != INVALID_SOCKET) return 0;

@@ -245,27 +245,6 @@ int json_dumps_r(json_value_t *v, char *buf, int buflen) {
 	return json_serialize_to_buffer(v,buf,buflen);
 }
 
-#if 0
-json_data_t *json_create(void) {
-	json_data_t *j;
-
-	j = calloc(sizeof(*j),1);
-	if (!j) {
-		log_write(LOG_SYSERR,"json_create: calloc");
-		return 0;
-	}
-	j->root_value = json_value_init_object();
-	if (!j->root_value) goto json_create_error;
-	j->root_object = json_value_get_object(j->root_value);
-	if (!j->root_object) goto json_create_error;
-
-	return j;
-json_create_error:
-	free(j);
-	return 0;
-}
-#endif
-
 int json_add_list(json_object_t *j, char *label, list values) {
 	JSON_Value *value;
 	JSON_Array *array;
@@ -355,3 +334,21 @@ int json_to_tab(json_proctab_t *tab, json_value_t *v) {
         }
 	return 1;
 }
+
+void json_conv_value(enum DATA_TYPE dt, void *dest, int len, json_value_t *v) {
+	switch(v->type) {
+	case JSONString:
+		conv_type(dt,dest,len,DATA_TYPE_STRING,v->value.string.chars,v->value.string.length);
+		break;
+	case JSONNumber:
+		conv_type(dt,dest,len,DATA_TYPE_DOUBLE,&v->value.number,0);
+		break;
+	case JSONBoolean:
+		conv_type(dt,dest,len,DATA_TYPE_INT,&v->value.boolean,0);
+		break;
+	default:
+		dprintf(1,"invalid type: %d (%s)\n", v->type, json_typestr(v->type));
+		break;
+	}
+}
+

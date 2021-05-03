@@ -21,7 +21,7 @@ LICENSE file in the root directory of this source tree.
 #include "debug.h"
 
 FILE *logfp = (FILE *) 0;
-static int logopts;
+int logopts;
 
 int log_open(char *ident,char *filename,int opts) {
 	DPRINTF("filename: %s\n",filename);

@@ -136,7 +136,7 @@ int main(int argc, char **argv) {
 	if (!s) return 1;
 
 	dprintf(1,"chanpath: %s\n", chanpath);
-	if (!strlen(chanpath)) sprintf(chanpath,"%s/%s.dat",LIBDIR,s->type);
+	if (!strlen(chanpath)) sprintf(chanpath,"%s/%s.dat",SOLARD_LIBDIR,s->type);
 	if (smanet_load_channels(s,chanpath) != 0) {
 		dprintf(1,"count: %d\n", list_count(s->channels));
 		if (!list_count(s->channels)) {

@@ -169,12 +169,22 @@ list client_get_mconfig(solard_client_t *cp, char *target, int count, char **par
 
 int client_set_config(solard_client_t *cp, char *target, char *param, char *value, int timeout) {
 	char topic[SOLARD_TOPIC_SIZE];
-	json_value_t *o;
+	json_value_t *o,*v;
 
 	dprintf(1,"target: %s, param: %s, value: %s\n", target, param, value);
 
 	o = json_create_object();
-	json_add_string(o,param,value);
+	dprintf(1,"value: %c\n", *value);
+	if (*value == '{') {
+		v = json_parse(value);
+		if (!v) {
+			log_write(LOG_ERROR,"invalid json string: %s\n", value);
+			return 1;
+		}
+		json_add_value(o,param,v);
+	} else {
+		json_add_string(o,param,value);
+	}
 	json_tostring(o,cp->data,sizeof(cp->data)-1,0);
 	json_destroy(o);
 
@@ -193,17 +203,17 @@ int client_set_config(solard_client_t *cp, char *target, char *param, char *valu
 	return 0;
 }
 
-solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,char *id) {
+solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,char *name) {
 	solard_client_t *s;
 	char mqtt_info[200];
 	char configfile[256];
+	char sname[CFG_SECTION_NAME_SIZE];
 	mqtt_config_t mqtt_config;
-	char name[32],*section_name;
 	opt_proctab_t std_opts[] = {
 		/* Spec, dest, type len, reqd, default val, have */
 		{ "-m::|mqtt host:port,clientid[,user[,pass]]",&mqtt_info,DATA_TYPE_STRING,sizeof(mqtt_info)-1,0,"" },
 		{ "-c:%|config file",&configfile,DATA_TYPE_STRING,sizeof(configfile)-1,0,"" },
-		{ "-n::|config section name",&name,DATA_TYPE_STRING,sizeof(name)-1,0,"" },
+		{ "-n::|config section name",&sname,DATA_TYPE_STRING,sizeof(sname)-1,0,"" },
 		OPTS_END
 	}, *opts;
 	int logopts = LOG_INFO|LOG_WARNING|LOG_ERROR|LOG_SYSERR|_ST_DEBUG;
@@ -219,20 +229,20 @@ solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,cha
 		perror("calloc");
 		return 0;
 	}
+	strncpy(s->name,name,sizeof(s->name)-1);
 //	pthread_mutex_init(&s->lock, 0);
 	s->messages = list_create();
 
-	dprintf(1,"argc: %d, argv: %p, opts: %p, id: %s\n", argc, argv, opts, id);
+	dprintf(1,"argc: %d, argv: %p, opts: %p, name: %s\n", argc, argv, opts, name);
 
 	memset(&mqtt_config,0,sizeof(mqtt_config));
 
-	section_name = strlen(name) ? name : id;
-	dprintf(1,"section_name: %s\n", section_name);
+	strncpy(s->section_name,strlen(sname) ? sname : name,CFG_SECTION_NAME_SIZE-1);
+	dprintf(1,"section_name: %s\n", s->section_name);
 	dprintf(1,"configfile: %s\n", configfile);
 	if (strlen(configfile)) {
 		cfg_proctab_t agent_tab[] = {
-			{ section_name, "id", "Client ID", DATA_TYPE_STRING,&s->id,sizeof(s->id), 0 },
-			{ section_name, "name", "Client name", DATA_TYPE_STRING,&s->name,sizeof(s->name), id },
+//			{ s->section_name, "id", "Client ID", DATA_TYPE_STRING,&s->name,sizeof(s->name), id },
 			CFG_PROCTAB_END
 		};
 		s->cfg = cfg_read(configfile);
@@ -251,26 +261,22 @@ solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,cha
 		strncat(mqtt_config.pass,strele(3,",",mqtt_info),sizeof(mqtt_config.pass)-1);
 		dprintf(1,"host: %s, clientid: %s, user: %s, pass: %s\n", mqtt_config.host, mqtt_config.clientid, mqtt_config.user, mqtt_config.pass);
 	}
-	if (!strlen(s->id)) strcpy(s->id,id);
-	if (!strlen(s->name)) strcpy(s->name,id);
-
-#if 0
-	/* if we dont have a UUID, gen one */
-	if (!strlen(s->id) && s->cfg) {
-		uint8_t uuid[16];
-
-		dprintf(1,"gen'ing UUID...\n");
-		uuid_generate_random(uuid);
-		my_uuid_unparse(uuid, s->id);
-		dprintf(4,"conf->c->id: %s\n",s->id);
- 		cfg_set_item(s->cfg,"solard","id",0,s->id);
-		cfg_write(s->cfg);
-	}
-#endif
 
 	/* MQTT Init */
-	if (!strlen(mqtt_config.host)) strcpy(mqtt_config.host,"localhost");
-	if (!strlen(mqtt_config.clientid)) strncat(mqtt_config.clientid,s->name,sizeof(mqtt_config.clientid)-1);
+	if (!strlen(mqtt_config.host)) {
+		log_write(LOG_WARNING,"No MQTT host specified, using localhost");
+		strcpy(mqtt_config.host,"localhost");
+	}
+	/* MQTT requires a unique ClientID for connections */
+	if (!strlen(mqtt_config.clientid)) {
+		uint8_t uuid[16];
+
+		dprintf(1,"gen'ing MQTT ClientID...\n");
+		uuid_generate_random(uuid);
+		my_uuid_unparse(uuid, mqtt_config.clientid);
+		dprintf(4,"NEW clientid: %s\n",mqtt_config.clientid);
+	}
+	if (!strlen(s->id)) strcpy(s->id,mqtt_config.clientid);
 	s->m = mqtt_new(&mqtt_config,solard_getmsg,s->messages);
 	if (!s->m) goto client_init_error;
 //	if (mqtt_setcb(s->m,s,client_mqtt_reconnect,client_callback,0)) return 0;

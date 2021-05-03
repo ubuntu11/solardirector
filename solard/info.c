@@ -35,7 +35,7 @@ int solard_pubinfo(solard_config_t *conf) {
 	a = json_create_array();
 //	json_array_add_descriptor(a,(json_descriptor_t){ "CHARGE_CONTROL", DATA_TYPE_BOOL, 0, 0, 0, 2, (char *[]){ "off", "on" } });
 	json_add_value(j,"controls",a);
-//	solard_config_add_params(j);
+//	solard_config_add_info(j);
 	p = json_dumps(j,0);
 	json_destroy(j);
 

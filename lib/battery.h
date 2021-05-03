@@ -34,7 +34,6 @@ typedef struct battery_cell battery_cell_t;
 #define BATTERY_MAX_CELLS 32
 
 struct solard_battery {
-	char id[BATTERY_ID_LEN];	/* Battery unique ID */
 	char name[BATTERY_NAME_LEN];	/* Battery name */
 	float capacity;			/* Battery pack capacity, in AH */
 	float voltage;			/* Pack voltage */
@@ -66,6 +65,7 @@ typedef struct solard_battery solard_battery_t;
 #define BATTERY_STATE_OPEN		0x10
 
 extern solard_module_t battery;
+
 void battery_dump(solard_battery_t *,int);
 int battery_from_json(solard_battery_t *bp, char *str);
 json_value_t *battery_to_json(solard_battery_t *bp);

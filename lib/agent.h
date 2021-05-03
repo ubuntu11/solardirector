@@ -21,16 +21,12 @@ typedef int (*solard_agent_callback_t)(solard_agent_t *);
 #include "battery.h"
 #include "inverter.h"
 
-#define SOLARD_AGENT_NAME_LEN 32
-#define SOLARD_AGENT_TRANSPORT_LEN 8
-#define SOLARD_AGENT_TARGET_LEN 64
-#define SOLARD_UUID_LEN 38
+typedef int (*role_config_t)(void *,char *);
 
 struct solard_agent {
-	char id[SOLARD_UUID_LEN];
-	char name[SOLARD_AGENT_NAME_LEN];
+	char name[SOLARD_NAME_LEN];
 	void *cfg;
-	char section_name[64];		/* Configfile section name */
+	char section_name[CFG_SECTION_NAME_SIZE];
 	mqtt_session_t *m;		/* MQTT Session handle */
 	int read_interval;
 	int write_interval;
@@ -40,6 +36,7 @@ struct solard_agent {
 	int pretty;			/* Format json messages for readability (uses more mem) */
 	solard_module_t *role;
 	void *role_handle;
+	char instance_name[SOLARD_NAME_LEN]; /* Agent instance name */
 	void *role_data;		/* Role-specific data */
 	json_value_t *info;		/* Info returned by role/driver */
 	solard_agent_callback_t cb;	/* Called between read and write */

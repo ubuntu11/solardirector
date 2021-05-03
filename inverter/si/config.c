@@ -194,7 +194,7 @@ int si_config_add_info(si_session_t *s, json_value_t *j) {
 			p = cfg_get_item(s->ap->cfg,"config","channels_path");
 			if (p) strncat(s->channels_path,p,sizeof(s->channels_path)-1);
 		}
-		if (!strlen(s->channels_path)) sprintf(s->channels_path,"%s/%s.dat",LIBDIR,s->smanet->type);
+		if (!strlen(s->channels_path)) sprintf(s->channels_path,"%s/%s.dat",SOLARD_LIBDIR,s->smanet->type);
 		if (smanet_load_channels(s->smanet,s->channels_path) == 0) _addchans(s,ca);
 	}
 

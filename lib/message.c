@@ -37,6 +37,7 @@ void solard_getmsg(void *ctx, char *topic, char *message, int msg_len) {
 	list lp = ctx;
 	solard_message_t newmsg;
 	char *root;
+	int i;
 
 	dprintf(4,"topic: %s, message(%d): %s\n", topic, msg_len, message);
 
@@ -54,20 +55,24 @@ void solard_getmsg(void *ctx, char *topic, char *message, int msg_len) {
 
 	newmsg.role[0] = 0;
 	strncat(newmsg.role,strele(1,"/",topic),sizeof(newmsg.role)-1);
+
+	i = strcmp(newmsg.role,SOLARD_ROLE_CONTROLLER)==0 ? 1 : 2;
+	dprintf(4,"role: %s, i: %d\n", newmsg.role, i);
+
 	newmsg.name[0] = 0;
-	strncat(newmsg.name,strele(2,"/",topic),sizeof(newmsg.name)-1);
+	strncat(newmsg.name,strele(i++,"/",topic),sizeof(newmsg.name)-1);
 	newmsg.func[0] = 0;
-	strncat(newmsg.func,strele(3,"/",topic),sizeof(newmsg.func)-1);
+	strncat(newmsg.func,strele(i++,"/",topic),sizeof(newmsg.func)-1);
 	newmsg.action[0] = 0;
-	strncat(newmsg.action,strele(4,"/",topic),sizeof(newmsg.action)-1);
+	strncat(newmsg.action,strele(i++,"/",topic),sizeof(newmsg.action)-1);
 	newmsg.id[0] = 0;
-	strncat(newmsg.id,strele(5,"/",topic),sizeof(newmsg.id)-1);
+	strncat(newmsg.id,strele(i++,"/",topic),sizeof(newmsg.id)-1);
 
        	/* Is this a Status Reply? */
 	if (strcmp(newmsg.id,"Status") == 0) {
 		newmsg.type = SOLARD_MESSAGE_STATUS;
 		newmsg.id[0] = 0;
-		strncat(newmsg.id,strele(6,"/",topic),sizeof(newmsg.id)-1);
+		strncat(newmsg.id,strele(i++,"/",topic),sizeof(newmsg.id)-1);
 		dprintf(4,"new id: %s\n", newmsg.id);
 	}
 	dprintf(4,"newmsg: name: %s, func: %s, action: %s, id: %s, data(%d): %s\n",

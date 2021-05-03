@@ -1,0 +1,11 @@
+[Unit]
+Description=Sunny Island Agent
+After=network-online.target network.target rsyslog.service
+
+[Service]
+Type=simple
+ExecStart=/opt/sd/bin/solard -c /opt/sd/etc/solard.conf -l /opt/sd/log/solard.log -d 2
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

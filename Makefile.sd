@@ -7,17 +7,21 @@ DYNAMIC=yes
 SHARED?=no
 STATIC?=no
 
-PREFIX?=/opt/sd
-
 ifneq "$(findstring win,$(TARGET))" ""
 ISWIN=yes
 endif
 
+ifeq ($(ISWIN),yes)
+PREFIX?="C:\\\Program Files\\\SolarDirector"
+else
+PREFIX?=/opt/sd
+endif
+#CFLAGS+=-DETCDIR=\"$(ETCDIR)\" -DLIBDIR=\"$(LIBDIR)\"
+CFLAGS+=-DSOLARD_PREFIX=\"$(PREFIX)\"
+
 # Define SRC_ROOT
 current_makefile := $(lastword $(MAKEFILE_LIST))
 SRC_ROOT=$(shell echo $$(dirname $(current_makefile)))
-
-CFLAGS+=-DETCDIR=\"$(ETCDIR)\" -DLIBDIR=\"$(LIBDIR)\"
 
 # Uses libsmanet? must be included before libsolard as it refs
 ifeq ($(SMANET),yes)
@@ -53,7 +57,9 @@ endif
 ifeq ($(BLUETOOTH),yes)
 ifneq ($(ISWIN),yes)
 CFLAGS+=-DBLUETOOTH
-LIBS+=-lgattlib -lglib-2.0
+#LIBS+=-lgattlib -ldbus-1 -lgobject-2.0 -lglib-2.0 -lgio-2.0
+LIBS+=-lgattlib -lglib-2.0 -lgobject-2.0 -lgio-2.0
+#LIBS+=-lgattlib -lglib-2.0
 endif
 endif
 

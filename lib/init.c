@@ -14,6 +14,87 @@ LICENSE file in the root directory of this source tree.
 #include <winsock2.h>
 #endif
 
+#define DIRPATH_LEN 256
+char SOLARD_BINDIR[DIRPATH_LEN];
+char SOLARD_ETCDIR[DIRPATH_LEN];
+char SOLARD_LIBDIR[DIRPATH_LEN];
+char SOLARD_LOGDIR[DIRPATH_LEN];
+
+static int _getcfg(char *cf, char *dest, char *what) {
+	cfg_info_t *cfg;
+	char *p;
+	int r;
+
+//	dprintf(1,"cf: %s\n", cf);
+	r = 1;
+	cfg = cfg_read(cf);
+	if (!cfg) {
+		log_write(LOG_SYSERR,"cfg_read");
+		goto _getcfg_err;
+	}
+	p = cfg_get_item(cfg,"",what);
+	if (!p) {
+		p = cfg_get_item(cfg,"","prefix");
+		if (!p) goto _getcfg_err;
+//		dprintf(1,"prefix: %s\n", p);
+		sprintf(dest,"%s/%s",p,what);
+	} else {
+		strncat(dest,p,DIRPATH_LEN-1);
+	}
+//	dprintf(1,"dest: %s\n", dest);
+	r = 0;
+_getcfg_err:
+	cfg_destroy(cfg);
+//	dprintf(1,"returning: %d\n", r);
+	return r;
+}
+
+static void _getpath(char *dest, char *what) {
+	char home[246],temp[256];
+
+	if (gethomedir(home,sizeof(home)-1) == 0) {
+		sprintf(temp,"%s/.sd.conf",home);
+		if (access(temp,0) == 0) {
+			if (_getcfg(temp,dest,what) == 0)
+				return;
+		}
+	}
+
+	if (access("/etc/sd.conf",0) == 0) {
+		if (_getcfg("/etc/sd.conf",dest,what) == 0)
+			return;
+	}
+
+#ifdef SOLARD_PREFIX
+	sprintf(dest,"%s/%s",SOLARD_PREFIX,what);
+	return;
+#endif
+
+	/* Am I root? */
+	if (getuid() == 0) {
+		if (strcmp(what,"bin") == 0)
+			strcpy(dest,"/usr/local/bin");
+		else if (strcmp(what,"etc") == 0)
+			strcpy(dest,"/usr/local/etc");
+		else if (strcmp(what,"lib") == 0)
+			strcpy(dest,"/usr/local/lib");
+		else if (strcmp(what,"log") == 0)
+			strcpy(dest,"/var/log");
+		else {
+			printf("error: _getpath: no path set for: %s\n", what);
+			dest = ".";
+		}
+		return;
+
+	/* Not root */
+	} else {
+		sprintf(dest,"%s/%s",home,what);
+		return;
+	}
+	printf("error: _getpath: no path set for: %s\n", what);
+	dest = ".";
+}
+
 int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_opts) {
 	/* std command-line opts */
 	static char logfile[256];
@@ -132,6 +213,14 @@ int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_op
 	/* Re-open log */
 	log_open(ident,file,log_opts);
 
+	/* Get paths */
+	*SOLARD_BINDIR = *SOLARD_ETCDIR = *SOLARD_LIBDIR = *SOLARD_LOGDIR = 0;
+	_getpath(SOLARD_BINDIR,"bin");
+	_getpath(SOLARD_ETCDIR,"etc");
+	_getpath(SOLARD_LIBDIR,"lib");
+	_getpath(SOLARD_LOGDIR,"log");
+
+	dprintf(1,"BINDIR: %s, ETCDIR: %s, LIBDIR: %s, LOGDIR: %s\n", SOLARD_BINDIR, SOLARD_ETCDIR, SOLARD_LIBDIR, SOLARD_LOGDIR);
 
 	return 0;
 }

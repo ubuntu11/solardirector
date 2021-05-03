@@ -23,7 +23,7 @@ LICENSE file in the root directory of this source tree.
 
 struct http_session {
 	int fd;
-	char target[SOLARD_AGENT_TARGET_LEN+1];
+	char target[SOLARD_TARGET_LEN+1];
 	char username[32];
 	char password[64];
 	int port;
@@ -52,7 +52,7 @@ static void *http_new(void *conf, void *target, void *topts) {
 
 	p = strchr((char *)target,':');
 	if (p) *p = 0;
-	strncat(s->target,(char *)target,SOLARD_AGENT_TARGET_LEN);
+	strncat(s->target,(char *)target,SOLARD_TARGET_LEN);
 	if (p) {
 		p++;
 		s->port = atoi(p);

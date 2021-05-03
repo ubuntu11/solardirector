@@ -36,13 +36,14 @@ struct _cfg_section {
 	list items;
 };
 typedef struct _cfg_section CFG_SECTION;
-typedef struct _cfg_section cfg_section;
+typedef struct _cfg_section cfg_section_t;
 #define CFG_SECTION_SIZE sizeof(struct _cfg_section)
 
 /* Define the cfg info structure */
 struct _cfg_info {
 	char filename[256];	/* Filename */
 	list sections;		/* Section list */
+	int dirty;		/* A section or item has been updated */
 };
 typedef struct _cfg_info CFG_INFO;
 //typedef struct _cfg_info cfg_info;
@@ -96,6 +97,8 @@ int cfg_get_tab(CFG_INFO *,struct cfg_proctab *);
 int cfg_set_tab(CFG_INFO *,struct cfg_proctab *,int);
 void cfg_disp_tab(struct cfg_proctab *,char *,int);
 struct cfg_proctab *cfg_combine_tabs(struct cfg_proctab *,struct cfg_proctab *);
+
+#define cfg_is_dirty(c) ((c->dirty) != 0)
 
 #ifdef __cplusplus
 }

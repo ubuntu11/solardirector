@@ -8,6 +8,8 @@ LICENSE file in the root directory of this source tree.
 
 #include "jk.h"
 
+char *jk_version_string = "1.0";
+
 void *jk_new(void *conf, void *driver, void *driver_handle) {
 	jk_session_t *s;
 
@@ -30,6 +32,8 @@ int jk_open(void *handle) {
 	int r;
 
 	dprintf(3,"s: %p\n", s);
+	if (!s) return 1;
+	dprintf(3,"open: %d\n", solard_check_state(s,BATTERY_STATE_OPEN));
 
 	r = 0;
 	if (!solard_check_state(s,BATTERY_STATE_OPEN)) {
@@ -49,6 +53,9 @@ int jk_close(void *handle) {
 	int r;
 
 	dprintf(3,"s: %p\n", s);
+	if (!s) return 1;
+	dprintf(3,"open: %d\n", solard_check_state(s,BATTERY_STATE_OPEN));
+
 	r = 0;
 	if (solard_check_state(s,BATTERY_STATE_OPEN)) {
 		if (s->tp->close(s->tp_handle) == 0)
@@ -81,14 +88,14 @@ int main(int argc, char **argv) {
 		OPTS_END
 	};
 	solard_agent_t *ap;
-        char *args[] = { "t2", "-d", "9", "-c", "pack_01.conf" };
+#if 1
+        char *args[] = { "t2", "-d", "5", "-c", "jktest.conf" };
         #define nargs (sizeof(args)/sizeof(char *))
+	argv = args;
+	argc = nargs;
+#endif
 
-//	jk_driver.read = 0;
-//	jk_driver.info = 0;
-
-//	ap = agent_init(argc,argv,opts,&jk_driver);
-	ap = agent_init(nargs,args,opts,&jk_driver);
+	ap = agent_init(argc,argv,opts,&jk_driver);
 	dprintf(1,"ap: %p\n",ap);
 	if (!ap) return 1;
 //	ap->interval = 5;

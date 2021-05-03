@@ -25,7 +25,6 @@ enum INVERTER_TYPE {
 };
 
 struct solard_inverter {
-	char id[INVERTER_ID_LEN];
 	char name[INVERTER_NAME_LEN];
 	enum INVERTER_TYPE type;
 	float system_voltage;		/* System nominal voltage (48, 400, whatever) */

@@ -39,6 +39,9 @@ struct can_frame {
 #include "state.h"
 #include "mqtt.h"
 
+#define SOLARD_ID_LEN		38
+#define SOLARD_NAME_LEN		32
+#define SOLARD_ROLE_LEN		16
 #define SOLARD_TRANSPORT_LEN	32
 #define SOLARD_TARGET_LEN	64
 #define SOLARD_TOPTS_LEN	32
@@ -52,6 +55,7 @@ int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_op
 #define SOLARD_ROLE_CONTROLLER	"Controller"
 #define SOLARD_ROLE_BATTERY	"Battery"
 #define SOLARD_ROLE_INVERTER	"Inverter"
+#define SOLARD_ROLE_PRODUCER	"Producer"
 #define SOLARD_ROLE_CONSUMER	"Consumer"
 
 #define SOLARD_FUNC_INFO	"Info"
@@ -80,5 +84,7 @@ struct solard_power {
 	float total;
 };
 typedef struct solard_power solard_power_t;
+
+extern char SOLARD_BINDIR[], SOLARD_ETCDIR[], SOLARD_LIBDIR[], SOLARD_LOGDIR[];
 
 #endif

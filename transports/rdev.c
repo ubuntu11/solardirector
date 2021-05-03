@@ -29,7 +29,7 @@ LICENSE file in the root directory of this source tree.
 
 struct rdev_session {
 	int fd;
-	char target[SOLARD_AGENT_TARGET_LEN];
+	char target[SOLARD_TARGET_LEN];
 	int port;
 	char name[DEVSERVER_NAME_LEN];
 	char type[DEVSERVER_TYPE_LEN];
@@ -80,7 +80,7 @@ static int rdev_open(void *handle) {
 	struct hostent *he;
 	uint8_t status;
 	int bytes;
-	char temp[SOLARD_AGENT_TARGET_LEN];
+	char temp[SOLARD_TARGET_LEN];
 	uint8_t *ptr;
 	uint16_t control;
 

@@ -10,13 +10,13 @@ LICENSE file in the root directory of this source tree.
 #include "agent.h"
 
 struct inverter_session {
-	char id[INVERTER_ID_LEN];
 	char name[INVERTER_NAME_LEN];
 	solard_agent_t *ap;
 	solard_module_t *driver;
 	void *handle;
 	uint16_t state;
 	solard_inverter_t info;
+	int count;
 };
 typedef struct inverter_session inverter_session_t;
 
@@ -24,9 +24,11 @@ static int inverter_init(void *conf, char *section_name) {
 	return 0;
 }
 
-static int inverter_get_config(inverter_session_t *s, char *section_name) {
+static int inverter_get_config(inverter_session_t *s) {
 	solard_inverter_t *inv = &s->info;
+	char *section_name = s->ap->section_name;
 	struct cfg_proctab tab[] = {
+		{ section_name, "name", 0, DATA_TYPE_STRING,&inv->name,sizeof(inv->name)-1, s->ap->instance_name },
 		{ section_name, "system_voltage", 0, DATA_TYPE_FLOAT, &inv->system_voltage, 0, "48" },
 		{ section_name, "max_voltage", 0, DATA_TYPE_FLOAT, &inv->max_voltage, 0, 0 },
 		{ section_name, "min_voltage", 0, DATA_TYPE_FLOAT, &inv->min_voltage, 0, 0 },
@@ -41,7 +43,6 @@ static int inverter_get_config(inverter_session_t *s, char *section_name) {
 
 	cfg_get_tab(s->ap->cfg,tab);
 	if (debug >= 3) cfg_disp_tab(tab,s->name,1);
-
 	return 0;
 }
 
@@ -58,14 +59,14 @@ static void *inverter_new(void *handle, void *driver, void *driver_handle) {
 	s->driver = driver;
 	s->handle = driver_handle;
 
+	/* Get our config */
+	inverter_get_config(s);
+
 	/* Update role_data in agent conf */
 	conf->role_data = &s->info;
 
 	/* Save a copy of the name */
-	strncat(s->name,s->ap->name,sizeof(s->name)-1);
-
-	/* Get specific config */
-	inverter_get_config(s,conf->section_name);
+	strncpy(s->name,s->info.name,sizeof(s->name)-1);
 
 	return s;
 }
@@ -170,7 +171,6 @@ static void _set_state(char *name, void *dest, int len, json_value_t *v) {
 		{ "soh",DATA_TYPE_FLOAT,&inv->soh,0,0 },
 #endif
 #define INVERTER_TAB(ACTION) \
-		{ "id",DATA_TYPE_STRING,&inv->id,sizeof(inv->id)-1,0 }, \
 		{ "name",DATA_TYPE_STRING,&inv->name,sizeof(inv->name)-1,0 }, \
 		{ "type",DATA_TYPE_INT,&inv->type,0,0 }, \
 		{ "battery_voltage",DATA_TYPE_FLOAT,&inv->battery_voltage,0,0 }, \

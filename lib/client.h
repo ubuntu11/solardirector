@@ -12,16 +12,13 @@ LICENSE file in the root directory of this source tree.
 
 #include "agent.h"
 
-#define CLIENT_ID_LEN 64
-#define CLIENT_NAME_LEN 32
-
 struct solard_client {
-	char id[CLIENT_ID_LEN];
-	char name[CLIENT_NAME_LEN];
+	char id[SOLARD_ID_LEN];			/* Same as MQTT ClientID */
+	char name[SOLARD_NAME_LEN];		/* Client name */
 	mqtt_session_t *m;
-//	pthread_mutex_t lock;
 	list messages;
 	cfg_info_t *cfg;
+	char section_name[CFG_SECTION_NAME_SIZE];
 	char data[262144];
 };
 typedef struct solard_client solard_client_t;

@@ -29,7 +29,7 @@ struct serial_session {
 #else
 	int fd;
 #endif
-	char target[SOLARD_AGENT_TARGET_LEN+1];
+	char target[SOLARD_TARGET_LEN+1];
 	int speed,data,stop,parity,vmin,vtime;
 #if USE_BUFFER
 	buffer_t *buffer;

@@ -27,22 +27,22 @@ LICENSE file in the root directory of this source tree.
 #include "debug.h"
 
 CFG_INFO *cfg_create(char *filename) {
-	CFG_INFO *cfg_info;
+	cfg_info_t *info;
 
 	/* Allocate memory for the new cfg_info */
-	cfg_info = (CFG_INFO *) malloc(CFG_INFO_SIZE);
-	if (!cfg_info) {
+	info = (CFG_INFO *) calloc(1,CFG_INFO_SIZE);
+	if (!info) {
 		return 0;
 	}
 
 	/* Save filename */
-	strcpy(cfg_info->filename,filename);
+	strcpy(info->filename,filename);
 
 	/* Create the sections list */
-	cfg_info->sections = list_create();
+	info->sections = list_create();
 
 	/* Return the new cfg_info */
-	return cfg_info;
+	return info;
 }
 
 CFG_SECTION *cfg_create_section(CFG_INFO *info,char *name) {
@@ -50,12 +50,15 @@ CFG_SECTION *cfg_create_section(CFG_INFO *info,char *name) {
 	register char *ptr;
 	register int x;
 
+	memset(&newsec,0,sizeof(newsec));
 
-	/* Add the name and create the lists */
-	newsec.name[0] = x = 0;
-	for(ptr=name; *ptr != 0 && x < sizeof(newsec.name); ptr++)
-		newsec.name[x++] = toupper(*ptr);
-	newsec.name[x] = 0;
+	/* Name can be null */
+	if (name) {
+		newsec.name[0] = x = 0;
+		for(ptr=name; *ptr != 0 && x < sizeof(newsec.name); ptr++)
+			newsec.name[x++] = toupper(*ptr);
+		newsec.name[x] = 0;
+	}
 	newsec.items = list_create();
 
 	/* Add the new section to the cfg_info */
@@ -112,7 +115,7 @@ char *cfg_get_item(CFG_INFO *info,char *section_name,char *keyword) {
 	register int x;
 
 	if (!info) return 0;
-	dprintf(DLEVEL,"cfg_get_item: section name: %s, keyword: %s", section_name,keyword);
+	dprintf(DLEVEL,"section name: %s, keyword: %s", section_name,keyword);
 
 	/* Get the section */
 	section = cfg_get_section(info,section_name);
@@ -258,6 +261,7 @@ int cfg_set_item(CFG_INFO *info, char *sname, char *iname, char *desc, char *iva
 		}
 		list_add(section->items,&newitem,CFG_ITEM_SIZE);
 	}
+	info->dirty = 1;
 
 	return 0;
 }
@@ -359,7 +363,10 @@ CFG_INFO *cfg_read(char *filename) {
 	}
 
 	/* Ensure we set section to null */
-	section = 0;
+//	section = 0;
+
+	/* Create a null section */
+	section = cfg_create_section(cfg_info,0);
 
 	/* Read all lines */
 	desc[0] = 0;
@@ -495,7 +502,6 @@ int cfg_get_tab(CFG_INFO *info, struct cfg_proctab *tab) {
 	return 0;
 }
 
-#if 0
 int cfg_set_tab(CFG_INFO *info, struct cfg_proctab *tab, int empty) {
 	struct cfg_proctab *ent;
 	char temp[4096];
@@ -510,7 +516,6 @@ int cfg_set_tab(CFG_INFO *info, struct cfg_proctab *tab, int empty) {
 	}
 	return 0;
 }
-#endif
 
 void cfg_disp_tab(struct cfg_proctab *tab, char *name, int logopt) {
 	char temp[1024],stemp[CFG_SECTION_NAME_SIZE],format[32];
@@ -644,8 +649,10 @@ int cfg_write(CFG_INFO *info) {
 	/* For each section, write the items out */
 	list_reset(info->sections);
 	while( (section = list_get_next(info->sections)) != 0) {
+		if (!list_count(section->items)) continue;
+
 		/* Write the section name */
-		fprintf(fp,"[%s]\n",section->name);
+		if (strlen(section->name)) fprintf(fp,"[%s]\n",section->name);
 
 		/* Write the section's data */
 		list_reset(section->items);
@@ -658,9 +665,10 @@ int cfg_write(CFG_INFO *info) {
 		}
 
 		/* Write a blank line to end the section */
-		fprintf(fp,"\n");
+		if (strlen(section->name)) fprintf(fp,"\n");
 	}
 	fclose(fp);
 
+	info->dirty = 0;
 	return 0;
 }

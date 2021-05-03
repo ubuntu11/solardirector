@@ -80,11 +80,17 @@ int find_config_file(char *,char *,int);
 int log_open(char *,char *,int);
 int log_read(char *,int);
 int log_write(int,char *,...);
+#define log_info(args...) log_write(LOG_INFO,args)
 int log_debug(char *,...);
 void log_close(void);
 void log_writeopts(void);
 char *log_nextname(void);
 
 #define lprintf(mask, format, args...) log_write(mask,format,## args)
+
+int solard_exec(char *, char *[], char *,int);
+int solard_get_path(char *prog, char *dest, int dest_len);
+void tmpdir(char *, int);
+int gethomedir(char *dest, int dest_len);
 
 #endif

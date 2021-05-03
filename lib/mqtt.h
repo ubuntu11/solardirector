@@ -19,7 +19,7 @@ typedef struct mqtt_session mqtt_session_t;
 #define MQTT_HOST_LEN 64
 #define MQTT_USER_LEN 32
 #define MQTT_PASS_LEN 32
-#define MQTT_CLIENTID_LEN 16
+#define MQTT_CLIENTID_LEN 64
 
 struct mqtt_config {
 	char host[MQTT_HOST_LEN];

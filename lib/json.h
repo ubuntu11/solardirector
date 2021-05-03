@@ -123,6 +123,7 @@ char *json_get_string(json_value_t *,char *);
 double json_get_number(json_value_t *,char *);
 int json_get_boolean(json_value_t *,char *);
 json_value_t *json_get_value(json_value_t *,char *);
+void json_conv_value(enum DATA_TYPE, void *, int, json_value_t *);
 
 int json_array_add_string(json_value_t *,char *);
 int json_array_add_strings(json_value_t *,char *);
@@ -134,8 +135,8 @@ int json_array_add_descriptor(json_value_t *,json_descriptor_t);
 int json_tostring(json_value_t *,char *,int,int);
 char *json_dumps(json_value_t *,int);
 int json_dumps_r(json_value_t *,char *,int);
-const char  *   json_string (const JSON_Value *value);
-void        json_free_serialized_string(char *string);
+const char *json_string (const JSON_Value *value);
+void json_free_serialized_string(char *string);
 #define json_free_string(s) json_free_serialized_string(s)
 
 json_value_t *json_from_tab(json_proctab_t *);

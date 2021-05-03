@@ -25,6 +25,9 @@ void *jbd_new(void *conf, void *transport, void *transport_handle) {
 	s->tp = transport;
 	s->tp_handle = transport_handle;
 
+	/* Save a copy of the name */
+	strcpy(s->name,((solard_agent_t *)conf)->instance_name);
+
 	return s;
 }
 

@@ -16,6 +16,7 @@ LICENSE file in the root directory of this source tree.
 #include "state.h"
 
 struct jbd_session {
+	char name[SOLARD_NAME_LEN];	/* Our instance name (from battery) */
 	solard_agent_t *conf;		/* Our config */
 	solard_module_t *tp;		/* Our transport */
 	void *tp_handle;		/* Our transport handle */

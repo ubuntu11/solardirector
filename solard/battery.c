@@ -9,27 +9,12 @@ LICENSE file in the root directory of this source tree.
 
 #include "solard.h"
 
-solard_battery_t *find_pack_by_id(solard_config_t *conf, char *id) {
-	solard_battery_t *pp;
-
-	dprintf(7,"id: %s\n", id);
-	list_reset(conf->packs);
-	while((pp = list_get_next(conf->packs)) != 0) {
-		if (strcmp(pp->id,id) == 0) {
-			dprintf(7,"found!\n");
-			return pp;
-		}
-	}
-	dprintf(7,"NOT found!\n");
-	return 0;
-}
-
 solard_battery_t *find_pack_by_name(solard_config_t *conf, char *name) {
 	solard_battery_t *pp;
 
 	dprintf(7,"name: %s\n", name);
-	list_reset(conf->packs);
-	while((pp = list_get_next(conf->packs)) != 0) {
+	list_reset(conf->batteries);
+	while((pp = list_get_next(conf->batteries)) != 0) {
 		if (strcmp(pp->name,name) == 0) {
 			dprintf(7,"found!\n");
 			return pp;
@@ -39,7 +24,7 @@ solard_battery_t *find_pack_by_name(solard_config_t *conf, char *name) {
 	return 0;
 }
 
-int sort_packs(void *i1, void *i2) {
+int sort_batteries(void *i1, void *i2) {
 	solard_battery_t *p1 = (solard_battery_t *)i1;
 	solard_battery_t *p2 = (solard_battery_t *)i2;
 	int val;
@@ -59,18 +44,16 @@ void getpack(solard_config_t *conf, char *name, char *data) {
 	solard_battery_t bat,*pp = &bat;
 
 	battery_from_json(&bat,data);
-	battery_dump(&bat,3);
+//	battery_dump(&bat,3);
 	solard_set_state((&bat),BATTERY_STATE_UPDATED);
 	time(&bat.last_update);
 
-	pp = 0;
-	if (strlen(bat.id)) pp = find_pack_by_id(conf,bat.id);
-	if (!pp) pp = find_pack_by_name(conf,bat.name);
+	pp = find_pack_by_name(conf,bat.name);
 	if (!pp) {
 		dprintf(7,"adding pack...\n");
-		list_add(conf->packs,&bat,sizeof(bat));
-		dprintf(7,"sorting packs...\n");
-		list_sort(conf->packs,sort_packs,0);
+		list_add(conf->batteries,&bat,sizeof(bat));
+		dprintf(7,"sorting batteries...\n");
+		list_sort(conf->batteries,sort_batteries,0);
 	} else {
 		dprintf(7,"updating pack...\n");
 		memcpy(pp,&bat,sizeof(bat));

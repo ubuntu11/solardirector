@@ -31,7 +31,34 @@ enum JBD_PARM_DT {
 	JBD_PARM_DT_DSGOC2DELAY,
 	JBD_PARM_DT_HCOVPDELAY,
 	JBD_PARM_DT_HCUVPDELAY,
+	JBD_PARM_DT_MAX
 };
+
+static char *parmtypes[] = {
+	"unknown",
+	"int",
+	"float",
+	"string",
+	"temp",
+	"date",
+	"discharge rate",
+	"function",
+	"ntc",
+	"byte 0",
+	"byte 1",
+	"double",
+	"scval",
+	"scdelay",
+	"DSGOC2",
+	"DSGOC2DELAY",
+	"HCOVPDELAY",
+	"HCUVPDELAY",
+};
+
+static char *parm_typestr(int dt) {
+	if (dt < 0 || dt >= JBD_PARM_DT_MAX) return "invalid";
+	return parmtypes[dt];
+}
 
 /* Selection values */
 static int dsgoc2_vals[] = { 8,11,14,17,19,22,25,28,31,33,36,39,42,44,47,50 };
@@ -341,7 +368,7 @@ static void jbd_get_config(jbd_session_t *s, struct jbd_params *pp, json_descrip
 	float fval;
 	int i,ival;
 
-	dprintf(1,"label: %s, dt: %d\n", pp->label, pp->dt);
+	dprintf(1,"label: %s, dt: %d (%s)\n", pp->label, pp->dt, parm_typestr(pp->dt));
 	dprintf(1,"dp: name: %s, unit: %s, scale: %f\n", dp->name, dp->units, dp->scale);
 
 	temp[0] = 0;
@@ -387,6 +414,7 @@ static void jbd_get_config(jbd_session_t *s, struct jbd_params *pp, json_descrip
 		break;
 	case JBD_PARM_DT_FUNC:
 		val = jbd_getshort(data);
+		dprintf(1,"val: %04x\n", val);
 		str[0] = 0;
 		if (val & JBD_FUNC_SWITCH) _addstr(str,"Switch");
 		if (val & JBD_FUNC_SCRL)  _addstr(str,"SCRL");
@@ -470,7 +498,7 @@ static void jbd_get_config(jbd_session_t *s, struct jbd_params *pp, json_descrip
 		sprintf(temp,"unhandled switch for: %d",pp->dt);
 		break;
 	}
-	sprintf(topic,"%s/%s/%s/%s/%s",SOLARD_TOPIC_ROOT,SOLARD_ROLE_BATTERY,s->conf->name,SOLARD_FUNC_CONFIG,pp->label);
+	sprintf(topic,"%s/%s/%s/%s/%s",SOLARD_TOPIC_ROOT,SOLARD_ROLE_BATTERY,s->name,SOLARD_FUNC_CONFIG,pp->label);
 	dprintf(1,"topic: %s, temp: %s\n", topic, temp);
 	mqtt_pub(s->conf->m,topic,temp,1);
 }
@@ -521,6 +549,7 @@ static int jbd_set_config(jbd_session_t *s, uint8_t *data, struct jbd_params *pp
 		break;
 	case JBD_PARM_DT_FUNC:
 		val = 0;
+		dprintf(1,"sval: %s\n", req->sval);
 		for(i=0; i < 99; i++) {
 			p = strele(i,",",req->sval);
 			if (!strlen(p)) break;
@@ -787,7 +816,7 @@ int jbd_config(void *handle, char *op, char *id, list lp) {
 jbd_config_error:
         jbd_eeprom_end(s);
 	/* If the agent is jbd_control, dont send status */
-	if (strcmp(id,"jbd_control")!=0) agent_send_status(s->conf, s->conf->name, "Config", op, id, status, message);
+	if (strcmp(id,"jbd_control")!=0) agent_send_status(s->conf, s->name, "Config", op, id, status, message);
 	dprintf(1,"used: %ld\n", mem_used() - start);
 	return status;
 }

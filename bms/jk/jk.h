@@ -56,7 +56,7 @@ int jk_config_add_params(json_object_t *);
 //int jk_can_get_info(jk_session_t *s,jk_info_t *info);
 //int jk_std_get_info(jk_session_t *s,jk_info_t *info);
 //int jk_get_info(void *handle,jk_info_t *info);
-char *jk_info(void *handle);
+json_value_t *jk_info(void *handle);
 
 /* Control */
 int jk_control(void *handle,...);

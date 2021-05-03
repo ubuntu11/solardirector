@@ -9,21 +9,6 @@ LICENSE file in the root directory of this source tree.
 
 #include "cellmon.h"
 
-solard_battery_t *find_pack_by_id(cellmon_config_t *conf, char *id) {
-	solard_battery_t *pp;
-
-	dprintf(1,"id: %s\n", id);
-	list_reset(conf->packs);
-	while((pp = list_get_next(conf->packs)) != 0) {
-		if (strcmp(pp->id,id) == 0) {
-			dprintf(1,"found!\n");
-			return pp;
-		}
-	}
-	dprintf(1,"NOT found!\n");
-	return 0;
-}
-
 solard_battery_t *find_pack_by_name(cellmon_config_t *conf, char *name) {
 	solard_battery_t *pp;
 
@@ -63,9 +48,7 @@ void getpack(cellmon_config_t *conf, char *name, char *data) {
 	solard_set_state((&bat),BATTERY_STATE_UPDATED);
 	time(&bat.last_update);
 
-	pp = 0;
-	if (strlen(bat.id)) pp = find_pack_by_id(conf,bat.id);
-	if (!pp) pp = find_pack_by_name(conf,bat.name);
+	pp = find_pack_by_name(conf,bat.name);
 	if (!pp) {
 		dprintf(1,"adding pack...\n");
 		list_add(conf->packs,&bat,sizeof(bat));

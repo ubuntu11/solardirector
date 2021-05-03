@@ -9,27 +9,12 @@ LICENSE file in the root directory of this source tree.
 
 #include "solard.h"
 
-static solard_inverter_t *find_by_id(solard_config_t *conf, char *id) {
-	solard_inverter_t *inv;
-
-	dprintf(7,"id: %s\n", id);
-	list_reset(conf->packs);
-	while((inv = list_get_next(conf->packs)) != 0) {
-		if (strcmp(inv->id,id) == 0) {
-			dprintf(7,"found!\n");
-			return inv;
-		}
-	}
-	dprintf(7,"NOT found!\n");
-	return 0;
-}
-
 static solard_inverter_t *find_by_name(solard_config_t *conf, char *name) {
 	solard_inverter_t *inv;
 
 	dprintf(7,"name: %s\n", name);
-	list_reset(conf->packs);
-	while((inv = list_get_next(conf->packs)) != 0) {
+	list_reset(conf->inverters);
+	while((inv = list_get_next(conf->inverters)) != 0) {
 		if (strcmp(inv->name,name) == 0) {
 			dprintf(7,"found!\n");
 			return inv;
@@ -63,9 +48,7 @@ void getinv(solard_config_t *conf, char *name, char *data) {
 	solard_set_state((&inverter),BATTERY_STATE_UPDATED);
 //	time(&inverter.last_update);
 
-	inv = 0;
-	if (strlen(inverter.id)) inv = find_by_id(conf,inverter.id);
-	if (!inv) inv = find_by_name(conf,inverter.name);
+	inv = find_by_name(conf,inverter.name);
 	if (!inv) {
 		dprintf(7,"adding inv...\n");
 		list_add(conf->inverters,&inverter,sizeof(inverter));

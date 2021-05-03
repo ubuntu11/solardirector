@@ -162,7 +162,7 @@ int jbd_control(void *handle,char *op, char *id, json_value_t *actions) {
 
 jbd_control_error:
 	jbd_eeprom_end(s);
-	agent_send_status(s->conf, s->conf->name, "Control", op, id, status, message);
+	agent_send_status(s->conf, s->name, "Control", op, id, status, message);
 	dprintf(1,"returning: %d\n", status);
 	return status;
 }
