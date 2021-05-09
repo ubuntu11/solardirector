@@ -17,32 +17,35 @@ int smanet_command(smanet_session_t *s, int cmd, smanet_packet_t *p, uint8_t *bu
 	if (!p) return 1;
 	if (cmd <= 0 || cmd > 60) return 1;
 
+	r = 0;
 	count = 0;
 	s->timeouts = 0;
 	control = s->dest ? 0 : 0x80;
 	while(1) {
 		s->commands++;
 		if (smanet_send_packet(s,s->src,s->dest,control,count,cmd,buf,buflen)) return 1;
+		/* Optimized for 19200 */
 		usleep(550000);
 		r = smanet_recv_packet(s,count,cmd,p,0);
 		dprintf(1,"r: %d\n", r);
-		if (r < 0) return 1;
-		if (r == 1) return 1;
+		if (r < 0) break;
+		if (r == 1) break;
 		if (r == 2) {
 			s->timeouts++;
-			if (s->timeouts > 4) return 2;
+			if (s->timeouts > 4) break;
 			continue;
 		}
 		if (r == 3) continue;
 		if (!p->response) continue;
+		s->timeouts = 0;
 		dprintf(1,"p->command: %02x, cmd: %02x\n", p->command, cmd);
 		if (p->command != cmd) continue;
 		count = p->count;
 		dprintf(1,"count: %d\n",count);
 		if (!count) break;
 	}
-	dprintf(1,"returning: %d\n", 0);
-	return 0;
+	dprintf(1,"returning: %d\n", r);
+	return r;
 }
 
 int smanet_get_net_start(smanet_session_t *s, long *sn, char *type, int typesz) {

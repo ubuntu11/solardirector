@@ -10,6 +10,8 @@ LICENSE file in the root directory of this source tree.
 #ifndef __SD_MESSAGE_H
 #define __SD_MESSAGE_H
 
+#include "mqtt.h"
+
 enum SOLARD_MESSAGE_TYPE {
 	SOLARD_MESSAGE_DATA,
 	SOLARD_MESSAGE_STATUS,

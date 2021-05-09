@@ -58,8 +58,11 @@ int solard_write_config(solard_config_t *conf) {
 		if (!conf->c->cfg) return 1;
 	}
 
+
+	sprintf(temp,"%d",list_count(conf->agents));
+	dprintf(1,"count temp: %s\n",temp);
+	cfg_set_item(conf->c->cfg, "agents", "count", 0, temp);
 	i = 0;
-	dprintf(1,"agents count: %d\n", list_count(conf->agents));
 	list_reset(conf->agents);
 	while((info = list_get_next(conf->agents)) != 0) {
 		agentinfo_setcfg(conf->c->cfg,info->id,info);
@@ -67,9 +70,7 @@ int solard_write_config(solard_config_t *conf) {
 		dprintf(1,"num temp: %s\n",temp);
 		cfg_set_item(conf->c->cfg, "agents", temp, 0, info->id);
 	}
-	sprintf(temp,"%d",list_count(conf->agents));
-	dprintf(1,"count temp: %s\n",temp);
-	cfg_set_item(conf->c->cfg, "agents", "count", 0, temp);
+
 	cfg_write(conf->c->cfg);
 	return 0;
 }
@@ -324,7 +325,7 @@ _getp_done:
 }
 
 
-static int solard_get_config(solard_config_t *s, void *pp, json_descriptor_t *dp) {
+static int solard_get_config(solard_config_t *s, json_value_t *v, char *message) {
 #if 0
 	char topic[200];
 	char temp[72];
@@ -404,183 +405,234 @@ static solard_agentinfo_t *agent_infobyname(solard_config_t *s, char *name) {
 	return 0;
 }
 
-static int solard_set_config(solard_config_t *s, json_value_t *v) {
+static int _parseinfo(solard_config_t *s, json_value_t *v, char *message, char *name, int namesz, char *dvalue, int valuesz) {
 	json_value_t *ov;
 	json_object_t *o;
-	char name[64];
-	solard_agentinfo_t *info;
-	int i,name_changed;
-	char *p,*value;
-	list lp;
+	char *p,*str;
 
+	dprintf(1,"type: %d (%s)\n", v->type, json_typestr(v->type));
+
+	/* Must be an object with 1 value and that value must be a string */
+	if (v->type != JSONObject) {
+		strcpy(message,"must be a json object");
+		return 1;
+	}
 	o = v->value.object;
 	dprintf(1,"count: %d\n", o->count);
-	for(i=0; i < o->count; i++) {
-		ov = o->values[i];
-		dprintf(1,"name: %s, type: %d (%s)\n", o->names[i], ov->type, json_typestr(ov->type));
-		if (ov->type != JSONString) return 1;
-		value = (char *)json_string(ov);
-		dprintf(1,"value: %s\n", value);
-		p = strchr(value,':');
-		if (!p) return 1;
-		*p = 0;
-		/* Need to use direct ptrs as value may contain : */
-		strncpy(name,value,sizeof(name)-1);
-		dprintf(1,"name: %s\n", name);
-		info = agent_infobyname(s,name);
-		dprintf(1,"info: %p\n", info);
-		if (!info) return 1;
-		value = p+1;
-		dprintf(1,"value: %s\n", value);
-		conv_type(DATA_TYPE_LIST,&lp,0,DATA_TYPE_STRING,value,strlen(value));
-		dprintf(1,"lp: %p\n", lp);
-		if (!lp) return 1;
-		dprintf(1,"count: %d\n", list_count(lp));
-		name_changed = 0;
-		list_reset(lp);
-		while((p = list_get_next(lp)) != 0) {
-			strncpy(name,strele(0,"=",p),sizeof(name)-1);
-			value = strele(1,"=",p);
-			dprintf(1,"name: %s, value: %s\n", name, value);
-			cfg_set_item(s->c->cfg,info->id,name,0,value);
-			if (strcmp(name,"name")==0) name_changed = 1;
+	if (o->count != 1) {
+		strcpy(message,"json object must have 1 value");
+		return 1;
+	}
+	ov = o->values[0];
+	dprintf(1,"name: %s, type: %d (%s)\n", o->names[0], ov->type, json_typestr(ov->type));
+	if (ov->type != JSONString) {
+		strcpy(message,"value must be a string");
+		return 1;
+	}
+	str = (char *)json_string(ov);
+	dprintf(1,"str: %s\n", str);
+	p = strchr(str,':');
+	if (!p) {
+		strcpy(message,"invalid format");
+		return 1;
+	}
+	*p = 0;
+	strncpy(name,str,namesz);
+	strncpy(dvalue,p+1,valuesz);
+	return 0;
+}
+
+static int solard_set_config(solard_config_t *conf, json_value_t *v, char *message) {
+	char name[64],value[128],*p,*str;
+	solard_agentinfo_t *info;
+	int name_changed;
+	list lp;
+
+	if (_parseinfo(conf,v,message,name,sizeof(name),value,sizeof(value))) return 1;
+	dprintf(1,"name: %s, value: %s\n", name, value);
+	info = agent_infobyname(conf,name);
+	dprintf(1,"info: %p\n", info);
+	if (!info) {
+		strcpy(message,"agent not found");
+		return 1;
+	}
+	conv_type(DATA_TYPE_LIST,&lp,0,DATA_TYPE_STRING,value,strlen(value));
+	dprintf(1,"lp: %p\n", lp);
+	if (!lp) {
+		strcpy(message,"key/value pairs must be comma seperated");
+		return 1;
+	}
+	dprintf(1,"count: %d\n", list_count(lp));
+	name_changed = 0;
+	list_reset(lp);
+	while((str = list_get_next(lp)) != 0) {
+		strncpy(name,strele(0,"=",str),sizeof(name)-1);
+		p = strele(1,"=",str);
+		dprintf(1,"name: %s, value: %s\n", name, p);
+		if (!strlen(name) || !strlen(p)) {
+			strcpy(message,"format is keyword=value");
+			return 1;
 		}
-		dprintf(1,"name_changed: %d\n", name_changed);
-		if (name_changed) {
-			/* if we dont manage it, then cant change the name */
-			if (!info->managed) return 1;
-			if (info->pid > 0) {
-				log_info("Killing %s/%s due to name change\n", info->role, info->name);
-				kill(info->pid,SIGTERM);
-			}
+		cfg_set_item(conf->c->cfg,info->id,name,0,p);
+		if (strcmp(name,"name")==0) name_changed = 1;
+	}
+	dprintf(1,"name_changed: %d\n", name_changed);
+	if (name_changed) {
+		/* if we dont manage it, then cant change the name */
+		if (!info->managed) {
+			strcpy(message,"agent is not managed, unable to change name");
+			return 1;
 		}
-		if (cfg_is_dirty(s->c->cfg)) {
-			/* getcfg writes sname into id, get a local copy */
-			strncpy(name,info->id,sizeof(name)-1);
-			agentinfo_getcfg(s->c->cfg,name,info);
-			solard_write_config(s);
+		if (info->pid > 0) {
+			log_info("Killing %s/%s due to name change\n", info->role, info->name);
+			kill(info->pid,SIGTERM);
 		}
+	}
+	if (cfg_is_dirty(conf->c->cfg)) {
+		/* getcfg writes sname into id, get a local copy */
+		strncpy(name,info->id,sizeof(name)-1);
+		agentinfo_getcfg(conf->c->cfg,name,info);
+		solard_write_config(conf);
 	}
 	return 0;
-#if 0
-	char temp[72];
+}
+#define INFO_TAB(SN) \
+        { SN, "agent_name", 0, DATA_TYPE_STRING,&info->agent,sizeof(info->agent), 0 }, \
+        { SN, "agent_path", 0, DATA_TYPE_STRING,&info->path,sizeof(info->path), 0 }, \
+        { SN, "agent_role", 0, DATA_TYPE_STRING,&info->role,sizeof(info->role), 0 }, \
+        { SN, "name", 0, DATA_TYPE_STRING,&info->name,sizeof(info->name), 0 }, \
+        { SN, "transport", 0, DATA_TYPE_STRING,&info->transport,sizeof(info->transport), 0 }, \
+        { SN, "target", 0, DATA_TYPE_STRING,&info->target,sizeof(info->target), 0 }, \
+        { SN, "topts", 0, DATA_TYPE_STRING,&info->topts,sizeof(info->topts), 0 }, \
+        { SN, "managed", 0, DATA_TYPE_LOGICAL,&info->managed,sizeof(info->managed),"true" }, \
+        CFG_PROCTAB_END
 
-	dprintf(1,"dp: name: %s, unit: %s, scale: %f\n", dp->name, dp->units, dp->scale);
+static int solard_add_config(solard_config_t *conf, json_value_t *v, char *message) {
+	solard_agentinfo_t newinfo,*info = &newinfo;
+	cfg_proctab_t info_tab[] = { INFO_TAB(0) },*t;
+	char name[64],value[128],key[64],*p,*str;
+	list lp;
+	int have_managed;
 
-	/* We can use any field in the union as a source or dest */
-	if (pp->source == SI_PARAM_SOURCE_INV) {
-		json_proctab_t *invp;
+	if (_parseinfo(conf,v,message,name,sizeof(name),value,sizeof(value))) return 1;
+	dprintf(1,"name: %s, value: %s\n", name, value);
 
-		/* Update the inv struct directly */
-		invp = _getinv(s,pp->name);
-		conv_type(invp->type,invp->ptr,0,req->type,&req->sval,0);
-
-		/* ALSO update this value in our config file */
-		conv_type(DATA_TYPE_STRING,temp,sizeof(temp)-1,req->type,&req->sval,0);
-		cfg_set_item(s->ap->cfg,s->ap->section_name,invp->field,"",temp);
-		cfg_write(s->ap->cfg);
-	} else { 
-		smanet_value_t v;
-
-		/* Update the SI */
-		dprintf(1,"pp->type: %s\n", typestr(pp->type));
-		if (pp->type == DATA_TYPE_STRING) {
-			smanet_channel_t *c;
-			int val;
-
-			c = smanet_get_channelbyname(s->smanet, req->name);
-			if (!c) return 1;
-			val = smanet_get_optionval(s->smanet,c,req->sval);
-			if (val < 0) return 1;
-			v.type = DATA_TYPE_BYTE;
-			v.bval = val;
-		} else {
-			v.type = pp->type;
-			conv_type(pp->type,&v.bval,0,req->type,&req->bval,0);
+	conv_type(DATA_TYPE_LIST,&lp,0,DATA_TYPE_STRING,value,strlen(value));
+	dprintf(1,"lp: %p\n", lp);
+	if (!lp) return 1;
+	dprintf(1,"count: %d\n", list_count(lp));
+	memset(&newinfo,0,sizeof(newinfo));
+	strncpy(newinfo.agent,name,sizeof(newinfo.agent)-1);
+	have_managed = 0;
+	list_reset(lp);
+	while((str = list_get_next(lp)) != 0) {
+		p = strchr(str,'=');
+		if (!p) continue;
+		*p++ = 0;
+		strncpy(key,str,sizeof(key)-1);
+//		dprintf(1,"key: %s, value: %s\n", key, p);
+		if (strcmp(key,"managed")==0) have_managed = 1;
+		for(t=info_tab; t->keyword; t++) {
+//			dprintf(1,"keyword: %s\n", t->keyword);
+			if (strcmp(t->keyword,key) == 0) {
+//				dprintf(1,"found!\n");
+				conv_type(t->type,t->dest,t->dlen,DATA_TYPE_STRING,p,strlen(p));
+				break;
+			}
 		}
-		smanet_set_valuebyname(s->smanet,pp->name,&v);
 	}
-	/* Re-get the param to update internal vars and publish */
-	return solard_get_config(s,_getp(s,dp->name),dp);
-#endif
+	list_destroy(lp);
+	if (!strlen(newinfo.name)) strncpy(newinfo.name,name,sizeof(newinfo.name)-1);
+	/* Default to managed if not specified */
+	if (!have_managed) info->managed = 1;
+	agentinfo_newid(&newinfo);
+	if (agentinfo_add(conf,&newinfo)) return 1;
+	solard_write_config(conf);
+	return 0;
+}
+
+static int _dodel(solard_config_t *conf, char *name, char *message) {
+	solard_agentinfo_t *info;
+
+	info = agent_infobyname(conf,name);
+	if (!info) {
+		strcpy(message,"agent not found");
+		return 1;
+	}
+	return 1;
+}
+
+static int solard_del_config(solard_config_t *conf, json_value_t *v, char *message) {
+	json_object_t *o;
+	json_array_t *a;
+	int i;
+	char *str;
+
+	dprintf(1,"type: %d (%s)\n", v->type, json_typestr(v->type));
+
+	switch(v->type) {
+	case JSONObject:
+		o = v->value.object;
+		dprintf(1,"count: %d\n", o->count);
+		for(i=0; i < o->count; i++) if (solard_del_config(conf,o->values[i],message)) return 1;
+		break;
+	case JSONArray:
+		a = v->value.array;
+		dprintf(1,"count: %d\n", a->count);
+		for(i=0; i < a->count; i++) if (solard_del_config(conf,a->items[i],message)) return 1;
+		break;
+	case JSONString:
+		str = (char *)json_string(v);
+		if (_dodel(conf,str,message)) return 1;
+		break;
+	default:
+		dprintf(1,"unhandled type!");
+		strcpy(message,"unhandled type");
+		return 1;
+	}
+	return 0;
+}
+
+int solard_send_status(solard_config_t *conf, char *func, char *action, char *id, int status, char *message) {
+	char topic[200],msg[4096];
+	json_value_t *o;
+
+	dprintf(1,"func: %s, action: %s, id: %s, status: %d, message: %s\n", func, action, id, status, message);
+
+	o = json_create_object();
+	json_add_number(o,"status",status);
+	json_add_string(o,"message",message);
+	json_tostring(o,msg,sizeof(msg)-1,0);
+	json_destroy(o);
+	/* /root/role/name/func/op/Status/id */
+	sprintf(topic,"%s/%s/%s/%s/Status/%s",SOLARD_TOPIC_ROOT,SOLARD_ROLE_CONTROLLER,func,action,id);
+	dprintf(1,"topic: %s\n", topic);
+	return mqtt_pub(conf->c->m,topic,msg,0);
 }
 
 int solard_config(solard_config_t *conf, solard_message_t *msg) {
 	json_value_t *v;
-	json_object_t *o;
-	int i;
-	json_descriptor_t *dp;
-	void *pp;
-
-	v = json_parse(msg->data);
-	if (!v) return 1;
-	pp = 0;
-	dp = 0;
-	if (strcmp(msg->action,"Get") == 0) {
-		if (solard_get_config(conf,pp,dp)) return 1;
-	} else if (strcmp(msg->action,"Set") == 0) {
-		dprintf(1,"type: %d (%s)\n", v->type, json_typestr(v->type));
-		if (solard_set_config(conf,v)) return 1;
-	} else if (strcmp(msg->action,"Add") == 0) {
-		dprintf(1,"type: %d (%s)\n", v->type, json_typestr(v->type));
-		/* Must be an object */
-		if (v->type != JSONObject) return 1;
-		o = v->value.object;
-		for(i=0; i < o->count; i++) {
-			dprintf(1,"name[%d]: %s\n", i, o->names[i]);
-			add_agent(conf,o->names[i],o->values[i]);
-		}
-	}
-	json_destroy(v);
-#if 0
-	solard_config_t *conf = handle;
-	void *pp;
-	char message[128],*p;
+	char message[128];
 	int status;
 	long start;
 
-	dprintf(1,"op: %s\n", op);
+	start = mem_used();
 
 	status = 1;
-
-	start = mem_used();
-	list_reset(lp);
-	if (strcmp(op,"Get") == 0) {
-		while((p = list_get_next(lp)) != 0) {
-			dprintf(1,"p: %s\n", p);
-			sprintf(message,"%s: not found",p);
-#if 0
-			pp = _getp(conf,p);
-			if (!pp) goto solard_config_error;
-			dprintf(1,"pp: name: %s, type: %d\n", pp->name, pp->type);
-			dp = _getd(conf,p);
-			if (!dp) goto solard_config_error;
-			dprintf(1,"dp: name: %s, unit: %s, scale: %f\n", dp->name, dp->units, dp->scale);
-			if (solard_get_config(s,pp,dp)) goto solard_config_error;
-#endif
-		}
-	} else {
-		while((req = list_get_next(lp)) != 0) {
-			dprintf(1,"req: name: %s, type: %d\n", req->name, req->type);
-			dprintf(1,"req value: %s\n", req->sval);
-			sprintf(message,"%s: not found",req->name);
-#if 0
-			pp = _getp(s,req->name);
-			if (!pp) goto solard_config_error;
-			dp = _getd(s,req->name);
-			if (!dp) goto solard_config_error;
-#endif
-			if (solard_set_config(s,pp,dp,req)) goto solard_config_error;
-		}
-	}
+	v = json_parse(msg->data);
+	if (!v) return 1;
+	/* CRUD */
+	if (strcmp(msg->action,"Add") == 0 && solard_add_config(conf,v,message)) goto solard_config_error;
+	else if (strcmp(msg->action,"Get") == 0 && solard_get_config(conf,v,message)) goto solard_config_error;
+	else if (strcmp(msg->action,"Set") == 0 && solard_set_config(conf,v,message)) goto solard_config_error;
+	else if (strcmp(msg->action,"Del") == 0 && solard_del_config(conf,v,message)) goto solard_config_error;
+	json_destroy(v);
 
 	status = 0;
 	strcpy(message,"success");
 solard_config_error:
 	/* If the agent is solard_control, dont send status */
-//	if (strcmp(id,"solard_control")!=0) agent_send_status(conf->ap, s->ap->name, "Config", op, id, status, message);
+	if (strcmp(msg->id,"solard_control")!=0) solard_send_status(conf, "Config", msg->action, msg->id, status, message);
 	dprintf(1,"used: %ld\n", mem_used() - start);
 	return status;
-#endif
-	return 1;
 }

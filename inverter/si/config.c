@@ -195,6 +195,7 @@ int si_config_add_info(si_session_t *s, json_value_t *j) {
 			if (p) strncat(s->channels_path,p,sizeof(s->channels_path)-1);
 		}
 		if (!strlen(s->channels_path)) sprintf(s->channels_path,"%s/%s.dat",SOLARD_LIBDIR,s->smanet->type);
+		dprintf(1,"channels_path: %s\n", s->channels_path);
 		if (smanet_load_channels(s->smanet,s->channels_path) == 0) _addchans(s,ca);
 	}
 
@@ -310,6 +311,7 @@ si_param_t *_getp(si_session_t *s, char *name) {
 		v = smanet_get_value(s->smanet,c);
 		strncat(pinfo->name,c->name,sizeof(pinfo->name)-1);
 		pinfo->source = 2;
+		dprintf(1,"is status: %d\n", (c->mask & CH_STATUS) != 0);
 		if (c->mask & CH_STATUS) {
 			pinfo->type = DATA_TYPE_STRING;
 			smanet_get_optionbyname(s->smanet,c->name,pinfo->sval,sizeof(pinfo->sval));
@@ -352,7 +354,7 @@ static int si_get_config(si_session_t *s, si_param_t *pp, json_descriptor_t *dp)
 	dprintf(1,"dp: name: %s, unit: %s, scale: %f\n", dp->name, dp->units, dp->scale);
 
 	temp[0] = 0;
-	dprintf(1,"pp->type: %d\n", pp->type);
+	dprintf(1,"pp->type: %d (%s)\n", pp->type, typestr(pp->type));
 	switch(pp->type) {
 	case DATA_TYPE_BOOL:
 		dprintf(1,"bval: %d\n", pp->bval);
@@ -419,6 +421,10 @@ static int si_set_config(si_session_t *s, si_param_t *pp, json_descriptor_t *dp,
 		/* Update the inv struct directly */
 		invp = _getinv(s,pp->name);
 		conv_type(invp->type,invp->ptr,0,req->type,&req->sval,0);
+		log_info("%s set to %s\n", pp->name, req->sval);
+
+		/* Update our local copy of charge amps too */
+		if (strcmp(invp->field,"charge_amps")==0) s->charge_amps = *((float *)invp->ptr);
 
 		/* ALSO update this value in our config file */
 		conv_type(DATA_TYPE_STRING,temp,sizeof(temp)-1,req->type,&req->sval,0);
@@ -487,6 +493,10 @@ int si_config(void *handle, char *op, char *id, list lp) {
 			if (!dp) goto si_config_error;
 			if (si_set_config(s,pp,dp,req)) goto si_config_error;
 		}
+	}
+	{
+		solard_inverter_t *inv = s->ap->role_data;
+		dprintf(1,"charge_amps: %f\n", inv->charge_amps);
 	}
 
 	status = 0;

@@ -313,13 +313,14 @@ static int inverter_read(inverter_session_t *s) {
 		s->driver->close(s->handle);
 	}
 	dprintf(5,"%s: returning: %d\n", s->name, r);
+	/* Must be done here - in case readonly */
 	return r;
 }
 
 static int inverter_write(inverter_session_t *s) {
 	int r;
 
-	if (!s->driver->write) return 1;
+	if (!s->driver->write) return inverter_send_mqtt(s);
 
 	if (s->driver->open) {
 		dprintf(5,"%s: opening...\n", s->name);
@@ -335,8 +336,8 @@ static int inverter_write(inverter_session_t *s) {
 		s->driver->close(s->handle);
 	}
 	dprintf(5,"%s: returning: %d\n", s->name, r);
-	if (!r) inverter_send_mqtt(s);
-	return r;
+	if (!r) return inverter_send_mqtt(s);
+	else return r;
 }
 
 int inverter_control(void *handle, char *action, char *id, json_value_t *actions) {

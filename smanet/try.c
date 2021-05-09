@@ -24,19 +24,24 @@ LICENSE file in the root directory of this source tree.
 extern solard_module_t serial_module;
 extern solard_module_t rdev_module;
 
+#define CHANS "/home/steve/lib/SI6048UM.dat"
+
 int main(int argc,char **argv) {
 	int logopts = LOG_INFO|LOG_WARNING|LOG_ERROR|LOG_SYSERR|_ST_DEBUG;
 	solard_module_t *tp;
 	void *tp_handle;
-	char *args[] = { "t2", "-d", "6" };
-	#define nargs (sizeof(args)/sizeof(char *))
 	smanet_session_t *s;
 	smanet_value_t *v;
 	char temp[256];
-		smanet_channel_t *c;
+	smanet_channel_t *c;
+#if 1
+	char *args[] = { "t2", "-d", "6" };
+	#define nargs (sizeof(args)/sizeof(char *))
+	argv = args;
+	argc = nargs;
+#endif
 
-	solard_common_init(nargs,args,0,logopts);
-//	solard_common_init(argc,argv,opts,logopts);
+	solard_common_init(argc,argv,0,logopts);
 
 #if 0
 	tp = &rdev_module;
@@ -50,13 +55,19 @@ int main(int argc,char **argv) {
 	s = smanet_init(tp,tp_handle);
 	if (!s) return 1;
 
-	if (smanet_load_channels(s,"mychans.dat")) {
+	if (smanet_load_channels(s,CHANS)) {
 		dprintf(1,"getting channels...\n");
-		smanet_get_channels(s);
+		if (smanet_get_channels(s)) return 1;
 		dprintf(1,"count: %d\n", list_count(s->channels));
-		smanet_save_channels(s,"mychans.dat");
+		smanet_save_channels(s,CHANS);
 	}
 	dprintf(1,"count: %d\n", list_count(s->channels));
+	
+	c = smanet_get_channelbyname(s,"ComBaud");
+	if (!c) return 1;
+	dprintf(1,"val: %d\n", smanet_get_optionval(s,c,"19200"));
+	return 0;
+
 #if 0
 	{
 		list_reset(s->channels);
@@ -81,7 +92,7 @@ int main(int argc,char **argv) {
 	smanet_get_valuebyname(s,"SNSlv3",&v);
 	dprintf(1,"SNSlv3: %d\n", (int) smanet_get_value(&v));
 #endif
-	smanet_set_optionbyname(s,"GdManStr","Start");
+//	smanet_set_optionbyname(s,"GdManStr","Start");
 //	smanet_clear_values(s);
 //	if (smanet_get_optionbyname(s,"GnManStr",temp,sizeof(temp)-1) == 0) dprintf(1,"value: %s\n", temp);
 //	smanet_set_valuebyname(s,"GnManStr",0);

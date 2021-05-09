@@ -56,6 +56,7 @@ struct solard_inverter {
 	int errcode;			/* Inverter Error code, 0 if none */
 	char errmsg[256];		/* Inverter Error message */
 	uint16_t state;			/* Inverter State */
+	long last_update;
 };
 typedef struct solard_inverter solard_inverter_t;
 typedef struct solard_inverter inverter_t;

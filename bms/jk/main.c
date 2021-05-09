@@ -22,7 +22,11 @@ void *jk_new(void *conf, void *driver, void *driver_handle) {
 	s->tp = driver;
 	s->tp_handle = driver_handle;
 
-//	strncat(s->name,conf->bat.name,sizeof(s->name)-1);
+	/* Save a copy of our name */
+	strcpy(s->name,s->conf->instance_name);
+
+	/* If it's bluetooth, reduce read interval to 15s */
+	if (strcmp(s->tp->name,"bt")==0) s->conf->read_interval = 15;
 
 	return s;
 }
@@ -56,8 +60,10 @@ int jk_close(void *handle) {
 	if (!s) return 1;
 	dprintf(3,"open: %d\n", solard_check_state(s,BATTERY_STATE_OPEN));
 
+
 	r = 0;
-	if (solard_check_state(s,BATTERY_STATE_OPEN)) {
+	/* If it's bluetooth, dont bother closing - it's a waste of time and stability */
+	if (solard_check_state(s,BATTERY_STATE_OPEN) && strcmp(s->tp->name,"bt") != 0) {
 		if (s->tp->close(s->tp_handle) == 0)
 			solard_clear_state(s,BATTERY_STATE_OPEN);
 		else
@@ -88,8 +94,8 @@ int main(int argc, char **argv) {
 		OPTS_END
 	};
 	solard_agent_t *ap;
-#if 1
-        char *args[] = { "t2", "-d", "5", "-c", "jktest.conf" };
+#if 0
+        char *args[] = { "t2", "-d", "2", "-c", "jktest.conf" };
         #define nargs (sizeof(args)/sizeof(char *))
 	argv = args;
 	argc = nargs;
@@ -98,7 +104,6 @@ int main(int argc, char **argv) {
 	ap = agent_init(argc,argv,opts,&jk_driver);
 	dprintf(1,"ap: %p\n",ap);
 	if (!ap) return 1;
-//	ap->interval = 5;
 	agent_run(ap);
 	return 0;
 }

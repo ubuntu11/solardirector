@@ -47,6 +47,7 @@ int main(int argc,char **argv) {
 
 	if (mqtt_sub(conf->c->m,SOLARD_TOPIC_ROOT"/"SOLARD_ROLE_CONTROLLER"/"SOLARD_FUNC_CONFIG"/+/+")) return 1;
 //	if (mqtt_sub(conf->c->m,SOLARD_TOPIC_ROOT"/+/+/Info")) return 1;
+	if (mqtt_sub(conf->c->m,SOLARD_TOPIC_ROOT"/"SOLARD_ROLE_INVERTER"/+/"SOLARD_FUNC_DATA)) return 1;
 	if (mqtt_sub(conf->c->m,SOLARD_TOPIC_ROOT"/"SOLARD_ROLE_BATTERY"/+/"SOLARD_FUNC_DATA)) return 1;
 //	if (mqtt_sub(conf->c->m,SOLARD_TOPIC_ROOT"/"SOLARD_ROLE_PRODUCER"/+/"SOLARD_FUNC_DATA)) return 1;
 //	if (mqtt_sub(conf->c->m,SOLARD_TOPIC_ROOT"/"SOLARD_ROLE_CONSUMER"/+/"SOLARD_FUNC_DATA)) return 1;

@@ -231,6 +231,7 @@ static int set_interface_attribs (int fd, int speed, int data, int parity, int s
 
 	// do it
 	tcsetattr(fd, TCSANOW, &tty);
+	tcflush(fd,TCIOFLUSH);
 	return 0;
 }
 

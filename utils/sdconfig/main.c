@@ -13,12 +13,19 @@ LICENSE file in the root directory of this source tree.
 int usage(int r) {
 	return r;
 }
+static void _doconfig(solard_client_t *s, list lp, char *op, char *target, int timeout, int read_flag) {
+	register char *p,*val;
+
+	list_reset(lp);
+	while((p = list_get_next(lp)) != 0) {
+		val = client_get_config(s,op,target,p,timeout,read_flag);
+		if (val) printf("%s %s\n", p, val);
+	}
+}
 
 int main(int argc,char **argv) {
 	char topic[128],*p,*target,*action,*temp,*val;
 	solard_client_t *s;
-//	char *args[] = { "t2", "-d", "0", "-c", "sdconfig.conf" };
-//	#define nargs (sizeof(args)/sizeof(char *))
 	int timeout,read_flag,i,len,count;
 	opt_proctab_t opts[] = {
                 /* Spec, dest, type len, reqd, default val, have */
@@ -27,12 +34,16 @@ int main(int argc,char **argv) {
 		OPTS_END
 	};
 	list lp;
+#if 0
+	char *args[] = { "t2", "-d", "0", "-c", "sdconfig.conf" };
+	#define nargs (sizeof(args)/sizeof(char *))
+	argv = args;
+	argc = nargs;
+#endif
 
-//	s = client_init(nargs,args,0,"sdconfig");
 	s = client_init(argc,argv,opts,"sdconfig");
 	if (!s) return 1;
 
-//	optind -= (nargs-1);
         argc -= optind;
         argv += optind;
         optind = 0;
@@ -72,13 +83,13 @@ int main(int argc,char **argv) {
 	dprintf(1,"count: %d\n", count);
 	if (!count) return usage(1);
 
-	/* get/del: single param, no = sign */
-	if (strcasecmp(action,"get")==0 || strcasecmp(action,"del")==0) {
+	if (strcasecmp(action,"get") == 0 || strcasecmp(action,"del") == 0) {
+		/* get/del: single param, no = sign */
 		if (count == 1) {
-			list_reset(lp);
-			while((p = list_get_next(lp)) != 0) {
-				val = client_get_config(s,target,p,timeout,read_flag);
-				if (val) printf("%s %s\n", p, val);
+			if (strcasecmp(action,"get")==0) {
+				_doconfig(s,lp,"Get",target,timeout,read_flag);
+			} else if (strcasecmp(action,"del")==0) {
+				_doconfig(s,lp,"Del",target,timeout,read_flag);
 			}
 		} else {
 			char **names;
@@ -90,7 +101,7 @@ int main(int argc,char **argv) {
 			while((p = list_get_next(lp)) != 0) names[i++] = p;
 			dprintf(1,"action: %s\n", action);
 			if (strcasecmp(action,"get")==0) {
-				values = client_get_mconfig(s,target,count,names,30);
+				values = client_get_mconfig(s,"Get",target,count,names,30);
 				if (!values) return 1;
 				i = 0;
 				list_reset(values);
@@ -98,7 +109,7 @@ int main(int argc,char **argv) {
 					printf("%s %s\n", names[i++], val);
 				}
 #if 0
-			} else {
+			} else if (strcasecmp(action,"del")==0) {
 				if (client_del_mconfig(s,count,names,30)) {
 					printf("error deleting items\n");
 					return 1;
@@ -106,8 +117,10 @@ int main(int argc,char **argv) {
 #endif
 			}
 		}
-	} else if (strcasecmp(action,"set")==0 || strcasecmp(action,"add")==0) {
-		client_set_config(s,target,argv[2],argv[3],15);
+	} else if (strcasecmp(action,"set")==0) {
+		client_set_config(s,"Set",target,argv[2],argv[3],15);
+	} else if (strcasecmp(action,"add")==0) {
+		client_set_config(s,"Add",target,argv[2],argv[3],15);
 	} else {
 		log_write(LOG_ERROR,"invalid action: %s\n", action);
 		return 1;

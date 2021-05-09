@@ -318,16 +318,15 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 		strncat(topts,strele(2,",",tp_info),sizeof(topts)-1);
 	}
 
-	/* Role Init */
-	if (!strlen(transport) || !strlen(target)) {
-		log_write(LOG_ERROR,"transport and target must be specified\n");
-		goto agent_init_error;
-	}
-
+	/* If no transport and target specified, use null */
 	dprintf(1,"transport: %s, target: %s, topts: %s\n", transport, target, topts);
-	/* Load the transport driver */
-	tp = load_module(ap->modules,transport,SOLARD_MODTYPE_TRANSPORT);
-	if (!tp) goto agent_init_error;
+	if (!strlen(transport) || !strlen(target)) {
+		tp = &null_transport;
+	} else {
+		/* Load the transport driver */
+		tp = load_module(ap->modules,transport,SOLARD_MODTYPE_TRANSPORT);
+		if (!tp) goto agent_init_error;
+	}
 
 	/* Create an instance of the transport driver */
 	tp_handle = tp->new(ap,target,topts);

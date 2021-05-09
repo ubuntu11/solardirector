@@ -33,6 +33,8 @@ typedef struct battery_cell battery_cell_t;
 #define BATTERY_MAX_TEMPS 8
 #define BATTERY_MAX_CELLS 32
 
+#define BATTERY_CELLRES 0
+
 struct solard_battery {
 	char name[BATTERY_NAME_LEN];	/* Battery name */
 	float capacity;			/* Battery pack capacity, in AH */
@@ -43,7 +45,9 @@ struct solard_battery {
 	int ncells;			/* Number of cells, updated by BMS */
 //	battery_cell_t cells[BATTERY_MAX_CELLS];		/* Cell info */
 	float cellvolt[BATTERY_MAX_CELLS]; /* Per-cell voltages, updated by BMS */
+#if BATTERY_CELLRES
 	float cellres[BATTERY_MAX_CELLS]; /* Per-cell resistances, updated by BMS */
+#endif
 	float cell_min;
 	float cell_max;
 	float cell_diff;

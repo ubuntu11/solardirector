@@ -39,6 +39,7 @@ typedef struct si_param si_param_t;
 
 struct si_session {
 	solard_agent_t *ap;
+	int readonly;
 	smanet_session_t *smanet;
 	char channels_path[256];
 	list desc;
@@ -49,8 +50,8 @@ struct si_session {
 	uint32_t bitmap;
 	solard_module_t *can;
 	void *can_handle;
-	solard_module_t *tty;
-	void *tty_handle;
+//	solard_module_t *tty;
+//	void *tty_handle;
 	int (*can_read)(struct si_session *, int id, uint8_t *data, int len);
 	uint16_t state;
 	json_proctab_t idata;

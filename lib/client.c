@@ -86,11 +86,11 @@ char *check(solard_client_t *cp, char *param, int wait) {
 	return 0;
 }
 
-char *client_get_config(solard_client_t *cp, char *target, char *param, int timeout, int direct) {
+char *client_get_config(solard_client_t *cp, char *op, char *target, char *param, int timeout, int direct) {
 	char topic[SOLARD_TOPIC_SIZE], *p;
 	json_value_t *a;
 
-	dprintf(1,"target: %s, param: %s, timeout: %d, direct: %d\n", target, param, timeout, direct);
+	dprintf(1,"op: %s, target: %s, param: %s, timeout: %d, direct: %d\n", op, target, param, timeout, direct);
 
 	if (!direct && (p = check(cp, param, 0)) != 0) return p;
 
@@ -100,12 +100,12 @@ char *client_get_config(solard_client_t *cp, char *target, char *param, int time
 	json_destroy(a);
 
 	/* Request it */
-	sprintf(topic,"%s/%s/%s/%s/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONFIG,SOLARD_ACTION_GET,cp->id);
+	sprintf(topic,"%s/%s/%s/%s/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONFIG,op,cp->id);
 	dprintf(1,"topic: %s\n",topic);
 	mqtt_pub(cp->m,topic,cp->data,0);
 
 	/* Get status message */
-	client_get_status(cp, SOLARD_ACTION_GET, param, timeout);
+	client_get_status(cp, op, param, timeout);
 
 	/* Get value message */
 	dprintf(1,"finding...\n");
@@ -113,20 +113,20 @@ char *client_get_config(solard_client_t *cp, char *target, char *param, int time
 
         /* Clear our request and the status reply */
         mqtt_pub(cp->m,topic,0,0);
-        sprintf(topic,"%s/%s/%s/%s/Status/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONFIG,SOLARD_ACTION_GET,cp->id);
+        sprintf(topic,"%s/%s/%s/%s/Status/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONFIG,op,cp->id);
         mqtt_pub(cp->m,topic,0,0);
 
 	dprintf(1,"returning: %s\n", p);
 	return p;
 }
 
-list client_get_mconfig(solard_client_t *cp, char *target, int count, char **params, int timeout) {
+list client_get_mconfig(solard_client_t *cp, char *op, char *target, int count, char **params, int timeout) {
 	char topic[SOLARD_TOPIC_SIZE], *p;
 	json_value_t *a;
 	int i;
 	list results;
 
-	dprintf(1,"target: %s, count: %d, params: %p, timeout: %d\n", target, count, params, timeout);
+	dprintf(1,"op: %s, target: %s, count: %d, params: %p, timeout: %d\n", op, target, count, params, timeout);
 
 	results = list_create();
 
@@ -143,16 +143,16 @@ list client_get_mconfig(solard_client_t *cp, char *target, int count, char **par
 		dprintf(1,"data: %s\n", cp->data);
 
 		/* Request */
-		sprintf(topic,"%s/%s/%s/%s/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONFIG,SOLARD_ACTION_GET,cp->id);
+		sprintf(topic,"%s/%s/%s/%s/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONFIG,op,cp->id);
 		dprintf(1,"topic: %s\n",topic);
 		mqtt_pub(cp->m,topic,cp->data,0);
 
 		/* Get status message */
-		client_get_status(cp, SOLARD_ACTION_GET, 0, timeout);
+		client_get_status(cp, op, 0, timeout);
 
 		/* Clear our request and the status reply */
 		mqtt_pub(cp->m,topic,0,0);
-		sprintf(topic,"%s/%s/%s/%s/Status/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONFIG,SOLARD_ACTION_SET,cp->id);
+		sprintf(topic,"%s/%s/%s/%s/Status/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONFIG,op,cp->id);
 		mqtt_pub(cp->m,topic,0,0);
 	}
 
@@ -167,11 +167,11 @@ list client_get_mconfig(solard_client_t *cp, char *target, int count, char **par
 	return results;
 }
 
-int client_set_config(solard_client_t *cp, char *target, char *param, char *value, int timeout) {
+int client_set_config(solard_client_t *cp, char *op, char *target, char *param, char *value, int timeout) {
 	char topic[SOLARD_TOPIC_SIZE];
 	json_value_t *o,*v;
 
-	dprintf(1,"target: %s, param: %s, value: %s\n", target, param, value);
+	dprintf(1,"op: %s, target: %s, param: %s, value: %s\n", op, target, param, value);
 
 	o = json_create_object();
 	dprintf(1,"value: %c\n", *value);
@@ -189,16 +189,16 @@ int client_set_config(solard_client_t *cp, char *target, char *param, char *valu
 	json_destroy(o);
 
 	/* Request it */
-	sprintf(topic,"%s/%s/%s/%s/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONFIG,SOLARD_ACTION_SET,cp->id);
+	sprintf(topic,"%s/%s/%s/%s/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONFIG,op,cp->id);
 	dprintf(1,"topic: %s\n",topic);
 	mqtt_pub(cp->m,topic,cp->data,0);
 
 	/* Get status message */
-	client_get_status(cp, SOLARD_ACTION_SET, param, timeout);
+	client_get_status(cp, op, param, timeout);
 
 	/* Clear our request and the status reply */
 	mqtt_pub(cp->m,topic,0,0);
-	sprintf(topic,"%s/%s/%s/%s/Status/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONFIG,SOLARD_ACTION_SET,cp->id);
+	sprintf(topic,"%s/%s/%s/%s/Status/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONFIG,op,cp->id);
 	mqtt_pub(cp->m,topic,0,0);
 	return 0;
 }

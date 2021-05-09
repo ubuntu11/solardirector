@@ -64,7 +64,7 @@ struct solard_module {
 solard_module_t *load_module(list lp, char *name, int type);
 int load_tp_from_cfg(solard_module_t **mp, void **h, cfg_info_t *cfg, char *section_name);
 
-extern solard_module_t solard_dummy_module;
+extern solard_module_t null_transport;
 #define SOLARD_DUMMY_MODULE(name) \
 solard_module_t name_module = { \
 	SOLARD_MODTYPE_NONE, \

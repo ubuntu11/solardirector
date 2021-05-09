@@ -176,7 +176,7 @@ int smanet_get_channels(smanet_session_t *s) {
 	if (!p) return 1;
 	if (smanet_command(s,CMD_GET_CINFO,p,0,0)) return 1;
 	dprintf(1,"p->dataidx: %d\n", p->dataidx);
-	bindump("channel data",p->data,p->dataidx);
+	if (debug) bindump("channel data",p->data,p->dataidx);
 	fp = fopen(path,"wb+");
 	if (fp) {
 		fwrite(p->data,1,p->dataidx,fp);
@@ -209,9 +209,9 @@ int smanet_save_channels(smanet_session_t *s, char *path) {
 			goto smanet_save_channels_error;
 		}
 		if (c->mask & CH_STATUS) {
-//			dprintf(1,"count: %d\n", list_count(c->strings));
+			dprintf(1,"count: %d\n", list_count(c->strings));
 			conv_type(DATA_TYPE_STRING,&temp,sizeof(temp)-1,DATA_TYPE_LIST,&c->strings,0);
-//			dprintf(1,"temp: %s\n", temp);
+			dprintf(1,"temp: %s\n", temp);
 			len = strlen((char *)temp);
 			if (fwrite(&len,1,sizeof(len),fp) < 0) goto smanet_save_channels_error;
 			if (fwrite(temp,1,len,fp) < 0) goto smanet_save_channels_error;
@@ -251,10 +251,10 @@ int smanet_load_channels(smanet_session_t *s, char *path) {
 		} else if (bytes == 0) break;
 		if (newchan.mask & CH_STATUS) {
 //			dprintf(dlevel,"size: %d\n", newchan.size);
-	//		fread(&len,1,sizeof(len),fp);
-	//		fread(temp,1,len,fp);
 			if (fread(&len,1,sizeof(len),fp) < 0) goto smanet_load_channels_error;
+			dprintf(1,"name: %s, len: %d\n", newchan.name, len);
 			if (fread(temp,1,len,fp) < 0) goto smanet_load_channels_error;
+			temp[len] = 0;
 //			dprintf(dlevel,"temp: %s\n", temp);
 			conv_type(DATA_TYPE_LIST,&newchan.strings,0,DATA_TYPE_STRING,temp,len);
 //			dprintf(dlevel,"count: %d\n", list_count(newchan.strings));
@@ -282,11 +282,16 @@ smanet_channel_t *smanet_get_channelbyid(smanet_session_t *s, int id) {
 smanet_channel_t *smanet_get_channelbyname(smanet_session_t *s, char *name) {
 	smanet_channel_t *c;
 
+	dprintf(1,"name: %s\n", name);
+
 	list_reset(s->channels);
 	while((c = list_get_next(s->channels)) != 0) {
-		if (strcmp(c->name,name) == 0)
+		if (strcmp(c->name,name) == 0) {
+			dprintf(1,"found!\n");
 			return c;
+		}
 	}
+	dprintf(1,"NOT found!\n");
 	return 0;
 }
 

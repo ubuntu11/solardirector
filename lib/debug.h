@@ -15,7 +15,7 @@ LICENSE file in the root directory of this source tree.
 
 extern int debug;
 
-#if DEBUG
+#if DEBUG != 0
 //#define dprintf(level, format, args...) { if (debug >= level) printf("%s(%d): " format,__FUNCTION__,__LINE__, ## args); }
 #define dprintf(level, format, args...) { if (debug >= level) log_write(LOG_DEBUG, "%s(%d) %s: " format,__FILE__,__LINE__, __FUNCTION__, ## args); }
 #define DPRINTF(format, args...) printf("%s(%d): " format,__FUNCTION__,__LINE__, ## args)

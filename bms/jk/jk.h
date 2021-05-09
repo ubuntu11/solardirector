@@ -14,21 +14,26 @@ LICENSE file in the root directory of this source tree.
 #include "battery.h"
 #include "state.h"
 
+struct jk_info {
+	char manufacturer[32];		/* Maker */
+	char device[64];		/* Device name */
+	char model[64];			/* Model name */
+	char mfgdate[9];		/* the production date, YYYYMMDD, zero terminated */
+	float version;			/* the software version */
+	char hwvers[34];
+	char swvers[34];
+};
+typedef struct jk_info jk_info_t;
+
 struct jk_session {
 	solard_agent_t *conf;		/* Our config */
 	solard_module_t *tp;		/* Our transport */
 	void *tp_handle;		/* Our transport handle */
+	char name[SOLARD_NAME_LEN];
+	jk_info_t info;
 	uint16_t state;			/* Pack state */
 };
 typedef struct jk_session jk_session_t;
-
-struct jk_info {
-	char manufacturer[32];		/* Model name */
-	char model[64];			/* Model name */
-	char mfgdate[9];		/* the production date, YYYYMMDD, zero terminated */
-	float version;			/* the software version */
-};
-typedef struct jk_info jk_info_t;
 
 /* I/O */
 int jk_can_get_crc(jk_session_t *s, int id, unsigned char *data, int len);
@@ -44,8 +49,10 @@ int jk_rw(jk_session_t *s, uint8_t action, uint8_t reg, uint8_t *data, int datas
 int jk_open(void *handle);
 int jk_close(void *handle);
 
+typedef void (jk_info_callback_t)(jk_info_t *,uint8_t *);
+
 /* Read */
-//int jk_can_get_pack(struct jk_session *s);
+int jk_bt_read(jk_session_t *s, solard_battery_t *bp);
 int jk_read(void *handle, void *, int);
 
 /* Config */
@@ -53,9 +60,6 @@ int jk_config(void *,char *,char *,list);
 int jk_config_add_params(json_object_t *);
 
 /* Info */
-//int jk_can_get_info(jk_session_t *s,jk_info_t *info);
-//int jk_std_get_info(jk_session_t *s,jk_info_t *info);
-//int jk_get_info(void *handle,jk_info_t *info);
 json_value_t *jk_info(void *handle);
 
 /* Control */

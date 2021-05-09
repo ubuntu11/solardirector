@@ -45,6 +45,8 @@ struct solard_config {
 	int interval;				/* Agent check interval */
 	int agent_warning;			/* Warning, in seconds, when agent dosnt respond */
 	int agent_error;			/* Warning, in seconds, when agent considered lost */
+	int status;
+	char errmsg[128];
 };
 typedef struct solard_config solard_config_t;
 
@@ -52,6 +54,7 @@ int solard_pubinfo(solard_config_t *conf);
 
 int solard_read_config(solard_config_t *conf);
 int solard_write_config(solard_config_t *conf);
+int solard_send_status(solard_config_t *conf, char *func, char *action, char *id, int status, char *message);
 int solard_config(solard_config_t *conf,solard_message_t *);
 
 void getinv(solard_config_t *conf, char *name, char *data);
@@ -64,5 +67,6 @@ void agentinfo_setcfg(cfg_info_t *cfg, char *sname, solard_agentinfo_t *info);
 int agentinfo_add(solard_config_t *conf, solard_agentinfo_t *info);
 void add_agent(solard_config_t *conf, char *role, json_value_t *v);
 int check_agents(solard_config_t *conf);
+void agentinfo_newid(solard_agentinfo_t *info);
 
 #endif

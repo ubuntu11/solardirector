@@ -116,6 +116,7 @@ int smanet_send_packet(smanet_session_t *s, uint16_t src, uint16_t dest, uint8_t
 	data[i++] = cmd;
 	memcpy(&data[i],buffer,buflen);
 	i += buflen;
+	if (debug >= dlevel) bindump("send packet",data,i);
 	smanet_write_frame(s,data,i);
 	return 0;
 }

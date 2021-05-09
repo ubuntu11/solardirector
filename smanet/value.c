@@ -306,23 +306,25 @@ smanet_value_t *smanet_get_valuebyname(smanet_session_t *s, char *name) {
 int smanet_get_optionval(smanet_session_t *s, smanet_channel_t *c, char *opt) {
 	register char *p;
 	register int i;
+	int r;
 
 	dprintf(1,"opt: %s\n", opt);
 
 	if ((c->mask & CH_STATUS) == 0) return -1;
 
 	i = 0;
+	r = -1;
 	list_reset(c->strings);
 	while((p = list_get_next(c->strings)) != 0) {
 		dprintf(1,"p: %s\n", p);
 		if (strcmp(p,opt) == 0) {
-			dprintf(1,"returning: %d\n", i);
-			return i;
+			r = i;
+			break;
 		}
 		i++;
 	}
-	dprintf(1,"returning: %d\n", -1);
-	return -1;
+	dprintf(1,"returning: %d\n", r);
+	return r;
 }
 
 int smanet_get_optionbyname(smanet_session_t *s, char *name, char *dest, int destlen) {

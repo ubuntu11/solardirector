@@ -150,6 +150,7 @@ int si_startstop(si_session_t *s, int op) {
 
 static void getconf(si_session_t *s) {
 	cfg_proctab_t mytab[] = {
+		{ "si", "readonly", 0, DATA_TYPE_LOGICAL, &s->readonly, 0, "N" },
 		{ "si", "soc", 0, DATA_TYPE_FLOAT, &s->user_soc, 0, "-1" },
 		{ "si", "charge_min_amps", 0, DATA_TYPE_FLOAT, &s->charge_min_amps, 0, "-1" },
 		{ "si", "charge_focus_amps", "Increase charge voltage in order to maintain charge amps", DATA_TYPE_BOOL, &s->charge_creep, 0, "Y" },
@@ -167,35 +168,40 @@ int main(int argc, char **argv) {
 		OPTS_END
 	};
 	solard_agent_t *ap;
+	si_session_t *s;
+#if 0
 	char *args[] = { "t2", "-d", "5", "-c", "si.conf" };
 	#define nargs (sizeof(args)/sizeof(char *))
-	si_session_t *s;
+	argv = args;
+	argc = nargs;
+#endif
 
-//	si_driver.read = 0;
-//	si_driver.info = 0;
-
-//	ap = agent_init(nargs,args,opts,&si_driver);
 	ap = agent_init(argc,argv,opts,&si_driver);
 	dprintf(1,"ap: %p\n",ap);
 	if (!ap) return 1;
-
 
 	/* Get our session */
 	s = agent_get_driver_handle(ap);
 
 	/* Read our specific config */
 	getconf(s);
-	charge_init(s);
+
+	/* Readonly? */
+	dprintf(1,"readonly: %d\n", s->readonly);
+	if (s->readonly)
+		si_driver.write  = 0;
+	else
+		charge_init(s);
 
 	/* Read and write intervals are 10s */
 	ap->read_interval = ap->write_interval = s->interval;
 
-#if 0
+#if 1
 	{
 		list lp;
 		lp = list_create();
 //#define CV "charge_voltage"
-#define CV "AutoStr"
+#define CV "ComBaud"
 		list_add(lp,CV,strlen(CV)+1);
 		si_config(s, "Get", "main", lp);
 	}

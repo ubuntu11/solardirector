@@ -87,8 +87,10 @@ static void _get_arr(char *name,void *dest, int len,json_value_t *v) {
 	} else if (strcmp(name,"cellvolt")==0) {
 		for(i=0; i < a->count; i++) bp->cellvolt[i] = a->items[i]->value.number;
 		bp->ncells = a->count;
+#if BATTERY_CELLRES
 	} else if (strcmp(name,"cellres")==0) {
 		for(i=0; i < a->count; i++) bp->cellres[i] = a->items[i]->value.number;
+#endif
 	}
 	return;
 }
@@ -105,8 +107,10 @@ static void _set_arr(char *name,void *dest, int len,json_value_t *v) {
 		for(i=0; i < len; i++) json_array_add_number(a,bp->temps[i]);
 	} else if (strcmp(name,"cellvolt")==0) {
 		for(i=0; i < len; i++) json_array_add_number(a,bp->cellvolt[i]);
+#if BATTERY_CELLRES
 	} else if (strcmp(name,"cellres")==0) {
 		for(i=0; i < len; i++) json_array_add_number(a,bp->cellres[i]);
+#endif
 	}
 	json_add_value(v,name,a);
 	return;
@@ -167,6 +171,9 @@ static void _set_state(char *name, void *dest, int len, json_value_t *v) {
 	json_add_string(v, name, temp);
 }
 
+#if BATTERY_CELLRES
+		{ "cellres",0,bp,NBAT,ACTION }, 
+#endif
 #define BATTERY_TAB(NTEMP,NBAT,ACTION,STATE) \
 		{ "name",DATA_TYPE_STRING,&bp->name,sizeof(bp->name)-1,0 }, \
 		{ "capacity",DATA_TYPE_FLOAT,&bp->capacity,0,0 }, \
@@ -176,7 +183,6 @@ static void _set_state(char *name, void *dest, int len, json_value_t *v) {
 		{ "temps",0,bp,NTEMP,ACTION }, \
 		{ "ncells",DATA_TYPE_INT,&bp->ncells,0,0 }, \
 		{ "cellvolt",0,bp,NBAT,ACTION }, \
-		{ "cellres",0,bp,NBAT,ACTION }, \
 		{ "cell_min",DATA_TYPE_FLOAT,&bp->cell_min,0,0 }, \
 		{ "cell_max",DATA_TYPE_FLOAT,&bp->cell_max,0,0 }, \
 		{ "cell_diff",DATA_TYPE_FLOAT,&bp->cell_diff,0,0 }, \
@@ -200,9 +206,11 @@ static void _dump_arr(char *name,void *dest, int flen,json_value_t *v) {
 		} else if (strcmp(name,"cellvolt")==0) {
 			sprintf(format,"%%%ds: %%.3f\n",flen);
 			for(i=0; i < bp->ncells; i++) printf(format,name,bp->cellvolt[i]);
+#if BATTERY_CELLRES
 		} else if (strcmp(name,"cellres")==0) {
 			sprintf(format,"%%%ds: %%.3f\n",flen);
 			for(i=0; i < bp->ncells; i++) printf(format,name,bp->cellres[i]);
+#endif
 		}
 	}
 	return;

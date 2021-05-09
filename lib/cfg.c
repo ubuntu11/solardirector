@@ -36,7 +36,7 @@ CFG_INFO *cfg_create(char *filename) {
 	}
 
 	/* Save filename */
-	strcpy(info->filename,filename);
+	if (filename) strncpy(info->filename,filename,sizeof(info->filename)-1);
 
 	/* Create the sections list */
 	info->sections = list_create();
@@ -348,22 +348,20 @@ CFG_INFO *cfg_read(char *filename) {
 	register char *ptr;
 	register int x;
 
+	fp = 0;
 	dprintf(DLEVEL,"cfg_read: filename: %s",filename);
-	fp = fopen(filename,"r");
-	if (!fp) {
-		dprintf(DLEVEL,"cfg_read: error: fopen(%s): %s", filename, strerror(errno));
-		return 0;
+	if (filename) {
+		fp = fopen(filename,"r");
+		if (!fp) dprintf(DLEVEL,"cfg_read: error: fopen(%s): %s", filename, strerror(errno));
 	}
 
 	/* Create a cfg_info with no type (version defaults to 2) */
 	cfg_info = cfg_create(filename);
 	if (!cfg_info) {
-		fclose(fp);
+		if (fp) fclose(fp);
 		return 0;
 	}
-
-	/* Ensure we set section to null */
-//	section = 0;
+	if (!fp) goto cfg_read_done;
 
 	/* Create a null section */
 	section = cfg_create_section(cfg_info,0);
@@ -450,8 +448,9 @@ CFG_INFO *cfg_read(char *filename) {
 	}
 	fclose(fp);
 
-	cfg_info->filename[0] = 0;
-	strncat(cfg_info->filename, filename, sizeof(cfg_info->filename)-1);
+cfg_read_done:
+//	cfg_info->filename[0] = 0;
+//	if (filename) strncat(cfg_info->filename, filename, sizeof(cfg_info->filename)-1);
 	return cfg_info;
 }
 

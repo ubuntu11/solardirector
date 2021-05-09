@@ -24,8 +24,8 @@ struct solard_client {
 typedef struct solard_client solard_client_t;
 
 solard_client_t *client_init(int,char **,opt_proctab_t *,char *);
-char *client_get_config(solard_client_t *cp, char *target, char *param, int timeout, int direct);
-list client_get_mconfig(solard_client_t *cp, char *target, int count, char **params, int timeout);
-int client_set_config(solard_client_t *cp, char *target, char *param, char *value, int timeout);
+char *client_get_config(solard_client_t *cp, char *op, char *target, char *param, int timeout, int direct);
+list client_get_mconfig(solard_client_t *cp, char *op, char *target, int count, char **params, int timeout);
+int client_set_config(solard_client_t *cp, char *op, char *target, char *param, char *value, int timeout);
 
 #endif

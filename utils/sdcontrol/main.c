@@ -25,7 +25,7 @@ int main(int argc,char **argv) {
 		OPTS_END
 	};
 	list lp;
-#if 1
+#if 0
 //	char *args[] = { "t2", "-d", "2", "-l" };
 //	char *args[] = { "t2", "-d", "2", "-l", "Inverter/si" };
 	char *args[] = { "t2", "-d", "2", "-l", "Inverter/si", "Charge" };
@@ -44,21 +44,23 @@ int main(int argc,char **argv) {
         argv += optind;
 
 	dprintf(1,"argc: %d\n",argc);
-	if (!argc) return usage(1);
+//	if (!argc) return usage(1);
 
 	/* Arg1: target */
 	/* Arg2: Control */
 	/* Arg3: Option */
 	target = control = option = 0;
+	dprintf(1,"argc: %d\n",argc);
 	if (argc > 2) option = argv[2];
-	if (argc > 1) {
-		if (!list_flag) return usage(1);
+	else if (argc > 1) {
+//		if (!list_flag) return usage(1);
 		control = argv[1];
 	}
-	if (argc > 0) {
-		if (!list_flag) return usage(1);
+	else if (argc > 0) {
+//		if (!list_flag) return usage(1);
 		target = argv[0];
 	}
+	dprintf(1,"argc: %d\n",argc);
 	dprintf(1,"list_flag: %d, target: %s, control: %s, option: %s\n", list_flag, target, control, option);
 
 	sprintf(topic,"%s/%s/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_INFO);
