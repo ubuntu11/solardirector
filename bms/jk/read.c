@@ -31,7 +31,7 @@ static void _getvolts(solard_battery_t *bp, uint8_t *data) {
 	int i,j;
 	float f;
 
-	bindump("getvolts",data,300);
+	if (debug) bindump("getvolts",data,300);
 
 	i = 6;
 	/* 6: Cell voltages */
