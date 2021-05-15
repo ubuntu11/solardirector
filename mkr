@@ -15,10 +15,10 @@ do
 	cd ${t} 2>/dev/null || continue
 	if test "${t}" = "win32"; then
 		rm -f ../solard_win32.zip
-		zip -r ../solard_win32.zip .
+		zip -9 -r ../solard_win32.zip .
 	else
 		rm -f ../solard_${t}.tgz
-		tar -cf ../solard_${t}.tgz .
+		tar -zcf ../solard_${t}.tgz .
 	fi
 	cd ..
 	rm -rf ${t}
