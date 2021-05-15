@@ -1,4 +1,4 @@
-
+#ifndef __WIN32
 /*
 Copyright (c) 2021, Stephen P. Shoecraft
 All rights reserved.
@@ -971,3 +971,4 @@ mybmm_module_t can_module = {
 	can_write,
 	can_close,
 };
+#endif

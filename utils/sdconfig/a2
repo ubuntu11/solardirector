@@ -1,0 +1,1 @@
+agent_name=jbd,agent_path=/home/steve/bin/jbd,agent_role=Battery,name=pack_01,transport=ip,target=pack_01,managed=True

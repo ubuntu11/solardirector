@@ -1,4 +1,5 @@
 
+#ifndef __WIN32
 /*
 Copyright (c) 2021, Stephen P. Shoecraft
 All rights reserved.
@@ -157,3 +158,4 @@ EXPORT solard_module_t http_module = {
 	0,
 	http_close
 };
+#endif

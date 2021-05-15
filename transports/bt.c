@@ -11,6 +11,8 @@ This was tested against the MLT-BT05 TTL-to-Bluetooth module (HM-10 compat) on t
 
 */
 
+#undef DEBUG_MEM
+
 #ifndef __WIN32
 #include "gattlib.h"
 #include "module.h"
@@ -19,11 +21,12 @@ struct bt_session {
 	gatt_connection_t *c;
 	uuid_t uuid;
 	char target[32];
-	char opts[32];
+	char topts[32];
 	char data[4096];
 	int not;
 	int len;
 	int cbcnt;
+	int have_char;
 };
 typedef struct bt_session bt_session_t;
 
@@ -35,12 +38,14 @@ static void *bt_new(void *conf, void *target, void *topts) {
 		perror("bt_new: malloc");
 		return 0;
 	}
-	s->c = 0;
 	strncat(s->target,(char *)target,sizeof(s->target)-1);
-	strncat(s->opts,(char *)topts,sizeof(s->opts)-1);
-	dprintf(5,"target: %s, opts: %s\n", s->target, s->opts);
-	if (!strlen(s->opts)) strcpy(s->opts,"0xffe1");
-	s->not = 0;
+	if (topts) {
+		if (strlen((char *)topts) && strncmp((char *)topts,"0x",2) != 0)
+			sprintf(s->topts,"0x%s",(char *)topts);
+		else
+			strncat(s->topts,(char *)topts,sizeof(s->topts)-1);
+	}
+	dprintf(5,"target: %s, topts: %s\n", s->target, s->topts);
 	return s;
 }
 
@@ -59,23 +64,55 @@ static void notification_cb(const uuid_t* uuid, const uint8_t* data, size_t data
 
 static int bt_open(void *handle) {
 	bt_session_t *s = handle;
-	uint16_t on = 0x0001;
+	gattlib_characteristic_t *cp;
+	int count,ret,i,found;
+	char uuid_str[40];
 
-	if (gattlib_string_to_uuid(s->opts, strlen(s->opts)+1, &s->uuid) < 0) {
-		fprintf(stderr, "Fail to convert string to UUID\n");
-		return 1;
-	}
+	if (s->c) return 0;
 
 	dprintf(1,"connecting to: %s\n", s->target);
 	s->c = gattlib_connect(NULL, s->target, GATTLIB_CONNECTION_OPTIONS_LEGACY_DEFAULT);
 	if (!s->c) {
-		fprintf(stderr, "Fail to connect to the bluetooth device.\n");
+		log_write(LOG_ERROR,"Fail to connect to the bluetooth device.\n");
 		return 1;
 	}
 	dprintf(1,"s->c: %p\n", s->c);
 
-	/* yes, its hardcoded. deal. */
-	gattlib_write_char_by_handle(s->c, 0x0026, &on, sizeof(on));
+	ret = gattlib_discover_char(s->c, &cp, &count);
+	if (ret) {
+		log_write(LOG_ERROR,"Failed to discover characteristics.\n");
+		return 1;
+	}
+
+	if (!s->have_char) {
+		found = 0;
+		dprintf(1,"topts: %s\n", s->topts);
+		if (strlen(s->topts)) {
+			for(i=0; i < count; i++) {
+				gattlib_uuid_to_string(&cp[i].uuid, uuid_str, sizeof(uuid_str));
+				dprintf(1,"uuid: %s, value_handle: %04x\n", uuid_str, cp[i].value_handle);
+				if (strcmp(uuid_str,s->topts) == 0) {
+					memcpy(&s->uuid,&cp[i].uuid,sizeof(s->uuid));
+					found = 1;
+					break;
+				}
+			}
+		} else if (count > 0) {
+			gattlib_uuid_to_string(&cp[0].uuid, uuid_str, sizeof(uuid_str));
+			dprintf(1,"uuid: %s, value_handle: 0x%04x\n", uuid_str, cp[0].value_handle);
+			memcpy(&s->uuid,&cp[0].uuid,sizeof(s->uuid));
+			dprintf(1,"using characteristic: %s\n", uuid_str);
+			found = 1;
+		}
+		free(cp);
+		if (!found) {
+			/* just force use of ffe1 */
+			strcpy(s->topts,"0xffe1");
+			gattlib_string_to_uuid(s->topts, strlen(s->topts)+1, &s->uuid);
+		}
+		s->have_char = 1;
+	}
+
 	gattlib_register_notification(s->c, notification_cb, s);
 	if (gattlib_notification_start(s->c, &s->uuid)) {
 		dprintf(1,"error: failed to start bluetooth notification.\n");
@@ -84,8 +121,8 @@ static int bt_open(void *handle) {
 	} else {
 		s->not = 1;
 	}
-	dprintf(1,"s->c: %p\n", s->c);
 
+	dprintf(1,"s->c: %p\n", s->c);
 	return 0;
 }
 
@@ -126,6 +163,7 @@ static int bt_write(void *handle, void *buf, int buflen) {
 	s->cbcnt = 0;
 	dprintf(1,"s->c: %p\n", s->c);
 	if (gattlib_write_char_by_uuid(s->c, &s->uuid, buf, buflen)) return -1;
+	bindump("bt write",buf,buflen);
 
 	return buflen;
 }
@@ -136,9 +174,10 @@ static int bt_close(void *handle) {
 
 	dprintf(1,"s->c: %p\n",s->c);
 	if (s->c) {
-		if (s->not == 9999) {
+		if (s->not) {
 			dprintf(1,"stopping notifications\n");
 			gattlib_notification_stop(s->c, &s->uuid);
+			s->not = 0;
 		}
 		dprintf(1,"disconnecting...\n");
 		gattlib_disconnect(s->c);

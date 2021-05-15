@@ -86,9 +86,6 @@ int main(int argc, char **argv) {
 	};
 	solard_agent_t *ap;
 
-//	jbd_driver.read = 0;
-//	jbd_driver.info = 0;
-
 	ap = agent_init(argc,argv,opts,&jbd_driver);
 	dprintf(1,"ap: %p\n",ap);
 	if (!ap) return 1;

@@ -20,7 +20,7 @@ LICENSE file in the root directory of this source tree.
 #include <time.h>
 
 #ifdef __WIN32
-struct can_frame {
+struct __attribute__((packed, aligned(1))) can_frame {
 	long can_id;
 	unsigned char can_dlc;
         unsigned char data[8];
@@ -58,6 +58,7 @@ int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_op
 #define SOLARD_ROLE_PRODUCER	"Producer"
 #define SOLARD_ROLE_CONSUMER	"Consumer"
 
+#define SOLARD_FUNC_STATUS	"Status"
 #define SOLARD_FUNC_INFO	"Info"
 #define SOLARD_FUNC_DATA	"Data"
 #define SOLARD_FUNC_CONFIG	"Config"

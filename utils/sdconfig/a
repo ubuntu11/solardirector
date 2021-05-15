@@ -1,21 +1,21 @@
+dosi() {
 ./sdconfig Controller Add Inverter si:transport=can,target=can0,topts=500000
 ./sdconfig Inverter/si Set min_voltage 39.2
 ./sdconfig Inverter/si Set max_voltage 58.8
 ./sdconfig Inverter/si Set charge_start_voltage 44.8
 ./sdconfig Inverter/si Set charge_end_voltage 58.1
-charge_start_voltage
+}
 doit() {
 	for i in $(seq 1 14)
 	do
 		test $i -eq 2 && continue
 		n=$(printf "%02d" $i)
 
-		./sdconfig Controller Add Battery pack_${n}:agent_name=jbd,transport=ip,target=pack_${n}
-#		m='{"agent":{"agent_name":"jbd","agent_path":"/opt/sd/bin/jbd","agent_role":"Battery","name":"pack_'${n}'","transport":"ip","target":"pack_'${n}'"}}'
-#		mosquitto_pub -t SolarD/Controller/Config/Add/x -m $m
+		./sdconfig -d 5 Controller Add Battery pack_${n}:agent_name=jbd,transport=ip,target=pack_${n}
 #		break
 	done
 }
 doit
 #./sdconfig -d 5 Controller Set Battery pack_02
-./sdconfig -d 5 Controller Add Battery pack_02:agent_name=jk,transport=bt,target=3C:A5:4A:E4:09:31
+#./sdconfig -d 5 Controller Add Battery pack_02:agent_name=jk,transport=bt,target=3C:A5:4A:E4:09:31
+./sdconfig Controller Add Battery pack_02:agent_name=jk,transport=ip,target=pack_02

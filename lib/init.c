@@ -20,50 +20,34 @@ char SOLARD_ETCDIR[DIRPATH_LEN];
 char SOLARD_LIBDIR[DIRPATH_LEN];
 char SOLARD_LOGDIR[DIRPATH_LEN];
 
-static int _getcfg(char *cf, char *dest, char *what) {
-	cfg_info_t *cfg;
+static int _getcfg(cfg_info_t *cfg, char *dest, char *what) {
 	char *p;
 	int r;
 
-//	dprintf(1,"cf: %s\n", cf);
+	dprintf(7,"cfg: %p, what: %s\n", cfg, what);
+
 	r = 1;
-	cfg = cfg_read(cf);
-	if (!cfg) {
-		log_write(LOG_SYSERR,"cfg_read");
-		goto _getcfg_err;
-	}
 	p = cfg_get_item(cfg,"",what);
 	if (!p) {
 		p = cfg_get_item(cfg,"","prefix");
 		if (!p) goto _getcfg_err;
-//		dprintf(1,"prefix: %s\n", p);
+		dprintf(7,"prefix: %s\n", p);
 		sprintf(dest,"%s/%s",p,what);
 	} else {
 		strncat(dest,p,DIRPATH_LEN-1);
 	}
-//	dprintf(1,"dest: %s\n", dest);
+	dprintf(7,"dest: %s\n", dest);
 	r = 0;
 _getcfg_err:
-	cfg_destroy(cfg);
-//	dprintf(1,"returning: %d\n", r);
+	dprintf(7,"returning: %d\n", r);
 	return r;
 }
 
-static void _getpath(char *dest, char *what) {
-	char home[246],temp[256];
+static void _getpath(cfg_info_t *cfg, char *home, char *dest, char *what) {
 
-	if (gethomedir(home,sizeof(home)-1) == 0) {
-		sprintf(temp,"%s/.sd.conf",home);
-		if (access(temp,0) == 0) {
-			if (_getcfg(temp,dest,what) == 0)
-				return;
-		}
-	}
+	dprintf(7,"cfg: %p, home: %s, what: %s\n", cfg, home, what);
 
-	if (access("/etc/sd.conf",0) == 0) {
-		if (_getcfg("/etc/sd.conf",dest,what) == 0)
-			return;
-	}
+	if (cfg && _getcfg(cfg,dest,what) == 0) return;
 
 #ifdef SOLARD_PREFIX
 	sprintf(dest,"%s/%s",SOLARD_PREFIX,what);
@@ -81,7 +65,7 @@ static void _getpath(char *dest, char *what) {
 		else if (strcmp(what,"log") == 0)
 			strcpy(dest,"/var/log");
 		else {
-			printf("error: _getpath: no path set for: %s\n", what);
+			printf("error: init _getpath: no path set for: %s\n", what);
 			dest = ".";
 		}
 		return;
@@ -91,13 +75,21 @@ static void _getpath(char *dest, char *what) {
 		sprintf(dest,"%s/%s",home,what);
 		return;
 	}
-	printf("error: _getpath: no path set for: %s\n", what);
+	printf("error: init: _getpath: no path set for: %s\n", what);
 	dest = ".";
+}
+
+static void _setp(char *name,char *value) {
+	int len=strlen(value);
+	if (len > 1 && value[len-1] == '/') value[len-1] = 0;
+	os_setenv(name,value,1);
 }
 
 int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_opts) {
 	/* std command-line opts */
 	static char logfile[256];
+	char home[246],configfile[256];
+	cfg_info_t *cfg;
 	static int append_flag;
 	static int back_flag,verb_flag;
 	static int help_flag,err_flag;
@@ -215,12 +207,36 @@ int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_op
 
 	/* Get paths */
 	*SOLARD_BINDIR = *SOLARD_ETCDIR = *SOLARD_LIBDIR = *SOLARD_LOGDIR = 0;
-	_getpath(SOLARD_BINDIR,"bin");
-	_getpath(SOLARD_ETCDIR,"etc");
-	_getpath(SOLARD_LIBDIR,"lib");
-	_getpath(SOLARD_LOGDIR,"log");
 
-	dprintf(1,"BINDIR: %s, ETCDIR: %s, LIBDIR: %s, LOGDIR: %s\n", SOLARD_BINDIR, SOLARD_ETCDIR, SOLARD_LIBDIR, SOLARD_LOGDIR);
+	/* Look for configfile in ~/.sd.conf, and /etc/sd.conf, /usr/local/etc/sd.conf */
+	*configfile = 0;
+	if (gethomedir(home,sizeof(home)-1) == 0) {
+		char path[256];
+
+		sprintf(path,"%s/.sd.conf",home);
+		if (access(path,0) == 0) strcpy(configfile,path);
+	}
+	if (access("/etc/sd.conf",R_OK) == 0) strcpy(configfile,"/etc/sd.conf");
+	if (access("/usr/local/etc/sd.conf",R_OK) == 0) strcpy(configfile,"/usr/local/etc/sd.conf");
+
+	cfg = 0;
+	dprintf(6,"configfile: %s\n", configfile);
+	if (strlen(configfile)) {
+		cfg = cfg_read(configfile);
+		if (!cfg) log_write(LOG_SYSERR,"cfg_read %s",configfile);
+	}
+
+	_getpath(cfg,home,SOLARD_BINDIR,"bin");
+	_getpath(cfg,home,SOLARD_ETCDIR,"etc");
+	_getpath(cfg,home,SOLARD_LIBDIR,"lib");
+	_getpath(cfg,home,SOLARD_LOGDIR,"log");
+	if (cfg) cfg_destroy(cfg);
+
+	_setp("SOLARD_BINDIR",SOLARD_BINDIR);
+	_setp("SOLARD_ETCDIR",SOLARD_ETCDIR);
+	_setp("SOLARD_LIBDIR",SOLARD_LIBDIR);
+	_setp("SOLARD_LOGDIR",SOLARD_LOGDIR);
+	dprintf(6,"BINDIR: %s, ETCDIR: %s, LIBDIR: %s, LOGDIR: %s\n", SOLARD_BINDIR, SOLARD_ETCDIR, SOLARD_LIBDIR, SOLARD_LOGDIR);
 
 	return 0;
 }

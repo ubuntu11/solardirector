@@ -1,0 +1,28 @@
+dorel() {
+for t in pi3 linux64 win32
+do
+	make clean
+	make TARGET=${t} || break
+	make TARGET=${t} release
+	make TARGET=${t} clean
+#	break
+done
+}
+dozip() {
+cd releases || exit 1
+for t in pi3 linux64 win32
+do
+	cd ${t} 2>/dev/null || continue
+	if test "${t}" = "win32"; then
+		rm -f ../solard_win32.zip
+		zip -r ../solard_win32.zip .
+	else
+		rm -f ../solard_${t}.tgz
+		tar -cf ../solard_${t}.tgz .
+	fi
+	cd ..
+	rm -rf ${t}
+done
+}
+dorel
+dozip

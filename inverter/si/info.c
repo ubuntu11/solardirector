@@ -21,7 +21,7 @@ json_value_t *si_info(void *handle) {
 		{ s->ap->section_name, "smanet_transport", 0, DATA_TYPE_STRING, &transport, sizeof(transport)-1,"" },
 		{ s->ap->section_name, "smanet_target", 0, DATA_TYPE_STRING, &target, sizeof(target)-1,"" },
 		{ s->ap->section_name, "smanet_topts", 0, DATA_TYPE_STRING, &topts, sizeof(topts)-1,"" },
-		{ s->ap->section_name, "smanet_channels", 0, DATA_TYPE_STRING, &s->channels_path, sizeof(s->channels_path)-1,"" },
+		{ s->ap->section_name, "smanet_channels_path", 0, DATA_TYPE_STRING, &s->channels_path, sizeof(s->channels_path)-1,"" },
 		CFG_PROCTAB_END
 	};
 

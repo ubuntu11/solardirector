@@ -39,6 +39,7 @@ int mqtt_disconnect(mqtt_session_t *s, int timeout);
 int mqtt_destroy(mqtt_session_t *s);
 int mqtt_send(mqtt_session_t *s, char *topic, char *message, int timeout);
 int mqtt_sub(mqtt_session_t *s, char *topic);
+int mqtt_unsub(mqtt_session_t *s, char *topic);
 int mqtt_setcb(mqtt_session_t *s, void *ctx, MQTTClient_connectionLost *cl, MQTTClient_messageArrived *ma, MQTTClient_deliveryComplete *dc);
 int mqtt_pub(mqtt_session_t *s, char *topic, char *message, int retain);
 

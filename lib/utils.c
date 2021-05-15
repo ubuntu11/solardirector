@@ -19,6 +19,9 @@ LICENSE file in the root directory of this source tree.
 //#define DEBUG 1
 #include "utils.h"
 #include "debug.h"
+#ifdef __WIN32
+#include <windows.h>
+#endif
 
 void _bindump(long offset,void *bptr,int len) {
 	unsigned char *buf = bptr;
@@ -263,4 +266,56 @@ int get_timestamp(char *ts, int tslen, int local) {
 	strncat(ts,temp,tslen);
 	DPRINTF("returning: %s\n", ts);
 	return 0;
+}
+
+char *os_getenv(const char *name) {
+	static char value[4096];
+
+#ifdef __WIN32
+	DWORD len = GetEnvironmentVariable(name, value, sizeof(value)-1);
+	if (!len) return 0;
+	if (len > sizeof(value)) return 0;
+	return value;
+#else
+	return getenv(name);
+#endif
+#if 0
+	char *value;
+#ifndef __WIN32
+	char *p;
+
+	dprintf(1,"name: %s\n", name);
+
+	p = getenv(name);
+	if (!p) return 0;
+	value = malloc(strlen(p)+1);
+	if (!value) return 0;
+	strcpy(value,p);
+#else
+	static char temp[32];
+	DWORD len;
+
+	printf("name: %s\n", name);
+
+	len = GetEnvironmentVariable(name, temp, sizeof(temp)-1);
+	dprintf(1,"len: %d\n", len);
+	if (!len) return 0;
+	if (len > sizeof(temp)) {
+		value = malloc(len);
+		dprintf(1,"value: %p\n", value);
+		if (!value) return 0;
+		GetEnvironmentVariable(name, value, len-1);
+		return value;
+	}
+	return temp;
+#endif
+#endif
+}
+
+int os_setenv(const char *name, const char *value, int overwrite) {
+#ifdef __WIN32
+	return (SetEnvironmentVariable(name,value) ? 0 : 1);
+#else
+	return setenv(name,value,overwrite);
+#endif
 }

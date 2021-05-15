@@ -1,4 +1,4 @@
-
+#ifndef __WIN32
 /*
 Copyright (c) 2021, Stephen P. Shoecraft
 All rights reserved.
@@ -356,3 +356,4 @@ mybmm_module_t si_module = {
 	si_shutdown,
 	si_control,
 };
+#endif

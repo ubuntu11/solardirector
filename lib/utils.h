@@ -89,8 +89,16 @@ char *log_nextname(void);
 #define lprintf(mask, format, args...) log_write(mask,format,## args)
 
 int solard_exec(char *, char *[], char *,int);
+int solard_checkpid(int pid, int *status);
+int solard_kill(int);
+void fixpath(char *,int);
 int solard_get_path(char *prog, char *dest, int dest_len);
 void tmpdir(char *, int);
 int gethomedir(char *dest, int dest_len);
+char *os_getenv(const char *name);
+int os_setenv(const char *name, const char *value, int overwrite);
+#ifdef __WIN32
+int fork(void);
+#endif
 
 #endif

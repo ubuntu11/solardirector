@@ -8,20 +8,25 @@ LICENSE file in the root directory of this source tree.
 */
 
 #include "rdevserver.h"
+#ifndef __WIN32
+#include <sys/signal.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <sys/signal.h>
+#endif
 
 int server(rdev_config_t *conf, int port) {
 	struct sockaddr_in sin;
 	socklen_t sin_size;
+	int c,pid,status;
+	socket_t s;
+#ifndef __WIN32
 	sigset_t set;
-	int s,c,pid,status;
 
 	/* Ignore SIGPIPE */
 	sigemptyset(&set);
 	sigaddset(&set, SIGPIPE);
 	sigprocmask(SIG_BLOCK, &set, NULL);
+#endif
 
 	dprintf(1,"opening socket...\n");
 	s = socket(AF_INET, SOCK_STREAM, 0);
@@ -35,7 +40,7 @@ int server(rdev_config_t *conf, int port) {
 		goto rdev_server_error;
 	}
 	sin_size = sizeof(sin);
-	bzero((char *) &sin, sin_size);
+	memset(&sin,0,sin_size);
 
 	sin.sin_family = AF_INET;
 	sin.sin_addr.s_addr = htonl(INADDR_ANY);

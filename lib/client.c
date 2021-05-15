@@ -208,7 +208,6 @@ solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,cha
 	char mqtt_info[200];
 	char configfile[256];
 	char sname[CFG_SECTION_NAME_SIZE];
-	mqtt_config_t mqtt_config;
 	opt_proctab_t std_opts[] = {
 		/* Spec, dest, type len, reqd, default val, have */
 		{ "-m::|mqtt host:port,clientid[,user[,pass]]",&mqtt_info,DATA_TYPE_STRING,sizeof(mqtt_info)-1,0,"" },
@@ -235,8 +234,6 @@ solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,cha
 
 	dprintf(1,"argc: %d, argv: %p, opts: %p, name: %s\n", argc, argv, opts, name);
 
-	memset(&mqtt_config,0,sizeof(mqtt_config));
-
 	strncpy(s->section_name,strlen(sname) ? sname : name,CFG_SECTION_NAME_SIZE-1);
 	dprintf(1,"section_name: %s\n", s->section_name);
 	dprintf(1,"configfile: %s\n", configfile);
@@ -249,38 +246,40 @@ solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,cha
 		if (s->cfg) {
 			cfg_get_tab(s->cfg,agent_tab);
 			if (debug) cfg_disp_tab(agent_tab,"agent",0);
-			if (mqtt_get_config(s->cfg,&mqtt_config)) goto client_init_error;
+			if (mqtt_get_config(s->cfg,&s->mqtt_config)) goto client_init_error;
 		}
 	} else {
 		dprintf(1,"mqtt_info: %s\n", mqtt_info);
 		if (!strlen(mqtt_info)) strcpy(mqtt_info,"localhost");
-		memset(&mqtt_config,0,sizeof(mqtt_config));
-		strncat(mqtt_config.host,strele(0,",",mqtt_info),sizeof(mqtt_config.host)-1);
-		strncat(mqtt_config.clientid,strele(1,",",mqtt_info),sizeof(mqtt_config.clientid)-1);
-		strncat(mqtt_config.user,strele(2,",",mqtt_info),sizeof(mqtt_config.user)-1);
-		strncat(mqtt_config.pass,strele(3,",",mqtt_info),sizeof(mqtt_config.pass)-1);
-		dprintf(1,"host: %s, clientid: %s, user: %s, pass: %s\n", mqtt_config.host, mqtt_config.clientid, mqtt_config.user, mqtt_config.pass);
+		strncpy(s->mqtt_config.host,strele(0,",",mqtt_info),sizeof(s->mqtt_config.host)-1);
+		strncpy(s->mqtt_config.clientid,strele(1,",",mqtt_info),sizeof(s->mqtt_config.clientid)-1);
+		strncpy(s->mqtt_config.user,strele(2,",",mqtt_info),sizeof(s->mqtt_config.user)-1);
+		strncpy(s->mqtt_config.pass,strele(3,",",mqtt_info),sizeof(s->mqtt_config.pass)-1);
+		dprintf(1,"host: %s, clientid: %s, user: %s, pass: %s\n", s->mqtt_config.host, s->mqtt_config.clientid, s->mqtt_config.user, s->mqtt_config.pass);
 	}
+	dprintf(1,"configfile: %s\n", configfile);
 
 	/* MQTT Init */
-	if (!strlen(mqtt_config.host)) {
+	if (!strlen(s->mqtt_config.host)) {
 		log_write(LOG_WARNING,"No MQTT host specified, using localhost");
-		strcpy(mqtt_config.host,"localhost");
+		strcpy(s->mqtt_config.host,"localhost");
 	}
 	/* MQTT requires a unique ClientID for connections */
-	if (!strlen(mqtt_config.clientid)) {
+	if (!strlen(s->mqtt_config.clientid)) {
 		uint8_t uuid[16];
 
 		dprintf(1,"gen'ing MQTT ClientID...\n");
 		uuid_generate_random(uuid);
-		my_uuid_unparse(uuid, mqtt_config.clientid);
-		dprintf(4,"NEW clientid: %s\n",mqtt_config.clientid);
+		my_uuid_unparse(uuid, s->mqtt_config.clientid);
+		dprintf(4,"NEW clientid: %s\n",s->mqtt_config.clientid);
 	}
-	if (!strlen(s->id)) strcpy(s->id,mqtt_config.clientid);
-	s->m = mqtt_new(&mqtt_config,solard_getmsg,s->messages);
+	if (!strlen(s->id)) strcpy(s->id,s->mqtt_config.clientid);
+	s->m = mqtt_new(&s->mqtt_config,solard_getmsg,s->messages);
 	if (!s->m) goto client_init_error;
 //	if (mqtt_setcb(s->m,s,client_mqtt_reconnect,client_callback,0)) return 0;
 	if (mqtt_connect(s->m,20)) goto client_init_error;
+
+	dprintf(1,"configfile: %s\n", configfile);
 
 	return s;
 client_init_error:

@@ -120,7 +120,7 @@ int main(int argc,char **argv) {
 	} else if (strcasecmp(action,"set")==0) {
 		client_set_config(s,"Set",target,argv[2],argv[3],15);
 	} else if (strcasecmp(action,"add")==0) {
-		client_set_config(s,"Add",target,argv[2],argv[3],15);
+		client_set_config(s,"Add",target,argv[2],argv[3],30);
 	} else {
 		log_write(LOG_ERROR,"invalid action: %s\n", action);
 		return 1;

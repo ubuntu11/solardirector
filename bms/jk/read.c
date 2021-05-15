@@ -273,7 +273,67 @@ int jk_bt_read(jk_session_t *s, solard_battery_t *bp) {
 }
 
 static int jk_std_read(jk_session_t *s, solard_battery_t *bp) {
-	return 1;
+	uint8_t data[128];
+	int i,bytes;;
+//	struct jk_protect prot;
+
+	dprintf(3,"getting HWINFO...\n");
+	if ((bytes = jk_rw(s, JK_CMD_READ, JK_CMD_HWINFO, data, sizeof(data))) < 0) {
+		dprintf(1,"returning 1!\n");
+		return 1;
+	}
+
+	bp->voltage = (float)jk_getshort(&data[0]) / 100.0;
+	bp->current = (float)jk_getshort(&data[2]) / 100.0;
+	bp->capacity = (float)jk_getshort(&data[6]) / 100.0;
+        dprintf(2,"voltage: %.2f\n", bp->voltage);
+        dprintf(2,"current: %.2f\n", bp->current);
+        dprintf(2,"capacity: %.2f\n", bp->capacity);
+
+	/* Balance */
+	bp->balancebits = jk_getshort(&data[12]);
+	bp->balancebits |= jk_getshort(&data[14]) << 16;
+#ifdef DEBUG
+	{
+		char bits[40];
+		unsigned short mask = 1;
+		i = 0;
+		while(mask) {
+			bits[i++] = ((bp->balancebits & mask) != 0 ? '1' : '0');
+			mask <<= 1;
+		}
+		bits[i] = 0;
+		dprintf(5,"balancebits: %s\n",bits);
+	}
+#endif
+
+	/* Protectbits */
+//	jk_get_protect(&prot,jk_getshort(&data[16]));
+
+	s->fetstate = data[20];
+	dprintf(2,"s->fetstate: %02x\n", s->fetstate);
+	if (s->fetstate & JK_MOS_CHARGE) solard_set_state(bp,BATTERY_STATE_CHARGING);
+	else solard_clear_state(bp,BATTERY_STATE_CHARGING);
+	if (s->fetstate & JK_MOS_DISCHARGE) solard_set_state(bp,BATTERY_STATE_DISCHARGING);
+	else solard_clear_state(bp,BATTERY_STATE_DISCHARGING);
+
+	bp->ncells = data[21];
+	dprintf(2,"cells: %d\n", bp->ncells);
+	bp->ntemps = data[22];
+
+	/* Temps */
+#define CTEMP(v) ( (v - 2731) / 10 )
+	for(i=0; i < bp->ntemps; i++) {
+		bp->temps[i] = CTEMP((float)jk_getshort(&data[23+(i*2)]));
+	}
+
+	/* Cell volts */
+	if ((bytes = jk_rw(s, JK_CMD_READ, JK_CMD_CELLINFO, data, sizeof(data))) < 0) return 1;
+
+	for(i=0; i < bp->ncells; i++) {
+		bp->cellvolt[i] = (float)jk_getshort(&data[i*2]) / 1000;
+	}
+	return 0;
 }
 
 int jk_read(void *handle, void *buf, int buflen) {

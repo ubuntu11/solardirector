@@ -25,7 +25,7 @@ static int suspend_write = 0;
 #ifndef __WIN32
 #include <sys/signal.h>
 
-void usr1_handler(int signo) {
+void usr_handler(int signo) {
 	if (signo == SIGUSR1) {
 		log_write(LOG_INFO,"agent: %s reads\n", (suspend_read ? "resuming" : "suspending"));
 		suspend_read = (suspend_read ? 0 : 1);
@@ -394,7 +394,7 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 	list_add(names,"all",4);
 	list_add(names,"All",4);
 	list_add(names,ap->name,strlen(ap->name)+1);
-	list_add(names,ap->instance_name,strlen(ap->instance_name)+1);
+	if (strcmp(ap->name,ap->instance_name) != 0) list_add(names,ap->instance_name,strlen(ap->instance_name)+1);
 	p = json_get_string(ap->info,"device_model");
 	dprintf(1,"p: %s\n", p);
 	if (p && strlen(p)) list_add(names,p,strlen(p)+1);
@@ -403,13 +403,15 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 	list_reset(names);
 	log_write(LOG_INFO,"Subscribing to the following topics:\n");
 	while((p = list_get_next(names)) != 0) {
+		agent_sub(ap,p,SOLARD_FUNC_STATUS,SOLARD_ACTION_GET,"+");
 		agent_sub(ap,p,SOLARD_FUNC_CONFIG,SOLARD_ACTION_GET,"+");
 		agent_sub(ap,p,SOLARD_FUNC_CONFIG,SOLARD_ACTION_SET,"+");
 		agent_sub(ap,p,SOLARD_FUNC_CONTROL,SOLARD_ACTION_SET,"+");
 	}
 
 	/* Set the read toggle handler */
-//	signal(SIGUSR1, usr1_handler);
+//	signal(SIGUSR1, usr_handler);
+//	signal(SIGUSR2, usr_handler);
 
 	dprintf(1,"returning: %p\n",ap);
 	return ap;

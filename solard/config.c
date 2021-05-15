@@ -8,18 +8,21 @@ LICENSE file in the root directory of this source tree.
 */
 
 #include "solard.h"
-#include <sys/signal.h>
+//#include <sys/signal.h>
 
 int solard_read_config(solard_config_t *conf) {
 	solard_agentinfo_t newinfo;
-	char temp[16], *sname, *p;
+	char temp[1024], *sname, *p;
 	int i,count;
 	cfg_proctab_t mytab[] = {
+		{ "solard", "name", "Site name", DATA_TYPE_STRING, &conf->name, sizeof(conf->name)-1, "site" },
 		{ "solard", "agent_error", 0, DATA_TYPE_INT, &conf->agent_error, 0, "300" },
 		{ "solard", "agent_warning", 0, DATA_TYPE_INT, &conf->agent_warning, 0, "120" },
 		{ "solard", "interval", "Agent check interval", DATA_TYPE_INT, &conf->interval, 0, "15" },
 		CFG_PROCTAB_END
 	};
+	char topic[SOLARD_TOPIC_SIZE];
+	solard_message_t *msg;
 
 	cfg_get_tab(conf->c->cfg,mytab);
 	if (debug) cfg_disp_tab(mytab,"info",0);
@@ -40,6 +43,27 @@ int solard_read_config(solard_config_t *conf) {
 			}
 		}
 	}
+	if (conf->c->cfg->filename) return 0;
+
+	/* Sub to our config topic */
+	sprintf(topic,"%s/%s/%s/%s/+",SOLARD_TOPIC_ROOT,SOLARD_ROLE_CONTROLLER,conf->name,SOLARD_FUNC_CONFIG);
+        if (mqtt_sub(conf->c->m,topic)) return 1;
+
+	/* Ingest any config messages */
+	dprintf(1,"ingesting...\n");
+	solard_ingest(conf->c->messages,2);
+	dprintf(1,"back from ingest...\n");
+
+	/* Process messages as config requests */
+	dprintf(1,"mq count: %d\n", list_count(conf->c->messages));
+	list_reset(conf->c->messages);
+	while((msg = list_get_next(conf->c->messages)) != 0) {
+		agentinfo_get(conf,msg->data);
+		list_delete(conf->c->messages,msg);
+	}
+	mqtt_unsub(conf->c->m,topic);
+
+	dprintf(1,"done\n");
 	return 0;
 }
 
@@ -50,6 +74,7 @@ int solard_write_config(solard_config_t *conf) {
 
 	dprintf(1,"writing config...\n");
 
+#if 0
 	if (!conf->c->cfg) {
 		char configfile[256];
 		sprintf(configfile,"%s/solard.conf",SOLARD_ETCDIR);
@@ -57,8 +82,11 @@ int solard_write_config(solard_config_t *conf) {
 		conf->c->cfg = cfg_create(configfile);
 		if (!conf->c->cfg) return 1;
 	}
+#endif
 
 
+	dprintf(1,"conf->c->cfg: %p\n", conf->c->cfg);
+	if (conf->c->cfg) {
 	sprintf(temp,"%d",list_count(conf->agents));
 	dprintf(1,"count temp: %s\n",temp);
 	cfg_set_item(conf->c->cfg, "agents", "count", 0, temp);
@@ -69,9 +97,10 @@ int solard_write_config(solard_config_t *conf) {
 		sprintf(temp,"A%02d",i++);
 		dprintf(1,"num temp: %s\n",temp);
 		cfg_set_item(conf->c->cfg, "agents", temp, 0, info->id);
+		agentinfo_pub(conf,info);
 	}
-
 	cfg_write(conf->c->cfg);
+	}
 	return 0;
 }
 
@@ -485,7 +514,7 @@ static int solard_set_config(solard_config_t *conf, json_value_t *v, char *messa
 		}
 		if (info->pid > 0) {
 			log_info("Killing %s/%s due to name change\n", info->role, info->name);
-			kill(info->pid,SIGTERM);
+			solard_kill(info->pid);
 		}
 	}
 	if (cfg_is_dirty(conf->c->cfg)) {
@@ -513,6 +542,8 @@ static int solard_add_config(solard_config_t *conf, json_value_t *v, char *messa
 	char name[64],value[128],key[64],*p,*str;
 	list lp;
 	int have_managed;
+
+	strcpy(message,"unable to add agent");
 
 	if (_parseinfo(conf,v,message,name,sizeof(name),value,sizeof(value))) return 1;
 	dprintf(1,"name: %s, value: %s\n", name, value);
@@ -616,8 +647,9 @@ int solard_config(solard_config_t *conf, solard_message_t *msg) {
 	int status;
 	long start;
 
-	start = mem_used();
+	solard_message_dump(msg,1);
 
+	start = mem_used();
 	status = 1;
 	v = json_parse(msg->data);
 	if (!v) return 1;

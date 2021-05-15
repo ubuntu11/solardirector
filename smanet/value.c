@@ -327,7 +327,7 @@ int smanet_get_optionval(smanet_session_t *s, smanet_channel_t *c, char *opt) {
 	return r;
 }
 
-int smanet_get_optionbyname(smanet_session_t *s, char *name, char *dest, int destlen) {
+char *smanet_get_optionbyname(smanet_session_t *s, char *name) {
 	smanet_channel_t *c;
 	register char *p;
 	register int i;
@@ -337,23 +337,30 @@ int smanet_get_optionbyname(smanet_session_t *s, char *name, char *dest, int des
 
 	c = smanet_get_channelbyname(s,name);
 	dprintf(1,"c: %p\n", c);
-	if (!c) return 1;
-	if ((c->mask & CH_STATUS) == 0) return 1;
-	if (!s->values && _smanet_getvals(s,c)) return 1;
+	if (!c) return 0;
+	if ((c->mask & CH_STATUS) == 0) return 0;
+	if (!s->values && _smanet_getvals(s,c)) return 0;
 	dprintf(1,"timestamp: %d\n", s->values[c->id].timestamp);
-	if (s->values[c->id].timestamp == 0 && _smanet_getvals(s,c)) return 1;
+	if (s->values[c->id].timestamp == 0 && _smanet_getvals(s,c)) return 0;
 	index = _getval(&s->values[c->id]);
 	dprintf(1,"index: %d\n", index);
 	i = 0;
 	list_reset(c->strings);
 	while((p = list_get_next(c->strings)) != 0) {
 		dprintf(1,"p: %s\n", p);
-		if (i == index) {
-			dest[0] = 0;
-			strncat(dest,p,destlen);
-			return 0;
-		}
+		if (i == index) return p;
 		i++;
+	}
+	return 0;
+}
+
+int smanet_get_optionbyname_r(smanet_session_t *s, char *name, char *dest, int destlen) {
+	char *p;
+
+	p = smanet_get_optionbyname(s,name);
+	if (p) {
+		strncpy(dest,p,destlen);
+		return 0;
 	}
 	return 1;
 }

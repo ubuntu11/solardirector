@@ -9,6 +9,9 @@ LICENSE file in the root directory of this source tree.
 
 #include "smanet_internal.h"
 #include <sys/stat.h>
+#ifdef __WIN32
+#include <windows.h>
+#endif
 
 #if 0
 #define  CH_ANALOG      0x0001
@@ -148,7 +151,12 @@ int smanet_get_channels(smanet_session_t *s) {
 	char user[32],path[256];
 	FILE *fp;
 
+#ifdef __WIN32
+	DWORD bufsz = sizeof(user);
+	GetUserName(user,&bufsz);
+#else
 	getlogin_r(user,sizeof(user));
+#endif
 	sprintf(path,"/tmp/%s_%s_clist.dat",user,s->type);
 	dprintf(1,"path: %s\n", path);
 	fp = fopen(path,"rb");

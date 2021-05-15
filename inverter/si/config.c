@@ -21,6 +21,13 @@ static json_descriptor_t charge_params[] = {
 	{ "charge_focus_amps", DATA_TYPE_BOOL, 0, 0, 0, 1, (char *[]){ "Increase voltage to maintain charge amps" }, 0, 0 },
 	{ "sim_step", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "SIM Voltage Step" }, "V", 1, "%.1f" },
 	{ "interval", DATA_TYPE_INT, "range", 3, (int []){ 0, 10000, 1 }, 0, 0, 0, 1, 0 },
+	{ "can_transport", DATA_TYPE_STRING, 0, 0, 0, 0, 0, 0, 1, 0 },
+	{ "can_target", DATA_TYPE_STRING, 0, 0, 0, 0, 0, 0, 1, 0 },
+	{ "can_topts", DATA_TYPE_STRING, 0, 0, 0, 0, 0, 0, 1, 0 },
+	{ "smanet_transport", DATA_TYPE_STRING, 0, 0, 0, 0, 0, 0, 1, 0 },
+	{ "smanet_target", DATA_TYPE_STRING, 0, 0, 0, 0, 0, 0, 1, 0 },
+	{ "smanet_topts", DATA_TYPE_STRING, 0, 0, 0, 0, 0, 0, 1, 0 },
+	{ "smanet_channels_path", DATA_TYPE_STRING, 0, 0, 0, 0, 0, 0, 1, 0 },
 };
 #define NCHG (sizeof(charge_params)/sizeof(json_descriptor_t))
 
@@ -102,11 +109,8 @@ json_descriptor_t *_getd(si_session_t *s,char *name) {
 static void _addchans(si_session_t *s, json_value_t *ca) {
 	smanet_session_t *ss = s->smanet;
 	smanet_channel_t *c;
-	json_value_t *o,*a;
 	json_descriptor_t newd;
 	float step;
-
-//	o = json_create_object();
 
 	list_reset(ss->channels);
 	while((c = list_get_next(ss->channels)) != 0) {
@@ -148,8 +152,7 @@ static void _addchans(si_session_t *s, json_value_t *ca) {
 			newd.values = values;
 			dprintf(1,"adding range: 0: %f, 1: %f, 2: %f\n", values[0], values[1], values[2]);
 		} else if (c->mask & CH_DIGITAL) {
-			char **labels,*p;
-			int i;
+			char **labels;
 
 			newd.nlabels = 2;
  			labels = malloc(newd.nlabels*sizeof(char *));
@@ -220,17 +223,24 @@ int si_config_add_info(si_session_t *s, json_value_t *j) {
 static json_proctab_t *_getinv(si_session_t *s, char *name) {
 	solard_inverter_t *inv = s->ap->role_data;
 	json_proctab_t params[] = {
-                { "max_voltage",DATA_TYPE_FLOAT,&inv->max_voltage,0 },
-                { "min_voltage",DATA_TYPE_FLOAT,&inv->min_voltage,0 },
-                { "charge_start_voltage",DATA_TYPE_FLOAT,&inv->charge_start_voltage,0 },
-                { "charge_end_voltage",DATA_TYPE_FLOAT,&inv->charge_end_voltage,0 },
-                { "charge_amps",DATA_TYPE_FLOAT,&inv->charge_amps,0 },
-                { "charge_mode",DATA_TYPE_INT,&s->charge_mode,0 },
-                { "discharge_amps",DATA_TYPE_FLOAT,&inv->discharge_amps,0 },
-		{ "charge_min_amps", DATA_TYPE_FLOAT, &s->charge_min_amps,0 },
-		{ "charge_focus_amps", DATA_TYPE_BOOL, &s->charge_creep, 0 },
-		{ "sim_step", DATA_TYPE_FLOAT, &s->sim_step, 0 },
-		{ "interval", DATA_TYPE_INT, &s->interval, 0 },
+                { "max_voltage",DATA_TYPE_FLOAT,&inv->max_voltage,0,0 },
+                { "min_voltage",DATA_TYPE_FLOAT,&inv->min_voltage,0,0 },
+                { "charge_start_voltage",DATA_TYPE_FLOAT,&inv->charge_start_voltage,0,0 },
+                { "charge_end_voltage",DATA_TYPE_FLOAT,&inv->charge_end_voltage,0,0 },
+                { "charge_amps",DATA_TYPE_FLOAT,&inv->charge_amps,0,0 },
+                { "charge_mode",DATA_TYPE_INT,&s->charge_mode,0,0 },
+                { "discharge_amps",DATA_TYPE_FLOAT,&inv->discharge_amps,0,0 },
+		{ "charge_min_amps", DATA_TYPE_FLOAT, &s->charge_min_amps,0,0 },
+		{ "charge_focus_amps", DATA_TYPE_BOOL, &s->charge_creep, 0,0 },
+		{ "sim_step", DATA_TYPE_FLOAT, &s->sim_step, 0,0 },
+		{ "interval", DATA_TYPE_INT, &s->interval, 0,0 },
+                { "can_transport", DATA_TYPE_STRING, &s->can_transport, sizeof(s->can_transport)-1,0 },
+                { "can_target", DATA_TYPE_STRING, &s->can_target, sizeof(s->can_target)-1,0 },
+                { "can_topts", DATA_TYPE_STRING, &s->can_topts, sizeof(s->can_topts)-1,0 },
+                { "smanet_transport", DATA_TYPE_STRING, &s->smanet_transport, sizeof(s->smanet_transport)-1,0 },
+                { "smanet_target", DATA_TYPE_STRING, &s->smanet_target, sizeof(s->smanet_target)-1,0 },
+                { "smanet_topts", DATA_TYPE_STRING, &s->smanet_topts, sizeof(s->smanet_topts)-1,0 },
+                { "smanet_channels_path", DATA_TYPE_STRING, &s->channels_path, sizeof(s->channels_path)-1,0 },
 		JSON_PROCTAB_END
 	};
 	json_proctab_t *invp;
@@ -249,7 +259,7 @@ static json_proctab_t *_getinv(si_session_t *s, char *name) {
 	return 0;
 }
 
-si_param_t *_getp(si_session_t *s, char *name) {
+si_param_t *_getp(si_session_t *s, char *name, int invonly) {
 	json_proctab_t *invp;
 	si_param_t *pinfo;
 	smanet_channel_t *c;
@@ -263,7 +273,7 @@ si_param_t *_getp(si_session_t *s, char *name) {
 	invp = _getinv(s,name);
 	if (invp) {
 		uint8_t *bptr;
-		short *sptr;
+		short *wptr;
 		long *lptr;
 		float *fptr;
 		int *iptr;
@@ -284,8 +294,8 @@ si_param_t *_getp(si_session_t *s, char *name) {
 			pinfo->bval = *bptr;
 			break;
 		case DATA_TYPE_SHORT:
-			sptr = invp->ptr;
-			pinfo->wval = *sptr;
+			wptr = invp->ptr;
+			pinfo->wval = *wptr;
 			break;
 		case DATA_TYPE_LONG:
 			lptr = invp->ptr;
@@ -295,11 +305,15 @@ si_param_t *_getp(si_session_t *s, char *name) {
 			fptr = invp->ptr;
 			pinfo->fval = *fptr;
 			break;
+		case DATA_TYPE_STRING:
+			pinfo->sval = invp->ptr;
+			break;
 		default: break;
 		}
 		dprintf(1,"found\n");
 		return pinfo;
 	}
+	if (invonly) goto _getp_done;
 
 	/* Is it from the SI? */
 	if (!s->smanet) goto _getp_done;
@@ -314,7 +328,7 @@ si_param_t *_getp(si_session_t *s, char *name) {
 		dprintf(1,"is status: %d\n", (c->mask & CH_STATUS) != 0);
 		if (c->mask & CH_STATUS) {
 			pinfo->type = DATA_TYPE_STRING;
-			smanet_get_optionbyname(s->smanet,c->name,pinfo->sval,sizeof(pinfo->sval));
+			pinfo->sval = smanet_get_optionbyname(s->smanet,c->name);
 		} else {
 			pinfo->type = v->type;
 			switch(v->type) {
@@ -409,7 +423,7 @@ static int si_get_config(si_session_t *s, si_param_t *pp, json_descriptor_t *dp)
 	return mqtt_pub(s->ap->m,topic,temp,1);
 }
 
-static int si_set_config(si_session_t *s, si_param_t *pp, json_descriptor_t *dp, solard_confreq_t *req) {
+static int si_set_config(si_session_t *s, si_param_t *pp, json_descriptor_t *dp, solard_confreq_t *req, int pub) {
 	char temp[72];
 
 	dprintf(1,"dp: name: %s, unit: %s, scale: %f\n", dp->name, dp->units, dp->scale);
@@ -452,7 +466,32 @@ static int si_set_config(si_session_t *s, si_param_t *pp, json_descriptor_t *dp,
 		smanet_set_valuebyname(s->smanet,pp->name,&v);
 	}
 	/* Re-get the param to update internal vars and publish */
-	return si_get_config(s,_getp(s,dp->name),dp);
+	return (pub ? si_get_config(s,_getp(s,dp->name,0),dp) : 0);
+}
+
+static void si_pubconfig(si_session_t *s) {
+	json_descriptor_t *dp;
+	si_param_t *pp;
+	int i,j;
+
+	/* Pub local */
+	for(i=0; i < NALL; i++) {
+		dprintf(1,"section: %s\n", allparms[i].name);
+		dp = allparms[i].parms;
+		for(j=0; j < allparms[i].count; j++) {
+			dprintf(1,"dp->name: %s\n", dp[j].name);
+			pp = _getp(s,dp[j].name,1);
+			if (pp) si_get_config(s,pp,&dp[j]);
+		}
+	}
+	/* XXX do not pub smanet values */
+	return;
+
+	/* Pub smanet */
+	list_reset(s->desc);
+	while((dp = list_get_next(s->desc)) != 0) {
+		dprintf(1,"dp->name: %s\n", dp->name);
+	}
 }
 
 int si_config(void *handle, char *op, char *id, list lp) {
@@ -461,20 +500,24 @@ int si_config(void *handle, char *op, char *id, list lp) {
 	si_param_t *pp;
 	json_descriptor_t *dp;
 	char message[128],*p;
-	int status;
+	int status,pub;
 	long start;
 
 	dprintf(1,"op: %s\n", op);
 
 	status = 1;
+	pub = (strcmp(id,"si_control") == 0 || strcmp(id,"mqtt") == 0) ? 0 : 1;
 
 	start = mem_used();
 	list_reset(lp);
-	if (strcmp(op,"Get") == 0) {
+	/* Publish our config */
+	if (strcmp(op,"Pub") == 0) {
+		si_pubconfig(s);
+	} else if (strcmp(op,"Get") == 0) {
 		while((p = list_get_next(lp)) != 0) {
 			sprintf(message,"%s: not found",p);
 			dprintf(1,"p: %s\n", p);
-			pp = _getp(s,p);
+			pp = _getp(s,p,pub);
 			if (!pp) goto si_config_error;
 			dprintf(1,"pp: name: %s, type: %d\n", pp->name, pp->type);
 			dp = _getd(s,p);
@@ -487,11 +530,11 @@ int si_config(void *handle, char *op, char *id, list lp) {
 			dprintf(1,"req: name: %s, type: %d\n", req->name, req->type);
 			dprintf(1,"req value: %s\n", req->sval);
 			sprintf(message,"%s: not found",req->name);
-			pp = _getp(s,req->name);
+			pp = _getp(s,req->name,pub);
 			if (!pp) goto si_config_error;
 			dp = _getd(s,req->name);
 			if (!dp) goto si_config_error;
-			if (si_set_config(s,pp,dp,req)) goto si_config_error;
+			if (si_set_config(s,pp,dp,req,pub)) goto si_config_error;
 		}
 	}
 	{
@@ -503,7 +546,7 @@ int si_config(void *handle, char *op, char *id, list lp) {
 	strcpy(message,"success");
 si_config_error:
 	/* If the agent is si_control, dont send status */
-	if (strcmp(id,"si_control")!=0) agent_send_status(s->ap, s->ap->name, "Config", op, id, status, message);
+	if (pub) agent_send_status(s->ap, s->ap->name, "Config", op, id, status, message);
 	dprintf(1,"used: %ld\n", mem_used() - start);
 	return status;
 }

@@ -2,32 +2,131 @@
 #include "common.h"
 #include <ctype.h>
 
+#define _MAX_PATHLEN 1024
+
+void fixpath(char *string, int stringsz) {
+	char newstr[2048],temp[128],last_ch,*e;
+	register char *p,*s;
+	int newidx,i,have_start;
+
+	dprintf(1,"string: %s\n", string);
+
+	s = string;
+	newidx = have_start = 0;
+	for(p = string; *p; p++) {
+//		dprintf(1,"p: %c\n", *p);
+		if (have_start) {
+			if (*p == '%') {
+				temp[i] = 0;
+				dprintf(1,"temp: %s\n", temp);
+				e = os_getenv(temp);
+				dprintf(1,"e: %p\n", e);
+				if (e) {
+					strncpy(&newstr[newidx],e,strlen(e));
+					newidx += strlen(e);
+				} else {
+					newidx += sprintf(&newstr[newidx],"%%%s%%",temp);
+				}		
+				s = p+1;
+				have_start = 0;
+				last_ch = 0;
+			} else {
+				temp[i++] = *p;
+			}
+		} else if (*p == '%') {
+			if (last_ch == '%') {
+				newstr[newidx++] = '%';
+			} else {
+				i = 0;
+				have_start = 1;
+				strncpy(&newstr[newidx],s,p-s);
+				newidx += p-s;
+			}
+		} else {
+			newstr[newidx++] = *p;
+		}
+		last_ch = *p;
+	}
+	dprintf(1,"have_start: %d\n", have_start);
+	newstr[newidx] = 0;
+#ifdef __WIN32
+	i = 0;
+	for(p = newstr; *p; p++) {
+		if (*p == '/') *p = '\\';
+		string[i++] = *p;
+		if (i >= stringsz-1) break;
+	}
+	string[i] = 0;
+#else
+	strncpy(string,newstr,stringsz);
+#endif
+	dprintf(1,"NEW string: %s\n", string);
+}
+
+#ifdef __WIN32
+#include <windows.h>
+BOOL FileExists(LPCTSTR szPath) {
+	DWORD dwAttrib = GetFileAttributes(szPath);
+	return (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
+}
+#endif
+
+static int _checkpath(char *path, int pathlen, char *prog, char *dest, int dest_len) {
+	char temp[_MAX_PATHLEN];
+	int r,sz;
+
+	r = 0;
+	*temp = 0;
+	sz = sizeof(temp)-1;
+	strncat(temp,path,(pathlen > sz ? sz : pathlen));
+	sz -= pathlen;
+	dprintf(1,"temp: %s\n", temp);
+	strncat(temp,"/",sz); sz--;
+	strncat(temp,prog,sz);
+	sz -= strlen(prog);
+#ifdef __WIN32
+	if (strlen(temp) > 4 && strcmp(&temp[strlen(temp)-4],".exe") != 0) strncat(temp,".exe",sz);
+#endif
+	fixpath(temp,sizeof(temp)-1);
+	dprintf(1,"temp: %s\n", temp);
+#ifdef __WIN32
+	if (FileExists(temp) != 0) {
+#else
+	if (access(temp,X_OK) == 0) {
+#endif
+		dprintf(1,"found!\n");
+		strncpy(dest,temp,dest_len);
+		r = 1;
+	}
+	dprintf(1,"returning: %d\n", r);
+	return r;
+}
+
 /* Search the path for an executable */
 int solard_get_path(char *prog, char *dest, int dest_len) {
-	char temp[256],*path,*s,*e;
+//	char temp[256],*path,*s,*e;
+	char *path,*s,*e;
 	int len;
 
 	dprintf(1,"prog: %s, dest: %p, dest_len: %d\n", prog, dest, dest_len);
 
-	path = getenv("PATH");
-	dprintf(1,"path: %s\n", path);
+	/* Check SOLARD_BINDIR first */
+	len = strlen(SOLARD_BINDIR) > _MAX_PATHLEN-1 ? _MAX_PATHLEN-1 : strlen(SOLARD_BINDIR);
+	if (_checkpath(SOLARD_BINDIR,len,prog,dest,dest_len)) return 0;
+
+	path = os_getenv("PATH");
+	dprintf(1,"env PATH: %s\n", path);
 	if (!path) return 1;
 	s = e = path;
 	while(1) {
+#ifdef __WIN32
+		if (*e == 0 || *e == ';') {
+#else
 		if (*e == 0 || *e == ':') {
-			len = (e - s) > sizeof(temp)-1 ? sizeof(temp)-1 : e - s;
+#endif
+			len = (e - s) > _MAX_PATHLEN-1 ? _MAX_PATHLEN-1 : e - s;
 			dprintf(1,"len: %d\n",len);
-			*temp = 0;
-			strncat(temp,s,len);
-			dprintf(1,"temp: %s\n", temp);
-			strncat(temp,"/",(sizeof(temp)-strlen(temp))-1);
-			strncat(temp,prog,(sizeof(temp)-strlen(temp))-1);
-			dprintf(1,"temp: %s\n", temp);
-			if (access(temp,X_OK)==0) {
-				*dest = 0;
-				strncat(dest,temp,dest_len);
-				return 0;
-			}
+			if (len) if (_checkpath(s,len,prog,dest,dest_len)) return 0;
 			if (*e == 0) break;
 			s = e+1;
 		}
@@ -39,62 +138,7 @@ int solard_get_path(char *prog, char *dest, int dest_len) {
 }
 
 #if 0
-int solard_exec(char *path, char **output, int ignore) {
-	char buffer[1024],*outp,*p;
-	list lines;
-	int len,status;
-	FILE *fp;
-
-	dprintf(1,"path: %s, output: %p\n", path, output);
-
-	fp = popen(path,"r");
-	if (!fp) {
-		log_write(LOG_DEBUG|LOG_SYSERR,"popen(%d)",path);
-		return 1;
-	}
-	lines = list_create();
-	if (!lines) {
-		log_write(LOG_DEBUG|LOG_SYSERR,"list_create");
-		return 1;
-	}
-	dprintf(1,"getting output...\n");
-	while (fgets(buffer, sizeof(buffer)-1, fp) != NULL) {
-		dprintf(7,"line: %s\n", buffer);
-		list_add(lines,buffer,strlen(buffer)+1);
-	}
-	dprintf(1,"lines count: %d\n", list_count(lines));
-	status = pclose(fp);
-	dprintf(1,"status: %d\n", status);
-	if (!ignore && status != 0) return 1;
-
-	len = 0;
-	list_reset(lines);
-	while((p = list_get_next(lines)) != 0) len += strlen(p);
-
-	/* Alloc the output */
-//	dprintf(1,"len: %d\n", len);
-	outp = malloc(len+1);
-	if (!outp) {
-		log_write(LOG_DEBUG|LOG_SYSERR,"malloc(%d)",len+1);
-		return 1;
-	}
-
-	*outp = 0;
-	list_reset(lines);
-	while((p = list_get_next(lines)) != 0) strcat(outp,p);
-//	dprintf(1,"output: %s\n", outp);
-
-	if (len > 1) {
-		while(isspace(outp[len-1])) len--;
-		dprintf(1,"len: %d\n", len);
-		outp[len] = 0;
-	}
-
-	*output = outp;
-//	dprintf(1,"output: %s\n", *output);
-	return 0;
-}
-
+/* This one uses which command on old exec method */
 int solard_get_path(char *prog, char *dest, int dest_len) {
 	char cmd[256],*path;
 

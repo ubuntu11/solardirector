@@ -15,6 +15,7 @@ LICENSE file in the root directory of this source tree.
 struct solard_client {
 	char id[SOLARD_ID_LEN];			/* Same as MQTT ClientID */
 	char name[SOLARD_NAME_LEN];		/* Client name */
+	mqtt_config_t mqtt_config;
 	mqtt_session_t *m;
 	list messages;
 	cfg_info_t *cfg;

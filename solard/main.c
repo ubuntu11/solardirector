@@ -15,7 +15,7 @@ extern int logopts;
 int main(int argc,char **argv) {
 	solard_config_t *conf;
 	solard_message_t *msg;
-	char configfile[256];
+//	char configfile[256];
 	long start;
 	time_t cur,last_check,diff;
 #if 0
@@ -25,8 +25,8 @@ int main(int argc,char **argv) {
 	argc = nargs;
 #endif
 
-	find_config_file("solard.conf",configfile,sizeof(configfile)-1);
-	dprintf(1,"configfile: %s\n",configfile);
+//	find_config_file("solard.conf",configfile,sizeof(configfile)-1);
+//	dprintf(1,"MY configfile: %s\n",configfile);
 
 	conf = calloc(1,sizeof(*conf));
 	if (!conf) return 1;

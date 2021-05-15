@@ -84,7 +84,7 @@ int jbd_can_get_fetstate(struct jbd_session *s) {
 }
 
 /* For CAN bus only */
-int jbd_can_get_pack(struct jbd_session *s, solard_battery_t *pp) {
+int jbd_can_read(struct jbd_session *s, solard_battery_t *pp) {
 	uint8_t data[8];
 	int id,i;
 	uint16_t protectbits;
@@ -157,7 +157,7 @@ static int jbd_std_get_fetstate(jbd_session_t *s) {
 	return 0;
 }
 
-static int jbd_std_get_pack(jbd_session_t *s, solard_battery_t *pp) {
+int jbd_std_read(jbd_session_t *s, solard_battery_t *pp) {
 	uint8_t data[128];
 	int i,bytes;;
 	struct jbd_protect prot;
@@ -240,9 +240,9 @@ int jbd_read(void *handle, void *buf, int buflen) {
 
 	dprintf(2,"transport: %s\n", s->tp->name);
 	if (strncmp(s->tp->name,"can",3)==0) 
-		r = jbd_can_get_pack(s,pp);
+		r = jbd_can_read(s,pp);
 	else
-		r = jbd_std_get_pack(s,pp);
+		r = jbd_std_read(s,pp);
 	if (s->balancing) solard_set_state(pp,BATTERY_STATE_BALANCING);
 	else solard_clear_state(pp,BATTERY_STATE_BALANCING);
 	return r;

@@ -33,6 +33,7 @@ typedef struct solard_agentinfo solard_agentinfo_t;
 #define AGENTINFO_STATUS_ERROR 0x04		/* Agent is gone */
 
 struct solard_config {
+	char name[SOLARD_NAME_LEN];		/* Site name */
 	solard_client_t *c;
 	solard_inverter_t *inv;
 	list things;
@@ -62,11 +63,14 @@ void getpack(solard_config_t *conf, char *name, char *data);
 void solard_setcfg(cfg_info_t *cfg, char *section_name, solard_agentinfo_t *info);
 
 int agent_get_role(solard_config_t *conf, solard_agentinfo_t *info);
+void add_agent(solard_config_t *conf, char *role, json_value_t *v);
+int check_agents(solard_config_t *conf);
+
+void agentinfo_pub(solard_config_t *conf, solard_agentinfo_t *info);
 void agentinfo_getcfg(cfg_info_t *cfg, char *sname, solard_agentinfo_t *info);
 void agentinfo_setcfg(cfg_info_t *cfg, char *sname, solard_agentinfo_t *info);
 int agentinfo_add(solard_config_t *conf, solard_agentinfo_t *info);
-void add_agent(solard_config_t *conf, char *role, json_value_t *v);
-int check_agents(solard_config_t *conf);
+int agentinfo_get(solard_config_t *conf, char *);
 void agentinfo_newid(solard_agentinfo_t *info);
 
 #endif

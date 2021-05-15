@@ -6,17 +6,22 @@ PTHREADS=yes
 DYNAMIC=yes
 SHARED?=no
 STATIC?=no
+HOME:=$(shell echo $HOME)
 
 ifneq "$(findstring win,$(TARGET))" ""
 ISWIN=yes
 endif
 
 ifeq ($(ISWIN),yes)
-PREFIX?="C:\\\Program Files\\\SolarDirector"
+PREFIX?="C:\\\sd"
 else
+ifeq ($(whoami),root)
 PREFIX?=/opt/sd
+INSTALL_USER="-u root -g root"
+else
+PREFIX?=$(shell echo $$HOME)
 endif
-#CFLAGS+=-DETCDIR=\"$(ETCDIR)\" -DLIBDIR=\"$(LIBDIR)\"
+endif
 CFLAGS+=-DSOLARD_PREFIX=\"$(PREFIX)\"
 
 # Define SRC_ROOT
@@ -34,6 +39,12 @@ ifeq ($(OLDSMANET),yes)
 	CFLAGS+=-I$(SRC_ROOT)/oldsmanet
 	LIBS+=-L$(SRC_ROOT)/oldsmanet -loldsmanet$(SUFFIX)
 	DEPS+=$(SRC_ROOT)/oldsmanet/liboldsmanet$(SUFFIX)$(LIBEXT)
+endif
+
+ifeq ($(JBD),yes)
+	CFLAGS+=-I$(SRC_ROOT)/jbd
+	LIBS+=-L$(SRC_ROOT)/jbd -ljbd$(SUFFIX)
+	DEPS+=$(SRC_ROOT)/jbd/libjbd$(SUFFIX)$(LIBEXT)
 endif
 
 # Always include libsd

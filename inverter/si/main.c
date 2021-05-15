@@ -158,9 +158,47 @@ static void getconf(si_session_t *s) {
 		{ "si", "interval", 0, DATA_TYPE_INT, &s->interval, 0, "10" },
 		CFG_PROCTAB_END
 	};
+	char topic[SOLARD_TOPIC_SIZE];
+	solard_message_t *msg;
+        solard_confreq_t req;
+	list lp;
 
         cfg_get_tab(s->ap->cfg,mytab);
         if (debug) cfg_disp_tab(mytab,"si",1);
+	dprintf(1,"fn: %p\n", s->ap->cfg->filename);
+	if (s->ap->cfg->filename) return;
+
+	/* Sub to our config topic */
+        sprintf(topic,SOLARD_TOPIC_ROOT"/"SOLARD_ROLE_INVERTER"/%s/"SOLARD_FUNC_CONFIG"/+",s->ap->instance_name);
+        if (mqtt_sub(s->ap->m,topic)) return;
+
+	/* Ingest any config messages */
+	dprintf(1,"ingesting...\n");
+	solard_ingest(s->ap->mq,2);
+	dprintf(1,"back from ingest...\n");
+
+	/* Process messages as config requests */
+	lp = list_create();
+	dprintf(1,"mq count: %d\n", list_count(s->ap->mq));
+	list_reset(s->ap->mq);
+	while((msg = list_get_next(s->ap->mq)) != 0) {
+		memset(&req,0,sizeof(req));
+		strncat(req.name,msg->param,sizeof(req.name)-1);
+		req.type = DATA_TYPE_STRING;
+		dprintf(1,"data len: %d\n", msg->data_len);
+		strncat(req.sval,msg->data,sizeof(req.sval)-1);
+		dprintf(1,"req: name: %s, type: %d(%s), sval: %s\n", req.name, req.type, typestr(req.type), req.sval);
+		list_add(lp,&req,sizeof(req));
+		list_delete(s->ap->mq,msg);
+	}
+	dprintf(1,"lp count: %d\n", list_count(lp));
+	if (list_count(lp)) si_config(s,"Set","si_control",lp);
+	list_destroy(lp);
+	mqtt_unsub(s->ap->m,topic);
+
+	dprintf(1,"done\n");
+	return;
+
 }
 
 int main(int argc, char **argv) {
@@ -186,6 +224,8 @@ int main(int argc, char **argv) {
 	/* Read our specific config */
 	getconf(s);
 
+//	si_config(s,"Pub","mqtt",0);
+
 	/* Readonly? */
 	dprintf(1,"readonly: %d\n", s->readonly);
 	if (s->readonly)
@@ -196,21 +236,9 @@ int main(int argc, char **argv) {
 	/* Read and write intervals are 10s */
 	ap->read_interval = ap->write_interval = s->interval;
 
-#if 1
-	{
-		list lp;
-		lp = list_create();
-//#define CV "charge_voltage"
-#define CV "ComBaud"
-		list_add(lp,CV,strlen(CV)+1);
-		si_config(s, "Get", "main", lp);
-	}
-#endif
-
-	s->startup = 1;
-
 	/* Go */
 	log_write(LOG_INFO,"Agent Running!\n");
+	s->startup = 1;
 	agent_run(ap);
 	return 0;
 }

@@ -112,7 +112,8 @@ smanet_channel_t *smanet_get_channelbyindex(smanet_session_t *s, uint16_t, uint8
 
 int smanet_get_optionbyid(smanet_session_t *s, int, char *);
 int smanet_set_optionbyid(smanet_session_t *s, char *, char *);
-int smanet_get_optionbyname(smanet_session_t *s, char *, char *, int);
+char *smanet_get_optionbyname(smanet_session_t *s, char *);
+int smanet_get_optionbyname_r(smanet_session_t *s, char *, char *, int);
 int smanet_set_optionbyname(smanet_session_t *s, char *, char *);
 
 smanet_value_t *smanet_get_value(smanet_session_t *, smanet_channel_t *);

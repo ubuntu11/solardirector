@@ -25,7 +25,7 @@ typedef int (*role_config_t)(void *,char *);
 
 struct solard_agent {
 	char name[SOLARD_NAME_LEN];
-	void *cfg;
+	cfg_info_t *cfg;
 	char section_name[CFG_SECTION_NAME_SIZE];
 	mqtt_session_t *m;		/* MQTT Session handle */
 	int read_interval;

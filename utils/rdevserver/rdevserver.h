@@ -13,7 +13,10 @@ LICENSE file in the root directory of this source tree.
 #include "common.h"
 #include "module.h"
 #include "devserver.h"
+#ifndef __WIN32
 #include <linux/can.h>
+#endif
+#include <pthread.h>
 
 struct rdev_config {
 	cfg_info_t *cfg;

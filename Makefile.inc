@@ -16,6 +16,7 @@ SBINDIR?=$(PREFIX)/sbin
 LIBDIR?=$(PREFIX)/lib
 INCDIR?=$(PREFIX)/include
 
+INSTALL=install
 ifeq ($(TARGET),pi3)
 	ARCH=pi
 	OS=Linux
@@ -78,7 +79,6 @@ else ifneq (,$(findstring linux,$(TARGET)))
 	AR=ar
 	RANLIB=ranlib
 	STRIP=strip
-	INSTALL=install
 #	CFLAGS+=-DNULLDEV=\"/dev/null\" -D__USE_FILE_OFFSET64
 	DEST_BASE=/usr/local
 	DEST_PREFIX=$(DEST_BASE)
@@ -286,19 +286,24 @@ else
 install: $(PROG)
 endif
 ifneq ("$(wildcard $(PROGCONF))","")
-	sudo mkdir -p $(ETCDIR)
-	sudo $(INSTALL) -m 644 -o root -g root $(PROGCONF) $(ETCDIR)/$(PROGCONF)
+	mkdir -p $(ETCDIR)
+	$(INSTALL) -m 644 $(INSTALL_USER) $(PROGCONF) $(ETCDIR)/$(PROGCONF)
 endif
-	sudo mkdir -p $(BINDIR)
-	sudo $(INSTALL) -m 755 -o root -g root $(PROG) $(BINDIR)/$(PROG)
+	mkdir -p $(BINDIR)
+	$(INSTALL) -m 755 $(INSTALL_USER) $(PROG) $(BINDIR)/$(PROG)
 endif
 
 ifneq ("$(wildcard $(SERVICE))","")
 /etc/systemd/system/$(SERVICE): $(SERVICE)
-	sudo $(INSTALL) -m 644 -o root -g root $< $@
-	sudo systemctl daemon-reload
-	sudo systemctl enable $(SERVICE)
+ifeq ($(whoami),root)
+	$(INSTALL) -m 644 $(INSTALL_USER) $< $@
+	systemctl daemon-reload
+	systemctl enable $(SERVICE)
 endif
+endif
+release: $(PROG)
+	mkdir -p $(SRC_ROOT)/releases/$(TARGET)
+	$(MAKE) PREFIX=$(SRC_ROOT)/releases/$(TARGET) TARGET=$(TARGET) install
 
 clean:
 	rm -rf $(LIB) $(PROG) $(OBJS) *.o $(CLEANFILES)

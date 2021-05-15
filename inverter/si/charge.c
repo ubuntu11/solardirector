@@ -15,7 +15,7 @@ void charge_init(si_session_t *s) {
 	solard_inverter_t *inv = s->ap->role_data;
 
 	if (inverter_check_parms(inv)) {
-		log_write(LOG_ERROR,"failed; %s\n", inv->errmsg);
+		log_write(LOG_ERROR,"%s\n", inv->errmsg);
 		charge_stop(s,0);
 		return;
 	}
@@ -29,7 +29,7 @@ void charge_max_start(si_session_t *s) {
 	solard_inverter_t *inv = s->ap->role_data;
 
 	if (inverter_check_parms(inv)) {
-		log_write(LOG_ERROR,"failed; %s\n", inv->errmsg);
+		log_write(LOG_ERROR,"%s\n", inv->errmsg);
 		charge_stop(s,0);
 		return;
 	}
@@ -42,7 +42,7 @@ void charge_max_stop(si_session_t *s) {
 	solard_inverter_t *inv = s->ap->role_data;
 
 	if (inverter_check_parms(inv)) {
-		log_write(LOG_ERROR,"failed; %s\n", inv->errmsg);
+		log_write(LOG_ERROR,"%s\n", inv->errmsg);
 		charge_stop(s,0);
 		return;
 	}

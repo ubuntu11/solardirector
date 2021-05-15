@@ -12,7 +12,10 @@ LICENSE file in the root directory of this source tree.
 
 #include "agent.h"
 #include "smanet.h"
+#ifndef __WIN32
 #include <linux/can.h>
+#endif
+#include <pthread.h>
 
 enum SI_PARAM_SOURCE {
 	SI_PARAM_SOURCE_UNK,
@@ -32,7 +35,8 @@ struct si_param {
 		long lval;
 		float fval;
 		double dval;
-		char sval[128];
+//		char sval[128];
+		char *sval;
 	};
 };
 typedef struct si_param si_param_t;
@@ -40,6 +44,9 @@ typedef struct si_param si_param_t;
 struct si_session {
 	solard_agent_t *ap;
 	int readonly;
+	char smanet_transport[SOLARD_TRANSPORT_LEN];
+	char smanet_target[SOLARD_TARGET_LEN];
+	char smanet_topts[SOLARD_TOPTS_LEN];
 	smanet_session_t *smanet;
 	char channels_path[256];
 	list desc;
@@ -48,10 +55,11 @@ struct si_session {
 	/* 0x300 to 0x30F */
 	struct can_frame frames[16];
 	uint32_t bitmap;
+	char can_transport[SOLARD_TRANSPORT_LEN];
+	char can_target[SOLARD_TARGET_LEN];
+	char can_topts[SOLARD_TOPTS_LEN];
 	solard_module_t *can;
 	void *can_handle;
-//	solard_module_t *tty;
-//	void *tty_handle;
 	int (*can_read)(struct si_session *, int id, uint8_t *data, int len);
 	uint16_t state;
 	json_proctab_t idata;

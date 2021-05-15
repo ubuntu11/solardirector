@@ -1,4 +1,4 @@
-
+#ifndef __WIN32
 /*
 Copyright (c) 2021, Stephen P. Shoecraft
 All rights reserved.
@@ -19,8 +19,6 @@ typedef struct mybmm_config mybmm_config_t;
 #include <errno.h>
 #include <ctype.h>
 #include <dlfcn.h>
-//#include "util.h"
-//#include "parson.h"
 #include "mybmm.h"
 #include "inverter.h"
 #include "si_info.h"
@@ -534,3 +532,6 @@ int main(int argc, char **argv) {
 
 	return 0;
 }
+#else
+int main(void) { return 1; }
+#endif

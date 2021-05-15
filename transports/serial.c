@@ -277,9 +277,9 @@ static int set_interface_attribs (HANDLE h, int speed, int data, int parity, int
 
 	/* Parity (0=none, 1=even, 2=odd */
 	switch(parity) {
-		case 1: Dcb.Parity = EVENPARITY; dcb.fParity = 1; break;
-		case 2: Dcb.Parity = ODDPARITY; dcb.fParity = 1; break;
-		default: Dcb.Parity = NOPARITY; dcb.fParity = 0; break;
+		case 1: Dcb.Parity = EVENPARITY; Dcb.fParity = 1; break;
+		case 2: Dcb.Parity = ODDPARITY; Dcb.fParity = 1; break;
+		default: Dcb.Parity = NOPARITY; Dcb.fParity = 0; break;
 	}
 
 	Dcb.fBinary = 1;
@@ -311,9 +311,8 @@ static int set_interface_attribs (HANDLE h, int speed, int data, int parity, int
 			timeout.ReadTotalTimeoutConstant = 1;	//Wait as little as possible for a blocking read (1 millisecond)
 		}
 	}
-	if(!SetCommTimeouts(handle, &timeout)) {
-		printf("Error setting serial port timeout: %lu\n", GetLastError());
-		throw std::runtime_error("serial initialization failed");
+	if(!SetCommTimeouts(h, &timeout)) {
+		log_write(LOG_ERROR,"Unable to setting serial port timeout: %lu\n", GetLastError());
 	}
 	return 0;
 }
@@ -355,13 +354,13 @@ static int serial_read(void *handle, void *buf, int buflen) {
 //	register uint8_t *p = buf;
 //	register int i;
 //	uint8_t ch;
-	int bytes, count;
+	int bytes;
 //	int num, i;
 //	time_t start,cur;
 #ifndef __WIN32
 	struct timeval tv;
 	fd_set rfds;
-	int num;
+	int num,count;
 #endif
 
 	dprintf(8,"buf: %p, buflen: %d\n", buf, buflen);
@@ -428,10 +427,12 @@ static int serial_read(void *handle, void *buf, int buflen) {
 
 #endif
 
+#ifndef __WIN32
 serial_read_done:
 	if (debug >= 8 && count > 0) bindump("FROM DEVICE",buf,count);
 	dprintf(8,"returning: %d\n", count);
 	return count;
+#endif
 }
 #endif
 

@@ -1,8 +1,0 @@
-for i in $(seq 1 14)
-do
-	n=$(printf "%02d" $i)
-
-	m='{"agent":{"agent_name":"jbd","agent_path":"/opt/sd/bin/jbd","agent_role":"Battery","name":"pack_'${n}'","transport":"ip","target":"pack_'${n}'"}}'
-	mosquitto_pub -t SolarD/Controller/Config/Add/x -m $m
-#	break
-done

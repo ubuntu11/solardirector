@@ -1,4 +1,4 @@
-
+#ifndef __WIN32
 /*
 Copyright (c) 2021, Stephen P. Shoecraft
 All rights reserved.
@@ -120,3 +120,4 @@ mybmm_module_t *mybmm_load_module(mybmm_config_t *conf, char *name, int type) {
 
 	return mp;
 }
+#endif

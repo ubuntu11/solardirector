@@ -11,6 +11,12 @@ LICENSE file in the root directory of this source tree.
 #include <stdint.h>
 #include <errno.h>
 #include <string.h>
+#include "debug.h"
+
+#ifdef __WIN32
+static int win32_getseed(void);
+#endif
+
 /*
  * Unified UUID/GUID definition
  *
@@ -51,11 +57,22 @@ int hex_to_bin(char ch) {
 }
 void prandom_bytes(void *buf, size_t bytes)
 {
+#ifdef __WIN32
+	unsigned char *dest = buf;
+	int i,seed;
+
+	/* Cant include windows.h here due to uuid decl issues */
+	seed = win32_getseed();
+	dprintf(1,"seed: %d\n", seed);
+	srand(seed);
+	for(i=0; i < bytes; i++) dest[i] = rand();
+#else
 	FILE *fp;
 
 	fp = fopen("/dev/urandom","rb");
 	if (fp) fread(buf,1,bytes,fp);
 	fclose(fp);
+#endif
 }
 void get_random_bytes(void *buf, size_t bytes) {
 	prandom_bytes(buf,bytes);
@@ -83,6 +100,7 @@ static void __uuid_gen_common(__u8 b[16])
 	/* reversion 0b10 */
 	b[8] = (b[8] & 0x3F) | 0x80;
 }
+
 #if 0
 void guid_gen(guid_t *lu)
 {
@@ -91,6 +109,7 @@ void guid_gen(guid_t *lu)
 	lu->b[7] = (lu->b[7] & 0x0F) | 0x40;
 }
 #endif
+
 //EXPORT_SYMBOL_GPL(guid_gen);
 void uuid_gen(uuid_t *bu)
 {
@@ -258,3 +277,17 @@ void my_uuid_unparse(const uuid_t *uu, char *out)
 {
 	uuid_unparse_x(uu, out, FMT_DEFAULT);
 }
+
+/* Needs to be after everything */
+#ifdef __WIN32
+#include <windows.h>
+#include <winnt.h>
+static int win32_getseed(void) {
+	LARGE_INTEGER ticks;
+	int seed;
+
+	if (!QueryPerformanceCounter(&ticks)) seed = time(0);
+	else seed = ticks.u.LowPart;
+	return seed;
+}
+#endif

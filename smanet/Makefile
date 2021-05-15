@@ -12,7 +12,7 @@ include ../Makefile.sd
 
 MYTP=../transports/serial.c ../transports/rdev.c
 try: try.c $(LIB) ../lib/libsolard_debug.a $(MYTP)
-	cc $(CFLAGS) -o $@ try.c $(MYTP) $(LIBS)
+	$(CC) $(CFLAGS) -o $@ try.c $(MYTP) $(LIBS)
 
 debug: try
 	gdb ./try

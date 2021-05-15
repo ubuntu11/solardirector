@@ -11,10 +11,16 @@ LICENSE file in the root directory of this source tree.
 
 #include <unistd.h>
 #include <sys/types.h>
-#include <pwd.h>
 #include <string.h>
+#ifndef __WIN32
+#include <pwd.h>
+#else
+#include <windows.h>
+#include <shlobj.h>
+#endif
 
 int gethomedir(char *dest, int dest_len) {
+#ifndef __WIN32
 	struct passwd *pw;
 
 	pw = getpwuid(getuid());
@@ -23,9 +29,28 @@ int gethomedir(char *dest, int dest_len) {
 	*dest = 0;
 	strncat(dest,pw->pw_dir,dest_len);
 	return 0;
+#else
+#if 0
+HRESULT SHGetKnownFolderPath(
+  REFKNOWNFOLDERID rfid,
+  DWORD            dwFlags,
+  HANDLE           hToken,
+  PWSTR            *ppszPath
+);
+#endif
+//	WCHAR path[MAX_PATH];
+//	if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL, 0, path))) {
+	char path[MAX_PATH];
+	if (SUCCEEDED(SHGetFolderPath(NULL, CSIDL_PROFILE, NULL, 0, path))) {
+		strncpy(dest,path,dest_len);
+		return 0;
+	} else {
+		return 1;
+	}
+#endif
 }
 
-#if 0
+#ifdef GEHOMEDIR_DIRECT
 int gethomedir(long uid, char *dest, int destlen) {
 	FILE *fp;
 	char line[256],*p,*s;

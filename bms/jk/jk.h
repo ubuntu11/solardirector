@@ -7,8 +7,8 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#ifndef __JBD_H
-#define __JBD_H
+#ifndef __JK_H
+#define __JK_H
 
 #include <stdint.h>
 #include "battery.h"
@@ -31,6 +31,7 @@ struct jk_session {
 	void *tp_handle;		/* Our transport handle */
 	char name[SOLARD_NAME_LEN];
 	jk_info_t info;
+	uint8_t fetstate;
 	uint16_t state;			/* Pack state */
 };
 typedef struct jk_session jk_session_t;
@@ -64,5 +65,21 @@ json_value_t *jk_info(void *handle);
 
 /* Control */
 int jk_control(void *handle,...);
+
+#define jk_getshort(p) ((short) ((*((p)) << 8) | *((p)+1) ))
+#define jk_putshort(p,v) { float tmp; *((p)) = ((int)(tmp = v) >> 8); *((p+1)) = (int)(tmp = v); }
+
+#define JK_PKT_START		0xDD
+#define JK_PKT_END		0x77
+#define JK_CMD_READ		0xA5
+#define JK_CMD_WRITE		0x5A
+
+#define JK_CMD_HWINFO		0x03
+#define JK_CMD_CELLINFO	0x04
+#define JK_CMD_HWVER		0x05
+#define JK_CMD_MOS		0xE1
+
+#define JK_MOS_CHARGE          0x01
+#define JK_MOS_DISCHARGE       0x02
 
 #endif

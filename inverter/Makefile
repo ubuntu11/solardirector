@@ -2,7 +2,7 @@
 all:
 	@for d in *; do test "$$d" = "lib" && continue; if test -d $$d; then make -j $$MAKE_JOBS -C $$d || exit 1; fi; done
 
-install clean cleanall::
+install release clean cleanall::
 	for d in *; do if test -d $$d; then make -C $$d $@; fi; done
 
 list:

@@ -8,20 +8,24 @@ LICENSE file in the root directory of this source tree.
 
 #include "si.h"
 #include <pthread.h>
+#ifndef __WIN32
 #include <linux/can.h>
 #include <sys/signal.h>
+#endif
 #include <math.h>
 
 void *si_recv_thread(void *handle) {
 	si_session_t *s = handle;
 	struct can_frame frame;
-	sigset_t set;
 	int bytes;
+#ifndef __WIN32
+	sigset_t set;
 
 	/* Ignore SIGPIPE */
 	sigemptyset(&set);
 	sigaddset(&set, SIGPIPE);
 	sigprocmask(SIG_BLOCK, &set, NULL);
+#endif
 
 	dprintf(3,"thread started!\n");
 	while(solard_check_state(s,SI_STATE_RUNNING)) {

@@ -108,7 +108,14 @@ void display(cellmon_config_t *conf) {
 		x++;
 	}
 
-	if (!debug) system("clear; echo \"**** $(date) ****\"");
+	if (!debug) {
+#ifdef __WIN32
+		system("cls");
+		system("time /t");
+#else
+		system("clear; echo \"**** $(date) ****\"");
+#endif
+	}
 
 	sprintf(format,"%%-%d.%ds ",COLUMN_WIDTH,COLUMN_WIDTH);
 	/* Header */

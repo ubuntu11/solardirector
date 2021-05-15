@@ -8,36 +8,17 @@ LICENSE file in the root directory of this source tree.
 */
 
 #include "solard.h"
-#include "uuid.h"
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <sys/stat.h>
-#include <sys/signal.h>
-#include <unistd.h>
 
-#define INFO_TAB(SN) \
-	{ SN, "agent_name", 0, DATA_TYPE_STRING,&info->agent,sizeof(info->agent), 0 }, \
-	{ SN, "agent_path", 0, DATA_TYPE_STRING,&info->path,sizeof(info->path), 0 }, \
-	{ SN, "agent_role", 0, DATA_TYPE_STRING,&info->role,sizeof(info->role), 0 }, \
-	{ SN, "name", 0, DATA_TYPE_STRING,&info->name,sizeof(info->name), 0 }, \
-	{ SN, "transport", 0, DATA_TYPE_STRING,&info->transport,sizeof(info->transport), 0 }, \
-	{ SN, "target", 0, DATA_TYPE_STRING,&info->target,sizeof(info->target), 0 }, \
-	{ SN, "topts", 0, DATA_TYPE_STRING,&info->topts,sizeof(info->topts), 0 }, \
-	{ SN, "managed", 0, DATA_TYPE_LOGICAL,&info->managed,sizeof(info->managed),"true" }, \
-	CFG_PROCTAB_END
-
-void agentinfo_dump(solard_agentinfo_t *info) {
-	cfg_proctab_t info_tab[] = { INFO_TAB(0) }, *t;
-	char temp[128];
-
-	for(t=info_tab; t->keyword; t++) {
-		conv_type(DATA_TYPE_STRING,&temp,sizeof(temp)-1,t->type,t->dest,t->dlen);
-		dprintf(1,"%s: %s\n", t->keyword, temp);
-	}
-}
+#ifdef __WIN32
+#define STATFUNC _stat
+#else
+#define STATFUNC stat
+#endif
 
 int agent_start(solard_config_t *conf, solard_agentinfo_t *info) {
-	char logfile[256],*args[32];
+	char prog[256],logfile[256],*args[32];
 	int i;
 
 	if (!conf->c->cfg && solard_write_config(conf)) return 1;
@@ -51,17 +32,36 @@ int agent_start(solard_config_t *conf, solard_agentinfo_t *info) {
 
 	/* Exec the agent */
 	i = 0;
-	args[i++] = info->path;
-	args[i++] = "-c";
-	args[i++] = conf->c->cfg->filename;
-	args[i++] = "-s";
-	args[i++] = info->id;
-//	args[i++] = "-n";
-//	args[i++] = info->name;
+	strncpy(prog,info->path,sizeof(prog)-1);
+#ifdef __WIN32
+//	strcat(prog,".exe");
+#endif
+	args[i++] = prog;
+	if (conf->c->cfg->filename) {
+		args[i++] = "-c";
+		args[i++] = conf->c->cfg->filename;
+		args[i++] = "-s";
+		args[i++] = info->id;
+	} else {
+		char temp[128];
+
+		sprintf(temp,"%s,%s",info->transport,info->target);
+		if (strlen(info->topts)) {
+			strcat(temp,",");
+			strcat(temp,info->topts);
+		}
+		args[i++] = "-t";
+		args[i++] = temp;
+		args[i++] = "-n";
+		args[i++] = info->name;
+		args[i++] = "-m";
+		args[i++] = conf->c->mqtt_config.host;
+	}
 	args[i++] = "-l";
 	args[i++] = logfile;
 	args[i++] = 0;
 	info->pid = solard_exec(info->path,args,logfile,0);
+	dprintf(1,"pid: %d\n", info->pid);
 	if (info->pid < 0) {
 		log_write(LOG_SYSERR,"agent_start: exec");
 		return 1;
@@ -84,7 +84,7 @@ void agent_error(solard_config_t *conf, solard_agentinfo_t *info, int secs) {
 		return;
 	}
 	log_write(LOG_ERROR,"%s/%s has not reported in %d seconds, killing\n",info->role,info->name,secs);
-	kill(info->pid,SIGTERM);
+	solard_kill(info->pid);
 }
 
 static time_t get_updated(solard_config_t *conf, solard_agentinfo_t *info) {
@@ -143,12 +143,7 @@ int check_agents(solard_config_t *conf) {
 
 				/* Check if the process exited */
 				dprintf(5,"pid: %d\n", info->pid);
-				if (waitpid(info->pid, &status, WNOHANG) != 0) {
-
-					/* Get exit status */
-					dprintf(5,"WIFEXITED: %d\n", WIFEXITED(status));
-					if (WIFEXITED(status)) dprintf(1,"WEXITSTATUS: %d\n", WEXITSTATUS(status));
-					status = (WIFEXITED(status) ? WEXITSTATUS(status) : 1);
+				if (solard_checkpid(info->pid, &status)) {
 					dprintf(5,"status: %d\n", status);
 
 					/* XXX if process exits normally do we restart?? */
@@ -183,7 +178,7 @@ int agent_get_role(solard_config_t *conf, solard_agentinfo_t *info) {
 	cfg_info_t *cfg;
 	json_value_t *v;
 	int i,r,status;
-	struct stat sb;
+	struct STATFUNC sb;
 	FILE *fp;
 	cfg_section_t *section;
 
@@ -197,6 +192,7 @@ int agent_get_role(solard_config_t *conf, solard_agentinfo_t *info) {
 	/* Create a temp configfile */
 	sprintf(configfile,"%s/%s.conf",temp,info->id);
 	dprintf(1,"configfile: %s\n", configfile);
+	fixpath(configfile,sizeof(configfile)-1);
 	cfg = cfg_create(configfile);
 	if (!cfg) {
 		log_write(LOG_SYSERR,"agent_get_role: cfg_create(%s)",configfile);
@@ -209,6 +205,7 @@ int agent_get_role(solard_config_t *conf, solard_agentinfo_t *info) {
 	/* Use a temp logfile */
 	sprintf(logfile,"%s/%s.log",temp,info->id);
 	dprintf(1,"logfile: %s\n", logfile);
+	fixpath(logfile,sizeof(logfile)-1);
 
 	/* Exec the agent with the -I option and capture the output */
 	i = 0;
@@ -226,10 +223,14 @@ int agent_get_role(solard_config_t *conf, solard_agentinfo_t *info) {
 	output = 0;
 	status = solard_exec(info->path,args,logfile,1);
 	dprintf(1,"status: %d\n", status);
-	if (status != 0) goto agent_get_role_error;
+	if (status != 0) {
+		sprintf(configfile,"type %s",logfile);
+		system(configfile);
+		goto agent_get_role_error;
+	}
 
 	/* Get the logfile size */
-	if (stat(logfile,&sb) < 0) {
+	if (STATFUNC(logfile,&sb) < 0) {
 		log_write(LOG_SYSERR,"agent_get_role: stat(%s)",logfile);
 		goto agent_get_role_error;
 	}
@@ -279,105 +280,13 @@ int agent_get_role(solard_config_t *conf, solard_agentinfo_t *info) {
 
 	r = 0;
 agent_get_role_error:
-//	unlink(configfile);
-//	unlink(logfile);
+	unlink(configfile);
+	unlink(logfile);
 	if (output) free(output);
 	return r;
 }
 
-void agentinfo_getcfg(cfg_info_t *cfg, char *sname, solard_agentinfo_t *info) {
-	cfg_proctab_t info_tab[] = { INFO_TAB(sname) };
-
-	dprintf(1,"getting tab...\n");
-	cfg_get_tab(cfg,info_tab);
-	if (debug) cfg_disp_tab(info_tab,"info",0);
-	*info->id = 0;
-	strncat(info->id,sname,sizeof(info->id)-1);
-}
-
-void agentinfo_setcfg(cfg_info_t *cfg, char *section_name, solard_agentinfo_t *info) {
-	cfg_proctab_t info_tab[] = { INFO_TAB(section_name) };
-
-	dprintf(1,"setting tab...\n");
-	cfg_set_tab(cfg,info_tab,0);
-	if (debug) cfg_disp_tab(info_tab,"info",0);
-}
-
-int agentinfo_add(solard_config_t *conf, solard_agentinfo_t *info) {
-	solard_agentinfo_t *ap;
-	char *agent_path,*agent_role;
-
-	agentinfo_dump(info);
-
-	dprintf(1,"info: agent: %s, role: %s, name: %s, transport: %s, target: %s\n", info->agent, info->role, info->name, info->transport, info->target);
-	if (!strlen(info->agent) || !strlen(info->transport) || !strlen(info->target)) {
-		/* invalid */
-		dprintf(1,"agent is not valid, not adding\n");
-		return 1;
-	}
-
-	agent_path = agent_role = 0;
-
-	list_reset(conf->agents);
-	while ((ap = list_get_next(conf->agents)) != 0) {
-//		dprintf(1,"ap->name: %s\n", ap->name);
-		if (strcmp(ap->agent,info->agent) == 0) {
-			/* Save path & role for later */
-			if (!agent_path) agent_path = ap->path;
-			if (!agent_role) agent_role = ap->role;
-			if (strcmp(ap->name,info->name) == 0) {
-				/* name exists */
-				strcpy(conf->errmsg,"name already exists");
-				dprintf(1,"%s\n",conf->errmsg);
-				return 1;
-			}
-		}
-	}
-	if (strlen(info->path) == 0 && agent_path != 0) strcpy(info->path, agent_path);
-
-	/* We need the role */
-	if (!strlen(info->role)) {
-		if (agent_role) {
-			dprintf(1,"setting role: %s\n", agent_role);
-			strcpy(info->role, agent_role);
-		} else {
-			dprintf(1,"getting role...\n");
-			if (agent_get_role(conf, info)) return 1;
-		}
-	}
-	list_add(conf->agents, info, sizeof(*info));
-
-	/* Now add to the role base lists */
-	if (strcmp(info->role,SOLARD_ROLE_BATTERY)==0) {
-		solard_battery_t newbat;
-
-		memset(&newbat,0,sizeof(newbat));
-		strcpy(newbat.name,info->name);
-		time(&newbat.last_update);
-		list_add(conf->batteries,&newbat,sizeof(newbat));
-	} else if (strcmp(info->role,SOLARD_ROLE_INVERTER)==0) {
-		solard_inverter_t newinv;
-
-		memset(&newinv,0,sizeof(newinv));
-		strcpy(newinv.name,info->name);
-		time(&newinv.last_update);
-		list_add(conf->inverters,&newinv,sizeof(newinv));
-	}
-
-	dprintf(1,"added!\n");
-	return 0;
-}
-
-void agentinfo_newid(solard_agentinfo_t *info) {
-	uint8_t uuid[16];
-
-	/* Create a new agent */
-	dprintf(4,"gen'ing UUID...\n");
-	uuid_generate_random(uuid);
-	my_uuid_unparse(uuid, info->id);
-	dprintf(4,"new id: %s\n",info->id);
-}
-
+#if 0
 void add_agent(solard_config_t *conf, char *role, json_value_t *v) {
 	solard_agentinfo_t info;
 	json_proctab_t info_tab[] = {
@@ -401,3 +310,4 @@ void add_agent(solard_config_t *conf, char *role, json_value_t *v) {
 	if (agentinfo_add(conf, &info)) return;
 	solard_write_config(conf);
 }
+#endif

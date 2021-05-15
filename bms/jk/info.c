@@ -17,7 +17,7 @@ int jk_can_get_info(jk_session_t *s) {
 }
 
 int jk_std_get_info(jk_session_t *s) {
-	return 1;
+	return 0;
 }
 
 int jk_get_info(void *handle) {
