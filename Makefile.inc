@@ -4,7 +4,9 @@ ifeq ($(TARGET),)
 	TARGET=$(shell echo $(OS) | tr "[:upper:]" "[:lower:]")
 endif
 
-ifeq ($(whoami),root)
+ID=$(shell id -u)
+
+ifeq ($(ID),0)
 PREFIX?=/usr/local
 else
 #PREFIX?=~

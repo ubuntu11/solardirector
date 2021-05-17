@@ -7,6 +7,7 @@ DYNAMIC=yes
 SHARED?=no
 STATIC?=no
 HOME:=$(shell echo $HOME)
+ID:=$(shell id -u)
 
 ifneq "$(findstring win,$(TARGET))" ""
 ISWIN=yes
@@ -15,7 +16,7 @@ endif
 ifeq ($(ISWIN),yes)
 PREFIX?="C:\\\sd"
 else
-ifeq ($(whoami),root)
+ifeq ($(ID),0)
 PREFIX?=/opt/sd
 INSTALL_USER="-u root -g root"
 else
