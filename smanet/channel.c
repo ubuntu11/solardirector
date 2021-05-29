@@ -70,8 +70,6 @@ static int parse_channels(smanet_session_t *s, uint8_t *data, int data_len) {
 		newchan.level = getshort(sptr);
 		sptr += 2;
 		memcpy(newchan.name,sptr,16);
-		dprintf(dlevel,"newchan: id: %d, name: %s, index: %02x, mask: %04x, format: %04x, level: %d\n",
-			newchan.id, newchan.name, newchan.index, newchan.mask, newchan.format, newchan.level);
 		sptr += 16;
 		switch(newchan.mask & 0x0f) {
 		case CH_ANALOG:
@@ -122,31 +120,38 @@ static int parse_channels(smanet_session_t *s, uint8_t *data, int data_len) {
 			sptr = eptr;
 			break;
 		}
-#if 0
-		tmask = (newchan.mask >> 10) & 0x0F;
-		dprintf(1,"tmask: %02X\n", tmask);
-		switch(tmask) {
-		case 0x01:
-			newchan.type = SMANET_CHANTYPE_PARAMETER;
+		/* Set the type */
+		switch(newchan.format & 0xf) {
+		case CH_BYTE:
+			newchan.type = DATA_TYPE_BYTE;
 			break;
-		case 0x02:
-			newchan.type = SMANET_CHANTYPE_SPOTVALUE;
+		case CH_SHORT:
+			newchan.type = DATA_TYPE_SHORT;
 			break;
-		case 0x04:
-			newchan.type = SMANET_CHANTYPE_ARCHIVE;
+		case CH_LONG:
+			newchan.type = DATA_TYPE_LONG;
 			break;
-		case 0x08:
-			newchan.type = SMANET_CHANTYPE_TEST;
+		case CH_FLOAT:
+			newchan.type = DATA_TYPE_FLOAT;
+			break;
+		case CH_DOUBLE:
+			newchan.type = DATA_TYPE_DOUBLE;
+			break;
+		case CH_ARRAY:
+			newchan.type = DATA_TYPE_LIST;
+			break;
+		default:
+			newchan.type = 0;
 			break;
 		}
-		dprintf(1,"newchan.class: %d, newchan.type: %d\n", newchan.class, newchan.type);
-#endif
+		dprintf(dlevel,"newchan: id: %d, name: %s, index: %02x, mask: %04x, format: %04x, level: %d, type: %d(%s)\n",
+			newchan.id, newchan.name, newchan.index, newchan.mask, newchan.format, newchan.level, newchan.type, typestr(newchan.type));
 		list_add(s->channels,&newchan,sizeof(newchan));
 	}
 	return 0;
 }
 
-int smanet_get_channels(smanet_session_t *s) {
+int smanet_read_channels(smanet_session_t *s) {
 	smanet_packet_t *p;
 	char user[32],path[256];
 	FILE *fp;
@@ -260,7 +265,7 @@ int smanet_load_channels(smanet_session_t *s, char *path) {
 		if (newchan.mask & CH_STATUS) {
 //			dprintf(dlevel,"size: %d\n", newchan.size);
 			if (fread(&len,1,sizeof(len),fp) < 0) goto smanet_load_channels_error;
-			dprintf(1,"name: %s, len: %d\n", newchan.name, len);
+//			dprintf(dlevel,"name: %s, len: %d\n", newchan.name, len);
 			if (fread(temp,1,len,fp) < 0) goto smanet_load_channels_error;
 			temp[len] = 0;
 //			dprintf(dlevel,"temp: %s\n", temp);
@@ -276,18 +281,7 @@ smanet_load_channels_error:
 	return r;
 }
 
-smanet_channel_t *smanet_get_channelbyid(smanet_session_t *s, int id) {
-	smanet_channel_t *c;
-
-	list_reset(s->channels);
-	while((c = list_get_next(s->channels)) != 0) {
-		if (c->id == id)
-			return c;
-	}
-	return 0;
-}
-
-smanet_channel_t *smanet_get_channelbyname(smanet_session_t *s, char *name) {
+smanet_channel_t *smanet_get_channel(smanet_session_t *s, char *name) {
 	smanet_channel_t *c;
 
 	dprintf(1,"name: %s\n", name);
@@ -300,18 +294,5 @@ smanet_channel_t *smanet_get_channelbyname(smanet_session_t *s, char *name) {
 		}
 	}
 	dprintf(1,"NOT found!\n");
-	return 0;
-}
-
-smanet_channel_t *smanet_get_channelbyindex(smanet_session_t *s, uint16_t mask, uint8_t index) {
-	smanet_channel_t *c;
-
-	dprintf(1,"mask: %04x, index: %02x\n", mask, index);
-
-	list_reset(s->channels);
-	while((c = list_get_next(s->channels)) != 0) {
-		if (c->mask == mask && c->index == index)
-			return c;
-	}
 	return 0;
 }

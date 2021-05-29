@@ -20,17 +20,20 @@ typedef struct mqtt_session mqtt_session_t;
 #define MQTT_USER_LEN 32
 #define MQTT_PASS_LEN 32
 #define MQTT_CLIENTID_LEN 64
+#define MQTT_TOPIC_LEN 128
 
 struct mqtt_config {
 	char host[MQTT_HOST_LEN];
 	char user[MQTT_USER_LEN];
 	char pass[MQTT_PASS_LEN];
 	char clientid[MQTT_CLIENTID_LEN];
+	char lwt_topic[MQTT_TOPIC_LEN];
 };
 typedef struct mqtt_config mqtt_config_t;
 
 typedef void (mqtt_callback_t)(void *, char *, char *, int);
 
+int mqtt_parse_config(mqtt_config_t *conf, char *str);
 int mqtt_get_config(void *,mqtt_config_t *);
 struct mqtt_session *mqtt_new(mqtt_config_t *, mqtt_callback_t *, void *);
 int mqtt_newclient(mqtt_session_t *);

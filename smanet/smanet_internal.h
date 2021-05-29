@@ -16,20 +16,6 @@ LICENSE file in the root directory of this source tree.
 //#include "command.h"
 #include "smanet.h"
 
-#if 0
-struct smanet_session {
-	buffer_t *b;
-	list channels;
-	solard_module_t *tp;
-	void *tp_handle;
-	long serial;
-	char type[32];
-	int addr;
-	int timeouts;
-	int commands;
-};
-#endif
-
 struct smanet_packet {
 	uint16_t src;
 	uint16_t dest;

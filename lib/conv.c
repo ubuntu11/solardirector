@@ -7,29 +7,36 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
+#define DEBUG_CONV 0
+#define DLEVEL 4
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <ctype.h>
 #include "utils.h"
 
 #ifdef DEBUG
 #undef DEBUG
 #endif
-#define DEBUG 0
-#define DLEVEL 4
-
+#if DEBUG_CONV
+#define DEBUG 1
+#endif
 #include "debug.h"
 
-#if 0
-#if DEBUG
-#define dprintf(DLEVEL,format, args...) printf("%s(%d): " format "\n",__FUNCTION__,__LINE__, ## args)
-#else
-#define dprintf(DLEVEL,format, args...) /* noop */
-#endif
+#ifdef __WIN32
+#include <inttypes.h>
 #endif
 
-//static char conv_temp[32767];
+typedef void conv_func_t(char *,int,char *,int);
+static long long mystrtoll(const char *nptr, char **endptr, int base) {
+#ifdef __WIN32
+	return atol(nptr);
+#else
+	return strtoll(nptr,endptr,base);
+#endif
+}
 
 /*
  * DATA_TYPE_BYTE conversion functions
@@ -201,18 +208,14 @@ void chr2long(long *dest,int dlen,char *src,int slen) {
 	return;
 }
 
-void chr2quad(myquad_t *dest,int dlen,char *src,int slen) {
+static void chr2quad(myquad_t *dest,int dlen,char *src,int slen) {
 	char temp[32];
 	int len = (slen >= sizeof(temp) ? sizeof(temp)-1 : slen);
 
-#if !defined(__CYGWIN__)
 	bcopy(src,temp,len);
 	temp[len] = 0;
 	dprintf(DLEVEL,"chr2quad: temp: %s",temp);
-	*dest = strtoll(temp,0,0);
-#else
-	*dest = 0;
-#endif
+	*dest = mystrtoll(temp,0,0);
 	return;
 }
 
@@ -436,7 +439,6 @@ void int2short(short *dest,int dlen,int *src,int slen) {
 	*dest = *src;
 	return;
 }
-
 void int2int(int *dest,int dlen,int *src,int slen) {
 	*dest = *src;
 	return;
@@ -659,7 +661,11 @@ void long2list(list *dest,int dlen,long *src,int slen) {
 void quad2chr(char *dest,int dlen,myquad_t *src,int slen) {
 	register int x;
 
+#ifdef __WIN32
+	sprintf(dest,"%"PRId64,*src);
+#else
 	sprintf(dest,"%lld",*src);
+#endif
 	x = strlen(dest);
 	while(x < dlen) dest[x++] = ' ';
 	return;
@@ -857,11 +863,7 @@ void str2long(long *dest,int dlen,char *src,int slen) {
 
 void str2quad(myquad_t *dest,int dlen,char *src,int slen) {
 	dprintf(DLEVEL,"src: %s",src);
-#ifndef __CYGWIN__
-	*dest = strtoll(src, 0, 0);
-#else
-	*dest = 0;
-#endif
+	*dest = mystrtoll(src, 0, 0);
 	dprintf(DLEVEL,"dest: %lld",*dest);
 	return;
 }
@@ -969,182 +971,6 @@ void str2list(list *dest,int dlen,char *src,int slen) {
 #define log2log int2int
 #define log2date int2date
 
-
-#if DEBUG
-static char *conv_func_names[13][13] = {
-	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-	{	0,
-		"chr2chr",
-		"chr2str",
-		"chr2byte",
-		"chr2short",
-		"chr2int",
-		"chr2long",
-		"chr2quad",
-		"chr2float",
-		"chr2dbl",
-		"chr2log",
-		"chr2date",
-		"chr2list",
-	},
-	{	0,
-		"str2chr",
-		"str2str",
-		"str2byte",
-		"str2short",
-		"str2int",
-		"str2long",
-		"str2quad",
-		"str2float",
-		"str2dbl",
-		"str2log",
-		"str2date",
-		"str2list",
-	},
-	{	0,
-		"byte2chr",
-		"byte2str",
-		"byte2byte",
-		"byte2short",
-		"byte2int",
-		"byte2long",
-		"byte2quad",
-		"byte2float",
-		"byte2dbl",
-		"byte2log",
-		"byte2date",
-		"byte2list",
-	},
-	{	0,
-		"short2chr",
-		"short2str",
-		"short2byte",
-		"short2short",
-		"short2int",
-		"short2long",
-		"short2quad",
-		"short2float",
-		"short2dbl",
-		"short2log",
-		"short2date",
-		"short2list",
-	},
-	{	0,
-		"int2chr",
-		"int2str",
-		"int2byte",
-		"int2short",
-		"int2int",
-		"int2long",
-		"int2quad",
-		"int2float",
-		"int2dbl",
-		"int2log",
-		"int2date",
-		"int2list",
-	},
-	{	0,
-		"long2chr",
-		"long2str",
-		"long2byte",
-		"long2short",
-		"long2int",
-		"long2long",
-		"long2quad",
-		"long2float",
-		"long2dbl",
-		"long2log",
-		"long2date",
-		"long2list",
-	},
-	{	0,
-		"quad2chr",
-		"quad2str",
-		"quad2byte",
-		"quad2short",
-		"quad2int",
-		"quad2long",
-		"quad2quad",
-		"quad2float",
-		"quad2dbl",
-		"quad2log",
-		"quad2date",
-		"quad2list",
-	},
-	{	0,
-		"float2chr",
-		"float2str",
-		"float2byte",
-		"float2short",
-		"float2int",
-		"float2long",
-		"float2quad",
-		"float2float",
-		"float2dbl",
-		"float2log",
-		"float2date",
-		"float2list",
-	},
-	{	0,
-		"dbl2chr",
-		"dbl2str",
-		"dbl2byte",
-		"dbl2short",
-		"dbl2int",
-		"dbl2long",
-		"dbl2quad",
-		"dbl2float",
-		"dbl2dbl",
-		"dbl2log",
-		"dbl2date",
-		"dbl2list",
-	},
-	{	0,
-		"log2chr",
-		"log2str",
-		"log2byte",
-		"log2short",
-		"log2int",
-		"log2long",
-		"log2quad",
-		"log2float",
-		"log2dbl",
-		"log2log",
-		"log2date",
-		"log2list",
-	},
-	{	0,
-		"date2chr",
-		"date2str",
-		"date2byte",
-		"date2short",
-		"date2int",
-		"date2long",
-		"date2quad",
-		"date2float",
-		"date2dbl",
-		"date2log",
-		"date2date",
-		"date2list",
-	},
-	{	0,
-		"list2chr",
-		"list2str",
-		"list2byte",
-		"list2short",
-		"list2int",
-		"list2long",
-		"list2quad",
-		"list2float",
-		"list2dbl",
-		"list2log",
-		"list2date",
-		"list2list",
-	},
-};
-#endif
-
-typedef void conv_func_t(char *,int,char *,int);
 static conv_func_t *conv_funcs[13][13] = {
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
 	{	0,
@@ -1317,139 +1143,22 @@ static conv_func_t *conv_funcs[13][13] = {
 	},
 };
 
-static struct {
-        int type;
-        char *name;
-} type_info[] = {
-        { DATA_TYPE_UNKNOWN,"UNKNOWN" },
-        { DATA_TYPE_CHAR,"CHAR" },
-        { DATA_TYPE_STRING,"STRING" },
-        { DATA_TYPE_BYTE,"BYTE" },
-        { DATA_TYPE_SHORT,"SHORT" },
-        { DATA_TYPE_INT,"INT" },
-        { DATA_TYPE_LONG,"LONG" },
-        { DATA_TYPE_QUAD,"QUAD" },
-        { DATA_TYPE_FLOAT,"FLOAT" },
-        { DATA_TYPE_DOUBLE,"DOUBLE" },
-        { DATA_TYPE_LOGICAL,"BOOLEAN" },
-        { DATA_TYPE_DATE,"DATE" },
-        { DATA_TYPE_LIST,"LIST" },
-        { 0, 0 }
-};
-
-char *typestr(int type) {
-        register int x;
-
-        for(x=0; type_info[x].name; x++) {
-                if (type_info[x].type == type)
-                        return(type_info[x].name);
-        }
-        return("*BAD TYPE*");
-}
-
-int name2dt(char *name) {
-        register int x;
-
-        for(x=0; type_info[x].name; x++) {
-                if (strcmp(name,type_info[x].name)==0)
-                        return type_info[x].type;
-        }
-        return DATA_TYPE_UNKNOWN;
-}
-
 void conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 	conv_func_t *func;
 
+//	printf("st: %d(%s), dt: %d(%s)\n", st, typestr(st), dt, typestr(dt));
 	/* Allocate convert temp var */
 	dprintf(DLEVEL,"dest type: %s",typestr(dt));
 	dprintf(DLEVEL,"src type: %s",typestr(st));
 	if ((st > DATA_TYPE_UNKNOWN && st < DATA_TYPE_MAX) &&
 	    (dt > DATA_TYPE_UNKNOWN && dt < DATA_TYPE_MAX)) {
 		func = conv_funcs[st][dt];
-		if (func) {
-			dprintf(DLEVEL,"calling %s...",conv_func_names[st][dt]);
-			func(d,dl,s,sl);
-		}
+		if (func) func(d,dl,s,sl);
 	}
 	return;
 }
 
-char *prefixes[] = {
-	"unk",		/* DATA_TYPE_UNKNOWN */
-	"chr",		/* DATA_TYPE_CHAR */
-	"str",		/* DATA_TYPE_STRING */
-	"byte",		/* DATA_TYPE_BYTE */
-	"short",	/* DATA_TYPE_SHORT */
-	"int",		/* DATA_TYPE_INT */
-	"long",		/* DATA_TYPE_LONG */
-	"quad",		/* DATA_TYPE_QUAD */
-	"float",	/* DATA_TYPE_FLOAT */
-	"dbl",		/* DATA_TYPE_DOUBLE */
-	"log",		/* DATA_TYPE_LOGICAL */
-	"date",		/* DATA_TYPE_DATE */
-	"list",		/* DATA_TYPE_list */
-	0,
-};
-
 #if 0
-int main(void) {
-	FILE *fp;
-	int count;
-	register int x,y;
-
-	fp = fopen("conv_type.h","w+");
-	if (!fp) {
-		perror("fopen conv_type.h");
-		return 1;
-	}
-	for(count=0; prefixes[count]; count++);
-
-	fprintf(fp,"\n");
-	fprintf(fp,"#include \"conv_char.h\"\n");
-	fprintf(fp,"#include \"conv_string.h\"\n");
-	fprintf(fp,"#include \"conv_byte.h\"\n");
-	fprintf(fp,"#include \"conv_short.h\"\n");
-	fprintf(fp,"#include \"conv_int.h\"\n");
-	fprintf(fp,"#include \"conv_long.h\"\n");
-	fprintf(fp,"#include \"conv_quad.h\"\n");
-	fprintf(fp,"#include \"conv_float.h\"\n");
-	fprintf(fp,"#include \"conv_double.h\"\n");
-	fprintf(fp,"#include \"conv_log.h\"\n");
-	fprintf(fp,"#include \"conv_date.h\"\n");
-	fprintf(fp,"#include \"conv_list.h\"\n");
-	fprintf(fp,"\n");
-
-	fprintf(fp,"#if DEBUG\n");
-	fprintf(fp,"static char *conv_func_names[%d][%d] = {\n",count,count);
-	fprintf(fp,"\t{ ");
-	for(x=0; x < count; x++) fprintf(fp,"0%s",(x+1 < count ? ", " : " " ));
-	fprintf(fp,"},\n");
-	for(x=1; prefixes[x]; x++) {
-		fprintf(fp,"\t{\t0,\n");
-		for(y=1; prefixes[y]; y++) {
-		 	fprintf(fp,"\t\t\"%s2%s\",\n",prefixes[x],prefixes[y]);
-		}
-		fprintf(fp,"\t},\n");
-	}
-	fprintf(fp,"};\n");
-	fprintf(fp,"#endif\n\n");
-
-	fprintf(fp,"typedef void conv_func_t(char *,int,char *,int);\n");
-	fprintf(fp,"static conv_func_t *conv_funcs[%d][%d] = {\n",count,count);
-	fprintf(fp,"\t{ ");
-	for(x=0; x < count; x++) fprintf(fp,"0%s",(x+1 < count ? ", " : " " ));
-	fprintf(fp,"},\n");
-	for(x=1; prefixes[x]; x++) {
-		fprintf(fp,"\t{\t0,\n");
-		for(y=1; prefixes[y]; y++) {
-			fprintf(fp,"\t\t(conv_func_t *)%s2%s,\n",
-				prefixes[x],prefixes[y]);
-		}
-		fprintf(fp,"\t},\n");
-	}
-	fprintf(fp,"};\n");
-	return 0;
-}
 /*-
  * Copyright (c) 1992, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -1483,15 +1192,6 @@ int main(void) {
  * SUCH DAMAGE.
  */
 
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)strtoq.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/stdlib/strtoll.c,v 1.5.2.1 2001/03/02 09:45:20 obrien Exp $";
-#endif
-
 #include <sys/types.h>
 
 #include <limits.h>
@@ -1511,12 +1211,7 @@ static const char rcsid[] =
  * Ignores `locale' stuff.  Assumes that the upper and lower case
  * alphabets and digits are each contiguous.
  */
-long long
-strtoll(nptr, endptr, base)
-	const char *nptr;
-	char **endptr;
-	register int base;
-{
+static long long mystrtoll(const char *nptr, char *endptr, register int base) {
 	register const char *s;
 	register unsigned long long acc;
 	register unsigned char c;
@@ -1568,8 +1263,8 @@ strtoll(nptr, endptr, base)
 	 * overflow.
 	 */
 	qbase = (unsigned)base;
-	cutoff = neg ? (unsigned long long)-(LLONG_MIN + LLONG_MAX) + LLONG_MAX
-	    : LLONG_MAX;
+	cutoff = neg ? (unsigned long long)-(LLONG_MIN + LLONG_MAX) + LLONG_MAX : LLONG_MAX;
+	/* When compiling into a DLL for win32, it always crashes here on the below line */
 	cutlim = cutoff % qbase;
 	cutoff /= qbase;
 	for (acc = 0, any = 0;; c = *s++) {

@@ -9,13 +9,6 @@ LICENSE file in the root directory of this source tree.
 
 #include "solard.h"
 #include "uuid.h"
-#if 0
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/stat.h>
-#include <sys/signal.h>
-#include <unistd.h>
-#endif
 
 #define INFO_TAB(SN) \
 	{ SN, "agent_name", 0, DATA_TYPE_STRING,&info->agent,sizeof(info->agent), 0 }, \
@@ -40,12 +33,9 @@ void agentinfo_dump(solard_agentinfo_t *info) {
 
 void agentinfo_pub(solard_config_t *conf, solard_agentinfo_t *info) {
 	cfg_proctab_t info_tab[] = { INFO_TAB(0) }, *t;
-        char topic[SOLARD_TOPIC_SIZE];
 	char entry[1024],temp[128],temp2[256];
 	int er;
 
-	sprintf(topic,"%s/%s/%s/%s/%s",SOLARD_TOPIC_ROOT,SOLARD_ROLE_CONTROLLER,conf->name,SOLARD_FUNC_CONFIG,info->name);
-	dprintf(1,"topic: %s\n", topic);
 	*entry = 0;
 	er = sizeof(entry)-1;
 	for(t=info_tab; t->keyword; t++) {
@@ -61,7 +51,7 @@ void agentinfo_pub(solard_config_t *conf, solard_agentinfo_t *info) {
 		er -= strlen(temp2);
 	}
 	dprintf(1,"entry: %s\n", entry);
-	mqtt_pub(conf->c->m,topic,entry,1);
+	agent_pub(conf->ap,SOLARD_FUNC_CONFIG,"Settings",0,entry,1);
 }
 
 void agentinfo_getcfg(cfg_info_t *cfg, char *sname, solard_agentinfo_t *info) {
@@ -80,6 +70,25 @@ void agentinfo_setcfg(cfg_info_t *cfg, char *section_name, solard_agentinfo_t *i
 	dprintf(1,"setting tab...\n");
 	cfg_set_tab(cfg,info_tab,0);
 	if (debug) cfg_disp_tab(info_tab,"info",0);
+}
+
+int agentinfo_set(solard_agentinfo_t *info, char *key, char *value) {
+	cfg_proctab_t info_tab[] = { INFO_TAB(0) }, *t;
+	int r;
+
+	r = 1;
+	dprintf(5,"key: %s, value: %s\n", key, value);
+	for(t=info_tab; t->keyword; t++) {
+		dprintf(5,"keyword: %s\n", t->keyword);
+		if (strcmp(t->keyword,key) == 0) {
+			dprintf(5,"found!\n");
+			conv_type(t->type,t->dest,t->dlen,DATA_TYPE_STRING,value,strlen(value));
+			r = 0;
+			break;
+		}
+	}
+	dprintf(5,"returning: %d\n", r);
+	return r;
 }
 
 int agentinfo_add(solard_config_t *conf, solard_agentinfo_t *info) {
@@ -154,9 +163,9 @@ int agentinfo_get(solard_config_t *conf, char *entry) {
 	list lp;
 
 	conv_type(DATA_TYPE_LIST,&lp,0,DATA_TYPE_STRING,entry,strlen(entry));
-	dprintf(1,"lp: %p\n", lp);
+	dprintf(5,"lp: %p\n", lp);
 	if (!lp) return 1;
-	dprintf(1,"count: %d\n", list_count(lp));
+	dprintf(5,"count: %d\n", list_count(lp));
 
 	memset(&newinfo,0,sizeof(newinfo));
 	list_reset(lp);
@@ -165,11 +174,11 @@ int agentinfo_get(solard_config_t *conf, char *entry) {
 		if (!p) continue;
 		*p++ = 0;
 		strncpy(key,str,sizeof(key)-1);
-		dprintf(1,"key: %s, value: %s\n", key, p);
+		dprintf(6,"key: %s, value: %s\n", key, p);
 		for(t=info_tab; t->keyword; t++) {
-		      dprintf(1,"keyword: %s\n", t->keyword);
+		      dprintf(6,"keyword: %s\n", t->keyword);
 			if (strcmp(t->keyword,key) == 0) {
-			      dprintf(1,"found!\n");
+			      dprintf(6,"found!\n");
 				conv_type(t->type,t->dest,t->dlen,DATA_TYPE_STRING,p,strlen(p));
 				break;
 			}

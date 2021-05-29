@@ -12,9 +12,7 @@ LICENSE file in the root directory of this source tree.
 
 #include "agent.h"
 #include "smanet.h"
-#ifndef __WIN32
-#include <linux/can.h>
-#endif
+#include "inverter.h"
 #include <pthread.h>
 
 enum SI_PARAM_SOURCE {
@@ -113,6 +111,7 @@ struct si_session {
 	float sim_step;
 	int interval;
 	int charge_creep;
+	int run_state;
 	float last_battery_voltage, last_soc;
 	float last_charge_voltage, last_battery_amps;
 	time_t cv_start_time;

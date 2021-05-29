@@ -45,6 +45,7 @@ struct __attribute__((packed, aligned(1))) can_frame {
 #define SOLARD_TRANSPORT_LEN	32
 #define SOLARD_TARGET_LEN	64
 #define SOLARD_TOPTS_LEN	32
+#define SOLARD_TOPIC_LEN	128	/* Max topic length */
 #define SOLARD_TOPIC_SIZE	256	/* Max topic length */
 
 int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_opts);
@@ -53,6 +54,7 @@ int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_op
 #define SOLARD_TOPIC_ROOT	"SolarD"
 
 #define SOLARD_ROLE_CONTROLLER	"Controller"
+#define SOLARD_ROLE_STORAGE	"Storage"
 #define SOLARD_ROLE_BATTERY	"Battery"
 #define SOLARD_ROLE_INVERTER	"Inverter"
 #define SOLARD_ROLE_PRODUCER	"Producer"
@@ -64,10 +66,15 @@ int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_op
 #define SOLARD_FUNC_CONFIG	"Config"
 #define SOLARD_FUNC_CONTROL	"Control"
 
+#if 0
 #define SOLARD_ACTION_GET	"Get"
 #define SOLARD_ACTION_SET	"Set"
+#define SOLARD_ACTION_ADD	"Add"
+#define SOLARD_ACTION_DEL	"Del"
+#define SOLARD_ACTION_DAT	"Settings"
 
 #define SOLARD_ID_STATUS	"Status"
+#endif
 
 struct solard_power {
 	union {
@@ -87,5 +94,14 @@ struct solard_power {
 typedef struct solard_power solard_power_t;
 
 extern char SOLARD_BINDIR[], SOLARD_ETCDIR[], SOLARD_LIBDIR[], SOLARD_LOGDIR[];
+
+#if defined(__WIN32) && defined(NEED_EXPORT)
+#ifdef DLL_EXPORT
+  #define EXPORT __declspec(dllexport)
+#else
+  #define EXPORT __declspec(dllimport)
+#endif
+#define DLLCALL __cdecl
+#endif
 
 #endif

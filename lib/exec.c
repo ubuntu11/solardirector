@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #ifndef __WIN32
 #include <sys/wait.h>
+#include <signal.h>
 #define OPTS (O_WRONLY | O_CREAT | O_TRUNC | O_SYNC)
 #else
 #include <windows.h>

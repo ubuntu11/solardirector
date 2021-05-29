@@ -14,7 +14,6 @@ LICENSE file in the root directory of this source tree.
 #include <pthread.h>
 #include <time.h>
 #include "list.h"
-#include "worker.h"
 
 struct mybmm_inverter;
 typedef struct mybmm_inverter mybmm_inverter_t;
@@ -42,7 +41,6 @@ struct mybmm_config {
 	pthread_t inverter_tid;		/* Inverter Thread ID */
 	list packs;			/* Packs */
 	pthread_t pack_tid;		/* Pack thread ID */
-	worker_pool_t *pack_pool;	/* Pack worker pool */
 	int interval;			/* Check interval */
 	int system_voltage;		/* System Voltage (defaults to 48) */
 	int battery_chem;		/* Battery type (0=Li-ion, 1=LifePO4, 2=Titanate) */

@@ -24,17 +24,19 @@ LICENSE file in the root directory of this source tree.
 extern solard_module_t serial_module;
 extern solard_module_t rdev_module;
 
-#define CHANS "/home/steve/lib/SI6048UM.dat"
+#define CHANS "/usr/local/lib/SI6048UM.dat"
 
 int main(int argc,char **argv) {
 	int logopts = LOG_INFO|LOG_WARNING|LOG_ERROR|LOG_SYSERR|_ST_DEBUG;
 	solard_module_t *tp;
 	void *tp_handle;
 	smanet_session_t *s;
-	smanet_value_t *v;
-	char temp[256];
-	smanet_channel_t *c;
-#if 1
+//	smanet_value_t *v;
+//	char temp[256];
+//	smanet_channel_t *c;
+	double value;
+	char *text;
+#if 0
 	char *args[] = { "t2", "-d", "6" };
 	#define nargs (sizeof(args)/sizeof(char *))
 	argv = args;
@@ -42,30 +44,50 @@ int main(int argc,char **argv) {
 #endif
 
 	solard_common_init(argc,argv,0,logopts);
+        argc -= optind;
+        argv += optind;
 
 #if 0
 	tp = &rdev_module;
-	tp_handle = tp->new(0,"192.168.1.7:3900","tty0");
+	tp_handle = tp->new(0,"192.168.1.7:3930","tty0");
 #else
 	tp = &serial_module;
 	tp_handle = tp->new(0,"/dev/ttyS0","19200");
 #endif
-	dprintf(1,"tp_handle: %p\n", tp_handle);
+//	dprintf(1,"tp_handle: %p\n", tp_handle);
 
 	s = smanet_init(tp,tp_handle);
 	if (!s) return 1;
 
 	if (smanet_load_channels(s,CHANS)) {
 		dprintf(1,"getting channels...\n");
-		if (smanet_get_channels(s)) return 1;
+		if (smanet_read_channels(s)) return 1;
 		dprintf(1,"count: %d\n", list_count(s->channels));
 		smanet_save_channels(s,CHANS);
 	}
 	dprintf(1,"count: %d\n", list_count(s->channels));
 	
-	c = smanet_get_channelbyname(s,"ComBaud");
-	if (!c) return 1;
-	dprintf(1,"val: %d\n", smanet_get_optionval(s,c,"19200"));
+	dprintf(1,"argc: %d\n", argc);
+	if (!argc) return 1;
+#if 0
+	c = smanet_get_channel(s,argv[0]);
+	if (!c) {
+		printf("chan not found\n");
+		return 1;
+	}
+#endif
+	if (argc > 1) smanet_set_value(s,argv[0],atof(argv[0]),argv[1]);
+	else {
+		smanet_get_value(s,argv[0],&value,&text);
+		if (text) printf("%s\n", text);
+		else printf("%f\n",value);
+	}
+//	smanet_get_valuebyname(s,"GdRmgTm",&value);
+	return 0;
+
+//	c = smanet_get_channelbyname(s,"GdRmgTm");
+//	if (!c) return 1;
+//	dprintf(1,"val: %d\n", smanet_get_optionval(s,c,"19200"));
 	return 0;
 
 #if 0

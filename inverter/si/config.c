@@ -10,15 +10,16 @@ LICENSE file in the root directory of this source tree.
 #include "si.h"
 
 static json_descriptor_t charge_params[] = {
+	{ "charge", DATA_TYPE_INT, "select", 3, (int []){ 0, 1, 2 }, 1, (char *[]){ "Off","On","CV" }, 0, 1, 0 },
 	{ "max_voltage", DATA_TYPE_FLOAT, "range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 }, 1, (char *[]){ "Max Battery Voltage" }, "V", 1, "%2.1f" },
 	{ "min_voltage", DATA_TYPE_FLOAT, "range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 }, 1, (char *[]){ "Min Battery Voltage" }, "V", 1, "%2.1f" },
 	{ "charge_start_voltage", DATA_TYPE_FLOAT, "range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 }, 1, (char *[]){ "Charge start voltage" }, "V", 1, "%2.1f" },
 	{ "charge_end_voltage", DATA_TYPE_FLOAT, "range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 }, 1, (char *[]){ "Charge end voltage" }, "V", 1, "%2.1f" },
 	{ "charge_amps", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Charge Amps" }, "A", 1, "%.1f" },
-	{ "charge_mode", DATA_TYPE_INT, "select", 3, (int []){ 0, 1, 2 }, 1, (char *[]){ "Off","CC","CV" }, 0, 1, 0 },
 	{ "discharge_amps", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Discharge Amps" }, "A", 1, "%.1f" },
 	{ "charge_min_amps", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Minimum charge amps" }, "A", 1, "%.1f" },
-	{ "charge_focus_amps", DATA_TYPE_BOOL, 0, 0, 0, 1, (char *[]){ "Increase voltage to maintain charge amps" }, 0, 0 },
+	{ "charge_at_max", DATA_TYPE_BOOL, 0, 0, 0, 1, (char *[]){ "Charge at max_voltage" }, 0, 0 },
+	{ "charge_creep", DATA_TYPE_BOOL, 0, 0, 0, 1, (char *[]){ "Increase voltage to maintain charge amps" }, 0, 0 },
 	{ "sim_step", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "SIM Voltage Step" }, "V", 1, "%.1f" },
 	{ "interval", DATA_TYPE_INT, "range", 3, (int []){ 0, 10000, 1 }, 0, 0, 0, 1, 0 },
 	{ "can_transport", DATA_TYPE_STRING, 0, 0, 0, 0, 0, 0, 1, 0 },
@@ -28,11 +29,12 @@ static json_descriptor_t charge_params[] = {
 	{ "smanet_target", DATA_TYPE_STRING, 0, 0, 0, 0, 0, 0, 1, 0 },
 	{ "smanet_topts", DATA_TYPE_STRING, 0, 0, 0, 0, 0, 0, 1, 0 },
 	{ "smanet_channels_path", DATA_TYPE_STRING, 0, 0, 0, 0, 0, 0, 1, 0 },
+	{ "run", DATA_TYPE_BOOL, 0, 0, 0, 1, (char *[]){ "run state" }, 0, 0 },
 };
 #define NCHG (sizeof(charge_params)/sizeof(json_descriptor_t))
 
 #if 0
-static json_descriptor_t other_params[] = {
+static json_descriptor_t state_params[] = {
 	{ "SenseResistor", DATA_TYPE_FLOAT, 0, 0, 0, 1, (char *[]){ "Current Res" }, "mR", 10, "%.1f" },
 	{ "PackNum", DATA_TYPE_INT, "select",
 		28, (int []){ 3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 },
@@ -198,6 +200,7 @@ int si_config_add_info(si_session_t *s, json_value_t *j) {
 			if (p) strncat(s->channels_path,p,sizeof(s->channels_path)-1);
 		}
 		if (!strlen(s->channels_path)) sprintf(s->channels_path,"%s/%s.dat",SOLARD_LIBDIR,s->smanet->type);
+		fixpath(s->channels_path, sizeof(s->channels_path)-1);
 		dprintf(1,"channels_path: %s\n", s->channels_path);
 		if (smanet_load_channels(s->smanet,s->channels_path) == 0) _addchans(s,ca);
 	}
@@ -223,15 +226,16 @@ int si_config_add_info(si_session_t *s, json_value_t *j) {
 static json_proctab_t *_getinv(si_session_t *s, char *name) {
 	solard_inverter_t *inv = s->ap->role_data;
 	json_proctab_t params[] = {
+                { "charge",DATA_TYPE_INT,&s->charge_mode,0,0 },
                 { "max_voltage",DATA_TYPE_FLOAT,&inv->max_voltage,0,0 },
                 { "min_voltage",DATA_TYPE_FLOAT,&inv->min_voltage,0,0 },
                 { "charge_start_voltage",DATA_TYPE_FLOAT,&inv->charge_start_voltage,0,0 },
                 { "charge_end_voltage",DATA_TYPE_FLOAT,&inv->charge_end_voltage,0,0 },
                 { "charge_amps",DATA_TYPE_FLOAT,&inv->charge_amps,0,0 },
-                { "charge_mode",DATA_TYPE_INT,&s->charge_mode,0,0 },
                 { "discharge_amps",DATA_TYPE_FLOAT,&inv->discharge_amps,0,0 },
 		{ "charge_min_amps", DATA_TYPE_FLOAT, &s->charge_min_amps,0,0 },
-		{ "charge_focus_amps", DATA_TYPE_BOOL, &s->charge_creep, 0,0 },
+		{ "charge_at_max", DATA_TYPE_BOOL, &inv->charge_at_max, 0,0 },
+		{ "charge_creep", DATA_TYPE_BOOL, &s->charge_creep, 0,0 },
 		{ "sim_step", DATA_TYPE_FLOAT, &s->sim_step, 0,0 },
 		{ "interval", DATA_TYPE_INT, &s->interval, 0,0 },
                 { "can_transport", DATA_TYPE_STRING, &s->can_transport, sizeof(s->can_transport)-1,0 },
@@ -241,6 +245,7 @@ static json_proctab_t *_getinv(si_session_t *s, char *name) {
                 { "smanet_target", DATA_TYPE_STRING, &s->smanet_target, sizeof(s->smanet_target)-1,0 },
                 { "smanet_topts", DATA_TYPE_STRING, &s->smanet_topts, sizeof(s->smanet_topts)-1,0 },
                 { "smanet_channels_path", DATA_TYPE_STRING, &s->channels_path, sizeof(s->channels_path)-1,0 },
+		{ "run", DATA_TYPE_BOOL, &s->run_state, 0,0 },
 		JSON_PROCTAB_END
 	};
 	json_proctab_t *invp;
@@ -262,9 +267,8 @@ static json_proctab_t *_getinv(si_session_t *s, char *name) {
 si_param_t *_getp(si_session_t *s, char *name, int invonly) {
 	json_proctab_t *invp;
 	si_param_t *pinfo;
-	smanet_channel_t *c;
 
-	dprintf(1,"name: %s\n", name);
+	dprintf(1,"name: %s, invonly: %d\n", name, invonly);
 
 	pinfo = &s->pdata;
 	memset(pinfo,0,sizeof(*pinfo));
@@ -274,9 +278,10 @@ si_param_t *_getp(si_session_t *s, char *name, int invonly) {
 	if (invp) {
 		uint8_t *bptr;
 		short *wptr;
+		int *iptr;
 		long *lptr;
 		float *fptr;
-		int *iptr;
+		double *dptr;
 
 		dprintf(1,"inv: name: %s, type: %d, ptr: %p, len: %d\n", invp->field, invp->type, invp->ptr, invp->len);
 		dprintf(1,"invp->type: %d\n", invp->type);
@@ -305,6 +310,10 @@ si_param_t *_getp(si_session_t *s, char *name, int invonly) {
 			fptr = invp->ptr;
 			pinfo->fval = *fptr;
 			break;
+		case DATA_TYPE_DOUBLE:
+			dptr = invp->ptr;
+			pinfo->dval = *dptr;
+			break;
 		case DATA_TYPE_STRING:
 			pinfo->sval = invp->ptr;
 			break;
@@ -315,39 +324,29 @@ si_param_t *_getp(si_session_t *s, char *name, int invonly) {
 	}
 	if (invonly) goto _getp_done;
 
-	/* Is it from the SI? */
-	if (!s->smanet) goto _getp_done;
-	dprintf(1,"NOT found, checking smanet\n");
-	c = smanet_get_channelbyname(s->smanet,name);
-	if (c) {
-		smanet_value_t *v;
+	if (s->smanet) {
+		json_descriptor_t *dp;
+		double value;
+		char *text;
 
-		v = smanet_get_value(s->smanet,c);
-		strncat(pinfo->name,c->name,sizeof(pinfo->name)-1);
-		pinfo->source = 2;
-		dprintf(1,"is status: %d\n", (c->mask & CH_STATUS) != 0);
-		if (c->mask & CH_STATUS) {
-			pinfo->type = DATA_TYPE_STRING;
-			pinfo->sval = smanet_get_optionbyname(s->smanet,c->name);
-		} else {
-			pinfo->type = v->type;
-			switch(v->type) {
-			case DATA_TYPE_BYTE:
-				pinfo->bval = v->bval;
-				break;
-			case DATA_TYPE_SHORT:
-				pinfo->wval = v->wval;
-				break;
-			case DATA_TYPE_LONG:
-				pinfo->lval = v->lval;
-				break;
-			case DATA_TYPE_FLOAT:
-				pinfo->fval = v->fval;
-				break;
-			default: break;
-			}
+		dprintf(1,"NOT found, checking smanet\n");
+
+		dp = _getd(s,name);
+		if (!dp) {
+			dprintf(1,"_getd returned null!\n");
+			goto _getp_done;
 		}
-		dprintf(1,"found\n");
+		if (smanet_get_value(s->smanet, name, &value, &text)) goto _getp_done;
+		dprintf(1,"val: %f, sval: %s\n", value, text);
+		strncat(pinfo->name,name,sizeof(pinfo->name)-1);
+		pinfo->source = 2;
+		if (text) {
+			pinfo->sval = text;
+			pinfo->type = DATA_TYPE_STRING;
+		} else {
+			conv_type(dp->type,&pinfo->bval,0,DATA_TYPE_DOUBLE,&value,0);
+			pinfo->type = dp->type;
+		}
 		return pinfo;
 	}
 
@@ -356,14 +355,14 @@ _getp_done:
 	return 0;
 }
 
-
 static int si_get_config(si_session_t *s, si_param_t *pp, json_descriptor_t *dp) {
 	char topic[200];
 	char temp[72];
 	unsigned char bval;
 	short wval;
-	float fval;
 	long lval;
+	float fval;
+	double dval;
 
 	dprintf(1,"dp: name: %s, unit: %s, scale: %f\n", dp->name, dp->units, dp->scale);
 
@@ -403,11 +402,19 @@ static int si_get_config(si_session_t *s, si_param_t *pp, json_descriptor_t *dp)
 		break;
 	case DATA_TYPE_FLOAT:
 		fval = pp->fval;
-		dprintf(1,"fval: %d\n", fval);
+		dprintf(1,"fval: %f\n", fval);
 		dprintf(1,"scale: %f\n", dp->scale);
 		if (dp->scale != 0.0) fval /= dp->scale;
 		if (dp->format) sprintf(temp,dp->format,fval);
 		else sprintf(temp,"%f",fval);
+		break;
+	case DATA_TYPE_DOUBLE:
+		dval = pp->dval;
+		dprintf(1,"dval: %lf\n", dval);
+		dprintf(1,"scale: %f\n", dp->scale);
+		if (dp->scale != 0.0) dval /= dp->scale;
+		if (dp->format) sprintf(temp,dp->format,dval);
+		else sprintf(temp,"%f",dval);
 		break;
 	case DATA_TYPE_STRING:
 		temp[0] = 0;
@@ -430,40 +437,79 @@ static int si_set_config(si_session_t *s, si_param_t *pp, json_descriptor_t *dp,
 
 	/* We can use any field in the union as a source or dest */
 	if (pp->source == SI_PARAM_SOURCE_INV) {
+		solard_inverter_t *inv = s->ap->role_data;
 		json_proctab_t *invp;
+		int oldval;
+
+		invp = _getinv(s,pp->name);
+
+		/* Save old vals */
+		if (strcmp(invp->field,"run")==0) oldval = s->run_state;
+		else if (strcmp(invp->field,"charge")==0) oldval = s->charge_mode;
+		else if (strcmp(invp->field,"charge_at_max")==0) oldval = inv->charge_at_max;
+		else oldval = -1;
 
 		/* Update the inv struct directly */
-		invp = _getinv(s,pp->name);
 		conv_type(invp->type,invp->ptr,0,req->type,&req->sval,0);
 		log_info("%s set to %s\n", pp->name, req->sval);
 
 		/* Update our local copy of charge amps too */
 		if (strcmp(invp->field,"charge_amps")==0) s->charge_amps = *((float *)invp->ptr);
 
+		if (strcmp(invp->field,"run")==0) {
+			int r;
+
+			printf("oldval: %d, state: %d\n", oldval, s->run_state);
+			if (!oldval && s->run_state) {
+				r = si_startstop(s,1);
+				if (!r) log_write(LOG_INFO,"Started Sunny Island\n");
+				else {
+					log_error("start failed\n");
+					s->run_state = 0;
+				}
+			}
+			if (oldval && !s->run_state) {
+				r = si_startstop(s,0);
+				if (!r) {
+					log_write(LOG_INFO,"Stopped Sunny Island\n");
+					charge_stop(s,1);
+				} else {
+					log_error("stop failed\n");
+					s->run_state = 0;
+				}
+			}
+		} else if (strcmp(invp->field,"charge")==0) {
+                        switch(s->charge_mode) {
+                        case 0:
+                                charge_stop(s,1);
+                                break;
+                        case 1:
+                                charge_start(s,1);
+                                break;
+                        case 2:
+                                charge_start_cv(s,1);
+                                break;
+                        }
+		} else if (strcmp(invp->field,"charge_at_max")==0) {
+			printf("at_max: %d, oldval: %d\n", inv->charge_at_max, oldval);
+			if (inv->charge_at_max && !oldval) charge_max_start(s);
+			if (!inv->charge_at_max && oldval) charge_max_stop(s);
+		}
+
+
 		/* ALSO update this value in our config file */
 		conv_type(DATA_TYPE_STRING,temp,sizeof(temp)-1,req->type,&req->sval,0);
 		cfg_set_item(s->ap->cfg,s->ap->section_name,invp->field,"",temp);
 		cfg_write(s->ap->cfg);
 	} else { 
-		smanet_value_t v;
+		double value;
+		char *text;
 
-		/* Update the SI */
+		text = 0;
 		dprintf(1,"pp->type: %s\n", typestr(pp->type));
-		if (pp->type == DATA_TYPE_STRING) {
-			smanet_channel_t *c;
-			int val;
-
-			c = smanet_get_channelbyname(s->smanet, req->name);
-			if (!c) return 1;
-			val = smanet_get_optionval(s->smanet,c,req->sval);
-			if (val < 0) return 1;
-			v.type = DATA_TYPE_BYTE;
-			v.bval = val;
-		} else {
-			v.type = pp->type;
-			conv_type(pp->type,&v.bval,0,req->type,&req->bval,0);
-		}
-		smanet_set_valuebyname(s->smanet,pp->name,&v);
+		if (pp->type == DATA_TYPE_STRING) text = req->sval;
+		else conv_type(DATA_TYPE_DOUBLE,&value,0,DATA_TYPE_STRING,req->sval,strlen(req->sval));
+		if (smanet_set_value(s->smanet,dp->name,value,text)) return 1;
 	}
 	/* Re-get the param to update internal vars and publish */
 	return (pub ? si_get_config(s,_getp(s,dp->name,0),dp) : 0);
@@ -503,10 +549,10 @@ int si_config(void *handle, char *op, char *id, list lp) {
 	int status,pub;
 	long start;
 
-	dprintf(1,"op: %s\n", op);
-
 	status = 1;
 	pub = (strcmp(id,"si_control") == 0 || strcmp(id,"mqtt") == 0) ? 0 : 1;
+
+	dprintf(1,"op: %s, pub: %d\n", op, pub);
 
 	start = mem_used();
 	list_reset(lp);
@@ -517,7 +563,7 @@ int si_config(void *handle, char *op, char *id, list lp) {
 		while((p = list_get_next(lp)) != 0) {
 			sprintf(message,"%s: not found",p);
 			dprintf(1,"p: %s\n", p);
-			pp = _getp(s,p,pub);
+			pp = _getp(s,p,0);
 			if (!pp) goto si_config_error;
 			dprintf(1,"pp: name: %s, type: %d\n", pp->name, pp->type);
 			dp = _getd(s,p);
@@ -530,7 +576,7 @@ int si_config(void *handle, char *op, char *id, list lp) {
 			dprintf(1,"req: name: %s, type: %d\n", req->name, req->type);
 			dprintf(1,"req value: %s\n", req->sval);
 			sprintf(message,"%s: not found",req->name);
-			pp = _getp(s,req->name,pub);
+			pp = _getp(s,req->name,0);
 			if (!pp) goto si_config_error;
 			dp = _getd(s,req->name);
 			if (!dp) goto si_config_error;

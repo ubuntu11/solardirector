@@ -134,6 +134,8 @@ void charge_start_cv(si_session_t *s, int rep) {
 	if (rep) log_write(LOG_INFO,"*** STARTING CV CHARGE ***\n");
 	solard_set_state(s,SI_STATE_CHARGING);
 	s->charge_mode = 2;
+	s->charge_voltage = inv->charge_end_voltage;
+	s->charge_amps = inv->charge_amps;
 	time(&s->cv_start_time);
 	s->start_temp = inv->battery_temp;
 }
@@ -151,8 +153,9 @@ static void incvolt(si_session_t *s, solard_inverter_t *inv) {
 	float battery_amps;
 
 	battery_amps = inv->battery_amps * -1;;
-	dprintf(0,"battery_amps: %.1f, charge_amps: %.1f\n", battery_amps, s->charge_amps);
-	if (battery_amps >= s->charge_amps) return;
+	dprintf(0,"battery_amps: %.1f, charge_amps: %.1f, pct: %f\n", battery_amps, s->charge_amps, pct(battery_amps,s->charge_amps));
+//	if (battery_amps >= s->charge_amps) return;
+	if (pct(battery_amps,s->charge_amps) > -5.0) return;
 	dprintf(0,"frequency: %.1f\n", inv->load_frequency);
 	if (inv->load_frequency > 0.0 && (inv->load_frequency < 50.0 || inv->load_frequency < 60.0)) return;
 	dprintf(0,"charge_voltage: %.1f, max_voltage: %.1f\n", s->charge_voltage, inv->max_voltage);
@@ -195,7 +198,7 @@ void charge_check(si_session_t *s) {
 		if (s->charge_mode == 1) {
 			dprintf(1,"battery_voltage: %f, inv->charge_end_voltage: %f\n",
 				inv->battery_voltage, inv->charge_end_voltage);
-			dprintf(1,"charge_at_max: %d\n", inv->charge_at_max);
+			dprintf(1,"charge_at_max: %d, charge_creep: %d\n", inv->charge_at_max, s->charge_creep);
 			if ((inv->battery_voltage+0.0001) >= inv->charge_end_voltage) {
 				charge_start_cv(s,1);
 			} else if (!inv->charge_at_max && s->charge_creep) {

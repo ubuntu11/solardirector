@@ -7,6 +7,10 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
+#define DEBUG_OPTS 0
+#define dlevel 4
+#define HAVE_CONV 1
+
 #include <string.h>
 #include <stdlib.h>
 #include "opts.h"
@@ -15,8 +19,9 @@ LICENSE file in the root directory of this source tree.
 #ifdef DEBUG
 #undef DEBUG
 #endif
-#define DEBUG 0
-
+#if DEBUG_OPTS
+#define DEBUG 1
+#endif
 #include "debug.h"
 
 #include <stdio.h>
@@ -32,7 +37,85 @@ char *optarg;		/* argument associated with option */
 #define	BADARG	(int)':'
 #define	EMSG	""
 
-static void _doadd(list lp, opt_proctab_t *newopt) {
+#if !HAVE_CONV
+#include <ctype.h>
+char *typenames[] = { "Unknown","char","string","byte","short","int","long","quad","float","double","logical","date","list" };
+void conv_type(int dtype,void *dest,int dlen,int stype,void *src,int slen) {
+	char temp[1024];
+	int *iptr;
+	float *fptr;
+	double *dptr;
+	char *sptr;
+	int len;
+
+	dprintf(1,"stype: %d, src: %p, slen: %d, dtype: %d, dest: %p, dlen: %d",
+		stype,src,slen,dtype,dest,dlen);
+
+	dprintf(1,"stype: %s, dtype: %s\n", typenames[stype],typenames[dtype]);
+	switch(dtype) {
+	case DATA_TYPE_INT:
+		iptr = dest;
+		*iptr = atoi(src);
+		break;
+	case DATA_TYPE_FLOAT:
+	case DATA_TYPE_DOUBLE:
+		fptr = dest;
+		*fptr = atof(src);
+		break;
+	case DATA_TYPE_LOGICAL:
+		/* yes/no/true/false */
+		{
+			char temp[16];
+			int i;
+
+			iptr = dest;
+			i = 0;
+			for(sptr = src; *sptr; sptr++) temp[i++] = tolower(*sptr);
+			temp[i] = 0;
+			if (strcmp(temp,"yes") == 0 || strcmp(temp,"true") == 0)
+				*iptr = 1;
+			else
+				*iptr = 0;
+		}
+	case DATA_TYPE_STRING:
+		switch(stype) {
+		case DATA_TYPE_INT:
+			iptr = src;
+			sprintf(temp,"%d",*iptr);
+			break;
+		case DATA_TYPE_FLOAT:
+			fptr = src;
+			sprintf(temp,"%f",*fptr);
+			break;
+		case DATA_TYPE_DOUBLE:
+			dptr = src;
+			sprintf(temp,"%f",*dptr);
+			break;
+		case DATA_TYPE_LOGICAL:
+			iptr = src;
+			sprintf(temp,"%s",*iptr ? "yes" : "no");
+			break;
+		case DATA_TYPE_STRING:
+			temp[0] = 0;
+			len = slen > dlen ? dlen : slen;
+			strncat(temp,src,len);
+			break;
+		default:
+			printf("conv_type: unknown src type: %d\n", stype);
+			temp[0] = 0;
+			break;
+		}
+		dprintf(1,"temp: %s\n",temp);
+		strcpy((char *)dest,temp);
+		break;
+	default:
+		printf("conv_type: unknown dest type: %d\n", dtype);
+		break;
+	}
+}
+#endif
+
+static void opt_addopt(list lp, opt_proctab_t *newopt) {
 	opt_proctab_t *opt;
 	char k1,k2;
 
@@ -67,13 +150,15 @@ opt_proctab_t *opt_addopts(opt_proctab_t *std_opts,opt_proctab_t *add_opts) {
 	register int i;
 	list lp;
 
+	dprintf(dlevel,"std_opts: %p, add_opts: %p\n", std_opts, add_opts);
+
 	if (std_opts && !add_opts) return std_opts;
 	else if (!std_opts && add_opts) return add_opts;
 	else if (!std_opts && !add_opts) return 0;
 
 	lp = list_create();
-	for(i=0; std_opts[i].keyword; i++) _doadd(lp,&std_opts[i]);
-	for(i=0; add_opts[i].keyword; i++) _doadd(lp,&add_opts[i]);
+	for(i=0; std_opts[i].keyword; i++) opt_addopt(lp,&std_opts[i]);
+	for(i=0; add_opts[i].keyword; i++) opt_addopt(lp,&add_opts[i]);
 
 	opts = mem_alloc(sizeof(*opt)*(list_count(lp)+1),1);
 	if (!opts) {
@@ -199,7 +284,7 @@ void opt_init(opt_proctab_t *opts) {
 	register opt_proctab_t *opt;
 
 	/* Init the options table */
-	DLOG(LOG_DEBUG,"opt_init: initializing options table...");
+//	DLOG(LOG_DEBUG,"opt_init: initializing options table...");
 	for(opt = opts; opt->keyword; opt++) {
 		DPRINTF("opt: key: %s, type: %d(%s), len: %d, req: %d\n", opt->keyword, opt->type, typestr(opt->type), opt->len, opt->reqd);
 

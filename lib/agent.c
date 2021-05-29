@@ -20,6 +20,10 @@ LICENSE file in the root directory of this source tree.
 #include "agent.h"
 #include "uuid.h"
 
+#include "controller.h"
+#include "inverter.h"
+#include "battery.h"
+
 static int suspend_read = 0;
 static int suspend_write = 0;
 #ifndef __WIN32
@@ -43,11 +47,47 @@ int agent_set_callback(solard_agent_t *ap, solard_agent_callback_t cb) {
 
 /* Get driver handle from role */
 void *agent_get_handle(solard_agent_t *ap) {
-	return ap->role->get_handle(ap->role_handle);
+	return (ap->role ? ap->role->get_handle(ap->role_handle) : 0);
 }
 
+void agent_mktopic(char *topic, int topicsz, solard_agent_t *ap, char *name, char *func, char *action, char *id) {
+	register char *p;
+
+	dprintf(1,"name: %s, func: %s, action: %s, id: %s\n", name, func, action, id);
+
+	/* /Solard/Battery/+/Config/Get/Status */
+	p = topic;
+	p += snprintf(p,topicsz-strlen(topic),"%s",SOLARD_TOPIC_ROOT);
+	if (ap->role) p += snprintf(p,topicsz-strlen(topic),"/%s",ap->role->name);
+	if (name) p += snprintf(p,topicsz-strlen(topic),"/%s",name);
+	if (func) p += snprintf(p,topicsz-strlen(topic),"/%s",func);
+	if (action) p += snprintf(p,topicsz-strlen(topic),"/%s",action);
+	if (id) p += snprintf(p,topicsz-strlen(topic),"/%s",id);
+}
+
+int agent_sub(solard_agent_t *ap, char *name, char *func, char *action, char *id) {
+	char topic[SOLARD_TOPIC_LEN];
+
+	dprintf(1,"name: %s, func: %s, action: %s, id: %s\n", name, func, action, id);
+
+	agent_mktopic(topic,sizeof(topic)-1,ap,name,func,action,id);
+	log_write(LOG_INFO,"%s\n", topic);
+	return mqtt_sub(ap->m,topic);
+}
+
+int agent_pub(solard_agent_t *ap, char *func, char *action, char *id, char *message, int retain) {
+	char topic[SOLARD_TOPIC_LEN];
+
+	dprintf(1,"func: %s, action: %s, id: %s, message: %s, retain: %d\n", func, action, id, message, retain);
+
+	agent_mktopic(topic,sizeof(topic)-1,ap,ap->instance_name,func,action,id);
+        dprintf(1,"topic: %s\n", topic);
+        return mqtt_pub(ap->m,topic,message,retain);
+}
+
+
 int agent_send_status(solard_agent_t *ap, char *name, char *func, char *op, char *id, int status, char *message) {
-	char topic[200],msg[4096];
+	char msg[4096];
 	json_value_t *o;
 
 	dprintf(1,"op: %s, status: %d, message: %s\n", op, status, message);
@@ -57,11 +97,21 @@ int agent_send_status(solard_agent_t *ap, char *name, char *func, char *op, char
 	json_add_string(o,"message",message);
 	json_tostring(o,msg,sizeof(msg)-1,0);
 	json_destroy(o);
-	/* /root/role/name/func/op/Status/id */
-	sprintf(topic,"%s/%s/%s/%s/%s/Status/%s",SOLARD_TOPIC_ROOT,ap->role->name,name,func,op,id);
-	dprintf(1,"topic: %s\n", topic);
-	mqtt_pub(ap->m,topic,msg,0);
-	return 0;
+//	return agent_pub(ap, func, op, id, message, 0);
+#if 1
+	{
+		char topic[SOLARD_TOPIC_LEN];
+
+		/* /root/role/name/func/op/Status/id */
+		if (ap->role)
+			sprintf(topic,"%s/%s/%s/%s/%s/Status/%s",SOLARD_TOPIC_ROOT,ap->role->name,name,func,op,id);
+		else
+			sprintf(topic,"%s/%s/%s/%s/Status/%s",SOLARD_TOPIC_ROOT,name,func,op,id);
+		dprintf(1,"topic: %s\n", topic);
+		mqtt_pub(ap->m,topic,msg,0);
+		return 0;
+	}
+#endif
 }
 
 list agent_config_payload2list(solard_agent_t *ap, char *name, char *func, char *op, char *id, char *payload) {
@@ -169,7 +219,7 @@ void agent_process(solard_agent_t *ap, solard_message_t *msg) {
 			message = "internal error";
 			goto agent_process_error;
 		}
-		if (ap->role->config) ap->role->config(ap->role_handle,msg->action,msg->id,lp);
+		if (ap->role && ap->role->config) ap->role->config(ap->role_handle,msg->action,msg->id,lp);
 		list_destroy(lp);
 	} else if (strcmp(msg->func,"Control")==0) {
 		json_value_t *v;
@@ -180,7 +230,7 @@ void agent_process(solard_agent_t *ap, solard_message_t *msg) {
 			message = "invalid json format";
 			goto agent_process_error;
 		}
-		if (ap->role->control) ap->role->control(ap->role_handle,msg->action,msg->id,v);
+		if (ap->role && ap->role->control) ap->role->control(ap->role_handle,msg->action,msg->id,v);
 		json_destroy(v);
 	}
 	dprintf(1,"used: %ld\n", mem_used() - start);
@@ -191,41 +241,15 @@ agent_process_error:
 	return;
 }
 
-
-int agent_sub(solard_agent_t *ap, char *name, char *func, char *action, char *id) {
-	char topic[200],*p;
-
-	dprintf(1,"name: %s, func: %s, action: %s, id: %s\n", name, func, action, id);
-	/* /Solard/Battery/+/Config/Get/Status */
-	p = topic;
-	p += sprintf(p,"%s/%s",SOLARD_TOPIC_ROOT,ap->role->name);
-	if (name) {
-		p += snprintf(p,sizeof(topic)-strlen(topic)-1,"/%s",name);
-		if (func) {
-			p += snprintf(p,sizeof(topic)-strlen(topic)-1,"/%s",func);
-			if (action) {
-				p += snprintf(p,sizeof(topic)-strlen(topic)-1,"/%s",action);
-				if (id) {
-					p += snprintf(p,sizeof(topic)-strlen(topic)-1,"/%s",id);
-				}
-			}
-		}
-	}
-	log_write(LOG_INFO,"%s\n", topic);
-	return mqtt_sub(ap->m,topic);
-}
-
 solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, solard_module_t *driver) {
 	solard_agent_t *ap;
 	char info[65536];
 	char tp_info[128],mqtt_info[200],*p;
 	char configfile[256];
-	mqtt_config_t mqtt_config;
 	char name[SOLARD_NAME_LEN];
 	char transport[SOLARD_TRANSPORT_LEN];
 	char target[SOLARD_TARGET_LEN];
 	char topts[SOLARD_TOPTS_LEN];
-//	char id[SOLARD_ID_LEN];
 	char sname[64];
 	int info_flag,pretty_flag,read_interval,write_interval;
 	opt_proctab_t std_opts[] = {
@@ -271,18 +295,20 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 	strncat(ap->name,driver->name,sizeof(ap->name)-1);
 
 	/* Could load these as modules, but not really needed here */
+	dprintf(1,"driver->type: %d\n", driver->type);
 	switch(driver->type) {
-	case SOLARD_MODTYPE_BATTERY:
-		ap->role = &battery;
+	case SOLARD_MODTYPE_CONTROLLER:
+		ap->role = &controller;
 		break;
 	case SOLARD_MODTYPE_INVERTER:
 		ap->role = &inverter;
 		break;
+	case SOLARD_MODTYPE_BATTERY:
+		ap->role = &battery;
+		break;
 	default:
 		break;
 	}
-
-	memset(&mqtt_config,0,sizeof(mqtt_config));
 
 	strncpy(ap->section_name,strlen(sname) ? sname : (strlen(name) ? name : driver->name), sizeof(ap->section_name)-1);
 	dprintf(1,"section_name: %s\n", ap->section_name);
@@ -302,7 +328,7 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 		if (!ap->cfg) goto agent_init_error;
 		cfg_get_tab(ap->cfg,agent_tab);
 		if (debug) cfg_disp_tab(agent_tab,"agent",0);
-		if (mqtt_get_config(ap->cfg,&mqtt_config)) goto agent_init_error;
+		if (mqtt_get_config(ap->cfg,&ap->mqtt_config)) goto agent_init_error;
 	} 
 
 	/* Name specified on command line overrides configfile */
@@ -354,31 +380,33 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 	}
 
 	dprintf(1,"mqtt_info: %s\n", mqtt_info);
-	if (strlen(mqtt_info)) {
-		strncat(mqtt_config.host,strele(0,",",mqtt_info),sizeof(mqtt_config.host)-1);
-		strncat(mqtt_config.clientid,strele(1,",",mqtt_info),sizeof(mqtt_config.clientid)-1);
-		strncat(mqtt_config.user,strele(2,",",mqtt_info),sizeof(mqtt_config.user)-1);
-		strncat(mqtt_config.pass,strele(3,",",mqtt_info),sizeof(mqtt_config.pass)-1);
-	}
+	if (strlen(mqtt_info) && mqtt_parse_config(&ap->mqtt_config,mqtt_info)) goto agent_init_error;
 
 	/* MQTT Init */
 	dprintf(1,"host: %s, clientid: %s, user: %s, pass: %s\n",
-		mqtt_config.host, mqtt_config.clientid, mqtt_config.user, mqtt_config.pass);
-	if (!strlen(mqtt_config.host)) {
+		ap->mqtt_config.host, ap->mqtt_config.clientid, ap->mqtt_config.user, ap->mqtt_config.pass);
+	if (!strlen(ap->mqtt_config.host)) {
 		log_write(LOG_WARNING,"mqtt host not specified, using localhost\n");
-		strcpy(mqtt_config.host,"localhost");
+		strcpy(ap->mqtt_config.host,"localhost");
 	}
 
 	/* MQTT requires a unique ClientID for connections */
-	if (!strlen(mqtt_config.clientid)) {
+	if (!strlen(ap->mqtt_config.clientid)) {
 		uint8_t uuid[16];
 
 		dprintf(1,"gen'ing MQTT ClientID...\n");
 		uuid_generate_random(uuid);
-		my_uuid_unparse(uuid, mqtt_config.clientid);
-		dprintf(4,"clientid: %s\n",mqtt_config.clientid);
+		my_uuid_unparse(uuid, ap->mqtt_config.clientid);
+		dprintf(4,"clientid: %s\n",ap->mqtt_config.clientid);
 	}
-	ap->m = mqtt_new(&mqtt_config, solard_getmsg, ap->mq);
+
+	/* Create LWT topic */
+	agent_mktopic(ap->mqtt_config.lwt_topic,sizeof(ap->mqtt_config.lwt_topic)-1,ap,ap->instance_name,
+		"Status",0,0);
+//	sprintf(ap->mqtt_config.lwt_topic,"%s/%s/%s/%s",SOLARD_TOPIC_ROOT,ap->role->name,ap->instance_name,SOLARD_FUNC_STATUS);
+
+	/* Create MQTT session */
+	ap->m = mqtt_new(&ap->mqtt_config, solard_getmsg, ap->mq);
 
 	/* Callback - must be done before connect */
 //	if (mqtt_setcb(ap->m,ap,0,agent_callback0)) return 0;
@@ -395,6 +423,7 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 	list_add(names,"All",4);
 	list_add(names,ap->name,strlen(ap->name)+1);
 	if (strcmp(ap->name,ap->instance_name) != 0) list_add(names,ap->instance_name,strlen(ap->instance_name)+1);
+	list_add(names,ap->mqtt_config.clientid,strlen(ap->mqtt_config.clientid)+1);
 	p = json_get_string(ap->info,"device_model");
 	dprintf(1,"p: %s\n", p);
 	if (p && strlen(p)) list_add(names,p,strlen(p)+1);
@@ -403,15 +432,15 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 	list_reset(names);
 	log_write(LOG_INFO,"Subscribing to the following topics:\n");
 	while((p = list_get_next(names)) != 0) {
-		agent_sub(ap,p,SOLARD_FUNC_STATUS,SOLARD_ACTION_GET,"+");
-		agent_sub(ap,p,SOLARD_FUNC_CONFIG,SOLARD_ACTION_GET,"+");
-		agent_sub(ap,p,SOLARD_FUNC_CONFIG,SOLARD_ACTION_SET,"+");
-		agent_sub(ap,p,SOLARD_FUNC_CONTROL,SOLARD_ACTION_SET,"+");
+		agent_sub(ap,p,SOLARD_FUNC_CONFIG,"+","+");
+		agent_sub(ap,p,SOLARD_FUNC_CONTROL,"Set","+");
 	}
 
-	/* Set the read toggle handler */
+#ifndef __WIN32
+	/* Set the rw toggle handler */
 //	signal(SIGUSR1, usr_handler);
 //	signal(SIGUSR2, usr_handler);
+#endif
 
 	dprintf(1,"returning: %p\n",ap);
 	return ap;

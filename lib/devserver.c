@@ -65,11 +65,10 @@ int devserver_send(socket_t fd, uint8_t opcode, uint8_t unit, uint16_t control, 
 }
 
 int devserver_recv(socket_t fd, uint8_t *opcode, uint8_t *unit, uint16_t *control, void *data, int datasz, int timeout) {
-	uint8_t *frame,*fptr;
 	int bytes,len,bytes_left;
-	uint8_t ch,pkt[256],*dptr;
+	uint8_t ch;
 	struct devserver_header h;
-	register int i,j;
+	register int i;
 
 //	dprintf(dlevel,"opcode: %d, unit: %d, control: %d, data: %p, datasz: %d, timeout: %d\n",
 //		*opcode, *unit, *control, data, datasz, timeout);

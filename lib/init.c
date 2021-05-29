@@ -20,6 +20,8 @@ char SOLARD_ETCDIR[DIRPATH_LEN];
 char SOLARD_LIBDIR[DIRPATH_LEN];
 char SOLARD_LOGDIR[DIRPATH_LEN];
 
+#define CFG 1
+
 static int _getcfg(cfg_info_t *cfg, char *dest, char *what) {
 	char *p;
 	int r;
@@ -27,6 +29,7 @@ static int _getcfg(cfg_info_t *cfg, char *dest, char *what) {
 	dprintf(7,"cfg: %p, what: %s\n", cfg, what);
 
 	r = 1;
+#if CFG
 	p = cfg_get_item(cfg,"",what);
 	if (!p) {
 		p = cfg_get_item(cfg,"","prefix");
@@ -39,6 +42,7 @@ static int _getcfg(cfg_info_t *cfg, char *dest, char *what) {
 	dprintf(7,"dest: %s\n", dest);
 	r = 0;
 _getcfg_err:
+#endif
 	dprintf(7,"returning: %d\n", r);
 	return r;
 }
@@ -49,11 +53,10 @@ static void _getpath(cfg_info_t *cfg, char *home, char *dest, char *what) {
 
 	if (cfg && _getcfg(cfg,dest,what) == 0) return;
 
-#ifdef SOLARD_PREFIX
-	sprintf(dest,"%s/%s",SOLARD_PREFIX,what);
+#ifdef __WIN32
+	strcpy(dest,"%ProgramFiles%\\SolarDirector");
 	return;
-#endif
-
+#else
 	/* Am I root? */
 	if (getuid() == 0) {
 		if (strcmp(what,"bin") == 0)
@@ -75,13 +78,15 @@ static void _getpath(cfg_info_t *cfg, char *home, char *dest, char *what) {
 		sprintf(dest,"%s/%s",home,what);
 		return;
 	}
-	printf("error: init: _getpath: no path set for: %s\n", what);
-	dest = ".";
+	printf("error: init: _getpath: no path set for: %s, using /tmp\n", what);
+	dest = "/tmp";
+#endif
 }
 
 static void _setp(char *name,char *value) {
 	int len=strlen(value);
 	if (len > 1 && value[len-1] == '/') value[len-1] = 0;
+	fixpath(value,DIRPATH_LEN-1);
 	os_setenv(name,value,1);
 }
 
@@ -111,6 +116,8 @@ int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_op
 	WSADATA wsaData;
 	int iResult;
 #endif
+
+//	printf("initializng...\n");
 
 	append_flag = back_flag = verb_flag = help_flag = err_flag = 0;
 
@@ -214,23 +221,30 @@ int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_op
 		char path[256];
 
 		sprintf(path,"%s/.sd.conf",home);
+		fixpath(path,sizeof(path)-1);
 		if (access(path,0) == 0) strcpy(configfile,path);
 	}
+#ifndef __WIN32
 	if (access("/etc/sd.conf",R_OK) == 0) strcpy(configfile,"/etc/sd.conf");
 	if (access("/usr/local/etc/sd.conf",R_OK) == 0) strcpy(configfile,"/usr/local/etc/sd.conf");
+#endif
 
 	cfg = 0;
 	dprintf(6,"configfile: %s\n", configfile);
+#if CFG
 	if (strlen(configfile)) {
 		cfg = cfg_read(configfile);
 		if (!cfg) log_write(LOG_SYSERR,"cfg_read %s",configfile);
 	}
+#endif
 
 	_getpath(cfg,home,SOLARD_BINDIR,"bin");
 	_getpath(cfg,home,SOLARD_ETCDIR,"etc");
 	_getpath(cfg,home,SOLARD_LIBDIR,"lib");
 	_getpath(cfg,home,SOLARD_LOGDIR,"log");
+#if CFG
 	if (cfg) cfg_destroy(cfg);
+#endif
 
 	_setp("SOLARD_BINDIR",SOLARD_BINDIR);
 	_setp("SOLARD_ETCDIR",SOLARD_ETCDIR);

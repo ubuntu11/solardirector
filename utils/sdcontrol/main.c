@@ -67,7 +67,7 @@ int main(int argc,char **argv) {
 	if (mqtt_sub(s->m,topic)) return 0;
 	sprintf(topic,"%s/%s/%s/+",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONTROL);
 	if (mqtt_sub(s->m,topic)) return 0;
-	sprintf(topic,"%s/%s/%s/+/%s/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONTROL,SOLARD_ID_STATUS,s->id);
+	sprintf(topic,"%s/%s/%s/+/%s/%s",SOLARD_TOPIC_ROOT,target,SOLARD_FUNC_CONTROL,"Status",s->id);
 	dprintf(1,"topic: %s\n", topic);
 	if (mqtt_sub(s->m,topic)) return 0;
 

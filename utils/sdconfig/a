@@ -1,9 +1,11 @@
+#BROKER="-m 192.168.1.7"
+SD="./sdconfig -d 2 ${BROKER}"
 dosi() {
-./sdconfig Controller Add Inverter si:transport=can,target=can0,topts=500000
-./sdconfig Inverter/si Set min_voltage 39.2
-./sdconfig Inverter/si Set max_voltage 58.8
-./sdconfig Inverter/si Set charge_start_voltage 44.8
-./sdconfig Inverter/si Set charge_end_voltage 58.1
+${SD} $Controller/solard Add Inverter si:transport=can,target=can0,topts=500000
+${SD} Inverter/si Set min_voltage 39.2
+${SD} Inverter/si Set max_voltage 58.8
+${SD} Inverter/si Set charge_start_voltage 44.8
+${SD} Inverter/si Set charge_end_voltage 58.1
 }
 doit() {
 	for i in $(seq 1 14)
@@ -11,11 +13,13 @@ doit() {
 		test $i -eq 2 && continue
 		n=$(printf "%02d" $i)
 
-		./sdconfig -d 5 Controller Add Battery pack_${n}:agent_name=jbd,transport=ip,target=pack_${n}
+		${SD} -d 5 Controller/solard Add Battery pack_${n}:agent_name=jbd,transport=ip,target=pack_${n}
 #		break
 	done
 }
+#dosi
+#exit 0
 doit
-#./sdconfig -d 5 Controller Set Battery pack_02
-#./sdconfig -d 5 Controller Add Battery pack_02:agent_name=jk,transport=bt,target=3C:A5:4A:E4:09:31
-./sdconfig Controller Add Battery pack_02:agent_name=jk,transport=ip,target=pack_02
+#${SD} -d 5 Controller/solard Set Battery pack_02
+#${SD} -d 5 Controller/solard Add Battery pack_02:agent_name=jk,transport=bt,target=3C:A5:4A:E4:09:31
+${SD} Controller/solard Add Battery pack_02:agent_name=jk,transport=ip,target=pack_02

@@ -35,6 +35,8 @@ void solard_message_dump(solard_message_t *msg, int dlevel) {
 //	dprintf(dlevel,"msg: data_len: %d\n", msg->data_len);
 }
 
+/* SolarD/Role/Name/Func/Action/ .. ID? */
+
 void solard_getmsg(void *ctx, char *topic, char *message, int msg_len) {
 	list lp = ctx;
 	solard_message_t newmsg;
@@ -58,7 +60,8 @@ void solard_getmsg(void *ctx, char *topic, char *message, int msg_len) {
 	newmsg.role[0] = 0;
 	strncat(newmsg.role,strele(1,"/",topic),sizeof(newmsg.role)-1);
 
-	i = strcmp(newmsg.role,SOLARD_ROLE_CONTROLLER)==0 ? 1 : 2;
+//	i = strcmp(newmsg.role,SOLARD_ROLE_CONTROLLER)==0 ? 1 : 2;
+	i = 2;
 	dprintf(4,"role: %s, i: %d\n", newmsg.role, i);
 
 	newmsg.name[0] = 0;

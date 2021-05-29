@@ -274,7 +274,7 @@ int jk_bt_read(jk_session_t *s, solard_battery_t *bp) {
 
 static int jk_std_read(jk_session_t *s, solard_battery_t *bp) {
 	uint8_t data[128];
-	int i,bytes;;
+	int i,j,bytes;
 //	struct jk_protect prot;
 
 	dprintf(3,"getting HWINFO...\n");
@@ -323,8 +323,10 @@ static int jk_std_read(jk_session_t *s, solard_battery_t *bp) {
 
 	/* Temps */
 #define CTEMP(v) ( (v - 2731) / 10 )
-	for(i=0; i < bp->ntemps; i++) {
-		bp->temps[i] = CTEMP((float)jk_getshort(&data[23+(i*2)]));
+	/* 1st temp is MOS - we dont care about it */
+	j=0;
+	for(i=1; i < bp->ntemps; i++) {
+		bp->temps[j++] = CTEMP((float)jk_getshort(&data[23+(i*2)]));
 	}
 
 	/* Cell volts */

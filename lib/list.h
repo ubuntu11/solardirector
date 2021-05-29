@@ -18,7 +18,7 @@ typedef struct _llist * list;
 #ifdef __cplusplus
 extern "C" {
 #endif
-/* Define the list functions */
+
 list list_create( void );
 int list_destroy( list );
 list list_dup( list );
@@ -34,6 +34,7 @@ int list_is_next( list );
 typedef int (*list_compare)(void *, void *);
 int list_sort( list, list_compare, int);
 time_t list_updated(list);
+
 #ifdef __cplusplus
 }
 #endif

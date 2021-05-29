@@ -10,26 +10,31 @@ ALL messages are QOS=1
 all topics are at least 5 levels deep
 	more levels can be published by the agent but the agent must publish at least 5
 
-level 1: /SolarD
-level 2: Site name
-level 3: Agent role
-level 4: Agent name or other unique identification
-level 5: Agent specific data, information, or configuration parameters
+level 1: SolarD
+level 2: role
+level 4: name
+level 5: function (data/info/config/control/status)
+level 6: action (get/set/add/del/start/stop)
+level 7: id
+
+default controller name is "solard"
 
 Example data output topic for a battery role:
 
-	/SolarD/Home/Battery/PowerWall01/Data
+	/SolarD/Battery/PowerWall01/Data
 
-Director will subscribe to /SolarD/+/+/+ and /SolarD/+/+/+/+ (for Config Get/Set/Status)
+SolarD/Battery/all/Config/Get/(client)id={"Name" (or Status or another item)}
+each one replies with:
+SolarD/Client/(client)id/Config/Settings/(agent)id={(requested info or error)}
 
-The Director will also subscribe to and publish to the following topics
+ALL agents will respond to all requests with status (integer)
+	if status nonzero, errmsg will be returned as well
 
-	/SolarD/Director/Data|Info|Config
+SolarD/Battery/(name or id)/Config/Get/id={"Status"}
+SolarD/Client/id(from req)/Config/Status/name(from req)={"Status"}
 
-/Config/Get/id={json}
-/Config/Get/Status/id={json}
-/Config/Set/id={json}
-/Config/Set/Status/id={json}
+
+/Status = Online or Offline (Agent start = Online, LWT = Offline)
 
 /Info = retained, static agent information, type, role, model, etc (r = required, nr = not required)
 	nr, agent_name

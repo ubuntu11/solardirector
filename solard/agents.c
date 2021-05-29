@@ -21,7 +21,7 @@ int agent_start(solard_config_t *conf, solard_agentinfo_t *info) {
 	char prog[256],logfile[256],*args[32];
 	int i;
 
-	if (!conf->c->cfg && solard_write_config(conf)) return 1;
+	if (!conf->ap->cfg && solard_write_config(conf)) return 1;
 
 	log_info("Starting agent: %s/%s\n", info->role, info->name);
 
@@ -37,9 +37,9 @@ int agent_start(solard_config_t *conf, solard_agentinfo_t *info) {
 //	strcat(prog,".exe");
 #endif
 	args[i++] = prog;
-	if (conf->c->cfg->filename) {
+	if (conf->ap->cfg->filename) {
 		args[i++] = "-c";
-		args[i++] = conf->c->cfg->filename;
+		args[i++] = conf->ap->cfg->filename;
 		args[i++] = "-s";
 		args[i++] = info->id;
 	} else {
@@ -55,7 +55,7 @@ int agent_start(solard_config_t *conf, solard_agentinfo_t *info) {
 		args[i++] = "-n";
 		args[i++] = info->name;
 		args[i++] = "-m";
-		args[i++] = conf->c->mqtt_config.host;
+		args[i++] = conf->ap->mqtt_config.host;
 	}
 	args[i++] = "-l";
 	args[i++] = logfile;
@@ -275,8 +275,8 @@ int agent_get_role(solard_config_t *conf, solard_agentinfo_t *info) {
 	strncat(info->role,p,sizeof(info->role)-1);
 
 	/* If we have this in our conf already, update it */
-	section = cfg_get_section(conf->c->cfg,info->id);
-	if (section) agentinfo_setcfg(conf->c->cfg,info->id,info);
+	section = cfg_get_section(conf->ap->cfg,info->id);
+	if (section) agentinfo_setcfg(conf->ap->cfg,info->id,info);
 
 	r = 0;
 agent_get_role_error:

@@ -13,6 +13,7 @@ LICENSE file in the root directory of this source tree.
 #include <errno.h>
 #include <time.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #ifdef DEBUG
 #undef DEBUG
 #endif
@@ -269,13 +270,14 @@ int get_timestamp(char *ts, int tslen, int local) {
 }
 
 char *os_getenv(const char *name) {
-	static char value[4096];
-
 #ifdef __WIN32
-	DWORD len = GetEnvironmentVariable(name, value, sizeof(value)-1);
-	if (!len) return 0;
-	if (len > sizeof(value)) return 0;
-	return value;
+	{
+		static char value[4096];
+		DWORD len = GetEnvironmentVariable(name, value, sizeof(value)-1);
+		if (!len) return 0;
+		if (len > sizeof(value)) return 0;
+		return value;
+	}
 #else
 	return getenv(name);
 #endif

@@ -8,14 +8,17 @@ LICENSE file in the root directory of this source tree.
 */
 
 #include "solard.h"
-//#include <sys/signal.h>
+
+/* We will only read/write these config items from/to mqtt */
+#define MQTT_CONFIG \
+		{ "interval", DATA_TYPE_INT, &conf->interval, 0 }, \
+		JSON_PROCTAB_END
 
 int solard_read_config(solard_config_t *conf) {
 	solard_agentinfo_t newinfo;
 	char temp[1024], *sname, *p;
 	int i,count;
 	cfg_proctab_t mytab[] = {
-		{ "solard", "name", "Site name", DATA_TYPE_STRING, &conf->name, sizeof(conf->name)-1, "site" },
 		{ "solard", "agent_error", 0, DATA_TYPE_INT, &conf->agent_error, 0, "300" },
 		{ "solard", "agent_warning", 0, DATA_TYPE_INT, &conf->agent_warning, 0, "120" },
 		{ "solard", "interval", "Agent check interval", DATA_TYPE_INT, &conf->interval, 0, "15" },
@@ -24,44 +27,49 @@ int solard_read_config(solard_config_t *conf) {
 	char topic[SOLARD_TOPIC_SIZE];
 	solard_message_t *msg;
 
-	cfg_get_tab(conf->c->cfg,mytab);
+	cfg_get_tab(conf->ap->cfg,mytab);
 	if (debug) cfg_disp_tab(mytab,"info",0);
 
 	/* Get agent count */
-	p = cfg_get_item(conf->c->cfg, "agents", "count");
+	p = cfg_get_item(conf->ap->cfg, "agents", "count");
 	if (p) {
 		/* Get agents */
 		count = atoi(p);
 		for(i=0; i < count; i++) {
 			sprintf(temp,"A%02d",i);
 			dprintf(1,"num temp: %s\n",temp);
-			sname = cfg_get_item(conf->c->cfg,"agents",temp);
+			sname = cfg_get_item(conf->ap->cfg,"agents",temp);
 			if (sname) {
 				memset(&newinfo,0,sizeof(newinfo));
-				agentinfo_getcfg(conf->c->cfg, sname, &newinfo);
+				agentinfo_getcfg(conf->ap->cfg, sname, &newinfo);
 				agentinfo_add(conf,&newinfo);
 			}
 		}
 	}
-	if (conf->c->cfg->filename) return 0;
+	if (conf->ap->cfg->filename) return 0;
 
-	/* Sub to our config topic */
-	sprintf(topic,"%s/%s/%s/%s/+",SOLARD_TOPIC_ROOT,SOLARD_ROLE_CONTROLLER,conf->name,SOLARD_FUNC_CONFIG);
-        if (mqtt_sub(conf->c->m,topic)) return 1;
+	/* NO CONFIG FILE - READ CONFIG FROM MQTT */
+	return 0;
+
+	/* Sub to our settings topic */
+	agent_mktopic(topic,sizeof(topic)-1,conf->ap,conf->ap->instance_name,SOLARD_FUNC_CONFIG,"Settings",0);
+//	if (agent_sub(conf->ap,conf->ap->instance_name,SOLARD_FUNC_CONFIG,"Settings",0)) return 1;
+//	sprintf(topic,"%s/%s/%s/%s/+",SOLARD_TOPIC_ROOT,SOLARD_ROLE_CONTROLLER,conf->name,SOLARD_FUNC_CONFIG);
+        if (mqtt_sub(conf->ap->m,topic)) return 1;
 
 	/* Ingest any config messages */
 	dprintf(1,"ingesting...\n");
-	solard_ingest(conf->c->messages,2);
+	solard_ingest(conf->ap->mq,2);
 	dprintf(1,"back from ingest...\n");
 
 	/* Process messages as config requests */
-	dprintf(1,"mq count: %d\n", list_count(conf->c->messages));
-	list_reset(conf->c->messages);
-	while((msg = list_get_next(conf->c->messages)) != 0) {
+	dprintf(1,"mq count: %d\n", list_count(conf->ap->mq));
+	list_reset(conf->ap->mq);
+	while((msg = list_get_next(conf->ap->mq)) != 0) {
 		agentinfo_get(conf,msg->data);
-		list_delete(conf->c->messages,msg);
+		list_delete(conf->ap->mq,msg);
 	}
-	mqtt_unsub(conf->c->m,topic);
+	mqtt_unsub(conf->ap->m,topic);
 
 	dprintf(1,"done\n");
 	return 0;
@@ -75,37 +83,49 @@ int solard_write_config(solard_config_t *conf) {
 	dprintf(1,"writing config...\n");
 
 #if 0
-	if (!conf->c->cfg) {
+	if (!conf->ap->cfg) {
 		char configfile[256];
 		sprintf(configfile,"%s/solard.conf",SOLARD_ETCDIR);
 		dprintf(1,"configfile: %s\n", configfile);
-		conf->c->cfg = cfg_create(configfile);
-		if (!conf->c->cfg) return 1;
+		conf->ap->cfg = cfg_create(configfile);
+		if (!conf->ap->cfg) return 1;
 	}
 #endif
 
 
-	dprintf(1,"conf->c->cfg: %p\n", conf->c->cfg);
-	if (conf->c->cfg) {
-	sprintf(temp,"%d",list_count(conf->agents));
-	dprintf(1,"count temp: %s\n",temp);
-	cfg_set_item(conf->c->cfg, "agents", "count", 0, temp);
-	i = 0;
-	list_reset(conf->agents);
-	while((info = list_get_next(conf->agents)) != 0) {
-		agentinfo_setcfg(conf->c->cfg,info->id,info);
-		sprintf(temp,"A%02d",i++);
-		dprintf(1,"num temp: %s\n",temp);
-		cfg_set_item(conf->c->cfg, "agents", temp, 0, info->id);
-		agentinfo_pub(conf,info);
-	}
-	cfg_write(conf->c->cfg);
+	dprintf(1,"conf->ap->cfg: %p\n", conf->ap->cfg);
+	if (conf->ap->cfg) {
+		sprintf(temp,"%d",list_count(conf->agents));
+		dprintf(1,"count temp: %s\n",temp);
+		cfg_set_item(conf->ap->cfg, "agents", "count", 0, temp);
+		i = 0;
+		list_reset(conf->agents);
+		while((info = list_get_next(conf->agents)) != 0) {
+			agentinfo_setcfg(conf->ap->cfg,info->id,info);
+			sprintf(temp,"A%02d",i++);
+			dprintf(1,"num temp: %s\n",temp);
+			cfg_set_item(conf->ap->cfg, "agents", temp, 0, info->id);
+//			agentinfo_pub(conf,info);
+		}
+		cfg_write(conf->ap->cfg);
+
+	/* NO CONFIG FILE - WRITE CONFIG TO MQTT */
+	} else {
+		json_proctab_t params[] = { MQTT_CONFIG },*p;
+
+		/* Publish the agent info */
+		while((info = list_get_next(conf->agents)) != 0) agentinfo_pub(conf,info);
+
+		/* Publish the param info */
+		for(p=params; p->field; p++) {
+			dprintf(1,"pub: %s\n", p->field);
+		}
 	}
 	return 0;
 }
 
 #if 0
-static json_descriptor_t battery_parms[] = {
+static json_descriptor_t charge_parms[] = {
 	{ "batteries", DATA_TYPE_LIST, 0, 0, 0, 0, 0, 0, 0, 0 },
 	{ "min_voltage", DATA_TYPE_FLOAT, "range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 }, 1, (char *[]){ "Min Battery Voltage" }, "V", 1, "%2.1f" },
 	{ "charge_start_voltage", DATA_TYPE_FLOAT, "range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 }, 1, (char *[]){ "Charge start voltage" }, "V", 1, "%2.1f" },
@@ -184,17 +204,6 @@ json_descriptor_t *_getd(solard_config_t *s,char *name) {
 		}
 	}
 
-#if 0
-	/* See if it's in our desc list */
-	dprintf(1,"looking in desc list...\n");
-	list_reset(s->desc);
-	while((dp = list_get_next(s->desc)) != 0) {
-		dprintf(1,"dp->name: %s\n", dp->name);
-		if (strcmp(dp->name,name)==0)
-			return dp;
-	}
-#endif
-
 	return 0;
 }
 
@@ -224,149 +233,20 @@ int solard_config_add_info(solard_config_t *s, json_value_t *j) {
 }
 
 #if 0
-static json_proctab_t *_getinv(solard_config_t *s, char *name) {
-//	solard_inverter_t *inv = s->ap->role_data;
-	json_proctab_t params[] = {
-#if 0
-                { "max_voltage",DATA_TYPE_FLOAT,&inv->max_voltage,0 },
-                { "min_voltage",DATA_TYPE_FLOAT,&inv->min_voltage,0 },
-                { "charge_start_voltage",DATA_TYPE_FLOAT,&inv->charge_start_voltage,0 },
-                { "charge_end_voltage",DATA_TYPE_FLOAT,&inv->charge_end_voltage,0 },
-                { "charge_amps",DATA_TYPE_FLOAT,&inv->charge_amps,0 },
-                { "charge_mode",DATA_TYPE_INT,&s->charge_mode,0 },
-                { "discharge_amps",DATA_TYPE_FLOAT,&inv->discharge_amps,0 },
-		{ "charge_min_amps", DATA_TYPE_FLOAT, &s->charge_min_amps,0 },
-		{ "charge_focus_amps", DATA_TYPE_BOOL, &s->charge_creep, 0 },
-		{ "sim_step", DATA_TYPE_FLOAT, &s->sim_step, 0 },
-		{ "interval", DATA_TYPE_INT, &s->interval, 0 },
-#endif
-		JSON_PROCTAB_END
-	};
-	json_proctab_t *invp;
-
-	dprintf(1,"name: %s\n", name);
-
-	for(invp=params; invp->field; invp++) {
-		dprintf(1,"invp->field: %s\n", invp->field);
-		if (strcmp(invp->field,name)==0) {
-			dprintf(1,"found!\n");
-//			s->idata = *invp;
-//			return &s->idata;
-		}
-	}
-	dprintf(1,"NOT found\n");
-	return 0;
-}
-#endif
-
-void *_getp(solard_config_t *s, char *name) {
-#if 0
-	json_proctab_t *invp;
-//	solard_param_t *pinfo;
-	smanet_channel_t *c;
-
-	dprintf(1,"name: %s\n", name);
-
-	pinfo = &s->pdata;
-	memset(pinfo,0,sizeof(*pinfo));
-
-	/* Is it from the inverter struct? */
-	invp = _getinv(s,name);
-	if (invp) {
-		uint8_t *bptr;
-		short *sptr;
-		long *lptr;
-		float *fptr;
-		int *iptr;
-
-		dprintf(1,"inv: name: %s, type: %d, ptr: %p, len: %d\n", invp->field, invp->type, invp->ptr, invp->len);
-		dprintf(1,"invp->type: %d\n", invp->type);
-
-		strncat(pinfo->name,invp->field,sizeof(pinfo->name)-1);
-		pinfo->type = invp->type;
-		pinfo->source = 1;
-		switch(invp->type) {
-		case DATA_TYPE_BOOL:
-			iptr = invp->ptr;
-			pinfo->bval = *iptr;
-			break;
-		case DATA_TYPE_BYTE:
-			bptr = invp->ptr;
-			pinfo->bval = *bptr;
-			break;
-		case DATA_TYPE_SHORT:
-			sptr = invp->ptr;
-			pinfo->wval = *sptr;
-			break;
-		case DATA_TYPE_LONG:
-			lptr = invp->ptr;
-			pinfo->lval = *lptr;
-			break;
-		case DATA_TYPE_FLOAT:
-			fptr = invp->ptr;
-			pinfo->fval = *fptr;
-			break;
-		default: break;
-		}
-		dprintf(1,"found\n");
-		return pinfo;
-	}
-
-	/* Is it from the SI? */
-	if (!s->smanet) goto _getp_done;
-	dprintf(1,"NOT found, checking smanet\n");
-	c = smanet_get_channelbyname(s->smanet,name);
-	if (c) {
-		smanet_value_t *v;
-
-		v = smanet_get_value(s->smanet,c);
-		strncat(pinfo->name,c->name,sizeof(pinfo->name)-1);
-		pinfo->source = 2;
-		if (c->mask & CH_STATUS) {
-			pinfo->type = DATA_TYPE_STRING;
-			smanet_get_optionbyname(s->smanet,c->name,pinfo->sval,sizeof(pinfo->sval));
-		} else {
-			pinfo->type = v->type;
-			switch(v->type) {
-			case DATA_TYPE_BYTE:
-				pinfo->bval = v->bval;
-				break;
-			case DATA_TYPE_SHORT:
-				pinfo->wval = v->wval;
-				break;
-			case DATA_TYPE_LONG:
-				pinfo->lval = v->lval;
-				break;
-			case DATA_TYPE_FLOAT:
-				pinfo->fval = v->fval;
-				break;
-			default: break;
-			}
-		}
-		dprintf(1,"found\n");
-		return pinfo;
-	}
-
-_getp_done:
-	dprintf(1,"NOT found\n");
-#endif
-	return 0;
-}
-
-
 static int solard_get_config(solard_config_t *s, json_value_t *v, char *message) {
 #if 0
 	char topic[200];
 	char temp[72];
 	unsigned char bval;
 	short wval;
-	float fval;
 	long lval;
+	float fval;
+	double dval;
 
 	dprintf(1,"dp: name: %s, unit: %s, scale: %f\n", dp->name, dp->units, dp->scale);
 
 	temp[0] = 0;
-	dprintf(1,"pp->type: %d\n", pp->type);
+	dprintf(1,"pp->type: %d(%s)\n", pp->type,typestr(pp->type));
 	switch(pp->type) {
 	case DATA_TYPE_BOOL:
 		dprintf(1,"bval: %d\n", pp->bval);
@@ -401,11 +281,19 @@ static int solard_get_config(solard_config_t *s, json_value_t *v, char *message)
 		break;
 	case DATA_TYPE_FLOAT:
 		fval = pp->fval;
-		dprintf(1,"fval: %d\n", fval);
+		dprintf(1,"fval: %f\n", fval);
 		dprintf(1,"scale: %f\n", dp->scale);
 		if (dp->scale != 0.0) fval /= dp->scale;
 		if (dp->format) sprintf(temp,dp->format,fval);
 		else sprintf(temp,"%f",fval);
+		break;
+	case DATA_TYPE_DOUBLE:
+		dval = pp->dval;
+		dprintf(1,"dval: %lf\n", dval);
+		dprintf(1,"scale: %f\n", dp->scale);
+		if (dp->scale != 0.0) dval /= dp->scale;
+		if (dp->format) sprintf(temp,dp->format,dval);
+		else sprintf(temp,"%lf",dval);
 		break;
 	case DATA_TYPE_STRING:
 		temp[0] = 0;
@@ -422,6 +310,7 @@ static int solard_get_config(solard_config_t *s, json_value_t *v, char *message)
 #endif
 	return 1;
 }
+#endif
 
 static solard_agentinfo_t *agent_infobyname(solard_config_t *s, char *name) {
 	register solard_agentinfo_t *info;
@@ -502,7 +391,7 @@ static int solard_set_config(solard_config_t *conf, json_value_t *v, char *messa
 			strcpy(message,"format is keyword=value");
 			return 1;
 		}
-		cfg_set_item(conf->c->cfg,info->id,name,0,p);
+		cfg_set_item(conf->ap->cfg,info->id,name,0,p);
 		if (strcmp(name,"name")==0) name_changed = 1;
 	}
 	dprintf(1,"name_changed: %d\n", name_changed);
@@ -517,28 +406,17 @@ static int solard_set_config(solard_config_t *conf, json_value_t *v, char *messa
 			solard_kill(info->pid);
 		}
 	}
-	if (cfg_is_dirty(conf->c->cfg)) {
+	if (cfg_is_dirty(conf->ap->cfg)) {
 		/* getcfg writes sname into id, get a local copy */
 		strncpy(name,info->id,sizeof(name)-1);
-		agentinfo_getcfg(conf->c->cfg,name,info);
+		agentinfo_getcfg(conf->ap->cfg,name,info);
 		solard_write_config(conf);
 	}
 	return 0;
 }
-#define INFO_TAB(SN) \
-        { SN, "agent_name", 0, DATA_TYPE_STRING,&info->agent,sizeof(info->agent), 0 }, \
-        { SN, "agent_path", 0, DATA_TYPE_STRING,&info->path,sizeof(info->path), 0 }, \
-        { SN, "agent_role", 0, DATA_TYPE_STRING,&info->role,sizeof(info->role), 0 }, \
-        { SN, "name", 0, DATA_TYPE_STRING,&info->name,sizeof(info->name), 0 }, \
-        { SN, "transport", 0, DATA_TYPE_STRING,&info->transport,sizeof(info->transport), 0 }, \
-        { SN, "target", 0, DATA_TYPE_STRING,&info->target,sizeof(info->target), 0 }, \
-        { SN, "topts", 0, DATA_TYPE_STRING,&info->topts,sizeof(info->topts), 0 }, \
-        { SN, "managed", 0, DATA_TYPE_LOGICAL,&info->managed,sizeof(info->managed),"true" }, \
-        CFG_PROCTAB_END
 
 static int solard_add_config(solard_config_t *conf, json_value_t *v, char *message) {
 	solard_agentinfo_t newinfo,*info = &newinfo;
-	cfg_proctab_t info_tab[] = { INFO_TAB(0) },*t;
 	char name[64],value[128],key[64],*p,*str;
 	list lp;
 	int have_managed;
@@ -563,14 +441,7 @@ static int solard_add_config(solard_config_t *conf, json_value_t *v, char *messa
 		strncpy(key,str,sizeof(key)-1);
 //		dprintf(1,"key: %s, value: %s\n", key, p);
 		if (strcmp(key,"managed")==0) have_managed = 1;
-		for(t=info_tab; t->keyword; t++) {
-//			dprintf(1,"keyword: %s\n", t->keyword);
-			if (strcmp(t->keyword,key) == 0) {
-//				dprintf(1,"found!\n");
-				conv_type(t->type,t->dest,t->dlen,DATA_TYPE_STRING,p,strlen(p));
-				break;
-			}
-		}
+		agentinfo_set(&newinfo,key,p);
 	}
 	list_destroy(lp);
 	if (!strlen(newinfo.name)) strncpy(newinfo.name,name,sizeof(newinfo.name)-1);
@@ -582,8 +453,26 @@ static int solard_add_config(solard_config_t *conf, json_value_t *v, char *messa
 	return 0;
 }
 
+static int _doget(solard_config_t *conf, char *name, char *message) {
+	solard_agentinfo_t *info;
+
+	*message = 0;
+
+	dprintf(1,"name: %s\n", name);
+
+	info = agent_infobyname(conf,name);
+	if (!info) {
+		strcpy(message,"agent not found");
+		return 1;
+	}
+	agentinfo_pub(conf,info);
+	return 0;
+}
+
 static int _dodel(solard_config_t *conf, char *name, char *message) {
 	solard_agentinfo_t *info;
+
+	dprintf(1,"name: %s\n", name);
 
 	info = agent_infobyname(conf,name);
 	if (!info) {
@@ -593,7 +482,9 @@ static int _dodel(solard_config_t *conf, char *name, char *message) {
 	return 1;
 }
 
-static int solard_del_config(solard_config_t *conf, json_value_t *v, char *message) {
+typedef int (gdfunc_t)(solard_config_t *, char *, char *);
+
+static int solard_gd_config(solard_config_t *conf, json_value_t *v, char *message, gdfunc_t *func) {
 	json_object_t *o;
 	json_array_t *a;
 	int i;
@@ -605,16 +496,16 @@ static int solard_del_config(solard_config_t *conf, json_value_t *v, char *messa
 	case JSONObject:
 		o = v->value.object;
 		dprintf(1,"count: %d\n", o->count);
-		for(i=0; i < o->count; i++) if (solard_del_config(conf,o->values[i],message)) return 1;
+		for(i=0; i < o->count; i++) if (solard_gd_config(conf,o->values[i],message,func)) return 1;
 		break;
 	case JSONArray:
 		a = v->value.array;
 		dprintf(1,"count: %d\n", a->count);
-		for(i=0; i < a->count; i++) if (solard_del_config(conf,a->items[i],message)) return 1;
+		for(i=0; i < a->count; i++) if (solard_gd_config(conf,a->items[i],message,func)) return 1;
 		break;
 	case JSONString:
 		str = (char *)json_string(v);
-		if (_dodel(conf,str,message)) return 1;
+		if (func(conf,str,message)) return 1;
 		break;
 	default:
 		dprintf(1,"unhandled type!");
@@ -625,7 +516,8 @@ static int solard_del_config(solard_config_t *conf, json_value_t *v, char *messa
 }
 
 int solard_send_status(solard_config_t *conf, char *func, char *action, char *id, int status, char *message) {
-	char topic[200],msg[4096];
+	char msg[4096];
+	char topic[SOLARD_TOPIC_LEN];
 	json_value_t *o;
 
 	dprintf(1,"func: %s, action: %s, id: %s, status: %d, message: %s\n", func, action, id, status, message);
@@ -636,9 +528,9 @@ int solard_send_status(solard_config_t *conf, char *func, char *action, char *id
 	json_tostring(o,msg,sizeof(msg)-1,0);
 	json_destroy(o);
 	/* /root/role/name/func/op/Status/id */
-	sprintf(topic,"%s/%s/%s/%s/Status/%s",SOLARD_TOPIC_ROOT,SOLARD_ROLE_CONTROLLER,func,action,id);
+	sprintf(topic,"%s/%s/%s/%s/%s/Status/%s",SOLARD_TOPIC_ROOT,SOLARD_ROLE_CONTROLLER,conf->name,func,action,id);
 	dprintf(1,"topic: %s\n", topic);
-	return mqtt_pub(conf->c->m,topic,msg,0);
+	return mqtt_pub(conf->ap->m,topic,msg,0);
 }
 
 int solard_config(solard_config_t *conf, solard_message_t *msg) {
@@ -655,9 +547,9 @@ int solard_config(solard_config_t *conf, solard_message_t *msg) {
 	if (!v) return 1;
 	/* CRUD */
 	if (strcmp(msg->action,"Add") == 0 && solard_add_config(conf,v,message)) goto solard_config_error;
-	else if (strcmp(msg->action,"Get") == 0 && solard_get_config(conf,v,message)) goto solard_config_error;
+	else if (strcmp(msg->action,"Get") == 0 && solard_gd_config(conf,v,message,_doget)) goto solard_config_error;
 	else if (strcmp(msg->action,"Set") == 0 && solard_set_config(conf,v,message)) goto solard_config_error;
-	else if (strcmp(msg->action,"Del") == 0 && solard_del_config(conf,v,message)) goto solard_config_error;
+	else if (strcmp(msg->action,"Del") == 0 && solard_gd_config(conf,v,message,_dodel)) goto solard_config_error;
 	json_destroy(v);
 
 	status = 0;
@@ -667,4 +559,5 @@ solard_config_error:
 	if (strcmp(msg->id,"solard_control")!=0) solard_send_status(conf, "Config", msg->action, msg->id, status, message);
 	dprintf(1,"used: %ld\n", mem_used() - start);
 	return status;
+	return 1;
 }

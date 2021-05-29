@@ -18,14 +18,15 @@ typedef struct solard_agent agent_t;
 typedef int (*solard_agent_callback_t)(solard_agent_t *);
 
 #include "module.h"
-#include "battery.h"
-#include "inverter.h"
+//#include "battery.h"
+//#include "inverter.h"
 
 typedef int (*role_config_t)(void *,char *);
 
 struct solard_agent {
 	char name[SOLARD_NAME_LEN];
 	cfg_info_t *cfg;
+	mqtt_config_t mqtt_config;
 	char section_name[CFG_SECTION_NAME_SIZE];
 	mqtt_session_t *m;		/* MQTT Session handle */
 	int read_interval;
@@ -60,6 +61,9 @@ typedef struct solard_agent_config_req solard_confreq_t;
 
 solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, solard_module_t *driver);
 int agent_run(solard_agent_t *ap);
+void agent_mktopic(char *topic, int topicsz, solard_agent_t *ap, char *name, char *func, char *action, char *id);
+int agent_sub(solard_agent_t *ap, char *name, char *func, char *action, char *id);
+int agent_pub(solard_agent_t *ap, char *func, char *action, char *id, char *message, int retain);
 int agent_send_status(solard_agent_t *ap, char *name, char *func, char *op, char *clientid, int status, char *message);
 int agent_set_callback(solard_agent_t *, solard_agent_callback_t);
 void *agent_get_handle(solard_agent_t *);

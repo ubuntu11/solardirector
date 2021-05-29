@@ -15,6 +15,7 @@ typedef struct solard_module solard_module_t;
 
 enum SOLARD_MODTYPE {
 	SOLARD_MODTYPE_NONE,
+        SOLARD_MODTYPE_CONTROLLER,
         SOLARD_MODTYPE_INVERTER,
         SOLARD_MODTYPE_BATTERY,
         SOLARD_MODTYPE_TRANSPORT,

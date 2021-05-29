@@ -64,7 +64,7 @@ else ifeq ($(TARGET),win32)
 	AR=$(CBINDIR)/$(CVERS)-ar
 	RANLIB=$(CBINDIR)/$(CVERS)-ranlib
 	STRIP=$(CBINDIR)/$(CVERS)-gcc
-	CFLAGS+=-DWIN32 -DWIN64 -DNULLDEV=\"NUL\"
+	CFLAGS+=-DWIN32 -DNULLDEV=\"NUL\"
 	STRIP=$(BASE)/bin/$(VERS)-strip
 #	CFLAGS+=-DWIN32 -DNULLDEV=\"NUL\" -D_FILE_OFFSET_BITS=64
 	DEST_BASE=/usr/$(CVERS)
@@ -128,8 +128,8 @@ endif
 
 ifeq ($(SHARED),yes)
 ifeq ($(OS),win)
-LIBEXT=.dll.os
-LDADD=-Wl,--export-all-symbols -Wl,--enable-auto-import
+LIBEXT=.dll
+LDADD+=-Wl,--export-all-symbols -Wl,--enable-auto-import
 else
 LIBEXT=.so
 ifneq ($LIBNAME),)
@@ -239,7 +239,7 @@ endif
 # Uses pthreads? (needed @ end)
 ifeq ($(PTHREADS),yes)
 ifeq ($(OS),win)
-#LIBS+=-lpthreadGC2
+#LIBS+=-lwinpthread
 LIBS+=-lpthread
 else
 LIBS+=-lpthread
@@ -263,10 +263,15 @@ _all: $(LIB)
 $(LIB): $(OBJS)
 ifeq ($(SHARED),yes)
 	echo $(CC)
-	$(CC) $(LDADD) -shared -o $(LIB) $(OBJS)
+	$(CC) $(LDADD) -shared -o $(LIB) $(OBJS) $(LIBS)
 else
 	$(AR) cr $(LIB) $(OBJS)
 	$(RANLIB) $(LIB)
+endif
+ifeq ($(OS),win)
+ifeq ($(SHARED),yes)
+CLEANFILES+=lib$(LIBNAME)$(SUFFIX).a
+endif
 endif
 endif
 

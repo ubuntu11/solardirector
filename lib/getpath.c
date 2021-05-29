@@ -9,18 +9,18 @@ void fixpath(char *string, int stringsz) {
 	register char *p,*s;
 	int newidx,i,have_start;
 
-	dprintf(1,"string: %s\n", string);
+	dprintf(8,"string: %s, stringsz: %d\n", string, stringsz);
 
 	s = string;
 	newidx = have_start = 0;
 	for(p = string; *p; p++) {
-//		dprintf(1,"p: %c\n", *p);
+//		dprintf(9,"p: %c, have_start: %d\n", *p, have_start);
 		if (have_start) {
 			if (*p == '%') {
 				temp[i] = 0;
-				dprintf(1,"temp: %s\n", temp);
+				dprintf(9,"temp: %s\n", temp);
 				e = os_getenv(temp);
-				dprintf(1,"e: %p\n", e);
+				dprintf(9,"e: %p\n", e);
 				if (e) {
 					strncpy(&newstr[newidx],e,strlen(e));
 					newidx += strlen(e);
@@ -47,20 +47,14 @@ void fixpath(char *string, int stringsz) {
 		}
 		last_ch = *p;
 	}
-	dprintf(1,"have_start: %d\n", have_start);
+	dprintf(8,"have_start: %d\n", have_start);
 	newstr[newidx] = 0;
+	dprintf(9,"newstr: %s\n", newstr);
 #ifdef __WIN32
-	i = 0;
-	for(p = newstr; *p; p++) {
-		if (*p == '/') *p = '\\';
-		string[i++] = *p;
-		if (i >= stringsz-1) break;
-	}
-	string[i] = 0;
-#else
-	strncpy(string,newstr,stringsz);
+	for(p = newstr; *p; p++) if (*p == '/') *p = '\\';
 #endif
-	dprintf(1,"NEW string: %s\n", string);
+	strncpy(string,newstr,stringsz);
+	dprintf(8,"NEW string: %s\n", string);
 }
 
 #ifdef __WIN32

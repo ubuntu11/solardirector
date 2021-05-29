@@ -51,24 +51,12 @@ LICENSE file in the root directory of this source tree.
 #define CH_DOUBLE	0x05
 #define CH_ARRAY	0x08
 
-struct smanet_value {
-	long timestamp;
-	enum DATA_TYPE type;
-	union {
-		uint8_t bval;
-		short wval;
-		float lval;
-		float fval;
-		double dval;
-	};
-};
-typedef struct smanet_value smanet_value_t;
-
 struct smanet_channel {
 	uint16_t id;
 	uint8_t index;
 	uint16_t mask;
 	uint16_t format;
+	int type;
 	uint16_t level;
 	char name[17];
 	char unit[9];
@@ -85,6 +73,19 @@ struct smanet_channel {
 	};
 };
 typedef struct smanet_channel smanet_channel_t;
+
+struct smanet_value {
+	long timestamp;
+	enum DATA_TYPE type;
+	union {
+		uint8_t bval;
+		uint16_t wval;
+		uint32_t lval;
+		float fval;
+		double dval;
+	};
+};
+typedef struct smanet_value smanet_value_t;
 
 struct smanet_session {
 	buffer_t *b;
@@ -103,28 +104,25 @@ typedef struct smanet_session smanet_session_t;
 
 smanet_session_t *smanet_init(solard_module_t *, void *);
 
-int smanet_get_channels(smanet_session_t *s);
+int smanet_read_channels(smanet_session_t *s);
 int smanet_save_channels(smanet_session_t *s, char *);
 int smanet_load_channels(smanet_session_t *s, char *);
-smanet_channel_t *smanet_get_channelbyid(smanet_session_t *s, int);
-smanet_channel_t *smanet_get_channelbyname(smanet_session_t *s, char *);
-smanet_channel_t *smanet_get_channelbyindex(smanet_session_t *s, uint16_t, uint8_t);
+smanet_channel_t *smanet_get_channel(smanet_session_t *s, char *);
 
-int smanet_get_optionbyid(smanet_session_t *s, int, char *);
-int smanet_set_optionbyid(smanet_session_t *s, char *, char *);
-char *smanet_get_optionbyname(smanet_session_t *s, char *);
-int smanet_get_optionbyname_r(smanet_session_t *s, char *, char *, int);
+int smanet_get_value(smanet_session_t *, char *, double *, char **);
+int smanet_set_value(smanet_session_t *, char *, double, char *);
+
+#if 0
+//int smanet_get_value(smanet_session_t *, smanet_channel_t *, double *);
+int smanet_get_valuebyname(smanet_session_t *, char *, double *);
+//int smanet_set_value(smanet_session_t *s, smanet_channel_t *c, double);
+int smanet_set_valuebyname(smanet_session_t *s, char *, double);
+
+int smanet_get_option(smanet_session_t *s, smanet_channel_t *, char *, int);
+int smanet_get_optionbyname(smanet_session_t *s, char *, char *, int);
+int smanet_set_option(smanet_session_t *s, smanet_channel_t *, char *, int);
 int smanet_set_optionbyname(smanet_session_t *s, char *, char *);
-
-smanet_value_t *smanet_get_value(smanet_session_t *, smanet_channel_t *);
-int smanet_get_optionval(smanet_session_t *, smanet_channel_t *, char *);
-char *smanet_get_option(smanet_session_t *,smanet_channel_t *);
-
-smanet_value_t *smanet_get_valuebyid(smanet_session_t *s, int);
-int smanet_set_valuebyid(smanet_session_t *s, int, smanet_value_t *);
-
-smanet_value_t *smanet_get_valuebyname(smanet_session_t *s, char *);
-int smanet_set_valuebyname(smanet_session_t *s, char *, smanet_value_t *);
+#endif
 
 void smanet_clear_values(smanet_session_t *);
 

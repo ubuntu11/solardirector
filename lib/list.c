@@ -7,7 +7,8 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#define THREAD_SAFE 1
+#define THREAD_SAFE 0
+#define DEBUG_LIST 0
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,18 +22,10 @@ LICENSE file in the root directory of this source tree.
 #ifdef DEBUG
 #undef DEBUG
 #endif
-//#define DEBUG 1
-
+#if DEBUG_LIST
+#define DEBUG 1
+#endif
 #include "debug.h"
-
-#if 0
-#ifdef DEBUG
-#undef DPRINTF
-#define DPRINTF(format, args...) printf("%s(%d): " format,__FUNCTION__,__LINE__, ## args)
-#else
-#define DPRINTF(format, args...) /* noop */
-#endif
-#endif
 
 /* Define the list item */
 struct _list_item {
@@ -61,11 +54,11 @@ typedef struct _llist * list;
 time_t list_updated(list lp) {
 	time_t upd;
 
-#ifdef THREAD_SAFE
+#if THREAD_SAFE
 	pthread_mutex_lock(&lp->mutex);
 #endif
 	upd = lp->last_update;
-#ifdef THREAD_SAFE
+#if THREAD_SAFE
 	pthread_mutex_unlock(&lp->mutex);
 #endif
 	return upd;
@@ -130,7 +123,7 @@ void *list_add(list lp, void *item, int size) {
 	new_item = _newitem(item,size);
 	if (!new_item) return 0;
 
-#ifdef THREAD_SAFE
+#if THREAD_SAFE
 	pthread_mutex_lock(&lp->mutex);
 #endif
 	/* Add it to the list */
@@ -146,7 +139,7 @@ void *list_add(list lp, void *item, int size) {
 		lp->last = new_item;            /* Make this last */
 	}
 	time(&lp->last_update);
-#ifdef THREAD_SAFE
+#if THREAD_SAFE
 	pthread_mutex_unlock(&lp->mutex);
 #endif
 	return new_item->item;
@@ -157,7 +150,7 @@ int list_add_list(list lp,list lp2) {
 
 	if (!lp) return 1;
 
-#ifdef THREAD_SAFE
+#if THREAD_SAFE
 	pthread_mutex_lock(&lp->mutex);
 	pthread_mutex_lock(&lp2->mutex);
 #endif
@@ -170,7 +163,7 @@ int list_add_list(list lp,list lp2) {
 	}
 	time(&lp->last_update);
 
-#ifdef THREAD_SAFE
+#if THREAD_SAFE
 	pthread_mutex_unlock(&lp->mutex);
 	pthread_mutex_unlock(&lp2->mutex);
 #endif
@@ -184,13 +177,13 @@ int list_count(list lp) {
 
 	if (!lp) return -1;
 
-#ifdef THREAD_SAFE
+#if THREAD_SAFE
 	pthread_mutex_lock(&lp->mutex);
 #endif
 	count = 0;
 	for(ip = lp->first; ip; ip = ip->next) count++;
 
-#ifdef THREAD_SAFE
+#if THREAD_SAFE
 	pthread_mutex_unlock(&lp->mutex);
 #endif
 	return count;
@@ -207,7 +200,7 @@ list list_create(void) {
 
 	lp->first = lp->last = lp->next = (list_item) 0;
 
-#ifdef THREAD_SAFE
+#if THREAD_SAFE
 	pthread_mutex_init(&lp->mutex,NULL);
 #endif
 
@@ -224,7 +217,7 @@ int list_delete(list lp,void *item) {
 
 	if (!lp) return -1;
 
-#ifdef THREAD_SAFE
+#if THREAD_SAFE
 	pthread_mutex_lock(&lp->mutex);
 #endif
 
@@ -261,7 +254,7 @@ int list_delete(list lp,void *item) {
 		}
 		ip = ip->next;                  /* Next item, please. */
 	}
-#ifdef THREAD_SAFE
+#if THREAD_SAFE
 	pthread_mutex_unlock(&lp->mutex);
 #endif
 	DPRINTF("first: %p, last: %p, next: %p\n", lp->first, lp->last, lp->next);
@@ -295,7 +288,7 @@ list list_dup(list lp) {
 	new_list = list_create();
 	if (!new_list) return 0;
 
-#ifdef THREAD_SAFE
+#if THREAD_SAFE
 	pthread_mutex_lock(&lp->mutex);
 #endif
 
@@ -306,7 +299,7 @@ list list_dup(list lp) {
 		ip = ip->next;
 	}
 
-#ifdef THREAD_SAFE
+#if THREAD_SAFE
 	pthread_mutex_unlock(&lp->mutex);
 #endif
 
@@ -321,7 +314,7 @@ void *list_get_next(list lp) {
 
 	if (!lp) return 0;
 
-#ifdef THREAD_SAFE
+#if THREAD_SAFE
 	pthread_mutex_lock(&lp->mutex);
 #endif
 
@@ -332,7 +325,7 @@ void *list_get_next(list lp) {
 		item = ip->item;
 	}
 
-#ifdef THREAD_SAFE
+#if THREAD_SAFE
 	pthread_mutex_unlock(&lp->mutex);
 #endif
 	return item;
@@ -374,7 +367,7 @@ int list_sort(list lp, list_compare compare, int order) {
 
 	if (!lp) return -1;
 
-#ifdef THREAD_SAFE
+#if THREAD_SAFE
 	pthread_mutex_lock(&lp->mutex);
 #endif
 
@@ -406,7 +399,7 @@ int list_sort(list lp, list_compare compare, int order) {
 			ip1 = ip1->next;
 	}
 	time(&lp->last_update);
-#ifdef THREAD_SAFE
+#if THREAD_SAFE
 	pthread_mutex_unlock(&lp->mutex);
 #endif
 	return 0;

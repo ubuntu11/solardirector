@@ -11,6 +11,7 @@ LICENSE file in the root directory of this source tree.
 #define __CELLMON_H
 
 #include "client.h"
+#include "battery.h"
 
 struct cellmon_config {
 	solard_client_t *c;

@@ -7,7 +7,7 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#ifdef DEBUG_MEM
+#if defined(DEBUG_MEM) && !defined(__WIN64)
 #include <stdlib.h>
 #include "utils.h"
 #include "debug.h"
@@ -80,5 +80,4 @@ void mem_free(void *mem) {
 	free(mem);
 	dprintf(9,"end: used: %ld\n",used);
 }
-
 #endif

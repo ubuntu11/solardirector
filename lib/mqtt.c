@@ -17,15 +17,41 @@ LICENSE file in the root directory of this source tree.
 
 #define TIMEOUT 10000L
 
+#define MQTT 1
+
 struct mqtt_session {
 	mqtt_config_t config;
 	MQTTClient c;
 	int interval;
 	mqtt_callback_t *cb;
 	void *ctx;
+	MQTTClient_SSLOptions *ssl_opts;
 };
 typedef struct mqtt_session mqtt_session_t;
 
+int mqtt_parse_config(mqtt_config_t *conf, char *str) {
+	strncat(conf->host,strele(0,",",str),sizeof(conf->host)-1);
+	strncat(conf->clientid,strele(1,",",str),sizeof(conf->clientid)-1);
+	strncat(conf->user,strele(2,",",str),sizeof(conf->user)-1);
+	strncat(conf->pass,strele(3,",",str),sizeof(conf->pass)-1);
+	return 0;
+}
+
+int mqtt_get_config(void *cfg, mqtt_config_t *conf) {
+	struct cfg_proctab tab[] = {
+		{ "mqtt", "broker", "Broker URL", DATA_TYPE_STRING,&conf->host,sizeof(conf->host), 0 },
+		{ "mqtt", "clientid", "Client ID", DATA_TYPE_STRING,&conf->clientid,sizeof(conf->clientid), 0 },
+		{ "mqtt", "username", "Broker username", DATA_TYPE_STRING,&conf->user,sizeof(conf->user), 0 },
+		{ "mqtt", "password", "Broker password", DATA_TYPE_STRING,&conf->pass,sizeof(conf->pass), 0 },
+		CFG_PROCTAB_END
+	};
+
+	cfg_get_tab(cfg,tab);
+	if (debug) cfg_disp_tab(tab,"MQTT",0);
+	return 0;
+}
+
+#if MQTT
 static void mqtt_dc(void *ctx, char *cause) {
 	dprintf(1,"MQTT disconnected! cause: %s\n", cause);
 }
@@ -59,20 +85,6 @@ mqtt_getmsg_skip:
 	return 1;
 }
 
-int mqtt_get_config(void *cfg, mqtt_config_t *conf) {
-	struct cfg_proctab tab[] = {
-		{ "mqtt", "broker", "Broker URL", DATA_TYPE_STRING,&conf->host,sizeof(conf->host), 0 },
-		{ "mqtt", "clientid", "Client ID", DATA_TYPE_STRING,&conf->clientid,sizeof(conf->clientid), 0 },
-		{ "mqtt", "username", "Broker username", DATA_TYPE_STRING,&conf->user,sizeof(conf->user), 0 },
-		{ "mqtt", "password", "Broker password", DATA_TYPE_STRING,&conf->pass,sizeof(conf->pass), 0 },
-		CFG_PROCTAB_END
-	};
-
-	cfg_get_tab(cfg,tab);
-	if (debug) cfg_disp_tab(tab,"MQTT",0);
-	return 0;
-}
-
 int mqtt_newclient(struct mqtt_session *s) {
 	int rc;
 
@@ -102,6 +114,17 @@ struct mqtt_session *mqtt_new(mqtt_config_t *conf, mqtt_callback_t *cb, void *ct
 	}
 	s->cb = cb;
 	s->ctx = ctx;
+#if 0
+	if (strlen(conf->ssl_key)) {
+		s->ssl_opts = malloc(sizeof(*s->ssl_opts));
+		if (s->ssl_opts) {
+			s->ssl_opts = MQTTClient_SSLOptions_initializer;
+			ssl_opts.keyStore = s->client_pem;
+			ssl_opts.trustStore = s->ca_crt;
+		}
+	}
+#endif
+
 	rc = MQTTClient_setCallbacks(s->c, s, mqtt_dc, mqtt_getmsg, 0);
 	dprintf(2,"rc: %d\n", rc);
 	if (rc) {
@@ -113,6 +136,7 @@ struct mqtt_session *mqtt_new(mqtt_config_t *conf, mqtt_callback_t *cb, void *ct
 
 int mqtt_connect(mqtt_session_t *s, int interval) {
 	MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
+	MQTTClient_willOptions will_opts = MQTTClient_willOptions_initializer;
 	int rc;
 
 	if (!s) return 1;
@@ -122,6 +146,15 @@ int mqtt_connect(mqtt_session_t *s, int interval) {
 	if (!s) return 1;
 	conn_opts.keepAliveInterval = interval;
 	conn_opts.cleansession = 1;
+	conn_opts.ssl = s->ssl_opts;
+	if (strlen(s->config.lwt_topic)) {
+		will_opts.topicName = s->config.lwt_topic;
+		will_opts.message = "Offline";
+		will_opts.retained = 1;
+		will_opts.qos = 1;
+		conn_opts.will = &will_opts;
+	}
+
 	s->interval = interval;
 	if (strlen(s->config.user)) {
 		conn_opts.username = s->config.user;
@@ -139,6 +172,8 @@ int mqtt_connect(mqtt_session_t *s, int interval) {
 			lprintf(LOG_ERROR,"MQTTClient_connect: %s\n",p ? p : "cant connect");
 		}
 		return 1;
+	} else if (strlen(s->config.lwt_topic)) {
+		mqtt_pub(s,s->config.lwt_topic,"Online",1);
 	}
 	return 0;
 }
@@ -294,4 +329,23 @@ mqtt_send_error:
 	mqtt_destroy(s);
 	return rc;
 }
+#endif
+#else
+struct mqtt_session *mqtt_new(mqtt_config_t *conf, mqtt_callback_t *cb, void *ctx) {
+	mqtt_session_t *s;
+	s = calloc(1,sizeof(*s));
+	if (!s) {
+		log_write(LOG_SYSERR,"mqtt_new: calloc");
+		return 0;
+	}
+	memcpy(&s->config,conf,sizeof(*conf));
+	s->cb = cb;
+	s->ctx = ctx;
+	return 0;
+}
+int mqtt_connect(mqtt_session_t *s, int interval) { return 0; }
+int mqtt_disconnect(mqtt_session_t *s, int timeout) { return 0; }
+int mqtt_destroy(mqtt_session_t *s) { return 0; }
+int mqtt_pub(mqtt_session_t *s, char *topic, char *message, int retain) { return 0; }
+int mqtt_sub(mqtt_session_t *s, char *topic) { return 0; }
 #endif

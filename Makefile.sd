@@ -1,33 +1,29 @@
 
-#TARGET=linux64
-DEBUG=yes
-DEBUG_MEM=yes
-PTHREADS=yes
-DYNAMIC=yes
+DEBUG?=yes
+DEBUG_MEM?=yes
+PTHREADS?=yes
+DYNAMIC?=yes
 SHARED?=no
 STATIC?=no
-HOME:=$(shell echo $HOME)
+PAHO?=yes
 ID:=$(shell id -u)
 
 ifneq "$(findstring win,$(TARGET))" ""
 ISWIN=yes
 endif
 
-ifeq ($(ISWIN),yes)
-PREFIX?="C:\\\sd"
-else
 ifeq ($(ID),0)
+INSTALL_USER=-o root -g root
 PREFIX?=/opt/sd
-INSTALL_USER="-u root -g root"
 else
 PREFIX?=$(shell echo $$HOME)
 endif
-endif
-CFLAGS+=-DSOLARD_PREFIX=\"$(PREFIX)\"
 
 # Define SRC_ROOT
 current_makefile := $(lastword $(MAKEFILE_LIST))
 SRC_ROOT=$(shell echo $$(dirname $(current_makefile)))
+
+CFLAGS+=-I.
 
 # Uses libsmanet? must be included before libsolard as it refs
 ifeq ($(SMANET),yes)
@@ -48,10 +44,23 @@ ifeq ($(JBD),yes)
 	DEPS+=$(SRC_ROOT)/jbd/libjbd$(SUFFIX)$(LIBEXT)
 endif
 
-# Always include libsd
-CFLAGS+=-I. -I$(SRC_ROOT)/lib
-LIBS+=-L$(SRC_ROOT)/lib -lsolard$(SUFFIX) -lpaho-mqtt3c
+ifneq ($(LIBNAME),solard)
+CFLAGS+=-I$(SRC_ROOT)/lib
+LIBS+=-L$(SRC_ROOT)/lib -lsolard$(SUFFIX)
 DEPS+=$(SRC_ROOT)/lib/libsolard$(SUFFIX)$(LIBEXT)
+endif
+
+# Paho MQTT
+ifeq ($(PAHO),yes)
+ifeq ($(STATIC),yes)
+_PAHOLDADD=-lssl -lcrypto -lz
+ifeq ($(TARGET),win32)
+_PAHOSTATIC=-static
+_PAHOLDADD+=-lgdi32 -lcrypt32
+endif
+endif
+LIBS+=-lpaho-mqtt3cs$(_PAHOSTATIC) $(_PAHOLDADD)
+endif
 
 # Include transports
 SRCS+=$(shell IFS=","; for i in $(TRANSPORTS); do printf "%s.c " $${i}; done)

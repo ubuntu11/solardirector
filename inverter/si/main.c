@@ -153,7 +153,7 @@ static void getconf(si_session_t *s) {
 		{ "si", "readonly", 0, DATA_TYPE_LOGICAL, &s->readonly, 0, "N" },
 		{ "si", "soc", 0, DATA_TYPE_FLOAT, &s->user_soc, 0, "-1" },
 		{ "si", "charge_min_amps", 0, DATA_TYPE_FLOAT, &s->charge_min_amps, 0, "-1" },
-		{ "si", "charge_focus_amps", "Increase charge voltage in order to maintain charge amps", DATA_TYPE_BOOL, &s->charge_creep, 0, "Y" },
+		{ "si", "charge_creep", "Increase charge voltage in order to maintain charge amps", DATA_TYPE_BOOL, &s->charge_creep, 0, "yes" },
 		{ "si", "sim_step", 0, DATA_TYPE_FLOAT, &s->sim_step, 0, ".1" },
 		{ "si", "interval", 0, DATA_TYPE_INT, &s->interval, 0, "10" },
 		CFG_PROCTAB_END

@@ -4,7 +4,7 @@ After=network-online.target network.target rsyslog.service
 
 [Service]
 Type=simple
-ExecStart=/opt/sd/bin/si -c /opt/sd/etc/si.conf -l /tmp/si.log -d 2
+ExecStart=/opt/sd/bin/si -c /opt/sd/etc/si.conf -l /tmp/si.log
 Restart=on-failure
 
 [Install]

@@ -148,7 +148,6 @@ int main(int argc, char **argv) {
 	int type,i,action;
 	cfg_info_t *cfg;
 	smanet_channel_t *c;
-	smanet_value_t *v;
 
 	log_open("siutil",0,logopts);
 
@@ -255,7 +254,7 @@ int main(int argc, char **argv) {
 		dprintf(1,"count: %d\n", list_count(s->smanet->channels));
 		if (!list_count(s->smanet->channels)) {
 			log_write(LOG_INFO,"Downloading channels...\n");
-			smanet_get_channels(s->smanet);
+			smanet_read_channels(s->smanet);
 			smanet_save_channels(s->smanet,chanpath);
 		}
 	}
@@ -267,39 +266,21 @@ int main(int argc, char **argv) {
 		while((c = list_get_next(s->smanet->channels)) != 0) printf("%s\n",c->name);
 		break;
 	case ACTION_GET:
-		c = smanet_get_channelbyname(s->smanet,argv[0]);
-		if (!c) {
-			log_write(LOG_ERROR,"%s: not found\n",argv[0]);
-			return 1;
-		}
-		if (c->mask & CH_STATUS) {
-			char *p = smanet_get_optionbyname(s->smanet,c->name);
-			printf("%s: %s\n", c->name, p);
-		} else {
-			v = smanet_get_value(s->smanet,c);
-			if (!v) {
-				log_write(LOG_ERROR,"%s: error getting value\n",c->name);
+		{
+			double d;
+			char *text;
+
+			if (smanet_get_value(s->smanet,argv[0],&d,&text)) {
+				log_write(LOG_ERROR,"%s: error getting value\n",argv[0]);
 				return 1;
 			}
-			conv_type(DATA_TYPE_STRING,tpinfo,sizeof(tpinfo)-1,v->type,&v->bval,0);
+			if (text) printf("%s\n",text);
+			else if ((int)d == d) printf("%d\n",(int)d);
+			else printf("%f\n",d);
 		}
 		break;
 	case ACTION_SET:
-		c = smanet_get_channelbyname(s->smanet,argv[0]);
-		if (!c) {
-			log_write(LOG_ERROR,"%s: not found\n",argv[0]);
-			return 1;
-		}
-		if (c->mask & CH_STATUS) {
-			smanet_set_optionbyname(s->smanet,c->name,argv[1]);
-		} else {
-			v = smanet_get_value(s->smanet,c);
-			if (!v) {
-				log_write(LOG_ERROR,"%s: error getting value\n",c->name);
-				return 1;
-			}
-			conv_type(v->type,&v->bval,0,DATA_TYPE_STRING,argv[1],strlen(argv[1]));
-		}
+		smanet_set_value(s->smanet,argv[0],atof(argv[1]),argv[1]);
 		break;
 	}
 

@@ -20,7 +20,6 @@ LICENSE file in the root directory of this source tree.
 
 #include "utils.h"
 #include "list.h"
-#include "worker.h"
 #include "debug.h"
 
 //typedef unsigned char uint8_t;

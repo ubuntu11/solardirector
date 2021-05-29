@@ -26,7 +26,7 @@ char *json_typestr(int type) {
 }
 
 json_value_t *json_create_object(void) {
-#ifdef DEBUG_MEM
+#if defined(DEBUG_MEM) && !defined(__WIN64)
 	if (!_init) {
 		json_set_allocation_functions(mem_malloc,mem_free);
 		_init = 1;
@@ -226,7 +226,10 @@ int json_array_add_descriptor(json_value_t *a,json_descriptor_t d) {
 }
 
 int json_tostring(json_value_t *j, char *dest, int dest_len, int pretty) {
-	char *p;
+//	char *p;
+
+	return pretty ? json_serialize_to_buffer_pretty(j,dest,dest_len) : json_serialize_to_buffer(j,dest,dest_len);
+#if 0
 	p = pretty ? json_serialize_to_string_pretty(j) : json_serialize_to_string((JSON_Value *)j);
 	dprintf(5,"p: %s\n", p);
 	dprintf(5,"dest_len: %d\n", dest_len);
@@ -235,6 +238,7 @@ int json_tostring(json_value_t *j, char *dest, int dest_len, int pretty) {
 	dprintf(5,"dest: %s\n", dest);
 	json_free_serialized_string(p);
 	return 0;
+#endif
 }
 
 char *json_dumps(json_value_t *o, int pretty) {

@@ -36,7 +36,7 @@ extern int debug;
 */
 
 
-#ifdef DEBUG_MEM
+#if defined(DEBUG_MEM) && !defined(__WIN64)
 void *mem_alloc(size_t size, int clear);
 void *mem_malloc(size_t size);
 void *mem_calloc(size_t nmemb, size_t size);

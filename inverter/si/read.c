@@ -216,6 +216,8 @@ int si_read(si_session_t *s, void *buf, int buflen) {
 	SET(Current,   0x0004);
 	SET(FeedSelfC, 0x0008);
 
+	s->run_state = s->bits.Run;
+
 	/* 0x308 TotLodPwr L1/L2/L3 */
 	if (s->can_read(s,0x308,data,sizeof(data))) return 1;
 	inv->load_watts.l1 = (si_getshort(&data[0]) * 100.0);
