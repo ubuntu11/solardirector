@@ -10,11 +10,14 @@ LICENSE file in the root directory of this source tree.
 #ifndef __SMANET_INTERNAL_H
 #define __SMANET_INTERNAL_H
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <stdint.h>
-#include "module.h"
+#include <unistd.h>
 #include "types.h"
-//#include "command.h"
 #include "smanet.h"
+#include "debug.h"
 
 struct smanet_packet {
 	uint16_t src;

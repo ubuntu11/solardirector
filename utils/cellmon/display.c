@@ -212,7 +212,9 @@ void display(cellmon_config_t *conf) {
 
 	printf("\n");
 	printf("Total packs: %d\n", pack_reported);
+#if 0
 	printf("Capacity: %2.1f\n", cap);
 	kwh = (cap * 48.0) / 1000.0;
 	printf("kWh: %2.1f (80%%: %2.1f, 60%%: %2.1f)\n", kwh, (kwh * .8), (kwh * .6));
+#endif
 }

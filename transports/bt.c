@@ -14,8 +14,8 @@ This was tested against the MLT-BT05 TTL-to-Bluetooth module (HM-10 compat) on t
 #undef DEBUG_MEM
 
 #ifndef __WIN32
+#include "transports.h"
 #include "gattlib.h"
-#include "module.h"
 
 struct bt_session {
 	gatt_connection_t *c;
@@ -186,15 +186,28 @@ static int bt_close(void *handle) {
 	return 0;
 }
 
-EXPORT solard_module_t bt_module = {
-	SOLARD_MODTYPE_TRANSPORT,
+static int bt_config(void *h, int func, ...) {
+	va_list ap;
+	int r;
+
+	r = 1;
+	va_start(ap,func);
+	switch(func) {
+	default:
+		dprintf(1,"error: unhandled func: %d\n", func);
+		break;
+	}
+	return r;
+}
+
+solard_driver_t bt_driver = {
+	SOLARD_DRIVER_TRANSPORT,
 	"bt",
-	0,
 	bt_new,
-	0,
 	bt_open,
+	bt_close,
 	bt_read,
 	bt_write,
-	bt_close
+	bt_config
 };
 #endif

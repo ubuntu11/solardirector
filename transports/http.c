@@ -15,10 +15,8 @@ LICENSE file in the root directory of this source tree.
 #include <fcntl.h>
 #include <ctype.h>
 #include <netdb.h>
-#include "module.h"
-#include "utils.h"
-#include "debug.h"
 #include <curl/curl.h>
+#include "transports.h"
 
 #define DEFAULT_PORT 23
 
@@ -33,16 +31,18 @@ struct http_session {
 };
 typedef struct http_session http_session_t;
 
-static int http_init(void *conf, char *section_name) {
-	/* In windows, this will init the winsock stuff */
-	curl_global_init(CURL_GLOBAL_ALL);
-	return 0;
-}
+static int curl_init = 0;
 
 static void *http_new(void *conf, void *target, void *topts) {
 	http_session_t *s;
 	char temp[128],*p;
 	int i;
+
+	if (!curl_init) {
+		/* In windows, this will init the winsock stuff */
+		curl_global_init(CURL_GLOBAL_ALL);
+		curl_init = 1;
+	}
 
 	s = calloc(1,sizeof(*s));
 	if (!s) {
@@ -147,15 +147,28 @@ static int http_close(void *handle) {
 	return 0;
 }
 
-EXPORT solard_module_t http_module = {
-	SOLARD_MODTYPE_TRANSPORT,
+static int http_config(void *h, int func, ...) {
+	va_list ap;
+	int r;
+
+	r = 1;
+	va_start(ap,func);
+	switch(func) {
+	default:
+		dprintf(1,"error: unhandled func: %d\n", func);
+		break;
+	}
+	return r;
+}
+
+solard_driver_t http_driver = {
+	SOLARD_DRIVER_TRANSPORT,
 	"ip",
-	http_init,
 	http_new,
-	0,
 	http_open,
+	http_close,
 	http_read,
 	0,
-	http_close
+	http_config
 };
 #endif

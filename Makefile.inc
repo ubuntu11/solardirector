@@ -17,6 +17,7 @@ BINDIR?=$(PREFIX)/bin
 SBINDIR?=$(PREFIX)/sbin
 LIBDIR?=$(PREFIX)/lib
 INCDIR?=$(PREFIX)/include
+STATIC?=no
 
 INSTALL=install
 ifeq ($(TARGET),pi3)
@@ -30,6 +31,7 @@ ifeq ($(TARGET),pi3)
 	RANLIB=$(CBINDIR)/$(CVERS)-ranlib
 	STRIP=$(CBINDIR)/$(CVERS)-strip
 #	CFLAGS+=-DNULLDEV=\"/dev/null\" -D__USE_FILE_OFFSET64
+#	CFLAGS+=-DXP_UNIX
 	DEST_BASE=/usr/$(CVERS)
 	DEST_PREFIX=$(DEST_BASE)/$(CVERS)/sysroot
 	DEST_BINDIR=$(DEST_PREFIX)/bin
@@ -37,7 +39,7 @@ ifeq ($(TARGET),pi3)
 	DEST_LIBDIR=$(DEST_IPREFIX)/lib
 else ifeq ($(TARGET),win64)
 	ARCH=win64
-	OS=win
+	OS=Windows
 	BITS=64
 	EXE=.exe
 	CBINDIR=/bin
@@ -47,6 +49,7 @@ else ifeq ($(TARGET),win64)
 	RANLIB=$(CBINDIR)/$(CVERS)-ranlib
 	STRIP=$(CBINDIR)/$(CVERS)-strip
 #	CFLAGS+=-DWIN32 -DWIN64 -DNULLDEV=\"NUL\"
+	CFLAGS+=-DWINDOWS -DXP_WIN
 	DEST_BASE=/usr/$(CVERS)
 	DEST_PREFIX=$(DEST_BASE)/sys-root/mingw
 	DEST_BINDIR=$(DEST_PREFIX)/bin
@@ -55,7 +58,7 @@ else ifeq ($(TARGET),win64)
 	DYNAMIC=no
 else ifeq ($(TARGET),win32)
 	ARCH=win32
-	OS=win
+	OS=Windows
 	BITS=32
   	EXE=.exe
 	CBINDIR=/bin
@@ -64,17 +67,22 @@ else ifeq ($(TARGET),win32)
 	AR=$(CBINDIR)/$(CVERS)-ar
 	RANLIB=$(CBINDIR)/$(CVERS)-ranlib
 	STRIP=$(CBINDIR)/$(CVERS)-gcc
-	CFLAGS+=-DWIN32 -DNULLDEV=\"NUL\"
 	STRIP=$(BASE)/bin/$(VERS)-strip
+#	CFLAGS+=-DWIN32 -DNULLDEV=\"NUL\" 
 #	CFLAGS+=-DWIN32 -DNULLDEV=\"NUL\" -D_FILE_OFFSET_BITS=64
+#	CFLAGS+=-DWINDOWS -DXP_WIN
 	DEST_BASE=/usr/$(CVERS)
 	DEST_PREFIX=$(DEST_BASE)/sys-root/mingw
 	DEST_BINDIR=$(DEST_PREFIX)/bin
 	DEST_INCDIR=$(DEST_IPREFIX)/include
 	DEST_LIBDIR=$(DEST_IPREFIX)/lib
 	DYNAMIC=no
-#$(findstring find,in)
-else ifneq (,$(findstring linux,$(TARGET)))
+else ifeq ($(TARGET),solaris)
+	MACH := $(shell uname -p)
+	ARCH=solaris_$(MACH)
+	CC=$(shell if test -x /opt/csw/gcc4/bin/gcc; then echo /opt/csw/gcc4/bin/gcc; else echo gcc; fi)
+	INSTALL=ginstall
+else
 	ARCH=linux
 	OS=Linux
 	CC=gcc
@@ -82,16 +90,13 @@ else ifneq (,$(findstring linux,$(TARGET)))
 	RANLIB=ranlib
 	STRIP=strip
 #	CFLAGS+=-DNULLDEV=\"/dev/null\" -D__USE_FILE_OFFSET64
+#	CFLAGS+=-DXP_UNIX
 	DEST_BASE=/usr/local
 	DEST_PREFIX=$(DEST_BASE)
 	DEST_BINDIR=$(DEST_PREFIX)/bin
 	DEST_INCDIR=$(DEST_IPREFIX)/include
 	DEST_LIBDIR=$(DEST_IPREFIX)/lib
-else ifeq ($(TARGET),solaris)
-	MACH := $(shell uname -p)
-	ARCH=solaris_$(MACH)
-	CC=$(shell if test -x /opt/csw/gcc4/bin/gcc; then echo /opt/csw/gcc4/bin/gcc; else echo gcc; fi)
-	INSTALL=ginstall
+	TARGET=linux
 endif
 
 ifeq ($(BITS),)
@@ -117,7 +122,7 @@ SRC_ROOT ?= $(shell echo $$(dirname $(current_makefile)))
 # Debugging?
 ifeq ($(DEBUG),yes)
 CFLAGS+=-Wall -DDEBUG -D_DEBUG -g
-DEBUG_SUFFIX=_debug
+#DEBUG_SUFFIX=_debug
 else
 CFLAGS+=-O2 -pipe
 endif
@@ -127,7 +132,7 @@ CFLAGS+=-DDEBUG_MEM
 endif
 
 ifeq ($(SHARED),yes)
-ifeq ($(OS),win)
+ifeq ($(OS),Windows)
 LIBEXT=.dll
 LDADD+=-Wl,--export-all-symbols -Wl,--enable-auto-import
 else
@@ -140,9 +145,10 @@ else
 LIBEXT=.a
 endif
 
-# Static binary?
 ifeq ($(STATIC),yes)
-LDFLAGS+=-static
+_DOSTATIC=yes
+else
+_DOSTATIC=no
 endif
 
 # Suffixes
@@ -190,7 +196,7 @@ ifeq ($(SOAP),yes)
   CFLAGS+=-I$(SRC_ROOT)/soap
   LIBS+=-L$(SRC_ROOT)/soap -lsoap$(SUFFIX)
   DEPS+=$(SRC_ROOT)/soap/libsoap$(SUFFIX)$(LIBEXT)
-  LIBS+=-lgsoapssl -lz -lssl -lcrypto
+  LIBS+=-lgsoapssl -lz -lssl -lcrypto -ldl
 endif
 
 # Uses ODBC?
@@ -203,7 +209,7 @@ else
 	LIBS+=-ldb$(SUFFIX)
 	DEPS+=$(LIBDIR)/libdb$(SUFFIX)$(LIBEXT)
 endif
-ifeq ($(OS),win)
+ifeq ($(OS),Windows)
 LIBS+=-lodbc32
 else
 LIBS+=-lodbc
@@ -223,22 +229,31 @@ endif
 
 ifeq ($(LIBJS),yes)
 CFLAGS+=-I../libjs
-DEPS+=../libjs/libjs_$(OS)$(LIBEXT)
-LIBS+=-L../libjs -ljs_$(OS)
+ifeq ($(OS),"Windows")
+CFLAGS+=-DXP_WIN
+else
+CFLAGS+=-DXP_UNIX
+endif
+CFLAGS+=-I$(SRC_ROOT)/libjs
+LIBS+=-L$(SRC_ROOT)/libjs -llibjs$(SUFFIX)
+DEPS+=$(SRC_ROOT)/libjs/libjs$(SUFFIX)$(LIBEXT)
 endif
 
 ifeq ($(AV),yes)
 LIBS+=-lavformat -lavcodec -lavutil -lfaac -lfaad -lx264 -lxvidcore -lmp3lame -lvorbis -lvorbisenc -logg -lz -lbz2 -lx264 -l$(PTHREADS) $(AVLIBADD)
 endif
 
-ifeq ($(DYNAMIC),yes)
-LDFLAGS+=-rdynamic
-LIBS+=-ldl
+ifeq ($(CURL),yes)
+LIBS+=-lcurl
+_DOSTATIC=no
+ifeq ($(STATIC),yes)
+#LIBS+=$$(pkg-config libcurl --static --libs)
+endif
 endif
 
 # Uses pthreads? (needed @ end)
 ifeq ($(PTHREADS),yes)
-ifeq ($(OS),win)
+ifeq ($(OS),Windows)
 #LIBS+=-lwinpthread
 LIBS+=-lpthread
 else
@@ -246,15 +261,37 @@ LIBS+=-lpthread
 endif
 endif
 
-ifeq ($(OS),win)
+ifeq ($(OS),Windows)
 LIBS+=-lws2_32
+endif
+
+
+#####################
+
+ifeq ($(DYNAMIC),yes)
+LDFLAGS+=-rdynamic
+LIBS+=-ldl
+endif
+
+# Static binary?
+ifeq ($(_DOSTATIC),yes)
+#all:
+#	echo $(TARGET)
+
+ifneq "$(findstring linux,$(TARGET))" ""
+LDFLAGS+=-static
+endif
 endif
 
 #
 # End of mods
 #
 
-OBJS=$(SRCS:.c=.o)
+#OBJS+=$(SRCS:%=%.o)
+OBJS?=$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SRCS)))
+
+#all:
+#	echo $(OBJS)
 
 .PHONY: _all
 ifneq ($(LIBNAME),)
@@ -268,7 +305,7 @@ else
 	$(AR) cr $(LIB) $(OBJS)
 	$(RANLIB) $(LIB)
 endif
-ifeq ($(OS),win)
+ifeq ($(OS),Windows)
 ifeq ($(SHARED),yes)
 CLEANFILES+=lib$(LIBNAME)$(SUFFIX).a
 endif
@@ -302,7 +339,7 @@ endif
 
 ifneq ("$(wildcard $(SERVICE))","")
 /etc/systemd/system/$(SERVICE): $(SERVICE)
-ifeq ($(whoami),root)
+ifeq ($(ID),0)
 	$(INSTALL) -m 644 $(INSTALL_USER) $< $@
 	systemctl daemon-reload
 	systemctl enable $(SERVICE)
@@ -314,13 +351,6 @@ release: $(PROG)
 
 clean:
 	rm -rf $(LIB) $(PROG) $(OBJS) *.o $(CLEANFILES)
-
-
-##.SUFFIXES: .c .o$(SUFFIX)
-##.c.o$(SUFFIX):
-#.SUFFIXES: .c .o
-#.c.o:
-#	$(CC) $(CFLAGS) -c $< -o $@
 
 #
 # Deps

@@ -13,28 +13,17 @@ LICENSE file in the root directory of this source tree.
 #include <windows.h>
 #endif
 
-#if 0
-#define  CH_ANALOG      0x0001
-#define  CH_DIGITAL     0x0002
-#define  CH_COUNTER     0x0004
-#define  CH_STATUS      0x0008
-#define  CH_ALL      0x000f
-
-#define  CH_IN                  0x0100
-#define  CH_OUT         0x0200
-
-#define  CH_ANA_IN   (CH_ANALOG  | CH_IN)
-#define  CH_DIG_IN   (CH_DIGITAL | CH_IN)
-#define  CH_CNT_IN   (CH_COUNTER | CH_IN)
-#define  CH_STA_IN   (CH_STATUS  | CH_IN)
-
-#define  CH_PARA_ALL    (CH_PARA  | CH_ALL)
-#define  CH_SPOT_ALL    (CH_SPOT  | CH_ALL)
-#define  CH_MEAN_ALL    (CH_MEAN  | CH_ALL)
-#define  CH_TEST_ALL    (CH_SPOT  | CH_IN  |  CH_ALL  | CH_TEST)
-#endif
-
 #define dlevel 1
+
+struct chanver {
+	unsigned char sig1;
+	unsigned char sig2;
+	unsigned char major;
+	unsigned char minor;
+};
+
+#define CHANVER_SIG1 0xd5
+#define CHANVER_SIG2 0xaa
 
 int smanet_destroy_channels(smanet_session_t *s) {
 	smanet_channel_t *c;
@@ -153,8 +142,9 @@ static int parse_channels(smanet_session_t *s, uint8_t *data, int data_len) {
 
 int smanet_read_channels(smanet_session_t *s) {
 	smanet_packet_t *p;
-	char user[32],path[256];
 	FILE *fp;
+#if 0
+	char user[32];
 
 #ifdef __WIN32
 	DWORD bufsz = sizeof(user);
@@ -162,9 +152,8 @@ int smanet_read_channels(smanet_session_t *s) {
 #else
 	getlogin_r(user,sizeof(user));
 #endif
-	sprintf(path,"/tmp/%s_%s_clist.dat",user,s->type);
-	dprintf(1,"path: %s\n", path);
-	fp = fopen(path,"rb");
+#endif
+	fp = fopen(s->chanpath,"rb");
 	if (fp) {
 		int fd;
 		struct stat buf;
@@ -190,7 +179,7 @@ int smanet_read_channels(smanet_session_t *s) {
 	if (smanet_command(s,CMD_GET_CINFO,p,0,0)) return 1;
 	dprintf(1,"p->dataidx: %d\n", p->dataidx);
 	if (debug) bindump("channel data",p->data,p->dataidx);
-	fp = fopen(path,"wb+");
+	fp = fopen(s->chanpath,"wb+");
 	if (fp) {
 		fwrite(p->data,1,p->dataidx,fp);
 		fclose(fp);
@@ -199,21 +188,25 @@ int smanet_read_channels(smanet_session_t *s) {
 	return 0;
 }
 
-int smanet_save_channels(smanet_session_t *s, char *path) {
+int smanet_save_channels(smanet_session_t *s) {
 	FILE *fp;
 	uint8_t temp[256];
 	smanet_channel_t *c;
+	struct chanver chanver;
 	int r,bytes;
 	uint16_t len;
 
-	dprintf(1,"path: %s\n", path);
-
-	fp = fopen(path,"wb+");
+	fp = fopen(s->chanpath,"wb+");
 	if (!fp) {
-		log_write(LOG_SYSERR,"smanet_save_channels: fopen %s",path);
+		log_write(LOG_SYSERR,"smanet_save_channels: fopen %s",s->chanpath);
 		return 1;
 	}
 	r = 1;
+	chanver.sig1 = CHANVER_SIG1;
+	chanver.sig2 = CHANVER_SIG2;
+	chanver.major = CHANVER_MAJOR;
+	chanver.minor = CHANVER_MINOR;
+	bytes = fwrite(&chanver,1,sizeof(chanver),fp);
 	list_reset(s->channels);
 	while((c = list_get_next(s->channels)) != 0) {
 		bytes = fwrite(c,1,sizeof(*c),fp);
@@ -237,25 +230,45 @@ smanet_save_channels_error:
 	return r;
 }
 
-int smanet_load_channels(smanet_session_t *s, char *path) {
+void smanet_set_chanpath(smanet_session_t *s, char *path) {
+	strncpy(s->chanpath, path, sizeof(s->chanpath)-1);
+}
+
+int smanet_load_channels(smanet_session_t *s) {
 	FILE *fp;
 	char temp[256];
 	smanet_channel_t newchan;
+	struct chanver chanver;
 	int bytes,r;
 	uint16_t len;
 
-	dprintf(1,"path: %s\n", path);
-
-	fp = fopen(path,"rb");
+	fp = fopen(s->chanpath,"rb");
 	if (!fp) {
-		log_write(LOG_SYSERR,"smanet_load_channels: fopen %s",path);
+		log_write(LOG_SYSERR,"smanet_load_channels: fopen %s",s->chanpath);
 		return 1;
 	}
 
 	smanet_destroy_channels(s);
 	s->channels = list_create();
 
+	bytes = fread(&chanver,1,sizeof(chanver),fp);
+	if (bytes != sizeof(chanver)) {
+		log_write(LOG_SYSERR,"smanet_load_channels: read error");
+		return 1;
+	}
+	if (chanver.sig1 != CHANVER_SIG1 || chanver.sig2 != CHANVER_SIG2) {
+		log_write(LOG_ERROR,"smanet_load_channels: bad sig (%02x%02x != %02x%02x), ignoring", chanver.sig1, chanver.sig2,
+			CHANVER_SIG1, CHANVER_SIG2);
+		return 1;
+	}
+	if (chanver.major != CHANVER_MAJOR || chanver.minor != CHANVER_MINOR) {
+		log_write(LOG_SYSERR,"smanet_load_channels: version mismatch(%d.%d != %d.%d)",chanver.major,chanver.minor,
+			CHANVER_MAJOR,CHANVER_MINOR);
+		return 1;
+	}
+
 	r = 1;
+	dprintf(1,"fp: %p\n", fp);
 	while(!feof(fp)) {
 		bytes = fread(&newchan,1,sizeof(newchan),fp);
 		if (bytes < 0) {

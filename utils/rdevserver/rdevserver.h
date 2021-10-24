@@ -11,7 +11,7 @@ LICENSE file in the root directory of this source tree.
 #define __RDEVSERVER_H
 
 #include "common.h"
-#include "module.h"
+#include "driver.h"
 #include "devserver.h"
 #ifndef __WIN32
 #include <linux/can.h>
@@ -22,7 +22,7 @@ struct rdev_config {
 	cfg_info_t *cfg;
 	list modules;
 	devserver_config_t ds;
-	solard_module_t *can;
+	solard_driver_t *can;
 	void *can_handle;
 	pthread_t th;
 	struct can_frame frames[16];

@@ -1,0 +1,95 @@
+make -f Makefile.ref
+make[1]: Entering directory `/usr/src/sd/libjs'
+cd editline; make -f Makefile.ref all
+make[2]: Entering directory `/usr/src/sd/libjs/editline'
+make[2]: Nothing to be done for `all'.
+make[2]: Leaving directory `/usr/src/sd/libjs/editline'
+make -f Makefile.ref  Linux_All_DBG.OBJ/libjs.a Linux_All_DBG.OBJ/libjs.so Linux_All_DBG.OBJ/js  Linux_All_DBG.OBJ/jsautocfg.h Linux_All_DBG.OBJ/jscpucfg Linux_All_DBG.OBJ/jscpucfg.o
+make[2]: Entering directory `/usr/src/sd/libjs'
+gcc -o Linux_All_DBG.OBJ/jsapi.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsapi.c
+gcc -o Linux_All_DBG.OBJ/jsarena.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsarena.c
+gcc -o Linux_All_DBG.OBJ/jsarray.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsarray.c
+gcc -o Linux_All_DBG.OBJ/jsatom.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsatom.c
+gcc -o Linux_All_DBG.OBJ/jsbool.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsbool.c
+gcc -o Linux_All_DBG.OBJ/jscntxt.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jscntxt.c
+gcc -o Linux_All_DBG.OBJ/jsdate.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsdate.c
+gcc -o Linux_All_DBG.OBJ/jsdbgapi.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsdbgapi.c
+gcc -o Linux_All_DBG.OBJ/jsdhash.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsdhash.c
+gcc -o Linux_All_DBG.OBJ/jsdtoa.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsdtoa.c
+gcc -o Linux_All_DBG.OBJ/jsemit.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsemit.c
+gcc -o Linux_All_DBG.OBJ/jsexn.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsexn.c
+gcc -o Linux_All_DBG.OBJ/jsfun.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsfun.c
+gcc -o Linux_All_DBG.OBJ/jsgc.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsgc.c
+gcc -o Linux_All_DBG.OBJ/jshash.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jshash.c
+gcc -o Linux_All_DBG.OBJ/jsinterp.o -c -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ   jsinterp.c
+gcc -o Linux_All_DBG.OBJ/jsinvoke.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsinvoke.c
+gcc -o Linux_All_DBG.OBJ/jsiter.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsiter.c
+gcc -o Linux_All_DBG.OBJ/jslock.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jslock.c
+gcc -o Linux_All_DBG.OBJ/jslog2.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jslog2.c
+gcc -o Linux_All_DBG.OBJ/jslong.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jslong.c
+gcc -o Linux_All_DBG.OBJ/jsmath.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsmath.c
+gcc -o Linux_All_DBG.OBJ/jsnum.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsnum.c
+gcc -o Linux_All_DBG.OBJ/jsobj.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsobj.c
+gcc -o Linux_All_DBG.OBJ/jsopcode.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsopcode.c
+gcc -o Linux_All_DBG.OBJ/jsparse.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsparse.c
+gcc -o Linux_All_DBG.OBJ/jsprf.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsprf.c
+gcc -o Linux_All_DBG.OBJ/jsregexp.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsregexp.c
+gcc -o Linux_All_DBG.OBJ/jskwgen.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jskwgen.c
+gcc -o Linux_All_DBG.OBJ/jskwgen -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ   -lm Linux_All_DBG.OBJ/jskwgen.o
+Linux_All_DBG.OBJ/jskwgen Linux_All_DBG.OBJ/jsautokw.h
+gcc -o Linux_All_DBG.OBJ/jsscan.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsscan.c
+gcc -o Linux_All_DBG.OBJ/jsscope.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsscope.c
+gcc -o Linux_All_DBG.OBJ/jsscript.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsscript.c
+gcc -o Linux_All_DBG.OBJ/jsstr.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsstr.c
+gcc -o Linux_All_DBG.OBJ/jsutil.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsutil.c
+gcc -o Linux_All_DBG.OBJ/jsxdrapi.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsxdrapi.c
+gcc -o Linux_All_DBG.OBJ/jsxml.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  jsxml.c
+gcc -o Linux_All_DBG.OBJ/prmjtime.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  prmjtime.c
+ar rv Linux_All_DBG.OBJ/libjs.a Linux_All_DBG.OBJ/jsapi.o Linux_All_DBG.OBJ/jsarena.o Linux_All_DBG.OBJ/jsarray.o Linux_All_DBG.OBJ/jsatom.o Linux_All_DBG.OBJ/jsbool.o Linux_All_DBG.OBJ/jscntxt.o Linux_All_DBG.OBJ/jsdate.o Linux_All_DBG.OBJ/jsdbgapi.o Linux_All_DBG.OBJ/jsdhash.o Linux_All_DBG.OBJ/jsdtoa.o Linux_All_DBG.OBJ/jsemit.o Linux_All_DBG.OBJ/jsexn.o Linux_All_DBG.OBJ/jsfun.o Linux_All_DBG.OBJ/jsgc.o Linux_All_DBG.OBJ/jshash.o Linux_All_DBG.OBJ/jsinterp.o Linux_All_DBG.OBJ/jsinvoke.o Linux_All_DBG.OBJ/jsiter.o Linux_All_DBG.OBJ/jslock.o Linux_All_DBG.OBJ/jslog2.o Linux_All_DBG.OBJ/jslong.o Linux_All_DBG.OBJ/jsmath.o Linux_All_DBG.OBJ/jsnum.o Linux_All_DBG.OBJ/jsobj.o Linux_All_DBG.OBJ/jsopcode.o Linux_All_DBG.OBJ/jsparse.o Linux_All_DBG.OBJ/jsprf.o Linux_All_DBG.OBJ/jsregexp.o Linux_All_DBG.OBJ/jsscan.o Linux_All_DBG.OBJ/jsscope.o Linux_All_DBG.OBJ/jsscript.o Linux_All_DBG.OBJ/jsstr.o Linux_All_DBG.OBJ/jsutil.o Linux_All_DBG.OBJ/jsxdrapi.o Linux_All_DBG.OBJ/jsxml.o Linux_All_DBG.OBJ/prmjtime.o
+r - Linux_All_DBG.OBJ/jsapi.o
+r - Linux_All_DBG.OBJ/jsarena.o
+r - Linux_All_DBG.OBJ/jsarray.o
+r - Linux_All_DBG.OBJ/jsatom.o
+r - Linux_All_DBG.OBJ/jsbool.o
+r - Linux_All_DBG.OBJ/jscntxt.o
+r - Linux_All_DBG.OBJ/jsdate.o
+r - Linux_All_DBG.OBJ/jsdbgapi.o
+r - Linux_All_DBG.OBJ/jsdhash.o
+r - Linux_All_DBG.OBJ/jsdtoa.o
+r - Linux_All_DBG.OBJ/jsemit.o
+r - Linux_All_DBG.OBJ/jsexn.o
+r - Linux_All_DBG.OBJ/jsfun.o
+r - Linux_All_DBG.OBJ/jsgc.o
+r - Linux_All_DBG.OBJ/jshash.o
+r - Linux_All_DBG.OBJ/jsinterp.o
+r - Linux_All_DBG.OBJ/jsinvoke.o
+r - Linux_All_DBG.OBJ/jsiter.o
+r - Linux_All_DBG.OBJ/jslock.o
+r - Linux_All_DBG.OBJ/jslog2.o
+r - Linux_All_DBG.OBJ/jslong.o
+r - Linux_All_DBG.OBJ/jsmath.o
+r - Linux_All_DBG.OBJ/jsnum.o
+r - Linux_All_DBG.OBJ/jsobj.o
+r - Linux_All_DBG.OBJ/jsopcode.o
+r - Linux_All_DBG.OBJ/jsparse.o
+r - Linux_All_DBG.OBJ/jsprf.o
+r - Linux_All_DBG.OBJ/jsregexp.o
+r - Linux_All_DBG.OBJ/jsscan.o
+r - Linux_All_DBG.OBJ/jsscope.o
+r - Linux_All_DBG.OBJ/jsscript.o
+r - Linux_All_DBG.OBJ/jsstr.o
+r - Linux_All_DBG.OBJ/jsutil.o
+r - Linux_All_DBG.OBJ/jsxdrapi.o
+r - Linux_All_DBG.OBJ/jsxml.o
+r - Linux_All_DBG.OBJ/prmjtime.o
+echo Linux_All_DBG.OBJ/libjs.a
+Linux_All_DBG.OBJ/libjs.a
+ld -shared  -o Linux_All_DBG.OBJ/libjs.so Linux_All_DBG.OBJ/jsapi.o Linux_All_DBG.OBJ/jsarena.o Linux_All_DBG.OBJ/jsarray.o Linux_All_DBG.OBJ/jsatom.o Linux_All_DBG.OBJ/jsbool.o Linux_All_DBG.OBJ/jscntxt.o Linux_All_DBG.OBJ/jsdate.o Linux_All_DBG.OBJ/jsdbgapi.o Linux_All_DBG.OBJ/jsdhash.o Linux_All_DBG.OBJ/jsdtoa.o Linux_All_DBG.OBJ/jsemit.o Linux_All_DBG.OBJ/jsexn.o Linux_All_DBG.OBJ/jsfun.o Linux_All_DBG.OBJ/jsgc.o Linux_All_DBG.OBJ/jshash.o Linux_All_DBG.OBJ/jsinterp.o Linux_All_DBG.OBJ/jsinvoke.o Linux_All_DBG.OBJ/jsiter.o Linux_All_DBG.OBJ/jslock.o Linux_All_DBG.OBJ/jslog2.o Linux_All_DBG.OBJ/jslong.o Linux_All_DBG.OBJ/jsmath.o Linux_All_DBG.OBJ/jsnum.o Linux_All_DBG.OBJ/jsobj.o Linux_All_DBG.OBJ/jsopcode.o Linux_All_DBG.OBJ/jsparse.o Linux_All_DBG.OBJ/jsprf.o Linux_All_DBG.OBJ/jsregexp.o Linux_All_DBG.OBJ/jsscan.o Linux_All_DBG.OBJ/jsscope.o Linux_All_DBG.OBJ/jsscript.o Linux_All_DBG.OBJ/jsstr.o Linux_All_DBG.OBJ/jsutil.o Linux_All_DBG.OBJ/jsxdrapi.o Linux_All_DBG.OBJ/jsxml.o Linux_All_DBG.OBJ/prmjtime.o   -lm 
+gcc -o Linux_All_DBG.OBJ/js.o -c -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  js.c
+gcc -o Linux_All_DBG.OBJ/js -Wall -Wno-format -MMD -g3 -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R -DHAVE_VA_COPY -DVA_COPY=va_copy -DPIC -fPIC  -DDEBUG -DDEBUG_root -DEDITLINE -ILinux_All_DBG.OBJ  Linux_All_DBG.OBJ/js.o Linux_All_DBG.OBJ/libjs.a  -lm  \
+    editline/Linux_All_DBG.OBJ/libedit.a
+make[2]: `Linux_All_DBG.OBJ/jsautocfg.h' is up to date.
+make[2]: `Linux_All_DBG.OBJ/jscpucfg' is up to date.
+make[2]: `Linux_All_DBG.OBJ/jscpucfg.o' is up to date.
+make[2]: Leaving directory `/usr/src/sd/libjs'
+make[1]: Leaving directory `/usr/src/sd/libjs'

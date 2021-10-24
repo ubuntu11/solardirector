@@ -40,6 +40,74 @@ int sort_batteries(void *i1, void *i2) {
 
 }
 
+#if 0
+static void _ic_arr(char *name,void *dest, int len,json_value_t *v) {
+	solard_battery_t *bp = dest;
+	char label[32];
+	int i;
+
+	dprintf(1,"len: %d\n", len);
+	if (strcmp(name,"temps")==0) {
+		for(i=0; i < len; i++) {
+			sprintf(label,"temp_%02d",i);
+			ic_double(label,bp->temps[i]);
+		}
+	} else if (strcmp(name,"cellvolt")==0) {
+		for(i=0; i < len; i++) {
+			sprintf(label,"cell_%02d",i);
+			ic_double(label,bp->cellvolt[i]);
+		}
+#if BATTERY_CELLRES
+	} else if (strcmp(name,"cellres")==0) {
+		for(i=0; i < len; i++) {
+			sprintf(label,"res_%02d",i);
+			ic_double(label,bp->cellres[i]);
+		}
+#endif
+	}
+
+	return;
+}
+
+int battery_to_influxdb(battery_session_t *s) {
+	solard_battery_t *bp = &s->info;
+	json_proctab_t battery_tab[] = { BATTERY_TAB(bp->ntemps,bp->ncells,_ic_arr,_set_state) }, *p;
+        int *ip;
+        float *fp;
+        double *dp;
+
+	influx_set_measurement("Battery");
+        for(p=battery_tab; p->field; p++) {
+                if (p->cb) p->cb(p->field,p->ptr,p->len,0);
+                else {
+                        switch(p->type) {
+                        case DATA_TYPE_STRING:
+				ic_string(p->field,p->ptr);
+                                break;
+                        case DATA_TYPE_INT:
+                                ip = p->ptr;
+				ic_long(p->field,*ip);
+                                break;
+                        case DATA_TYPE_FLOAT:
+                                fp = p->ptr;
+				ic_double(p->field,*fp);
+                                break;
+                        case DATA_TYPE_DOUBLE:
+                                dp = p->ptr;
+				ic_double(p->field,*dp);
+                                break;
+                        default:
+                                dprintf(1,"battery_to_ic: unhandled type: %d\n", p->type);
+                                break;
+                        }
+                }
+	}
+	ic_measureend();
+	ic_push();
+	return 0;
+}
+#endif
+
 void getpack(solard_config_t *conf, char *name, char *data) {
 	solard_battery_t bat,*pp = &bat;
 

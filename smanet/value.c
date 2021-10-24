@@ -228,11 +228,11 @@ int smanet_get_value(smanet_session_t *s, char *name, double *dest, char **text)
 	dprintf(1,"c->mask & CH_PARA: %d\n", c->mask & CH_PARA);
 	if ((c->mask & CH_PARA) == 0) {
 		dprintf(1,"c->mask & CH_COUNTER: %d\n", c->mask & CH_COUNTER);
-		dprintf(1,"c->mask & CH_ANALOG: %d\n", c->mask & CH_ANALOG);
 		if (c->mask & CH_COUNTER) {
 			dprintf(1,"gain: %f\n", c->gain);
 			d *= c->gain;
 		}
+		dprintf(1,"c->mask & CH_ANALOG: %d\n", c->mask & CH_ANALOG);
 		if (c->mask & CH_ANALOG) {
 			dprintf(1,"gain: %f, offset: %f\n", c->gain, c->offset);
 			d = (d * c->gain) + c->offset;

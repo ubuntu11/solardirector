@@ -17,9 +17,7 @@ LICENSE file in the root directory of this source tree.
 #include <sys/select.h>
 #endif
 #include "buffer.h"
-#include "module.h"
-#include "utils.h"
-#include "debug.h"
+#include "transports.h"
 
 #define DEFAULT_SPEED 9600
 
@@ -73,7 +71,9 @@ static int serial_get(void *handle, uint8_t *buffer, int buflen) {
 	count = bytes;
 
 serial_get_done:
+#ifdef DEBUG
 	if (debug >= 8 && count > 0) bindump("FROM DEVICE",buffer,count);
+#endif
 	dprintf(8,"returning: %d\n", count);
 	return count;
 #endif
@@ -429,7 +429,9 @@ static int serial_read(void *handle, void *buf, int buflen) {
 
 #ifndef __WIN32
 serial_read_done:
+#ifdef DEBUG
 	if (debug >= 8 && count > 0) bindump("FROM DEVICE",buf,count);
+#endif
 	dprintf(8,"returning: %d\n", count);
 	return count;
 #endif
@@ -448,7 +450,9 @@ static int serial_write(void *handle, void *buf, int buflen) {
 	bytes = write(s->fd,buf,buflen);
 	dprintf(8,"bytes: %d\n", bytes);
 #endif
+#ifdef DEBUG
 	if (debug >= 8 && bytes > 0) bindump("TO DEVICE",buf,buflen);
+#endif
 //	usleep ((buflen + 25) * 10000);
 	return bytes;
 }
@@ -469,14 +473,27 @@ static int serial_close(void *handle) {
 	return 0;
 }
 
-EXPORT solard_module_t serial_module = {
-	SOLARD_MODTYPE_TRANSPORT,
+static int serial_config(void *h, int func, ...) {
+	va_list ap;
+	int r;
+
+	r = 1;
+	va_start(ap,func);
+	switch(func) {
+	default:
+		dprintf(1,"error: unhandled func: %d\n", func);
+		break;
+	}
+	return r;
+}
+
+solard_driver_t serial_driver = {
+	SOLARD_DRIVER_TRANSPORT,
 	"serial",
-	0,
 	serial_new,
-	0,
 	serial_open,
+	serial_close,
 	serial_read,
 	serial_write,
-	serial_close
+	serial_config
 };

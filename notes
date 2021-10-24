@@ -11,7 +11,7 @@ all topics are at least 5 levels deep
 	more levels can be published by the agent but the agent must publish at least 5
 
 level 1: SolarD
-level 2: role
+level 2: class/type
 level 4: name
 level 5: function (data/info/config/control/status)
 level 6: action (get/set/add/del/start/stop)
@@ -23,6 +23,8 @@ Example data output topic for a battery role:
 
 	/SolarD/Battery/PowerWall01/Data
 
+SolarD/Storage/..
+SolarD/Battery/
 SolarD/Battery/all/Config/Get/(client)id={"Name" (or Status or another item)}
 each one replies with:
 SolarD/Client/(client)id/Config/Settings/(agent)id={(requested info or error)}
@@ -41,6 +43,8 @@ SolarD/Client/id(from req)/Config/Status/name(from req)={"Status"}
 	nr, agent description
 	nr, agent_version
 	nr, agent_author
+	r, device type (bms/dctoac/pvtodc/pvtoac/turbine/etc)
+	r, device class (storage/inverter/etc)
 	nr, device manufacturer(s)
 	nr, device model(s)
 	r, array of capabilities

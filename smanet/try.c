@@ -12,6 +12,7 @@ LICENSE file in the root directory of this source tree.
 #include <unistd.h>
 
 #include "smanet_internal.h"
+#include "common.h"
 
 #define DEBUG_STARTUP 0
 
@@ -21,14 +22,12 @@ LICENSE file in the root directory of this source tree.
 #define _ST_DEBUG 0
 #endif
 
-extern solard_module_t serial_module;
-extern solard_module_t rdev_module;
-
-#define CHANS "/usr/local/lib/SI6048UM.dat"
+extern solard_driver_t serial_driver;
+extern solard_driver_t rdev_driver;
 
 int main(int argc,char **argv) {
 	int logopts = LOG_INFO|LOG_WARNING|LOG_ERROR|LOG_SYSERR|_ST_DEBUG;
-	solard_module_t *tp;
+	solard_driver_t *tp;
 	void *tp_handle;
 	smanet_session_t *s;
 //	smanet_value_t *v;
@@ -47,11 +46,11 @@ int main(int argc,char **argv) {
         argc -= optind;
         argv += optind;
 
-#if 0
-	tp = &rdev_module;
-	tp_handle = tp->new(0,"192.168.1.7:3930","tty0");
+#if 1
+	tp = &rdev_driver;
+	tp_handle = tp->new(0,"192.168.1.7:3930","serial0");
 #else
-	tp = &serial_module;
+	tp = &serial_driver;
 	tp_handle = tp->new(0,"/dev/ttyS0","19200");
 #endif
 //	dprintf(1,"tp_handle: %p\n", tp_handle);
@@ -59,11 +58,11 @@ int main(int argc,char **argv) {
 	s = smanet_init(tp,tp_handle);
 	if (!s) return 1;
 
-	if (smanet_load_channels(s,CHANS)) {
+	if (smanet_load_channels(s)) {
 		dprintf(1,"getting channels...\n");
 		if (smanet_read_channels(s)) return 1;
 		dprintf(1,"count: %d\n", list_count(s->channels));
-		smanet_save_channels(s,CHANS);
+		smanet_save_channels(s);
 	}
 	dprintf(1,"count: %d\n", list_count(s->channels));
 	

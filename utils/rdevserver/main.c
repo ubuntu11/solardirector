@@ -9,7 +9,9 @@ LICENSE file in the root directory of this source tree.
 
 #include "rdevserver.h"
 #include <pthread.h>
+#include "transports.h"
 
+#define TESTING 0
 #define DEBUG_STARTUP 0
 
 #if DEBUG_STARTUP
@@ -118,6 +120,12 @@ static int rdev_can_close(void *handle) {
 	return r;
 }
 
+#if defined(__WIN32) || defined(__WIN64)
+static solard_driver_t *transports[] = { &serial_driver, 0 };
+#else
+static solard_driver_t *transports[] = { &bt_driver, &can_driver, &serial_driver, 0 };
+#endif
+
 int add_device(rdev_config_t *conf, char *name) {
 	char transport[SOLARD_TRANSPORT_LEN],target[SOLARD_TARGET_LEN],topts[SOLARD_TOPTS_LEN];
 	cfg_proctab_t tab[] = {
@@ -127,8 +135,9 @@ int add_device(rdev_config_t *conf, char *name) {
 		CFG_PROCTAB_END
 	};
 	devserver_io_t dev;
-	solard_module_t *mp;
+	solard_driver_t *mp,*tp;
 	void *mp_handle;
+	int i;
 
 	dprintf(1,"reading...\n");
 	cfg_get_tab(conf->cfg,tab);
@@ -140,9 +149,22 @@ int add_device(rdev_config_t *conf, char *name) {
 		return 1;
 	}
 
-	/* load the module and test */
-	mp = load_module(conf->modules,transport,SOLARD_MODTYPE_TRANSPORT);
+	/* Find the transport in the list of transports */
+	mp = 0;
+	for(i=0; transports[i]; i++) {
+		tp = transports[i];
+		dprintf(1,"tp->type: %d\n", tp->type);
+		if (tp->type != SOLARD_DRIVER_TRANSPORT) continue;
+		dprintf(1,"tp->name: %s\n", tp->name);
+		if (strcmp(tp->name,transport)==0) {
+			mp = tp;
+			break;
+		}
+	}
+	dprintf(1,"mp: %p\n", mp);
 	if (!mp) goto add_device_error;
+
+	/* Test the driver */
 	mp_handle = mp->new(conf,target,topts);
 	if (!mp_handle) goto add_device_error;
 	if (mp->open(mp_handle)) goto add_device_error;
@@ -189,13 +211,13 @@ int main(int argc,char **argv) {
 		CFG_PROCTAB_END
 	};
 	devserver_io_t dummy_dev = { "dummy", "dummy", 0, 0, 0, 0 };
-//	char *args[] = { "t2", "-d", "4", "-c", "rdev.conf" };
-//	#define nargs (sizeof(args)/sizeof(char *))
+#if TESTING
+	char *args[] = { "rdevd", "-d", "4", "-c", "rdev.conf" };
+	argc = (sizeof(args)/sizeof(char *));
+	argv = args;
+#endif
 
-//	solard_common_init(nargs,args,opts,0xffff);
 	solard_common_init(argc,argv,opts,logopts);
-
-	debug = 9;
 
 	if (!strlen(configfile)) {
 		log_write(LOG_ERROR,"configfile required.\n");
@@ -208,7 +230,6 @@ int main(int argc,char **argv) {
 		goto init_error;
 	}
 	conf->modules = list_create();
-//	devices = list_create();
 
 	/* Add a dummy dsfunc for unit 0 */
 	devserver_add_unit(&conf->ds,&dummy_dev);

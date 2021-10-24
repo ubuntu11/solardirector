@@ -14,6 +14,7 @@ LICENSE file in the root directory of this source tree.
 #include "agent.h"
 #include "battery.h"
 #include "inverter.h"
+#include "jsapi.h"
 
 struct solard_agentinfo {
 	char id[SOLARD_ID_LEN];			/* Unique agent ID */
@@ -49,6 +50,9 @@ struct solard_config {
 	int agent_error;			/* Warning, in seconds, when agent considered lost */
 	int status;
 	char errmsg[128];
+	JSRuntime *rt;
+	time_t last_check;			/* Last time agents were checked */
+	long start;
 };
 typedef struct solard_config solard_config_t;
 
@@ -57,7 +61,7 @@ json_value_t *solard_info(void *handle);
 int solard_read_config(solard_config_t *conf);
 int solard_write_config(solard_config_t *conf);
 int solard_send_status(solard_config_t *conf, char *func, char *action, char *id, int status, char *message);
-int solard_config(solard_config_t *conf, solard_message_t *msg);
+int solard_config(void *, int, ...);
 
 void getinv(solard_config_t *conf, char *name, char *data);
 void getpack(solard_config_t *conf, char *name, char *data);
@@ -65,7 +69,7 @@ void solard_setcfg(cfg_info_t *cfg, char *section_name, solard_agentinfo_t *info
 
 int agent_get_role(solard_config_t *conf, solard_agentinfo_t *info);
 void add_agent(solard_config_t *conf, char *role, json_value_t *v);
-int check_agents(solard_config_t *conf);
+int check_agents(void *);
 
 void agentinfo_pub(solard_config_t *conf, solard_agentinfo_t *info);
 void agentinfo_getcfg(cfg_info_t *cfg, char *sname, solard_agentinfo_t *info);

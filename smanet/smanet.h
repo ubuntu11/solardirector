@@ -10,7 +10,7 @@ LICENSE file in the root directory of this source tree.
 #ifndef __SMANET_H
 #define __SMANET_H
 
-#include "module.h"
+#include "driver.h"
 #include "buffer.h"
 
 #if 0
@@ -74,6 +74,10 @@ struct smanet_channel {
 };
 typedef struct smanet_channel smanet_channel_t;
 
+/* Change this if channel struct updated */
+#define CHANVER_MAJOR 1
+#define CHANVER_MINOR 0
+
 struct smanet_value {
 	long timestamp;
 	enum DATA_TYPE type;
@@ -91,9 +95,10 @@ struct smanet_session {
 	buffer_t *b;
 	list channels;
 	smanet_value_t *values;
-	solard_module_t *tp;
+	solard_driver_t *tp;
 	void *tp_handle;
 	long serial;
+	char chanpath[256];
 	char type[32];
 	uint16_t src;
 	uint16_t dest;
@@ -102,11 +107,12 @@ struct smanet_session {
 };
 typedef struct smanet_session smanet_session_t;
 
-smanet_session_t *smanet_init(solard_module_t *, void *);
+smanet_session_t *smanet_init(solard_driver_t *, void *);
 
+void smanet_set_chanpath(smanet_session_t *s, char *);
 int smanet_read_channels(smanet_session_t *s);
-int smanet_save_channels(smanet_session_t *s, char *);
-int smanet_load_channels(smanet_session_t *s, char *);
+int smanet_save_channels(smanet_session_t *s);
+int smanet_load_channels(smanet_session_t *s);
 smanet_channel_t *smanet_get_channel(smanet_session_t *s, char *);
 
 int smanet_get_value(smanet_session_t *, char *, double *, char **);

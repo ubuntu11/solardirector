@@ -1,28 +1,24 @@
 dorel() {
-for t in pi3 linux64 win32
+#for t in pi3 linux64 win64
+for t in linux64 win64
 do
-	make clean
-	make TARGET=${t} || break
-	make TARGET=${t} release
-	make TARGET=${t} clean
+	make TARGET=${t} STATIC=yes || exit 1
+	make TARGET=${t} STATIC=yes release || exit 1
+	make TARGET=${t} STATIC=yes clean
 #	break
 done
 }
 dozip() {
 cd releases || exit 1
-for t in pi3 linux64 win32
+for t in pi3 linux64 win64
 do
 	cd ${t} 2>/dev/null || continue
-	if test "${t}" = "win32"; then
-		rm -f ../solard_win32.zip
-		zip -9 -r ../solard_win32.zip .
-	else
-		rm -f ../solard_${t}.tgz
-		tar -zcf ../solard_${t}.tgz .
-	fi
+	rm -f ../solard_${t}.tgz
+	zip -9 -r ../solard_${t}.zip .
 	cd ..
 	rm -rf ${t}
 done
 }
+make clean
 dorel
 dozip

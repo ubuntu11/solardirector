@@ -21,9 +21,7 @@ LICENSE file in the root directory of this source tree.
 #include <fcntl.h>
 #include <ctype.h>
 #include "devserver.h"
-#include "module.h"
-#include "utils.h"
-#include "debug.h"
+#include "transports.h"
 
 #define DEFAULT_PORT 3930
 
@@ -192,14 +190,27 @@ static int rdev_close(void *handle) {
 	return 0;
 }
 
-EXPORT solard_module_t rdev_module = {
-	SOLARD_MODTYPE_TRANSPORT,
+static int rdev_config(void *h, int func, ...) {
+	va_list ap;
+	int r;
+
+	r = 1;
+	va_start(ap,func);
+	switch(func) {
+	default:
+		dprintf(1,"error: unhandled func: %d\n", func);
+		break;
+	}
+	return r;
+}
+
+solard_driver_t rdev_driver = {
+	SOLARD_DRIVER_TRANSPORT,
 	"rdev",
-	0,
 	rdev_new,
-	0,
 	rdev_open,
+	rdev_close,
 	rdev_read,
 	rdev_write,
-	rdev_close
+	rdev_config
 };

@@ -1,9 +1,8 @@
 
 all:
-	for d in lib smanet; do $(MAKE) -j $$MAKE_JOBS $(MAKEFLAGS) -C $$d; done
-	@for d in *; do if test -f $$d/Makefile; then make -j $$MAKE_JOBS $(MAKEFLAGS) -C $$d || exit 1; fi; done
+	for d in core smanet js transports roles; do $(MAKE) -C $$d; done
+	@for d in *; do if test -f $$d/Makefile; then make -C $$d || exit 1; fi; done
 
-#	for d in *; do if test -f $$d/Makefile; then $(MAKE) $(MAKEFLAGS) -C $$d $@; fi; done
 install release clean cleanall::
 	for d in *; do if test -f $$d/Makefile; then $(MAKE) -C $$d $@; fi; done
 

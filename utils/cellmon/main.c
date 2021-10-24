@@ -99,11 +99,11 @@ int main(int argc,char **argv) {
 	/* main loop */
 	start = mem_used();
 	while(1) {
-		dprintf(1,"count: %d\n", list_count(conf->c->messages));
-		list_reset(conf->c->messages);
-		while((msg = list_get_next(conf->c->messages)) != 0) {
+		dprintf(1,"count: %d\n", list_count(conf->c->mq));
+		list_reset(conf->c->mq);
+		while((msg = list_get_next(conf->c->mq)) != 0) {
 			getpack(conf,msg->name,msg->data);
-			list_delete(conf->c->messages,msg);
+			list_delete(conf->c->mq,msg);
 		}
 		display(conf);
 		dprintf(1,"used: %ld\n", mem_used() - start);

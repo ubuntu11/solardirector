@@ -8,6 +8,7 @@ LICENSE file in the root directory of this source tree.
 */
 
 #include "smanet_internal.h"
+#include "common.h"
 
 static int tp_get(void *handle, uint8_t *buffer, int buflen) {
 	smanet_session_t *s = handle;
@@ -19,7 +20,7 @@ static int tp_get(void *handle, uint8_t *buffer, int buflen) {
 }
 
 
-smanet_session_t *smanet_init(solard_module_t *tp, void *tp_handle) {
+smanet_session_t *smanet_init(solard_driver_t *tp, void *tp_handle) {
 	smanet_session_t *s;
 
 	s = calloc(1,sizeof(*s));
@@ -42,6 +43,7 @@ smanet_session_t *smanet_init(solard_module_t *tp, void *tp_handle) {
         dprintf(1,"serial: %ld, type: %s\n", s->serial, s->type);
 	sleep(1);
 	if (smanet_cfg_net_adr(s,0)) goto smanet_init_error;
+	sprintf(s->chanpath,"%s/%s.dat",SOLARD_LIBDIR,s->type);
 	return s;
 
 smanet_init_error:

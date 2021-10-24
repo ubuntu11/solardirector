@@ -18,9 +18,7 @@ LICENSE file in the root directory of this source tree.
 #include <linux/can.h>
 #include <linux/can/raw.h>
 #include <arpa/inet.h>
-#include "module.h"
-#include "utils.h"
-#include "debug.h"
+#include "transports.h"
 
 #define DEFAULT_BITRATE 250000
 #define CAN_INTERFACE_LEN 16
@@ -366,12 +364,13 @@ static int do_get_nl_link(int fd, __u8 acquire, const char *name, void *res) {
 			}
 
 			if (!linkinfo[IFLA_INFO_DATA]) {
+#if 0
 				fprintf(stderr, "no link data found\n");
+#endif
 				return ret;
 			}
 
-			parse_rtattr_nested(can_attr, IFLA_CAN_MAX,
-					    linkinfo[IFLA_INFO_DATA]);
+			parse_rtattr_nested(can_attr, IFLA_CAN_MAX, linkinfo[IFLA_INFO_DATA]);
 
 			switch (acquire) {
 			case GET_STATE:
@@ -380,8 +379,10 @@ static int do_get_nl_link(int fd, __u8 acquire, const char *name, void *res) {
 							  RTA_DATA(can_attr
 								   [IFLA_CAN_STATE]));
 					ret = 0;
+#if 0
 				} else {
 					fprintf(stderr, "no state data found\n");
+#endif
 				}
 
 				break;
@@ -391,8 +392,11 @@ static int do_get_nl_link(int fd, __u8 acquire, const char *name, void *res) {
 							     RTA_DATA(can_attr
 								      [IFLA_CAN_RESTART_MS]));
 					ret = 0;
-				} else
+				}
+#if 0
+				else
 					fprintf(stderr, "no restart_ms data found\n");
+#endif
 
 				break;
 			case GET_BITTIMING:
@@ -401,8 +405,10 @@ static int do_get_nl_link(int fd, __u8 acquire, const char *name, void *res) {
 					       RTA_DATA(can_attr[IFLA_CAN_BITTIMING]),
 					       sizeof(struct can_bittiming));
 					ret = 0;
-				} else
-					fprintf(stderr, "no bittiming data found\n");
+				}
+#if 0
+				else fprintf(stderr, "no bittiming data found\n");
+#endif
 
 				break;
 			case GET_CTRLMODE:
@@ -411,8 +417,10 @@ static int do_get_nl_link(int fd, __u8 acquire, const char *name, void *res) {
 					       RTA_DATA(can_attr[IFLA_CAN_CTRLMODE]),
 					       sizeof(struct can_ctrlmode));
 					ret = 0;
-				} else
-					fprintf(stderr, "no ctrlmode data found\n");
+				}
+#if 0
+				else fprintf(stderr, "no ctrlmode data found\n");
+#endif
 
 				break;
 			case GET_CLOCK:
@@ -421,9 +429,10 @@ static int do_get_nl_link(int fd, __u8 acquire, const char *name, void *res) {
 					       RTA_DATA(can_attr[IFLA_CAN_CLOCK]),
 					       sizeof(struct can_clock));
 					ret = 0;
-				} else
-					fprintf(stderr,
-						"no clock parameter data found\n");
+				}
+#if 0
+				else fprintf(stderr, "no clock parameter data found\n");
+#endif
 
 				break;
 			case GET_BITTIMING_CONST:
@@ -432,8 +441,10 @@ static int do_get_nl_link(int fd, __u8 acquire, const char *name, void *res) {
 					       RTA_DATA(can_attr[IFLA_CAN_BITTIMING_CONST]),
 					       sizeof(struct can_bittiming_const));
 					ret = 0;
-				} else
-					fprintf(stderr, "no bittiming_const data found\n");
+				}
+#if 0
+				else fprintf(stderr, "no bittiming_const data found\n");
+#endif
 
 				break;
 			case GET_BERR_COUNTER:
@@ -442,13 +453,17 @@ static int do_get_nl_link(int fd, __u8 acquire, const char *name, void *res) {
 					       RTA_DATA(can_attr[IFLA_CAN_BERR_COUNTER]),
 					       sizeof(struct can_berr_counter));
 					ret = 0;
-				} else
-					fprintf(stderr, "no berr_counter data found\n");
+				}
+#if 0
+				else fprintf(stderr, "no berr_counter data found\n");
+#endif
 
 				break;
 
+#if 0
 			default:
 				fprintf(stderr, "unknown acquire mode\n");
+#endif
 			}
 		}
 	}
@@ -890,7 +905,9 @@ static int can_read(void *handle, void *buf, int buflen) {
 		}
 		dprintf(8,"bytes: %d, id: %x, frame->can_id: %x\n", bytes, id, frame->can_id);
 	} while(id != 0xFFFF && frame->can_id != id);
+#ifdef DEBUG
 	if (bytes > 0 && debug >= 8) bindump("FROM DEVICE",buf,sizeof(struct can_frame));
+#endif
 	dprintf(8,"returning: %d\n", bytes);
 	return bytes;
 }
@@ -903,7 +920,9 @@ static int can_write(void *handle, void *buf, int buflen) {
 	if (s->fd < 0) return -1;
 
 	/* Buf is expected to be a can frame ... */
+#ifdef DEBUG
 	if (debug >= 5) bindump("TO DEVICE",buf,sizeof(struct can_frame));
+#endif
 	bytes = write(s->fd, buf, sizeof(struct can_frame));
 	dprintf(5,"fd: %d, returning: %d\n", s->fd, bytes);
 	return bytes;
@@ -920,18 +939,31 @@ static int can_close(void *handle) {
 	return 0;
 }
 
-EXPORT solard_module_t can_module = {
-	SOLARD_MODTYPE_TRANSPORT,
+static int can_config(void *h, int func, ...) {
+	va_list ap;
+	int r;
+
+	r = 1;
+	va_start(ap,func);
+	switch(func) {
+	default:
+		dprintf(1,"error: unhandled func: %d\n", func);
+		break;
+	}
+	return r;
+}
+
+solard_driver_t can_driver = {
+	SOLARD_DRIVER_TRANSPORT,
 	"can",
-	0,
 	can_new,
-	0,
 	can_open,
+	can_close,
 	can_read,
 	can_write,
-	can_close,
+	can_config
 };
 #else
-#include "module.h"
-SOLARD_DUMMY_MODULE(can)
+#include "transports.h"
+solard_driver_t can_driver;
 #endif

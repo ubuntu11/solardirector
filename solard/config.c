@@ -52,7 +52,8 @@ int solard_read_config(solard_config_t *conf) {
 	return 0;
 
 	/* Sub to our settings topic */
-	agent_mktopic(topic,sizeof(topic)-1,conf->ap,conf->ap->instance_name,SOLARD_FUNC_CONFIG,"Settings",0);
+//	agent_mktopic(topic,sizeof(topic)-1,conf->ap,conf->ap->instance_name,SOLARD_FUNC_CONFIG,"Settings",0);
+	agent_mktopic(topic,sizeof(topic)-1,conf->ap,conf->ap->instance_name,SOLARD_FUNC_CONFIG);
 //	if (agent_sub(conf->ap,conf->ap->instance_name,SOLARD_FUNC_CONFIG,"Settings",0)) return 1;
 //	sprintf(topic,"%s/%s/%s/%s/+",SOLARD_TOPIC_ROOT,SOLARD_ROLE_CONTROLLER,conf->name,SOLARD_FUNC_CONFIG);
         if (mqtt_sub(conf->ap->m,topic)) return 1;
@@ -361,7 +362,7 @@ static int _parseinfo(solard_config_t *s, json_value_t *v, char *message, char *
 }
 
 static int solard_set_config(solard_config_t *conf, json_value_t *v, char *message) {
-	char name[64],value[128],*p,*str;
+	char name[64],value[256],*p,*str;
 	solard_agentinfo_t *info;
 	int name_changed;
 	list lp;
@@ -423,6 +424,7 @@ static int solard_add_config(solard_config_t *conf, json_value_t *v, char *messa
 
 	strcpy(message,"unable to add agent");
 
+	dprintf(1,"parsing info...\n");
 	if (_parseinfo(conf,v,message,name,sizeof(name),value,sizeof(value))) return 1;
 	dprintf(1,"name: %s, value: %s\n", name, value);
 
@@ -515,6 +517,7 @@ static int solard_gd_config(solard_config_t *conf, json_value_t *v, char *messag
 	return 0;
 }
 
+#if 0
 int solard_send_status(solard_config_t *conf, char *func, char *action, char *id, int status, char *message) {
 	char msg[4096];
 	char topic[SOLARD_TOPIC_LEN];
@@ -532,32 +535,65 @@ int solard_send_status(solard_config_t *conf, char *func, char *action, char *id
 	dprintf(1,"topic: %s\n", topic);
 	return mqtt_pub(conf->ap->m,topic,msg,0);
 }
+#endif
 
-int solard_config(solard_config_t *conf, solard_message_t *msg) {
+static int solard_config_getmsg(solard_config_t *conf, solard_message_t *msg) {
 	json_value_t *v;
-	char message[128];
+	char *action,message[128];
 	int status;
 	long start;
 
+	dprintf(1,"processing message...\n");
 	solard_message_dump(msg,1);
 
 	start = mem_used();
 	status = 1;
+	dprintf(1,"data: %s\n", msg->data);
 	v = json_parse(msg->data);
+	dprintf(1,"v: %p\n", v);
 	if (!v) return 1;
 	/* CRUD */
-	if (strcmp(msg->action,"Add") == 0 && solard_add_config(conf,v,message)) goto solard_config_error;
-	else if (strcmp(msg->action,"Get") == 0 && solard_gd_config(conf,v,message,_doget)) goto solard_config_error;
-	else if (strcmp(msg->action,"Set") == 0 && solard_set_config(conf,v,message)) goto solard_config_error;
-	else if (strcmp(msg->action,"Del") == 0 && solard_gd_config(conf,v,message,_dodel)) goto solard_config_error;
-	json_destroy(v);
+	action = "Get";
+//	dprintf(1,"action: %s\n", msg->action);
+	if (strcmp(action,"Add") == 0 && solard_add_config(conf,v,message)) goto solard_config_error;
+	else if (strcmp(action,"Get") == 0 && solard_gd_config(conf,v,message,_doget)) goto solard_config_error;
+	else if (strcmp(action,"Set") == 0 && solard_set_config(conf,v,message)) goto solard_config_error;
+	else if (strcmp(action,"Del") == 0 && solard_gd_config(conf,v,message,_dodel)) goto solard_config_error;
 
 	status = 0;
 	strcpy(message,"success");
 solard_config_error:
-	/* If the agent is solard_control, dont send status */
-	if (strcmp(msg->id,"solard_control")!=0) solard_send_status(conf, "Config", msg->action, msg->id, status, message);
+	json_destroy(v);
+	if (*msg->replyto) solard_message_reply(conf->ap->m, msg, status, message);
 	dprintf(1,"used: %ld\n", mem_used() - start);
 	return status;
-	return 1;
+}
+
+int solard_config(void *h, int request, ...) {
+	solard_config_t *conf = h;
+	int r;
+	va_list ap;
+
+	r = 1;
+	dprintf(1,"request: %d\n", request);
+	va_start(ap,request);
+	switch(request) {
+	case SOLARD_CONFIG_MESSAGE:
+		r = solard_config_getmsg(conf,va_arg(ap,solard_message_t *));
+		break;
+	case SOLARD_CONFIG_GET_INFO:
+		{
+			json_value_t **vp;
+
+			vp = va_arg(ap,json_value_t **);
+			dprintf(1,"vp: %p\n", vp);
+			if (vp) {
+				*vp = solard_info(conf);
+				dprintf(1,"*vp: %p\n", *vp);
+				if (*vp) r = 0;
+			}
+		}
+	}
+	dprintf(1,"r: %d\n", r);
+	return r;
 }

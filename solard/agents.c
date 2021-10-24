@@ -122,7 +122,8 @@ static time_t get_updated(solard_config_t *conf, solard_agentinfo_t *info) {
 	return last_update;
 }
 
-int check_agents(solard_config_t *conf) {
+int check_agents(void *ctx) {
+	solard_config_t *conf = ctx;
 	solard_agentinfo_t *info;
 	time_t cur,diff,last;
 

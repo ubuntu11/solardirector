@@ -44,9 +44,9 @@ void getinv(solard_config_t *conf, char *name, char *data) {
 	solard_inverter_t inverter,*inv = &inverter;
 
 	inverter_from_json(&inverter,data);
-	inverter_dump(&inverter,3);
-	solard_set_state((&inverter),BATTERY_STATE_UPDATED);
-//	time(&inverter.last_update);
+//	inverter_dump(&inverter,3);
+	solard_set_state((&inverter),SOLARD_INVERTER_STATE_UPDATED);
+	time(&inverter.last_update);
 
 	inv = find_by_name(conf,inverter.name);
 	if (!inv) {

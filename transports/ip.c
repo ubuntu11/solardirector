@@ -20,9 +20,7 @@ LICENSE file in the root directory of this source tree.
 #endif
 #include <fcntl.h>
 #include <ctype.h>
-#include "module.h"
-#include "utils.h"
-#include "debug.h"
+#include "transports.h"
 
 #define DEFAULT_PORT 23
 
@@ -143,7 +141,9 @@ static int ip_read(void *handle, void *buf, int buflen) {
 			if (buflen < 1) break;
 		}
 	}
+#ifdef DEBUG
 	if (debug >= 5) bindump("ip_read",buf,bidx);
+#endif
 	dprintf(5,"returning: %d\n", bidx);
 	return bidx;
 }
@@ -152,8 +152,12 @@ static int ip_write(void *handle, void *buf, int buflen) {
 	ip_session_t *s = handle;
 	int bytes;
 
+	dprintf(1,"s->sock: %p\n", s->sock);
+
 	if (s->sock == INVALID_SOCKET) return -1;
+#ifdef DEBUG
 	if (debug >= 5) bindump("ip_write",buf,buflen);
+#endif
 	bytes = send(s->sock, buf, buflen, 0);
 	dprintf(1,"bytes: %d\n", bytes);
 	return bytes;
@@ -171,14 +175,27 @@ static int ip_close(void *handle) {
 	return 0;
 }
 
-EXPORT solard_module_t ip_module = {
-	SOLARD_MODTYPE_TRANSPORT,
+static int ip_config(void *h, int func, ...) {
+	va_list ap;
+	int r;
+
+	r = 1;
+	va_start(ap,func);
+	switch(func) {
+	default:
+		dprintf(1,"error: unhandled func: %d\n", func);
+		break;
+	}
+	return r;
+}
+
+solard_driver_t ip_driver = {
+	SOLARD_DRIVER_TRANSPORT,
 	"ip",
-	0,
 	ip_new,
-	0,
 	ip_open,
+	ip_close,
 	ip_read,
 	ip_write,
-	ip_close
+	ip_config
 };
