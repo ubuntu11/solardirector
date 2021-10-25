@@ -85,14 +85,13 @@ int si_write(si_session_t *s, void *buf, int buflen) {
 
 	/* 0x35A Alarms / Warnings */
 	memset(data,0,sizeof(data));
-//	if (si_can_write(s,0x35A,data,8) < 0) return 1;
+	if (si_can_write(s,0x35A,data,8) < 0) return 1;
 
 	/* 0x35B Events */
 	memset(data,0,sizeof(data));
 	if (si_can_write(s,0x35B,data,8) < 0) return 1;
 
 	/* 0x35E Manufacturer-Name-ASCII (8 chars) */
-	memset(data,' ',sizeof(data));
 #define MFG_NAME "SHOECRAFT"
 	memcpy(data,MFG_NAME,strlen(MFG_NAME));
 	if (si_can_write(s,0x35E,data,8) < 0) return 1;
