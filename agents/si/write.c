@@ -51,6 +51,7 @@ int si_write(si_session_t *s, void *buf, int buflen) {
 		charge_check(s);
 	}
 
+	/* 0x351 Battery charge voltage DC charge current limitation DC discharge current limitation discharge voltage */
 	dprintf(1,"0x351: charge_voltage: %3.2f, charge_amps: %3.2f, min_voltage: %3.2f, discharge_amps: %3.2f\n",
 		s->charge_voltage, s->charge_amps, inv->min_voltage, inv->discharge_amps);
 	si_putshort(&data[0],(s->charge_voltage * 10.0));
@@ -59,33 +60,40 @@ int si_write(si_session_t *s, void *buf, int buflen) {
 	si_putshort(&data[6],(inv->min_voltage * 10.0));
 	if (si_can_write(s,0x351,data,8) < 0) return 1;
 
+	/* 0x355 SOC value / SOH value / HiResSOC */
 	dprintf(1,"0x355: SOC: %.1f, SOH: %.1f\n", soc, inv->soh);
 	si_putshort(&data[0],soc);
 	si_putlong(&data[4],(soc * 100.0));
 	si_putshort(&data[2],inv->soh);
 	if (si_can_write(s,0x355,data,8) < 0) return 1;
 
-#if 0
-	dprintf(1,"0x356: battery_voltage: %3.2f, battery_current: %3.2f, battery_temp: %3.2f\n",
-		inv->battery_voltage, inv->battery_current, inv->battery_temp);
-	si_putshort(&data[0],inv->battery_voltage * 100.0);
-	si_putshort(&data[2],inv->battery_current * 10.0);
-	si_putshort(&data[4],inv->battery_temp * 10.0);
+	/* 0x356 Battery Voltage / Battery Current / Battery Temperature */
+	dprintf(1,"0x356: battery_voltage: %3.2f, battery_amps: %3.2f, battery_temp: %3.2f\n",
+		inv->battery_voltage, inv->battery_amps, inv->battery_temp);
+	if (s->charge_mode == 2) {
+		si_putshort(&data[0],(inv->battery_voltage-1) * 100.0);
+	} else {
+		si_putshort(&data[0],inv->battery_voltage * 100.0);
+	}
+	si_putshort(&data[2],inv->battery_amps * 10.0);
+	if (s->have_battery_temp) {
+		si_putshort(&data[4],inv->battery_temp * 10.0);
+	} else {
+		si_putshort(&data[4],0);
+	}
 	if (si_can_write(s,0x356,data,8) < 0) return 1;
-#endif
 
-	/* Alarms/Warnings */
+	/* 0x35A Alarms / Warnings */
 	memset(data,0,sizeof(data));
 //	if (si_can_write(s,0x35A,data,8) < 0) return 1;
 
-	/* Events */
+	/* 0x35B Events */
 	memset(data,0,sizeof(data));
 	if (si_can_write(s,0x35B,data,8) < 0) return 1;
 
-#if 0
-	/* MFG Name */
+	/* 0x35E Manufacturer-Name-ASCII (8 chars) */
 	memset(data,' ',sizeof(data));
-#define MFG_NAME "SPS"
+#define MFG_NAME "SHOECRAFT"
 	memcpy(data,MFG_NAME,strlen(MFG_NAME));
 	if (si_can_write(s,0x35E,data,8) < 0) return 1;
 
@@ -93,10 +101,9 @@ int si_write(si_session_t *s, void *buf, int buflen) {
 	si_putshort(&data[0],1);
 	/* major.minor.build.revision - encoded as MmBBr 10142 = 1.0.14.2 */
 	si_putshort(&data[2],10000);
-	si_putshort(&data[4],inv->battery_capacity);
+	si_putshort(&data[4],2500);
 	si_putshort(&data[6],1);
 	if (si_can_write(s,0x35F,data,8) < 0) return 1;
-#endif
 
 	solard_clear_state(s,SI_STATE_STARTUP);
 	return 0;

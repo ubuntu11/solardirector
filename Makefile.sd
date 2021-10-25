@@ -15,7 +15,7 @@ endif
 
 ifeq ($(ID),0)
 INSTALL_USER=-o root -g root
-PREFIX?=/opt/sd
+PREFIX?=/opt/newsd
 else
 PREFIX?=$(shell echo $$HOME)
 endif

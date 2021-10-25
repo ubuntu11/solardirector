@@ -95,9 +95,9 @@
 
 #if defined(JS_THREADSAFE)
 #define CHECK_REQUEST(cx)                                                   \
-    JS_ASSERT((cx)->requestDepth || (cx)->thread == (cx)->runtime->gcThread)
+  JS_ASSERT((cx)->requestDepth || (cx)->thread == (cx)->runtime->gcThread)
 #else
-#define CHECK_REQUEST(cx)       ((void)0)
+  #define CHECK_REQUEST(cx)       ((void)0)
 #endif
 
 JS_PUBLIC_API(int64)
@@ -268,8 +268,7 @@ JS_ConvertArgumentsVA(JSContext *cx, uintN argc, jsval *argv,
             break;
           default:
             format--;
-            if (!TryArgumentFormatter(cx, &format, JS_TRUE, &sp,
-                                      JS_ADDRESSOF_VA_LIST(ap))) {
+            if (!TryArgumentFormatter(cx, &format, JS_TRUE, &sp, JS_ADDRESSOF_VA_LIST(ap))) {
                 return JS_FALSE;
             }
             /* NB: the formatter already updated sp, so we continue here. */
@@ -376,8 +375,7 @@ JS_PushArgumentsVA(JSContext *cx, void **markp, const char *format, va_list ap)
             break;
           default:
             format--;
-            if (!TryArgumentFormatter(cx, &format, JS_FALSE, &sp,
-                                      JS_ADDRESSOF_VA_LIST(ap))) {
+            if (!TryArgumentFormatter(cx, &format, JS_FALSE, &sp, JS_ADDRESSOF_VA_LIST(ap))) {
                 goto bad;
             }
             /* NB: the formatter already updated sp, so we continue here. */
@@ -1305,45 +1303,53 @@ JS_END_EXTERN_C
 JS_PUBLIC_API(JSBool)
 JS_InitStandardClasses(JSContext *cx, JSObject *obj)
 {
-    JSAtom *atom;
+	JSAtom *atom;
+	typedef JSObject *(*initfunc_t)(JSContext *cx, JSObject *obj);
+	initfunc_t f,funcs[] = {
+		js_InitArrayClass,
+		js_InitBlockClass,
+		0
+	};
 
-    CHECK_REQUEST(cx);
+	CHECK_REQUEST(cx);
 
-    /* Define a top-level property 'undefined' with the undefined value. */
-    atom = cx->runtime->atomState.typeAtoms[JSTYPE_VOID];
-    if (!OBJ_DEFINE_PROPERTY(cx, obj, ATOM_TO_JSID(atom), JSVAL_VOID,
-                             NULL, NULL, JSPROP_PERMANENT, NULL)) {
-        return JS_FALSE;
-    }
+	/* Define a top-level property 'undefined' with the undefined value. */
+	atom = cx->runtime->atomState.typeAtoms[JSTYPE_VOID];
+	if (!OBJ_DEFINE_PROPERTY(cx, obj, ATOM_TO_JSID(atom), JSVAL_VOID, NULL, NULL, JSPROP_PERMANENT, NULL)) {
+		return JS_FALSE;
+	}
 
-    /* Function and Object require cooperative bootstrapping magic. */
-    if (!js_InitFunctionAndObjectClasses(cx, obj))
-        return JS_FALSE;
+	/* Function and Object require cooperative bootstrapping magic. */
+	if (!js_InitFunctionAndObjectClasses(cx, obj)) return JS_FALSE;
 
-    /* Initialize the rest of the standard objects and functions. */
-    return js_InitArrayClass(cx, obj) &&
-           js_InitBlockClass(cx, obj) &&
-           js_InitBooleanClass(cx, obj) &&
-           js_InitCallClass(cx, obj) &&
-           js_InitExceptionClasses(cx, obj) &&
-           js_InitMathClass(cx, obj) &&
-           js_InitNumberClass(cx, obj) &&
-           js_InitRegExpClass(cx, obj) &&
-           js_InitStringClass(cx, obj) &&
-           js_InitEval(cx, obj) &&
+	for(f = funcs; f; f++) {
+		if (!f(cx,obj)) return JS_FALSE;
+	}
+
+	/* Initialize the rest of the standard objects and functions. */
+	return js_InitArrayClass(cx, obj) &&
+	js_InitBlockClass(cx, obj) &&
+	js_InitBooleanClass(cx, obj) &&
+	js_InitCallClass(cx, obj) &&
+	js_InitExceptionClasses(cx, obj) &&
+	js_InitMathClass(cx, obj) &&
+	js_InitNumberClass(cx, obj) &&
+	js_InitRegExpClass(cx, obj) &&
+	js_InitStringClass(cx, obj) &&
+	js_InitEval(cx, obj) &&
 #if JS_HAS_SCRIPT_OBJECT
-           js_InitScriptClass(cx, obj) &&
+	js_InitScriptClass(cx, obj) &&
 #endif
 #if JS_HAS_XML_SUPPORT
-           js_InitXMLClasses(cx, obj) &&
+	js_InitXMLClasses(cx, obj) &&
 #endif
 #if JS_HAS_FILE_OBJECT
-           js_InitFileClass(cx, obj) &&
+	js_InitFileClass(cx, obj) &&
 #endif
 #if JS_HAS_GENERATORS
-           js_InitIteratorClasses(cx, obj) &&
+	js_InitIteratorClasses(cx, obj) &&
 #endif
-           js_InitDateClass(cx, obj);
+	js_InitDateClass(cx, obj);
 }
 
 #define CLASP(name)                 ((JSClass *)&js_##name##Class)
