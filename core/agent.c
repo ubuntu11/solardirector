@@ -514,7 +514,6 @@ int agent_run(solard_agent_t *ap) {
 	read_status = 1;
 	solard_set_state(ap,SOLARD_AGENT_RUNNING);
 	while(solard_check_state(ap,SOLARD_AGENT_RUNNING)) {
-		dprintf(1,"ap->m: %p\n", ap->m);
 		/* Call read func */
 		time(&cur);
 		diff = cur - last_read;
@@ -529,7 +528,7 @@ int agent_run(solard_agent_t *ap) {
 		/* Process messages */
 		list_reset(ap->mq);
 		while((msg = list_get_next(ap->mq)) != 0) {
-			dprintf(1,"data(%d): %s\n", msg->data_len, msg->data);
+			dprintf(5,"data(%d): %s\n", msg->data_len, msg->data);
 			solard_message_dump(msg,1);
 			/* Call each message handler func */
 			found=0;
@@ -546,14 +545,14 @@ int agent_run(solard_agent_t *ap) {
 		}
 
 		/* Skip rest if failed to read */
-		dprintf(1,"read_status: %d\n", read_status);
+		dprintf(5,"read_status: %d\n", read_status);
 		if (read_status != 0) {
 			sleep(1);
 			continue;
 		}
 
 		/* Call cb */
-		dprintf(1,"func: %p\n", ap->callback.func);
+		dprintf(5,"func: %p\n", ap->callback.func);
 		if (ap->callback.func) ap->callback.func(ap->callback.ctx);
 
 		/* Call write func */

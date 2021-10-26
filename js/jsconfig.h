@@ -213,13 +213,13 @@
 #define JS_HAS_EXPORT_IMPORT    1       /* has export fun; import obj.fun */
 #define JS_HAS_EVAL_THIS_SCOPE  1       /* Math.eval is same as with (Math) */
 #define JS_HAS_SHARP_VARS       1       /* has #n=, #n# for object literals */
-#define JS_HAS_SCRIPT_OBJECT    0       /* has (new Script("x++")).exec() */
+#define JS_HAS_SCRIPT_OBJECT    1       /* has (new Script("x++")).exec() */
 #define JS_HAS_XDR              1       /* has XDR API and internal support */
-#define JS_HAS_XDR_FREEZE_THAW  0       /* has XDR freeze/thaw script methods */
+#define JS_HAS_XDR_FREEZE_THAW  1       /* has XDR freeze/thaw script methods */
 #define JS_HAS_TOSOURCE         1       /* has Object/Array toSource method */
 #define JS_HAS_DEBUGGER_KEYWORD 1       /* has hook for debugger keyword */
 #define JS_HAS_CATCH_GUARD      1       /* has exception handling catch guard */
-#define JS_HAS_SPARSE_ARRAYS    0       /* array methods preserve empty elems */
+#define JS_HAS_SPARSE_ARRAYS    1       /* array methods preserve empty elems */
 #define JS_HAS_GETTER_SETTER    1       /* has JS2 getter/setter functions */
 #define JS_HAS_UNEVAL           1       /* has uneval() top-level function */
 #define JS_HAS_CONST            1       /* has JS2 const as alternative var */

@@ -242,6 +242,7 @@ int smanet_load_channels(smanet_session_t *s) {
 	int bytes,r;
 	uint16_t len;
 
+	dprintf(1,"chanpath: %s\n", s->chanpath);
 	fp = fopen(s->chanpath,"rb");
 	if (!fp) {
 		log_write(LOG_SYSERR,"smanet_load_channels: fopen %s",s->chanpath);

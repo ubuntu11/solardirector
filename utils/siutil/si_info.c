@@ -7,10 +7,11 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#include "si_info.h"
-#include "si.h"
 #include "debug.h"
 #include "utils.h"
+#include "siutil.h"
+//#include "si_info.h"
+//#include "si.h"
 
 #define _getshort(v) (short)( ((v)[1]) << 8 | ((v)[0]) )
 

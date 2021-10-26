@@ -145,6 +145,8 @@ int json_to_tab(json_proctab_t *, json_value_t *);
 typedef int (json_ifunc_t)(void *,char *,char *);
 int json_iter(char *name, json_value_t *v, json_ifunc_t *func, void *ctx);
 
+int json_object_remove(json_object_t *, char *);
+
 #ifndef TAINT
 char *json_object_dotget_string(json_object_t *, char *);
 json_array_t *json_object_dotget_array(json_object_t *, char *);

@@ -721,8 +721,7 @@ out:
     return ok;
 }
 
-static JSBool
-script_thaw(JSContext *cx, uintN argc, jsval *vp)
+static JSBool script_thaw(JSContext *cx, uintN argc, jsval *vp)
 {
     JSObject *obj;
     JSXDRState *xdr;
@@ -894,7 +893,7 @@ Script(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval)
 {
     /* If not constructing, replace obj with a new Script object. */
     if (!(cx->fp->flags & JSFRAME_CONSTRUCTING)) {
-        obj = js_NewObject(cx, &js_ScriptClass, NULL, NULL);
+        obj = js_NewObject(cx, &js_ScriptClass, NULL, NULL, 0);
         if (!obj)
             return JS_FALSE;
 
@@ -913,16 +912,15 @@ Script(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval)
 
 #if JS_HAS_SCRIPT_OBJECT && JS_HAS_XDR_FREEZE_THAW
 
-static JSBool
-script_static_thaw(JSContext *cx, uintN argc, jsval *vp)
+static JSBool script_static_thaw(JSContext *cx, uintN argc, jsval *vp)
 {
     JSObject *obj;
 
-    obj = js_NewObject(cx, &js_ScriptClass, NULL, NULL);
+    obj = js_NewObject(cx, &js_ScriptClass, NULL, NULL, 0);
     if (!obj)
         return JS_FALSE;
     vp[1] = OBJECT_TO_JSVAL(obj);
-    if (!script_thaw(cx, vp))
+    if (!script_thaw(cx, 1, vp))
         return JS_FALSE;
     *vp = OBJECT_TO_JSVAL(obj);
     return JS_TRUE;

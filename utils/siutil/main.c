@@ -9,8 +9,7 @@ LICENSE file in the root directory of this source tree.
 
 #include "common.h"
 #include "transports.h"
-#include "si.h"
-#include "si_info.h"
+#include "siutil.h"
 
 #define DEBUG_STARTUP 0
 
@@ -24,178 +23,6 @@ int outfmt = 0;
 FILE *outfp;
 char sepch = ',';
 char *sepstr = ",";
-
-void dint(char *label, char *format, int val) {
-	char temp[128];
-
-	dprintf(3,"dint: label: %s, val: %d\n", label, val);
-	switch(outfmt) {
-	case 2:
-//		json_object_set_number(root_object, label, val);
-		break;
-	case 1:
-		sprintf(temp,"%%s,%s\n",format);
-		dprintf(3,"temp: %s\n", temp);
-		fprintf(outfp,temp,label,val);
-		break;
-	default:
-		sprintf(temp,"%%-25s %s\n",format);
-		dprintf(3,"temp: %s\n", temp);
-		fprintf(outfp,temp,label,val);
-		break;
-	}
-}
-#define _dint(l,v) dint(l,"%d",v)
-
-void dfloat(char *label, char *format, float val) {
-	char temp[128];
-
-	dprintf(3,"dint: label: %s, val: %f\n", label, val);
-	switch(outfmt) {
-	case 2:
-//		json_object_set_number(root_object, label, val);
-		break;
-	case 1:
-		sprintf(temp,"%%s,%s\n",format);
-		dprintf(3,"temp: %s\n", temp);
-		fprintf(outfp,temp,label,val);
-		break;
-	default:
-		sprintf(temp,"%%-25s %s\n",format);
-		dprintf(3,"temp: %s\n", temp);
-		fprintf(outfp,temp,label,val);
-		break;
-	}
-}
-#define _dfloat(l,v) dfloat(l,"%f",v)
-
-void dstr(char *label, char *format, char *val) {
-	char temp[128];
-
-	dprintf(3,"dint: label: %s, val: %s\n", label, val);
-	switch(outfmt) {
-	case 2:
-//		json_object_set_string(root_object, label, val);
-		break;
-	case 1:
-		sprintf(temp,"%%s,%s\n",format);
-		dprintf(3,"temp: %s\n", temp);
-		fprintf(outfp,temp,label,val);
-		break;
-	default:
-		sprintf(temp,"%%-25s %s\n",format);
-		dprintf(3,"temp: %s\n", temp);
-		fprintf(outfp,temp,label,val);
-		break;
-	}
-}
-#define _dstr(l,v) dstr(l,"%s",v)
-
-static inline void _addstr(char *str,char *newstr) {
-	dprintf(4,"str: %s, newstr: %s\n", str, newstr);
-	if (strlen(str)) strcat(str,sepstr);
-	dprintf(4,"str: %s\n", str);
-	if (outfmt == 2) strcat(str,"\"");
-	strcat(str,newstr);
-	if (outfmt == 2) strcat(str,"\"");
-	dprintf(4,"str: %s\n", str);
-}
-
-void _outpower(char *label, si_power_t *p) {
-	char str[128],temp[196];
-
-	str[0] = 0;
-	sprintf(temp,"%3.2f",p->l1);
-	_addstr(str,temp);
-	sprintf(temp,"%3.2f",p->l2);
-	_addstr(str,temp);
-	sprintf(temp,"%3.2f",p->l3);
-	_addstr(str,temp);
-	switch(outfmt) {
-	case 2:
-		sprintf(temp,"[ %s ]",str);
-		dprintf(1,"temp: %s\n", temp);
-//		json_object_dotset_value(root_object, label, json_parse_string(temp));
-		break;
-	case 1:
-		fprintf(outfp,"%s,%s\n",label,str);
-		break;
-	default:
-		fprintf(outfp,"%-25s %s\n",label,str);
-		break;
-	}
-}
-
-void _outrelay(char *label, int r1, int r2) {
-	char str[32],temp[36];
-
-	str[0] = 0;
-	_addstr(str,r1 ? "1" : "0");
-	_addstr(str,r2 ? "1" : "0");
-	switch(outfmt) {
-	case 2:
-		sprintf(temp,"[ %s ]",str);
-		dprintf(1,"temp: %s\n", temp);
-//		json_object_dotset_value(root_object, label, json_parse_string(temp));
-		break;
-	case 1:
-		fprintf(outfp,"%s,%s\n",label,str);
-		break;
-	default:
-		fprintf(outfp,"%-25s %s\n",label,str);
-		break;
-	}
-}
-
-void display_info(si_info_t *info) {
-	_outpower("Active Grid",&info->active.grid);
-	_outpower("Active SI",&info->active.si);
-	_outpower("ReActive Grid",&info->reactive.grid);
-	_outpower("ReActive SI",&info->reactive.si);
-	_outpower("AC1 Voltage",&info->voltage);
-	dfloat("AC1 Frequency","%2.2f",info->frequency);
-	_outpower("AC2 Voltage",&info->ac2);
-	dfloat("AC2 Frequency","%2.2f",info->ac2_frequency);
-	dfloat("Battery Voltage","%3.2f",info->battery_voltage);
-	dfloat("Battery Current","%3.2f",info->battery_current);
-	dfloat("Battery Temp","%3.2f",info->battery_temp);
-	dfloat("Battery SoC","%3.2f",info->battery_soc);
-	dfloat("Battery CVSP","%3.2f",info->battery_cvsp);
-	_outrelay("Master Relay",info->bits.relay1,info->bits.relay2);
-	_outrelay("Slave1 Relays",info->bits.s1_relay1,info->bits.s1_relay2);
-	_outrelay("Slave2 Relays",info->bits.s2_relay1,info->bits.s2_relay2);
-	_outrelay("Slave3 Relays",info->bits.s3_relay1,info->bits.s3_relay2);
-	_dstr("Generator Running",info->bits.GnRn ? "true" : "false");
-	_dstr("Generator Autostart",info->bits.AutoGn ? "true" : "false");
-	_dstr("AutoLodExt",info->bits.AutoLodExt ? "true" : "false");
-	_dstr("AutoLodSoc",info->bits.AutoLodSoc ? "true" : "false");
-	_dstr("Tm1",info->bits.Tm1 ? "true" : "false");
-	_dstr("Tm2",info->bits.Tm2 ? "true" : "false");
-	_dstr("ExtPwrDer",info->bits.ExtPwrDer ? "true" : "false");
-	_dstr("ExtVfOk",info->bits.ExtVfOk ? "true" : "false");
-	_dstr("Grid On",info->bits.GdOn ? "true" : "false");
-	_dstr("Error",info->bits.Error ? "true" : "false");
-	_dstr("Run",info->bits.Run ? "true" : "false");
-	_dstr("Battery Fan On",info->bits.BatFan ? "true" : "false");
-	_dstr("Acid Circulation On",info->bits.AcdCir ? "true" : "false");
-	_dstr("MccBatFan",info->bits.MccBatFan ? "true" : "false");
-	_dstr("MccAutoLod",info->bits.MccAutoLod ? "true" : "false");
-	_dstr("CHP #1 On",info->bits.Chp ? "true" : "false");
-	_dstr("CHP #2 On",info->bits.ChpAdd ? "true" : "false");
-	_dstr("SiComRemote",info->bits.SiComRemote ? "true" : "false");
-	_dstr("Overload",info->bits.OverLoad ? "true" : "false");
-	_dstr("ExtSrcConn",info->bits.ExtSrcConn ? "true" : "false");
-	_dstr("Silent",info->bits.Silent ? "true" : "false");
-	_dstr("Current",info->bits.Current ? "true" : "false");
-	_dstr("FeedSelfC",info->bits.FeedSelfC ? "true" : "false");
-	_outpower("Load",&info->load);
-	_dint("Charging procedure",info->charging_proc);
-	_dint("State",info->state);
-	_dint("Error Message",info->errmsg);
-	dfloat("PVPwrAt","%3.2f",info->PVPwrAt);
-	dfloat("GdCsmpPwrAt","%3.2f",info->GdCsmpPwrAt);
-	dfloat("GdFeedPwr","%3.2f",info->GdFeedPwr);
-}
 
 int si_config(void *h, int req, ...) {
 //        si_session_t *s = h;
@@ -220,6 +47,7 @@ void usage(char *myname) {
 }
 
 enum ACTIONS {
+	ACTION_NONE=0,
 	ACTION_LIST,
 	ACTION_INFO,
 	ACTION_GET,
@@ -306,7 +134,10 @@ int main(int argc, char **argv) {
 	dprintf(1,"source: %d, action: %d, list: %d, all: %d, type: %d\n", source, action, list, all, type);
 
 	/* Read config */
+	cfg = 0;
+	dprintf(1,"configfile: %s\n", configfile);
 	if (!strlen(configfile)) find_config_file("siutil.conf",configfile,sizeof(configfile)-1);
+	dprintf(1,"configfile: %s\n", configfile);
 	if (strlen(configfile)) {
 		cfg = cfg_read(configfile);
 		if (!cfg) {
@@ -316,24 +147,21 @@ int main(int argc, char **argv) {
 	}
 
 	/* -t takes precedence over config */
-	cfg = 0;
-	dprintf(1,"cantpinfo: %s, smatpinfo: %s, configfile: %s\n", cantpinfo, smatpinfo, configfile);
+	dprintf(1,"cantpinfo: %s\n", cantpinfo);
 	*can_transport = *can_target = *can_topts = 0;
 	if (strlen(cantpinfo)) {
 		strncat(can_transport,strele(0,",",cantpinfo),sizeof(can_transport)-1);
 		strncat(can_target,strele(1,",",cantpinfo),sizeof(can_target)-1);
 		strncat(can_topts,strele(2,",",cantpinfo),sizeof(can_topts)-1);
-	} else {
+	} else if (cfg) {
 		cfg_proctab_t tab[] = {
 			{ "siutil","can_transport","CAN transport",DATA_TYPE_STRING,can_transport,SOLARD_TRANSPORT_LEN-1, "" },
 			{ "siutil","can_target","CAN target",DATA_TYPE_STRING,can_target,SOLARD_TARGET_LEN-1, "" },
 			{ "siutil","can_topts","CAN transport options",DATA_TYPE_STRING,can_topts,SOLARD_TOPTS_LEN-1, "" },
 			CFG_PROCTAB_END
 		};
-		if (cfg) {
-			cfg_get_tab(cfg,tab);
-			if (debug) cfg_disp_tab(tab,"can",0);
-		}
+		cfg_get_tab(cfg,tab);
+		if (debug) cfg_disp_tab(tab,"can",0);
 	}
         if (!strlen(can_transport) || !strlen(can_target)) {
 #if defined(__WIN32) || defined(__WIN64)
@@ -363,21 +191,20 @@ int main(int argc, char **argv) {
 	if (!s && source == 2) return 1;
 
 	*sma_transport = *sma_target = *sma_topts = 0;
+	dprintf(1,"cmatpinfo: %s\n", smatpinfo);
 	if (strlen(smatpinfo)) {
 		strncat(sma_transport,strele(0,",",smatpinfo),sizeof(sma_transport)-1);
 		strncat(sma_target,strele(1,",",smatpinfo),sizeof(sma_target)-1);
 		strncat(sma_topts,strele(2,",",smatpinfo),sizeof(sma_topts)-1);
-	} else {
+	} else if (cfg) {
 		cfg_proctab_t tab[] = {
 			{ "siutil","smanet_transport","SMANET transport",DATA_TYPE_STRING,sma_transport,SOLARD_TRANSPORT_LEN-1, "" },
 			{ "siutil","smanet_target","SMANET target",DATA_TYPE_STRING,sma_target,SOLARD_TARGET_LEN-1, "" },
 			{ "siutil","smanet_topts","SMANET transport options",DATA_TYPE_STRING,sma_topts,SOLARD_TOPTS_LEN-1, "" },
 			CFG_PROCTAB_END
 		};
-		if (cfg) {
-			cfg_get_tab(cfg,tab);
-			if (debug) cfg_disp_tab(tab,"can",0);
-		}
+		cfg_get_tab(cfg,tab);
+		if (debug) cfg_disp_tab(tab,"can",0);
 	}
         if (!strlen(sma_transport) || !strlen(sma_target)) {
 #if defined(__WIN32) || defined(__WIN64)
@@ -499,8 +326,8 @@ int main(int argc, char **argv) {
 	case ACTION_INFO:
 		memset(&info,0,sizeof(info));
 		si_driver.open(s);
-		if (si_get_info(s,&info)) return 1;
-		display_info(&info);
+//		if (si_get_info(s,&info)) return 1;
+		display_info(s);
 		break;
 	case ACTION_LIST:
 		if (argc > 0) {
@@ -515,6 +342,7 @@ int main(int argc, char **argv) {
 			list_reset(c->strings);
 			while((p = list_get_next(c->strings)) != 0) printf("%s\n", p);
 		} else {
+			dprintf(1,"channel_count: %d\n", list_count(s->smanet->channels));
 			list_reset(s->smanet->channels);
 			while((c = list_get_next(s->smanet->channels)) != 0) printf("%s\n",c->name);
 		}

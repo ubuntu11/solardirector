@@ -267,8 +267,6 @@ int devserver(devserver_config_t *conf, int c) {
 			devserver_error(c,ENOENT);
 		}
 	}
-	/* XXX since we're exiting when we return we dont need to close anything */
-#if 0
 	/* Close any open units */
 	for(i=0; i < conf->count; i++) {
 		if (conf->units[i].close && conf->units[i].handle) {
@@ -276,7 +274,6 @@ int devserver(devserver_config_t *conf, int c) {
 			conf->units[i].close(conf->units[i].handle);
 		}
 	}
-#endif
 	dprintf(dlevel,"closing socket\n");
 	close(c);
 	dprintf(dlevel,"done!\n");

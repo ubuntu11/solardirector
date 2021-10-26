@@ -59,7 +59,8 @@ solard_message_t *solard_getmsg(char *topic, char *message, int msglen, char *re
 	if (strcmp(root,SOLARD_TOPIC_ROOT) != 0) return 0;
 
 	msg = solard_message_alloc(message,msglen);
-	strncat(msg->role,strele(1,"/",topic),sizeof(msg->role)-1);
+	/* Put the role into ID since ID is bigger */
+	strncat(msg->id,strele(1,"/",topic),sizeof(msg->id)-1);
 	strncat(msg->name,strele(2,"/",topic),sizeof(msg->name)-1);
 	strncat(msg->func,strele(3,"/",topic),sizeof(msg->func)-1);
 	if (replyto) strncat(msg->replyto,replyto,sizeof(msg->replyto)-1);

@@ -8,22 +8,34 @@ struct agent_config_item {
 	int len;			/* Length of data */
 };
 
+#if 0
 /* Agent config functions */
-int agent_config_add(solard_agent_t *ap,char *label, char *value) {
+int agent_config_set(solard_agent_t *ap,char *section, char *label, char *value) {
+#if 0
+	char path[256],*p;
+
+	p = path;
+	if (section) p += sprintf(p,"%s.",section);
+	p += sprintf(p,"%s",label);
+	dprintf(1,"path: %s\n", path);
+	json_object_remove(ap->config,path);
+	json_object_dotset_string(ap->config,path,value);
+#endif
+	return 0;
+}
+
+int agent_config_del(solard_agent_t *ap,char *section, char *label, char *value) {
 	return 1;
 }
 
-int agent_config_del(solard_agent_t *ap,char *label, char *value) {
+int agent_config_get(solard_agent_t *ap,char *section, char *label, char *value) {
 	return 1;
 }
 
-int agent_config_get(solard_agent_t *ap,char *label, char *value) {
+int agent_config_set(solard_agent_t *ap,char *section, char *label, char *value) {
 	return 1;
 }
-
-int agent_config_set(solard_agent_t *ap,char *label, char *value) {
-	return 1;
-}
+#endif
 
 int agent_config_pub(solard_agent_t *ap) {
 	char topic[SOLARD_TOPIC_LEN],*s;

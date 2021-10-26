@@ -51,6 +51,8 @@ int si_write(si_session_t *s, void *buf, int buflen) {
 		charge_check(s);
 	}
 
+	/* 0x350 Active Current Set-point / Reactive current Set-Point */
+	
 	/* 0x351 Battery charge voltage DC charge current limitation DC discharge current limitation discharge voltage */
 	dprintf(1,"0x351: charge_voltage: %3.2f, charge_amps: %3.2f, min_voltage: %3.2f, discharge_amps: %3.2f\n",
 		s->charge_voltage, s->charge_amps, inv->min_voltage, inv->discharge_amps);
@@ -59,6 +61,10 @@ int si_write(si_session_t *s, void *buf, int buflen) {
 	si_putshort(&data[4],(inv->discharge_amps * 10.0));
 	si_putshort(&data[6],(inv->min_voltage * 10.0));
 	if (si_can_write(s,0x351,data,8) < 0) return 1;
+
+	/* 0x352 Nominal frequency (F0) */
+	/* 0x353 Nominal voltage L1 (U0) */
+	/* 0x354 Function Bits SiCom V1 */
 
 	/* 0x355 SOC value / SOH value / HiResSOC */
 	dprintf(1,"0x355: SOC: %.1f, SOH: %.1f\n", soc, inv->soh);
@@ -83,6 +89,8 @@ int si_write(si_session_t *s, void *buf, int buflen) {
 	}
 	if (si_can_write(s,0x356,data,8) < 0) return 1;
 
+	/* 0x357 - 0x359 ?? */
+
 	/* 0x35A Alarms / Warnings */
 	memset(data,0,sizeof(data));
 	if (si_can_write(s,0x35A,data,8) < 0) return 1;
@@ -90,6 +98,8 @@ int si_write(si_session_t *s, void *buf, int buflen) {
 	/* 0x35B Events */
 	memset(data,0,sizeof(data));
 	if (si_can_write(s,0x35B,data,8) < 0) return 1;
+
+	/* 0x35C Function Bits / Function Bits Relais */
 
 	/* 0x35E Manufacturer-Name-ASCII (8 chars) */
 #define MFG_NAME "SHOECRAFT"
@@ -103,6 +113,12 @@ int si_write(si_session_t *s, void *buf, int buflen) {
 	si_putshort(&data[4],2500);
 	si_putshort(&data[6],1);
 	if (si_can_write(s,0x35F,data,8) < 0) return 1;
+
+#if 0
+	/* 0x360 Limitation of external current (Gen/Grid) */
+	si_putshort(&data[0],10);
+	if (si_can_write(s,0x360,data,2) < 0) return 1;
+#endif
 
 	solard_clear_state(s,SI_STATE_STARTUP);
 	return 0;

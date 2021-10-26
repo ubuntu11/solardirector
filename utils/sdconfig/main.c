@@ -24,7 +24,7 @@ int usage(int r) {
 	return r;
 }
 static void _doconfig2(solard_client_t *s, char *message, client_agent_info_t *infop, int timeout, int read_flag) {
-	char topic[SOLARD_TOPIC_LEN];
+	char topic[SOLARD_TOPIC_LEN],*label,*value;
 	solard_message_t *msg;
 	json_value_t *v;
 	int status,found;
@@ -39,30 +39,41 @@ static void _doconfig2(solard_client_t *s, char *message, client_agent_info_t *i
 	status = 1;
 	errmsg = "error";
 	found = 0;
+	label = value = 0;
 	if (timeout > 0) {
 		while(timeout--) {
+			dprintf(1,"count: %d\n", list_count(s->mq));
 			list_reset(s->mq);
 			while((msg = list_get_next(s->mq)) != 0) {
-				if (msg->replyto && strcmp(msg->replyto,infop->id) == 0) {
+				/* If the message role is my ID, its a reply */
+				solard_message_dump(msg,1);
+				dprintf(1,"msg->id: %s, clientid: %s\n", msg->id, s->mqtt_config.clientid);
+				if (strcmp(msg->id,s->mqtt_config.clientid) == 0) {
 					dprintf(1,"Got response:\n");
-					solard_message_dump(msg,1);
 					v = json_parse(msg->data);
-					if (v) {
+					dprintf(1,"v: %p\n", v);
+					if (v && v->type == JSONObject) {
 						status = json_object_dotget_number(json_object(v),"status");
 						errmsg = json_object_dotget_string(json_object(v),"message");
 						dprintf(1,"status: %d, errmsg: %s\n", status, errmsg);
+						found = 1;
+						break;
 					}
-					list_delete(s->mq,msg);
-					found=1;
-					break;
+					if (found) break;
+				} else {
+					printf("%s: %s\n", infop->target, msg->data);
 				}
+				list_delete(s->mq,msg);
 			}
 			if (!found) sleep(1);
 			else break;
 		}
 	}
-	if (found) printf("%s: %s\n", infop->target, errmsg);
-//	if (val) printf("%s %s\n", p, val);
+	if (found) {
+		if (status) printf("%s: %s\n", infop->target, errmsg);
+	} else {
+		printf("%s: no reply\n", infop->target);
+	}
 }
 
 static json_value_t *catargs(char *action,int argc,char *argv[]) { 
@@ -409,13 +420,25 @@ int main(int argc,char **argv) {
 	list_reset(agents);
 	while((infop = list_get_next(agents)) != 0) {
 		sprintf(topic,"%s/%s",SOLARD_TOPIC_ROOT,infop->id);
+		dprintf(1,"topic: %s\n", topic);
 		if (mqtt_sub(s->m,topic)) return 0;
-		sprintf(topic,"%s/%s/%s",SOLARD_TOPIC_ROOT,infop->target,SOLARD_FUNC_CONFIG);
+		sprintf(topic,"%s/%s/%s/+",SOLARD_TOPIC_ROOT,infop->target,SOLARD_FUNC_CONFIG);
+		dprintf(1,"topic: %s\n", topic);
 		if (mqtt_sub(s->m,topic)) return 0;
 	}
 
 	/* Ingest the configs */
 	solard_ingest(s->mq, 1);
+
+	dprintf(1,"count: %d\n", list_count(s->mq));
+	list_reset(s->mq);
+	while((msg = list_get_next(s->mq)) != 0) {
+		dprintf(1,"msg->replyto: %p\n",msg->replyto);
+		dprintf(1,"Got response:\n");
+		solard_message_dump(msg,1);
+		v = json_parse(msg->data);
+		dprintf(1,"v: %p\n", v);
+	}
 
 	v = catargs(action,argc,argv);
 	json_dumps_r(v,message,sizeof(message)-1);

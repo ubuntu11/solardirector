@@ -167,7 +167,7 @@ JSON_Status json_object_dotset_boolean(JSON_Object *object, const char *name, in
 JSON_Status json_object_dotset_null(JSON_Object *object, const char *name);
 
 /* Frees and removes name-value pair */
-JSON_Status json_object_remove(JSON_Object *object, const char *name);
+JSON_Status parson_object_remove(JSON_Object *object, const char *name);
 
 /* Works like dotget function, but removes name-value pair only on exact match. */
 JSON_Status json_object_dotremove(JSON_Object *object, const char *key);

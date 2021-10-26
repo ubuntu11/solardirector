@@ -75,8 +75,12 @@ json_descriptor_t *_getd(si_session_t *s,char *name) {
 static void _addchans(si_session_t *s, json_value_t *ca) {
 	smanet_session_t *ss = s->smanet;
 	smanet_channel_t *c;
+	json_value_t *o,*a;
 	json_descriptor_t newd;
 	float step;
+
+	o = json_create_object();
+	a = json_create_array();
 
 	list_reset(ss->channels);
 	while((c = list_get_next(ss->channels)) != 0) {
@@ -139,10 +143,12 @@ static void _addchans(si_session_t *s, json_value_t *ca) {
 		}
 		newd.units = c->unit;
 		newd.scale = 1.0;
-		json_array_add_descriptor(ca,newd);
+		json_array_add_descriptor(a,newd);
 		/* Also add to our desc list */
 		list_add(s->desc,&newd,sizeof(newd));
 	}
+	json_add_value(o,"Sunny Island configuration",a);
+	json_array_add_value(ca,o);
 }
 
 int si_config_add_info(si_session_t *s, json_value_t *j) {
@@ -153,35 +159,32 @@ int si_config_add_info(si_session_t *s, json_value_t *j) {
 	/* Configuration array */
 	ca = json_create_array();
 
-	/* Do we have a saved rs485 config? */
+	/* Add the inverter config */
+	for(x=0; x < NALL; x++) {
+		o = json_create_object();
+		dp = &allparms[x];
+		/* We only do sections */
+//		if (dp->count > 1) {
+			a = json_create_array();
+			for(y=0; y < dp->count; y++) json_array_add_descriptor(a,dp->parms[y]);
+			json_add_value(o,dp->name,a);
+#if 0
+		} else if (dp->count == 1) {
+			json_add_descriptor(o,dp->name,dp->parms[0]);
+		}
+#endif
+		json_array_add_value(ca,o);
+	}
+
+	/* Add SMANET channels */
 	dprintf(1,"smanet: %p\n", s->smanet);
 	if (s->smanet) {
 		dprintf(1,"channels_path: %s\n", s->channels_path);
-		if (!strlen(s->channels_path) && s->ap->cfg) {
-			char *p;
-
-			p = cfg_get_item(s->ap->cfg,"config","channels_path");
-			if (p) strncat(s->channels_path,p,sizeof(s->channels_path)-1);
-		}
 		if (!strlen(s->channels_path)) sprintf(s->channels_path,"%s/%s.dat",SOLARD_LIBDIR,s->smanet->type);
 		fixpath(s->channels_path, sizeof(s->channels_path)-1);
 		dprintf(1,"channels_path: %s\n", s->channels_path);
 		smanet_set_chanpath(s->smanet, s->channels_path);
 		if (smanet_load_channels(s->smanet) == 0) _addchans(s,ca);
-	}
-
-	/* Add the inverter config */
-	for(x=0; x < NALL; x++) {
-		o = json_create_object();
-		dp = &allparms[x];
-		if (dp->count > 1) {
-			a = json_create_array();
-			for(y=0; y < dp->count; y++) json_array_add_descriptor(a,dp->parms[y]);
-			json_add_value(o,dp->name,a);
-		} else if (dp->count == 1) {
-			json_add_descriptor(o,dp->name,dp->parms[0]);
-		}
-		json_array_add_value(ca,o);
 	}
 
 	json_add_value(j,"configuration",ca);
@@ -441,6 +444,7 @@ int si_config_smanet(void *h) {
 		log_write(LOG_INFO,"smanet transport or target null, skipping smanet init");
 		return 1;
 	}
+
 	return 0;
 }
 

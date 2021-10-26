@@ -21,7 +21,10 @@ LICENSE file in the root directory of this source tree.
 */
 
 struct solard_message {
-	char role[SOLARD_ROLE_LEN];
+	union {
+		char role[SOLARD_ROLE_LEN];
+		char id[SOLARD_ID_LEN];
+	};
 	char name[SOLARD_NAME_LEN];
 	char func[SOLARD_FUNC_LEN];
 #if 0
