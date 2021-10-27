@@ -215,8 +215,7 @@ void client_getmsg(void *ctx, char *topic, char *message, int msglen, char *repl
 	msg = solard_getmsg(topic,message,msglen,replyto);
 	if (!msg) return;
 //	dprintf(1,"data(%d): %s\n", msg->data_len, msg->data);
-	list_add(c->mq,msg,msg->size);
-	free(msg);
+	list_add(c->mq,msg,sizeof(*msg));
 }
 
 solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,char *name) {

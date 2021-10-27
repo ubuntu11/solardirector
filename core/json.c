@@ -321,6 +321,9 @@ int json_to_tab(json_proctab_t *tab, json_value_t *v) {
 	register int i;
 
 	/* must be object */
+	dprintf(1,"v: %p\n", v);
+	if (!v) exit(1);
+	if (!v) return 1;
 	if (v->type != JSONObject) return 1;
 
 	o = v->value.object;

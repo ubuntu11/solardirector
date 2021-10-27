@@ -12,6 +12,7 @@ LICENSE file in the root directory of this source tree.
 
 #include "common.h"
 #include "driver.h"
+#include "script.h"
 
 //struct solard_agent;
 typedef struct solard_agent solard_agent_t;

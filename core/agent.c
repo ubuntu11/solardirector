@@ -217,7 +217,6 @@ void agent_getmsg(void *ctx, char *topic, char *message, int msglen, char *reply
 		vv = json_create_object();
 		if (!v || !vv) {
 			log_syserror("agent_getmsg: json_create_object");
-			free(msg);
 			return;
 		}
 		json_add_string(vv,"ID",ap->mqtt_config.clientid);
@@ -231,7 +230,7 @@ void agent_getmsg(void *ctx, char *topic, char *message, int msglen, char *reply
 	} else {
 		/* Otherwise add it to our list */
 		dprintf(1,"data(%d): %s\n", msg->data_len, msg->data);
-		list_add(ap->mq,msg,msg->size);
+		list_add(ap->mq,msg,sizeof(*msg));
 		{
 			list_reset(ap->mq);
 			while((msg = list_get_next(ap->mq)) != 0) {
@@ -239,7 +238,6 @@ void agent_getmsg(void *ctx, char *topic, char *message, int msglen, char *reply
 			}
 		}
 	}
-	free(msg);
 }
 
 solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, solard_driver_t *driver,
@@ -484,12 +482,6 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts, sol
 	/* Init the config */
 	ap->role->config(ap->role_handle,SOLARD_CONFIG_INIT);
 
-#if !defined(WINDOWS)
-	/* Set the rw toggle handler */
-//	signal(SIGUSR1, usr_handler);
-//	signal(SIGUSR2, usr_handler);
-#endif
-
 	dprintf(1,"returning: %p\n",ap);
 	return ap;
 agent_init_error:
@@ -514,6 +506,9 @@ int agent_run(solard_agent_t *ap) {
 	read_status = 1;
 	solard_set_state(ap,SOLARD_AGENT_RUNNING);
 	while(solard_check_state(ap,SOLARD_AGENT_RUNNING)) {
+		/* If the main script is not running, start it */
+//		if (!script_running(ap->scripts.monitor)) script_exec(ap->scripts.monitor);
+
 		/* Call read func */
 		time(&cur);
 		diff = cur - last_read;

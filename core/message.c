@@ -21,6 +21,7 @@ void solard_message_dump(solard_message_t *msg, int dlevel) {
 
 /* SolarD/Role/Name/Func/Action/ .. ID? */
 
+#if 0
 solard_message_t *solard_message_alloc(char *data, int data_len) {
 	solard_message_t *msg;
 	int size;
@@ -46,9 +47,10 @@ solard_message_t *solard_message_alloc(char *data, int data_len) {
 void solard_message_free(solard_message_t *msg) {
 	free(msg);
 }
+#endif
 
 solard_message_t *solard_getmsg(char *topic, char *message, int msglen, char *replyto) {
-	solard_message_t *msg;
+	solard_message_t newmsg,*msg;
 	char *root;
 
 	dprintf(4,"topic: %s\n", topic);
@@ -58,14 +60,20 @@ solard_message_t *solard_getmsg(char *topic, char *message, int msglen, char *re
 	dprintf(4,"root: %s\n", root);
 	if (strcmp(root,SOLARD_TOPIC_ROOT) != 0) return 0;
 
-	msg = solard_message_alloc(message,msglen);
+	msg = &newmsg;
+	memset(&newmsg,0,sizeof(newmsg));
+//	msg = solard_message_alloc(message,msglen);
 	/* Put the role into ID since ID is bigger */
 	strncat(msg->id,strele(1,"/",topic),sizeof(msg->id)-1);
 	strncat(msg->name,strele(2,"/",topic),sizeof(msg->name)-1);
 	strncat(msg->func,strele(3,"/",topic),sizeof(msg->func)-1);
+	if (message && msglen) {
+		memcpy(msg->data,message,msglen);
+		msg->data_len = msglen;
+		msg->data[msg->data_len] = 0;
+	}
 	if (replyto) strncat(msg->replyto,replyto,sizeof(msg->replyto)-1);
 	solard_message_dump(msg,1);
-//	dprintf(1,"data(%d): %s\n", msg->data_len, msg->data);
 	return msg;
 }
 

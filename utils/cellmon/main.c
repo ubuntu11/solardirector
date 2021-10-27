@@ -43,10 +43,12 @@ int sort_packs(void *i1, void *i2) {
 void getpack(cellmon_config_t *conf, char *name, char *data) {
 	solard_battery_t bat,*pp = &bat;
 
+	dprintf(1,"getting pack: name: %s, data: %s\n", name, data);
 	battery_from_json(&bat,data);
-	battery_dump(&bat,3);
+//	battery_dump(&bat,3);
 	solard_set_state((&bat),BATTERY_STATE_UPDATED);
 	time(&bat.last_update);
+	if (!strlen(bat.name)) return;
 
 	pp = find_pack_by_name(conf,bat.name);
 	if (!pp) {

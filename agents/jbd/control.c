@@ -86,13 +86,13 @@ int balance_control(jbd_session_t *s, int balance) {
 	/* For balance, we need to pub the config for it */
 	s->balancing = balance;
 	{
-		solard_message_t *msg;
+		solard_message_t newmsg;
 		char *payload = "[\"BatteryConfig\"]";
 
-		msg = solard_message_alloc(payload,strlen(payload));
-//		strcpy(msg->action,"Get");
-		jbd_config(s,SOLARD_CONFIG_MESSAGE,msg);
-		free(msg);
+		memset(&newmsg,0,sizeof(newmsg));
+		solard_getmsg(SOLARD_TOPIC_ROOT,payload,strlen(payload),0);
+		
+		jbd_config(s,SOLARD_CONFIG_MESSAGE,&newmsg);
 	}
 	return 0;
 }

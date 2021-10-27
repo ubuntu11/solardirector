@@ -125,8 +125,6 @@ void charge_start_cv(si_session_t *s, int rep) {
 
 	if (!s->bits.Run) return;
 
-	// XXX DO NOT STOP THE CHARGE!
-	// XXX SI WILL FSPC SB AND NOT CV CHARGE BATTS
 //	charge_stop(s,0);
 	if (inverter_check_parms(inv)) {
 		log_write(LOG_ERROR,"%s\n",inv->errmsg);

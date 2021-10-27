@@ -594,7 +594,7 @@ static int si_doconfig(void *ctx, char *action, char *label, char *value, char *
 		r = si_get_config(s,pp,dp);
 	} else if (strcmp(action,"Set")==0) {
 		if (!value) {
-			strcpy(errmsg,"invalid request");
+			strcpy(errmsg,"invalid request (Set requested but no value passed)");
 			goto si_doconfig_error;
 		}
 		r = si_set_config(s,pp,dp,value);
