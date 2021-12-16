@@ -37,7 +37,7 @@ uint16_t calcfcs(uint8_t *buffer, int buflen) {
 	for(p=buffer; p < buffer + buflen; p++) fcs = (uint16_t)((fcs >> 8) ^ fcstab[(uint8_t)((fcs ^ *p) & 0xff)]);
 	/* complement */
 	fcs ^= 0xffff;
-//	dprintf(1,"fcs: %04x\n", fcs);
+//	dprintf(smanet_dlevel,"fcs: %04x\n", fcs);
 	return fcs;
 }
 
@@ -53,7 +53,7 @@ int smanet_read_frame(smanet_session_t *s, uint8_t *buffer, int buflen, int time
 	time_t start,cur,diff;
 	int have_start;
 
-	dprintf(1,"buffer: %p, buflen: %d, timeout: %d\n", buffer, buflen, timeout);
+	dprintf(smanet_dlevel,"buffer: %p, buflen: %d, timeout: %d\n", buffer, buflen, timeout);
 
 	time(&start);
 	have_start = have_esc = i = 0;
@@ -65,7 +65,7 @@ int smanet_read_frame(smanet_session_t *s, uint8_t *buffer, int buflen, int time
 			dprintf(dlevel,"diff: %d\n", diff);
 			if (diff >= timeout) {
 				s->timeouts++;
-				dprintf(1,"timeout!\n");
+				dprintf(smanet_dlevel,"timeout!\n");
 				return 0;
 			}
 		}
@@ -76,7 +76,7 @@ int smanet_read_frame(smanet_session_t *s, uint8_t *buffer, int buflen, int time
 #endif
 		dprintf(dlevel,"bytes: %d\n", bytes);
 		if (bytes < 0) {
-			dprintf(1,"read error!\n");
+			dprintf(smanet_dlevel,"read error!\n");
 			return -1;
 		}
 		if (bytes == 0) continue;
@@ -98,16 +98,15 @@ int smanet_read_frame(smanet_session_t *s, uint8_t *buffer, int buflen, int time
 		}
 	}
 	if (!i) {
-		dprintf(1,"no data?\n");
+		dprintf(smanet_dlevel,"no data?\n");
 		return 0;
 	}
-	if (debug >= dlevel+1) bindump("get frame",data,i);
-//	bindump("get frame",data,i);
+//	if (debug >= dlevel+1) bindump("get frame",data,i);
 	frame_fcs = data[i-1] << 8 | data[i-2];
 	fcs = calcfcs(data,i-2);
 	dprintf(dlevel,"fcs: %04x, frame_fcs: %04x\n", fcs, frame_fcs);
 	if (fcs != frame_fcs) {
-		dprintf(1,"fcs mismatch (fcs: %04x, frame_fcs: %04x)\n", fcs, frame_fcs);
+		dprintf(smanet_dlevel,"fcs mismatch (fcs: %04x, frame_fcs: %04x)\n", fcs, frame_fcs);
 		return 0;
 	}
 	count = i - 2;
@@ -167,7 +166,7 @@ static int copy2buf(register uint8_t *dest, register uint8_t *buffer, int buflen
 #if 0
 		if (*bptr < 0x20) {
 			mask = 1 << *bptr;
-			dprintf(1,"mask: %08x\n",mask);
+			dprintf(smanet_dlevel,"mask: %08x\n",mask);
 			if (*bptr == 0x7e || *bptr == 0x7e || (SMANET_ACCM & mask)) {
 				dprintf(dlevel+1,"escaping...\n");
 				dest[i++] = 0x7d;
@@ -209,14 +208,14 @@ int smanet_write_frame(smanet_session_t *s, uint8_t *buffer, int buflen) {
 	*p++ = 0x40;
 	*p++ = 0x41;
 //	for(p2=&data[1]; p2 < p; p2++) fcs = (uint16_t)((fcs >> 8) ^ fcstab[(uint8_t)((fcs ^ *p2) & 0xff)]);
-//	dprintf(1,"HEADER fcs: %04x\n", fcs);
+//	dprintf(smanet_dlevel,"HEADER fcs: %04x\n", fcs);
 	for(p2=buffer; p2 < buffer + buflen; p2++) fcs = (uint16_t)((fcs >> 8) ^ fcstab[(uint8_t)((fcs ^ *p2) & 0xff)]);
 	fcs ^= 0xffff;
 	p += copy2buf(p,buffer,buflen);
 	*(uint16_t *)fcsd = fcs;
 	p += copy2buf(p,fcsd,2);
 	*p++ = 0x7e;
-	if (debug >= dlevel+1) bindump("put frame",data,p - data);
+//	if (debug >= dlevel+1) bindump("put frame",data,p - data);
 	bytes = s->tp->write(s->tp_handle,data,p - data);
 	dprintf(dlevel,"bytes: %d\n", bytes);
 	if (bytes < 0) return -1;

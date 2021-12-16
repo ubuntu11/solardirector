@@ -42,10 +42,48 @@
 #ifdef JS_THREADSAFE
 
 #include "jstypes.h"
+#if 0
 #include "pratom.h"
 #include "prlock.h"
 #include "prcvar.h"
 #include "prthread.h"
+#endif
+#include <pthread.h>
+#include <stdlib.h>
+#include "prtypes.h"
+static inline pthread_mutex_t *PR_NewLock(void) {
+	pthread_mutex_t *lock;
+
+	lock = malloc(sizeof(*lock));
+	if (lock) pthread_mutex_init(lock,0);
+	return lock;
+}
+static inline pthread_cond_t *PR_NewCondVar(PRLock *lock) {
+	pthread_cond_t *cond;
+
+	cond = malloc(sizeof(*cond));
+	if (cond) pthread_cond_init(cond,0);
+	return cond;
+}
+#define PR_DestroyLock(lock) pthread_mutex_destroy(lock)
+#define PR_DestroyCondVar(lock) pthread_cond_destroy(lock)
+#define PR_GetCurrentThread() pthread_self()
+#define PR_Lock(lock) pthread_mutex_lock(lock)
+static inline int PR_WaitCondVar(PRCondVar *cvar, PRIntervalTime timeout) {
+	return 0;
+}
+#define PR_Unlock(lock) pthread_mutex_unlock(lock)
+extern int _PR_AtomicIncrement_num;
+static inline int PR_AtomicIncrement(int *val) {
+	int rv;
+
+//	pthread_mutex_lock(&atomic_locks[idx]);
+	rv = ++(*val);
+//	pthread_mutex_unlock(&atomic_locks[idx]);
+	return rv;
+}
+
+
 
 #include "jsprvtd.h"    /* for JSScope, etc. */
 #include "jspubtd.h"    /* for JSRuntime, etc. */

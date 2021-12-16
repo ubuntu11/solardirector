@@ -20,6 +20,7 @@ This was tested against the MLT-BT05 TTL-to-Bluetooth module (HM-10 compat) on t
 struct bt_session {
 	gatt_connection_t *c;
 	uuid_t uuid;
+	long handle;
 	char target[32];
 	char topts[32];
 	char data[4096];
@@ -44,6 +45,7 @@ static void *bt_new(void *conf, void *target, void *topts) {
 			sprintf(s->topts,"0x%s",(char *)topts);
 		else
 			strncat(s->topts,(char *)topts,sizeof(s->topts)-1);
+		s->have_char = 1;
 	}
 	dprintf(5,"target: %s, topts: %s\n", s->target, s->topts);
 	return s;
@@ -101,7 +103,8 @@ static int bt_open(void *handle) {
 			gattlib_uuid_to_string(&cp[0].uuid, uuid_str, sizeof(uuid_str));
 			dprintf(1,"uuid: %s, value_handle: 0x%04x\n", uuid_str, cp[0].value_handle);
 			memcpy(&s->uuid,&cp[0].uuid,sizeof(s->uuid));
-			dprintf(1,"using characteristic: %s\n", uuid_str);
+			s->handle = cp[0].value_handle;
+			dprintf(1,"using characteristic: %s, and handle: 0x%04x\n", uuid_str, cp[0].value_handle);
 			found = 1;
 		}
 		free(cp);
@@ -111,18 +114,21 @@ static int bt_open(void *handle) {
 			gattlib_string_to_uuid(s->topts, strlen(s->topts)+1, &s->uuid);
 		}
 		s->have_char = 1;
+	} else {
+		gattlib_string_to_uuid(s->topts, strlen(s->topts)+1, &s->uuid);
 	}
 
 	gattlib_register_notification(s->c, notification_cb, s);
 	if (gattlib_notification_start(s->c, &s->uuid)) {
 		dprintf(1,"error: failed to start bluetooth notification.\n");
 		gattlib_disconnect(s->c);
+		s->c = 0;
 		return 1;
 	} else {
 		s->not = 1;
 	}
 
-	dprintf(1,"s->c: %p\n", s->c);
+	dprintf(5,"s->c: %p\n", s->c);
 	return 0;
 }
 
@@ -136,14 +142,14 @@ static int bt_read(void *handle, void *buf, int buflen) {
 
 	retries=3;
 	while(1) {
-		dprintf(1,"s->len: %d\n", s->len);
+		dprintf(5,"s->len: %d\n", s->len);
 		if (!s->len) {
 			if (!--retries) return 0;
 			sleep(1);
 			continue;
 		}
 		len = (s->len > buflen ? buflen : s->len);
-		dprintf(1,"len: %d\n", len);
+		dprintf(5,"len: %d\n", len);
 		memcpy(buf,s->data,len);
 		s->len = 0;
 		break;
@@ -161,8 +167,12 @@ static int bt_write(void *handle, void *buf, int buflen) {
 
 	s->len = 0;
 	s->cbcnt = 0;
-	dprintf(1,"s->c: %p\n", s->c);
-	if (gattlib_write_char_by_uuid(s->c, &s->uuid, buf, buflen)) return -1;
+	dprintf(5,"s->c: %p\n", s->c);
+	if (s->have_char) {
+		if (gattlib_write_char_by_uuid(s->c, &s->uuid, buf, buflen)) return -1;
+	} else {
+		if (gattlib_write_char_by_handle(s->c, s->handle, buf, buflen)) return -1;
+	}
 	bindump("bt write",buf,buflen);
 
 	return buflen;
@@ -172,7 +182,7 @@ static int bt_write(void *handle, void *buf, int buflen) {
 static int bt_close(void *handle) {
 	bt_session_t *s = handle;
 
-	dprintf(1,"s->c: %p\n",s->c);
+	dprintf(5,"s->c: %p\n",s->c);
 	if (s->c) {
 		if (s->not) {
 			dprintf(1,"stopping notifications\n");
@@ -204,6 +214,7 @@ solard_driver_t bt_driver = {
 	SOLARD_DRIVER_TRANSPORT,
 	"bt",
 	bt_new,
+	0,
 	bt_open,
 	bt_close,
 	bt_read,

@@ -20,11 +20,8 @@ struct client_agent_info {
 };
 typedef struct client_agent_info client_agent_info_t;
 
-int usage(int r) {
-	return r;
-}
 static void _doconfig2(solard_client_t *s, char *message, client_agent_info_t *infop, int timeout, int read_flag) {
-	char topic[SOLARD_TOPIC_LEN],*label,*value;
+	char topic[SOLARD_TOPIC_LEN];
 	solard_message_t *msg;
 	json_value_t *v;
 	int status,found;
@@ -39,7 +36,6 @@ static void _doconfig2(solard_client_t *s, char *message, client_agent_info_t *i
 	status = 1;
 	errmsg = "error";
 	found = 0;
-	label = value = 0;
 	if (timeout > 0) {
 		while(timeout--) {
 			dprintf(1,"count: %d\n", list_count(s->mq));
@@ -59,7 +55,6 @@ static void _doconfig2(solard_client_t *s, char *message, client_agent_info_t *i
 						found = 1;
 						break;
 					}
-					if (found) break;
 				} else {
 					printf("%s: %s\n", infop->target, msg->data);
 				}
@@ -70,30 +65,57 @@ static void _doconfig2(solard_client_t *s, char *message, client_agent_info_t *i
 		}
 	}
 	if (found) {
-		if (status) printf("%s: %s\n", infop->target, errmsg);
+		printf("%s: %s\n", infop->target, errmsg);
 	} else {
 		printf("%s: no reply\n", infop->target);
 	}
 }
 
-static json_value_t *catargs(char *action,int argc,char *argv[]) { 
+static json_value_t *catargs(char *action,int argc,char *argv[],int act) { 
 	json_value_t *v,*a;
 	int i;
-	list lp;
-	char *p;
+//	list lp;
+//	char *p;
 
 	v = json_create_object();
 	a = json_create_array();
 	dprintf(1,"argc: %d\n", argc);
-	for(i=2; i < argc; i++) {
-//		dprintf(1,"adding: %s\n", argv[i]);
-		conv_type(DATA_TYPE_LIST,&lp,0,DATA_TYPE_STRING,argv[i],strlen(argv[i]));
-		list_reset(lp);
-		while((p = list_get_next(lp)) !=0) {
-			dprintf(1,"adding to array: %s\n", p);
-			json_array_add_string(a,p);
+	if (act == 1) {
+		for(i=2; i < argc; i++) {
+			json_array_add_string(a,argv[i]);
 		}
-		list_destroy(lp);
+#if 0
+//			dprintf(1,"adding: %s\n", argv[i]);
+			conv_type(DATA_TYPE_LIST,&lp,0,DATA_TYPE_STRING,argv[i],strlen(argv[i]));
+			list_reset(lp);
+			while((p = list_get_next(lp)) !=0) {
+				dprintf(1,"adding to array: %s\n", p);
+				json_array_add_string(a,p);
+			}
+			list_destroy(lp);
+		}
+#endif
+	} else if (act == 2) {
+		json_value_t *o;
+		char *label;
+		int next;
+
+		next = 0;
+		o = json_create_object();
+		for(i=2; i < argc; i++) {
+			if (next) {
+				dprintf(1,"adding: %s:%s\n",label,argv[1]);
+				json_add_string(o,label,argv[i]);
+				json_array_add_value(a,o);
+				next = 0;
+			} else {
+				label = argv[i];
+				next = 1;
+			}
+		}
+		if (next) {
+			log_warning("%s: no value provided, ignoring\n",label);
+		}
 	}
 	json_add_value(v,action,a);
 //	printf("json: %s\n", json_dumps(v,1));
@@ -266,7 +288,7 @@ void do_list(solard_message_t *msg) {
 	char target[SOLARD_ROLE_LEN+SOLARD_NAME_LEN];
 	int i,j,k,sec;
 
-	sprintf(target,"%s/%s",msg->role,msg->name);
+	sprintf(target,"%s",msg->name);
 	printf("%s:\n",target);
 	v = json_parse(msg->data);
 	if (!v) {
@@ -329,12 +351,17 @@ void do_list(solard_message_t *msg) {
 	}
 }
 
+void usage() {
+	printf("usage: sdconfig <target> <Get|Set|Add|Del> <item> [<value>]\n");
+	exit(1);
+}
+
 int main(int argc,char **argv) {
 	char message[8192];
 	char topic[128],*p,*target,*action;
 	solard_client_t *s;
 	solard_message_t *msg;
-	int timeout,read_flag,list_flag;
+	int timeout,read_flag,list_flag,r;
 	opt_proctab_t opts[] = {
                 /* Spec, dest, type len, reqd, default val, have */
 		{ "-t:#|wait time",&timeout,DATA_TYPE_INT,0,0,"10" },
@@ -345,6 +372,7 @@ int main(int argc,char **argv) {
 	list agents;
 	json_value_t *v;
 	client_agent_info_t info,*infop;
+	time_t start,now;
 #if TESTING
 	char *args[] = { "sdconfig", "-d", "6", "-l", "Battery/jbd" };
 	argc = (sizeof(args)/sizeof(char *));
@@ -358,8 +386,9 @@ int main(int argc,char **argv) {
         argv += optind;
         optind = 0;
 
-	dprintf(1,"argc: %d\n",argc);
-	if (argc < 3 && !list_flag) return usage(1);
+	dprintf(1,"argc: %d\n", argc);
+	if (argc < 1) usage();
+	if (argc < 2 && !list_flag) usage();
 
 	agents = list_create();
 	if (!agents) {
@@ -372,35 +401,57 @@ int main(int argc,char **argv) {
 	/* Arg3+: item(s)/values(s) */
 	target = argv[0];
 	action = argv[1];
-	dprintf(1,"target: %s, action: %s\n", target, action);
+	dprintf(1,"target: %s, action: %s, %d\n", target, action, argc);
+	if (list_flag)
+		r = 0;
+	else if (strcmp(action,"Get") == 0 || strcmp(action,"Del") == 0)
+		r = 1;
+	else if (strcmp(action,"Set") == 0 || strcmp(action,"Add") == 0)
+		r = 2;
+	dprintf(1,"argc: %d, r: %d\n", argc, r);
+//	if ((r == 1 && argc < 3) || (r != 1 && argc-2 != r)) usage();
+	if (r && argc-2 < r) usage();
 
 	/* Send a "ping" request */
 	sprintf(topic,"%s/%s/Ping",SOLARD_TOPIC_ROOT,target);
-	mqtt_pub(s->m,topic,"Ping",1,0);
+	mqtt_pub(s->m,topic,s->mqtt_config.clientid,1,0);
 
 	/* Get the replie(s) */
-	solard_ingest(s->mq, 1);
-	list_reset(s->mq);
-	while((msg = list_get_next(s->mq)) != 0) {
-		if (!msg->replyto) continue;
-		dprintf(1,"data(%d): %s\n", msg->data_len, msg->data);
-		memset(&info,0,sizeof(info));
-		v = json_parse(msg->data);
-		if (!v) {
-			dprintf(1,"%s: not a valid json struct\n",msg->data);
-			continue;
+	time(&start);
+	while(1) {
+		list_reset(s->mq);
+		while((msg = list_get_next(s->mq)) != 0) {
+			solard_message_dump(msg,1);
+			dprintf(1,"id: %s, clientid: %s\n", msg->id,s->mqtt_config.clientid);
+			if (strcmp(msg->id,s->mqtt_config.clientid)!=0) {
+				list_delete(s->mq,msg);
+				continue;
+			}
+			memset(&info,0,sizeof(info));
+			v = json_parse(msg->data);
+			if (!v) {
+				dprintf(1,"%s: not a valid json struct\n",msg->data);
+				continue;
+			}
+			p = json_object_dotget_string(json_object(v),"Pong.ID");
+			if (p) {
+				strcpy(info.id,p);
+				p = json_object_dotget_string(json_object(v),"Pong.Target");
+				if (p) strcpy(info.target,p);
+			}
+			json_destroy(v);
+			if (!strlen(info.target)) continue;
+			dprintf(1,"adding: id: %s, target: %s\n",info.id,info.target);
+			list_add(agents,&info,sizeof(info));
+			list_delete(s->mq,msg);
 		}
-		p = json_object_dotget_string(json_object(v),"Pong.ID");
-		if (p) {
-			strcpy(info.id,p);
-			p = json_object_dotget_string(json_object(v),"Pong.Target");
-			if (p) strcpy(info.target,p);
-		}
-		json_destroy(v);
-		list_delete(s->mq,msg);
-		if (!strlen(info.target)) continue;
-		dprintf(1,"adding: id: %s, target: %s\n",info.id,info.target);
-		list_add(agents,&info,sizeof(info));
+		time(&now);
+		if ((now - start) > 1)  break;
+		sleep(1);
+	}
+	if (!list_count(agents)) {
+		log_error("no agents responded\n");
+		return 1;
 	}
 
 	if (list_flag) {
@@ -440,10 +491,12 @@ int main(int argc,char **argv) {
 		dprintf(1,"v: %p\n", v);
 	}
 
-	v = catargs(action,argc,argv);
+	v = catargs(action,argc,argv,r);
+	if (!v) return 1;
 	json_dumps_r(v,message,sizeof(message)-1);
 	dprintf(1,"message: %s\n", message);
 	list_reset(agents);
+	if (strcmp(action,"Add") == 0) timeout += 30;
 	while((infop = list_get_next(agents)) != 0) {
 		_doconfig2(s,message,infop,timeout,read_flag);
 	}

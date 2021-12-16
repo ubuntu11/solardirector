@@ -288,8 +288,10 @@ json_value_t *json_from_tab(json_proctab_t *tab) {
 	v = json_create_object();
 	if (!v) return 0;
 	for(p=tab; p->field; p++) {
+		dprintf(1,"p: field: %s, ptr: %p, len: %d, cb: %p\n", p->field, p->ptr, p->len, p->cb);
 		if (p->cb) p->cb(p->field,p->ptr,p->len,v);
 		else {
+			dprintf(1,"p->type: %d\n", p->type);
 			switch(p->type) {
 			case DATA_TYPE_STRING:
 				json_add_string(v,p->field,p->ptr);
@@ -314,6 +316,30 @@ json_value_t *json_from_tab(json_proctab_t *tab) {
 	}
 	return v;
 }
+
+json_value_t *json_from_cfgtab(cfg_proctab_t *ct) {
+	json_value_t *v;
+	cfg_proctab_t *ctp;
+	json_proctab_t *jt;
+	int i,count;
+
+	count = 0;
+	for(ctp = ct; ctp->keyword; ctp++) count++;
+	jt = malloc(sizeof(*jt)*count);
+	memset(jt,0,sizeof(*jt)*count);
+	i = 0;
+	for(ctp = ct; ctp->keyword; ctp++) {
+		jt[i].field = ctp->keyword;
+		jt[i].type = ctp->type;
+		jt[i].ptr = ctp->dest;
+		jt[i].len = ctp->dlen;
+		i++;
+	}
+	v = json_from_tab(jt);
+	free(jt);
+	return v;
+}
+
 
 int json_to_tab(json_proctab_t *tab, json_value_t *v) {
 	json_proctab_t *p;

@@ -23,13 +23,58 @@ LICENSE file in the root directory of this source tree.
 FILE *logfp = (FILE *) 0;
 int logopts;
 
+#if DEBUG
+static struct _opt_info {
+	int type;
+	char *name;
+} optlist[] = {
+	{ LOG_CREATE, "CREATE" },
+	{ LOG_TIME, "TIME" },
+	{ LOG_STDERR, "STDERR" },
+	{ LOG_INFO, "INFO" },
+	{ LOG_VERBOSE, "VERBOSE" },
+	{ LOG_WARNING, "WARNING" },
+	{ LOG_ERROR, "ERROR" },
+	{ LOG_SYSERR, "SYSERR" },
+	{ LOG_DEBUG, "DEBUG" },
+	{ LOG_DEBUG2, "DEBUG2" },
+	{ LOG_DEBUG3, "DEBUG3" },
+	{ LOG_DEBUG4, "DEBUG4" },
+	{ 0,0 }
+};
+
+static __inline void _dispopts(int type) {
+	register struct _opt_info *opt;
+	char message[128];
+	register char *ptr;
+
+	message[0] = 0;
+	sprintf(message,"log options:");
+	ptr = message + strlen(message);
+	for(opt = optlist; opt->name; opt++) {
+		if (type & opt->type) {
+			sprintf(ptr," %s",opt->name);
+			ptr += strlen(ptr);
+		}
+	}
+	if (logfp) fprintf(logfp,"%s\n",message);
+	return;
+}
+#endif
+
 int log_open(char *ident,char *filename,int opts) {
-	DPRINTF("filename: %s\n",filename);
+
+#if DEBUG
+	DPRINTF("ident: %p, filename: %p,opts: %x\n",ident,filename,opts);
+	_dispopts(opts);
+#endif
+
 	if (filename) {
 		char *op;
 
 		/* Open the file */
 		op = (opts & LOG_CREATE ? "w+" : "a+");
+		DPRINTF("op: %s\n", op);
 		logfp = fopen(filename,op);
 		if (!logfp) {
 			perror("log_open: unable to create logfile");
@@ -47,9 +92,11 @@ int log_open(char *ident,char *filename,int opts) {
 	DPRINTF("log is opened.\n");
 	return 0;
 }
-int log_write(int type,char *format,...) {
+
+//FILE *log_getfp(void) { return(logfp); }
+
+static int _log_write(int type,char *format,va_list ap) {
 	char message[16384];
-	va_list ap;
 	char dt[32],error[128];
 	register char *ptr;
 	int len;
@@ -118,9 +165,7 @@ int log_write(int type,char *format,...) {
 	/* Build the rest of the message */
 	DPRINTF("adding message...\n");
 	DPRINTF("format: %p\n", format);
-	va_start(ap,format);
 	vsnprintf(ptr,len,format,ap);
-	va_end(ap);
 
 	/* Trim */
 	trim(message);
@@ -143,5 +188,22 @@ int log_write(int type,char *format,...) {
 	DPRINTF("message: %s\n",message);
 	fprintf(logfp,"%s\n",message);
 	fflush(logfp);
+	va_end(ap);
 	return 0;
 }
+
+int log_write(int type, char *format, ...) {
+	va_list ap;
+
+	va_start(ap,format);
+	return _log_write(type,format,ap);
+}
+
+#define LOGDEF(n,t) int n(char *format,...) { va_list ap; va_start(ap,format); return _log_write(t,format,ap); }
+
+LOGDEF(log_info,LOG_INFO);
+LOGDEF(log_warning,LOG_WARNING);
+LOGDEF(log_error,LOG_ERROR);
+LOGDEF(log_syserr,LOG_SYSERR);
+LOGDEF(log_syserror,LOG_SYSERR);
+LOGDEF(log_debug,LOG_DEBUG);

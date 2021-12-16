@@ -80,11 +80,12 @@ int find_config_file(char *,char *,int);
 int log_open(char *,char *,int);
 int log_read(char *,int);
 int log_write(int,char *,...);
-#define log_info(args...) log_write(LOG_INFO,args)
-#define log_warning(args...) log_write(LOG_WARNING,args)
-#define log_error(args...) log_write(LOG_ERROR,args)
-#define log_syserror(args...) log_write(LOG_SYSERROR,args)
-//int log_debug(char *,...);
+int log_info(char *,...);
+int log_warning(char *,...);
+int log_error(char *,...);
+int log_syserr(char *,...);
+int log_syserror(char *,...);
+int log_debug(char *,...);
 void log_close(void);
 void log_writeopts(void);
 char *log_nextname(void);
@@ -92,8 +93,11 @@ char *log_nextname(void);
 #define lprintf(mask, format, args...) log_write(mask,format,## args)
 
 int solard_exec(char *, char *[], char *,int);
+int solard_wait(int);
 int solard_checkpid(int pid, int *status);
 int solard_kill(int);
+void solard_notify_list(char *,list);
+void solard_notify(char *,char *,...);
 void fixpath(char *,int);
 int solard_get_path(char *prog, char *dest, int dest_len);
 void tmpdir(char *, int);

@@ -1,4 +1,3 @@
-
 /*
 Copyright (c) 2021, Stephen P. Shoecraft
 All rights reserved.
@@ -71,6 +70,26 @@ CFG_SECTION *cfg_create_section(CFG_INFO *info,char *name) {
 	return section;
 }
 
+int cfg_delete_section(CFG_INFO *info,char *name) {
+	CFG_SECTION *section;
+	CFG_ITEM *item;
+	
+	dprintf(1,"name: %s\n", name);
+	section = cfg_get_section(info,name);
+	if (!section) return 1;
+	list_reset(section->items);
+	while((item = list_get_next(section->items)) != 0) {
+		dprintf(DLEVEL,"item->keyword: %s\n",item->keyword);
+		free(item->value);
+		if (item->desc) free(item->desc);
+	}
+	dprintf(DLEVEL,"destoying items list...\n");
+	list_destroy(section->items);
+	dprintf(DLEVEL,"deleting section...\n");
+	list_delete(info->sections,section);
+	return 0;
+}
+
 void cfg_destroy(CFG_INFO *info) {
 	CFG_SECTION *section;
 
@@ -91,19 +110,34 @@ void cfg_destroy(CFG_INFO *info) {
 	return;
 }
 
-CFG_ITEM *_cfg_get_item(CFG_SECTION *section, char *name) {
+CFG_ITEM *cfg_section_get_item(CFG_SECTION *section, char *name) {
 	CFG_ITEM *item;
 
-	dprintf(DLEVEL,"_cfg_get_item: looking for keyword: %s", name);
+	dprintf(DLEVEL,"looking for keyword: %s", name);
 	list_reset(section->items);
 	while( (item = list_get_next(section->items)) != 0) {
 		dprintf(DLEVEL,"item->keyword: %s",item->keyword);
 		if (strcmp(item->keyword,name)==0) {
-			dprintf(DLEVEL, "_cfg_get_item: found\n");
+			dprintf(DLEVEL, "found\n");
 			return item;
 		}
 	}
-	dprintf(DLEVEL, "_cfg_get_item: not found");
+	dprintf(DLEVEL, "not found");
+	return 0;
+}
+
+int cfg_section_delete_item(CFG_SECTION *section, char *keyword) {
+	CFG_ITEM *item;
+
+	dprintf(1,"keyword: %s\n", keyword);
+	item = cfg_section_get_item(section, keyword);
+	if (!item) {
+		dprintf(1,"not found\n");
+		return 1;
+	}
+	free(item->value);
+	if (item->desc) free(item->desc);
+	list_delete(section->items,item);
 	return 0;
 }
 
@@ -125,7 +159,7 @@ char *cfg_get_item(CFG_INFO *info,char *section_name,char *keyword) {
 	itemname[x] = 0;
 
 	/* Get the item */
-	item = _cfg_get_item(section, itemname);
+	item = cfg_section_get_item(section, itemname);
 	if (item) return item->value;
 	return 0;
 }
@@ -200,6 +234,18 @@ list cfg_get_list(CFG_INFO *info, char *name, char *keyword, char *def) {
 }
 #endif
 
+int cfg_delete_item(CFG_INFO *info, char *sname, char *keyword) {
+	CFG_SECTION *section;
+
+	if (!info) return 1;
+
+	dprintf(DLEVEL,"cfg_delete_item: section: %s, keyword: %s", sname,keyword);
+	section = cfg_get_section(info,sname);
+	dprintf(DLEVEL,"section: %p\n", section);
+	if (!section) return 1;
+	return cfg_section_delete_item(section,keyword);
+}
+
 int cfg_set_item(CFG_INFO *info, char *sname, char *iname, char *desc, char *ival) {
 	CFG_SECTION *section;
 	CFG_ITEM *item,newitem;;
@@ -212,19 +258,30 @@ int cfg_set_item(CFG_INFO *info, char *sname, char *iname, char *desc, char *iva
 	dprintf(DLEVEL,"cfg_set_item: section: %s, name: %s, value: %s", sname,iname,ival);
 	section = cfg_get_section(info,sname);
 	if (!section) {
-		dprintf(DLEVEL,"cfg_set_item: creating %s section", sname);
 		section = cfg_create_section(info,sname);
-		if (!section) {
-			perror("cfg_create_section");
-			return 1;
-		}
+		if (!section) return 1;
 	}
 
 	/* Convert the keyword to uppercase */
 	for(x=0; iname[x] != 0; x++) itemname[x] = toupper(iname[x]);
 	itemname[x] = 0;
 
-	item = _cfg_get_item(section, itemname);
+#if 0
+	/* Just delete the current one */
+	list_reset(section->items);
+	while((item = list_get_next(section->items)) != 0) {
+		if (strcmp(item->keyword,itemname) == 0) {
+			dprintf(1,"current value: %s, new value: %s\n", item->value, ival);
+			dprintf(1,"value: %p, desc: %p\n", item->value, item->desc);
+			/* If the value is the same, ... */
+			if (strcmp(item->value,ival) == 0) return 0;
+			free(item->value);
+			if (item->desc) free(item->desc);
+			list_delete(section->items,item);
+		}
+	}
+#else
+	item = cfg_section_get_item(section, itemname);
 	if (item) {
 		free(item->value);
 		item->value = (char *) malloc(strlen(ival)+1);
@@ -245,6 +302,7 @@ int cfg_set_item(CFG_INFO *info, char *sname, char *iname, char *desc, char *iva
 			strcpy(item->desc,desc);
 		}
 	} else {
+#endif
 		/* Add a new item */
 		memset(&newitem,0,sizeof(newitem));
 		strncpy(newitem.keyword, itemname, sizeof(newitem.keyword)-1);
@@ -254,6 +312,7 @@ int cfg_set_item(CFG_INFO *info, char *sname, char *iname, char *desc, char *iva
 			return 1;
 		}
 		strcpy(newitem.value,ival);
+		dprintf(1,"desc: %p\n", desc);
 		if (desc) {
 			newitem.desc = (char *) malloc(strlen(desc)+1);
 			strcpy(newitem.desc,desc);
@@ -431,7 +490,7 @@ CFG_INFO *cfg_read(char *filename) {
 			}
 
 			/* Was there a prev item for this keyword? */
-			item = _cfg_get_item(section,newitem.keyword);
+			item = cfg_section_get_item(section,newitem.keyword);
 			if (item) {
 				dprintf(DLEVEL,"cfg_read: deleting previous item!");
 				list_delete(section->items,item);
@@ -448,8 +507,6 @@ CFG_INFO *cfg_read(char *filename) {
 	fclose(fp);
 
 cfg_read_done:
-//	cfg_info->filename[0] = 0;
-//	if (filename) strncat(cfg_info->filename, filename, sizeof(cfg_info->filename)-1);
 	return cfg_info;
 }
 

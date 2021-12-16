@@ -1,0 +1,32 @@
+
+print(script_name+" start");
+//smanet.set("GdManStr","Auto");
+
+/*
+        switch(s->ec_state) {
+        case EC_STATE_NONE:
+                if ((s->info.battery_voltage-0.0001) <= s->charge_start_voltage) {
+                        charge_start(s,1);
+
+                        dprintf(1,"ac2_frequency: %.1f\n", s->info.ac2_frequency);
+                        if (s->info.ac2_frequency < 2.0) {
+                                dprintf(1,"ExtSrc: %s\n", s->ExtSrc);
+                                if (!strstr(s->ExtSrc,"Gen")) {
+                                        si_notify(s,"ERROR: voltage (%.1f) below EC threshold (%.1f) and no grid/gen!",
+                                                s->info.battery_voltage, s->charge_start_voltage);
+                                        s->ec_state = EC_STATE_CHARGING;
+                                        goto ec_again;
+                                } else {
+                                        s->ec_state = EC_STATE_GENSTART;
+                                        goto ec_again;
+                                }
+                        } else if (!s->info.GdOn) {
+                                s->ec_state = EC_STATE_GRIDSTART;
+                                goto ec_again;
+                        }
+                }
+                break;
+
+*/
+
+//print(script_name+" stop");

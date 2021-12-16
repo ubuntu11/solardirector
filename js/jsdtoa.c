@@ -51,7 +51,8 @@
 #include "jsbit.h"
 
 #ifdef JS_THREADSAFE
-#include "prlock.h"
+//#include "prlock.h"
+#include "jslock.h"
 #endif
 
 /****************************************************************

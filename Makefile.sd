@@ -2,7 +2,7 @@
 #TARGET=pi3
 
 DEBUG?=yes
-#DEBUG_MEM?=yes
+DEBUG_MEM?=yes
 PTHREADS?=yes
 SHARED?=no
 STATIC?=no
@@ -16,7 +16,7 @@ endif
 
 ifeq ($(ID),0)
 INSTALL_USER=-o root -g root
-PREFIX?=/opt/newsd
+PREFIX?=/opt/sd
 else
 PREFIX?=$(shell echo $$HOME)
 endif
@@ -24,6 +24,8 @@ endif
 # Define SRC_ROOT
 current_makefile := $(lastword $(MAKEFILE_LIST))
 SRC_ROOT=$(shell echo $$(dirname $(current_makefile)))
+
+TOOLS?=$(SRC_ROOT)/tools
 
 CFLAGS+=-I.
 
@@ -36,7 +38,7 @@ endif
 
 # Uses libjs? must be included before sdcore as it refs
 ifeq ($(JS),yes)
-	CFLAGS+=-I$(SRC_ROOT)/js
+	CFLAGS+=-I$(SRC_ROOT)/js -DJS
 	ifeq ($(ISWIN),yes)
 		CFLAGS+=-DXP_WIN
 	else
@@ -46,11 +48,11 @@ ifeq ($(JS),yes)
 	DEPS+=$(SRC_ROOT)/js/libjs$(SUFFIX)$(LIBEXT)
 endif
 
-ifneq ($(LIBNAME),roles)
-	CFLAGS+=-I$(SRC_ROOT)/roles
-	LIBS+=-L$(SRC_ROOT)/roles -lroles$(SUFFIX)
-	DEPS+=$(SRC_ROOT)/roles/libroles$(SUFFIX)$(LIBEXT)
-endif
+#ifneq ($(LIBNAME),roles)
+#	CFLAGS+=-I$(SRC_ROOT)/roles
+#	LIBS+=-L$(SRC_ROOT)/roles -lroles$(SUFFIX)
+#	DEPS+=$(SRC_ROOT)/roles/libroles$(SUFFIX)$(LIBEXT)
+#endif
 
 ifneq ($(LIBNAME),core)
 	CFLAGS+=-I$(SRC_ROOT)/core
@@ -62,6 +64,10 @@ ifneq ($(LIBNAME),transports)
 	CFLAGS+=-I$(SRC_ROOT)/transports
 	LIBS+=-L$(SRC_ROOT)/transports -ltransports$(SUFFIX)
 	DEPS+=$(SRC_ROOT)/transports/libtransports$(SUFFIX)$(LIBEXT)
+endif
+
+ifeq ($(JS),yes)
+	LIBS+=-L$(SRC_ROOT)/js -ljs$(SUFFIX) -lm
 endif
 
 # Paho MQTT
@@ -77,7 +83,7 @@ ifeq ($(PAHO),yes)
 # -lcrypt32 -lrpcrt4 -lkernel32
 		endif
 	endif
-	LIBS+=-lpaho-mqtt3cs$(_PAHOSTATIC) $(_PAHOLDADD)
+	LIBS+=-lpaho-mqtt3c$(_PAHOSTATIC) $(_PAHOLDADD)
 endif
 
 #ifneq ($(TRANSPORTS),)

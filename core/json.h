@@ -117,6 +117,7 @@ int json_add_string(json_value_t *,char *,char *);
 int json_add_boolean(json_value_t *,char *,int);
 int json_add_number(json_value_t *,char *,double);
 int json_add_value(json_value_t *,char *,json_value_t *);
+#define json_add_object(v,n,o) json_add_value(v,n,(json_value_t *)o)
 int json_add_descriptor(json_value_t *,char *,json_descriptor_t);
 
 char *json_get_string(json_value_t *,char *);
@@ -160,5 +161,6 @@ int json_type(json_value_t *);
 #define json_number(v) v->value.number
 #define json_bool(v) v->value.boolean
 #endif
+json_value_t *json_from_cfgtab(cfg_proctab_t *);
 
 #endif

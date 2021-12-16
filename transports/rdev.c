@@ -42,7 +42,7 @@ static void *rdev_new(void *conf, void *target, void *topts) {
 
 	s = calloc(1,sizeof(*s));
 	if (!s) {
-		perror("rdev_new: malloc");
+		log_syserror("rdev_new: malloc");
 		return 0;
 	}
 	s->fd = -1;
@@ -71,15 +71,56 @@ static void *rdev_new(void *conf, void *target, void *topts) {
 	return s;
 }
 
+static int rdev_getip(char *ip, char *name) {
+	int rc, err;
+	void *tmp;
+	struct hostent hbuf;
+	struct hostent *result;
+	char *buf;
+	unsigned char *ptr;
+	int len;
+
+	dprintf(1,"name: %s\n", name);
+
+	len = 1024;
+	buf = malloc(len);
+
+	while ((rc = gethostbyname_r(name, &hbuf, buf, len, &result, &err)) == ERANGE) {
+		len *= 2;
+		tmp = realloc(buf, len);
+		if (!tmp) {
+			log_syserror("rdev_getip: realloc(buf,%d)",len);
+			free(buf);
+			return 1;
+		} else {
+			buf = tmp;
+		}
+	}
+	free(buf);
+
+	if (rc || !result) {
+		log_syserror("rdev_getip: gethostbyname_r");
+		return 1;
+	}
+
+	/* not found */
+	dprintf(1,"result->h_addr: %p\n", result->h_addr);
+	if (!result->h_addr) return 1;
+
+	ptr = (unsigned char *) result->h_addr;
+	sprintf(ip,"%d.%d.%d.%d",ptr[0],ptr[1],ptr[2],ptr[3]);
+	return 0;
+}
+
 static int rdev_open(void *handle) {
 	rdev_session_t *s = handle;
 	struct sockaddr_in addr;
 	socklen_t sin_size;
-	struct hostent *he;
+//	struct hostent *he;
 	uint8_t status;
 	int bytes;
 	char temp[SOLARD_TARGET_LEN];
-	uint8_t *ptr;
+//	uint8_t *ptr;
 	uint16_t control;
 
 	if (s->fd >= 0) return 0;
@@ -87,22 +128,27 @@ static int rdev_open(void *handle) {
 	dprintf(1,"Creating socket...\n");
 	s->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (s->fd < 0) {
-		perror("rdev_open: socket");
+		log_syserror("rdev_open: socket");
 		return 1;
 	}
 
 	/* Try to resolve the target */
 	dprintf(1,"checking..\n");
-	he = (struct hostent *) 0;
+//	he = (struct hostent *) 0;
+	*temp = 0;
 	if (!is_ip(s->target)) {
-		he = gethostbyname(s->target);
+		rdev_getip(temp,s->target);
+#if 0
+//		he = gethostbyname(s->target);
 		dprintf(1,"he: %p\n", he);
 		if (he) {
 			ptr = (unsigned char *) he->h_addr;
 			sprintf(temp,"%d.%d.%d.%d",ptr[0],ptr[1],ptr[2],ptr[3]);
 		}
+#endif
 	}
-	if (!he) strcpy(temp,s->target);
+//	if (!he) strcpy(temp,s->target);
+	if (!*temp) strcpy(temp,s->target);
 	dprintf(1,"temp: %s\n",temp);
 
 	dprintf(1,"Connecting to: %s\n",temp);
@@ -112,7 +158,9 @@ static int rdev_open(void *handle) {
 	addr.sin_addr.s_addr = inet_addr(temp);
 	addr.sin_port = htons(s->port);
 	if (connect(s->fd,(struct sockaddr *)&addr,sin_size) < 0) {
-		perror("rdev_open: connect");
+		log_syserror("rdev_open: connect");
+		close(s->fd);
+		s->fd = -1;
 		return 1;
 	}
 
@@ -190,6 +238,14 @@ static int rdev_close(void *handle) {
 	return 0;
 }
 
+static int rdev_destroy(void *handle) {
+        rdev_session_t *s = handle;
+
+        if (s->fd >= 0) rdev_close(s);
+	free(s);
+	return 0;
+}
+
 static int rdev_config(void *h, int func, ...) {
 	va_list ap;
 	int r;
@@ -208,6 +264,7 @@ solard_driver_t rdev_driver = {
 	SOLARD_DRIVER_TRANSPORT,
 	"rdev",
 	rdev_new,
+	rdev_destroy,
 	rdev_open,
 	rdev_close,
 	rdev_read,

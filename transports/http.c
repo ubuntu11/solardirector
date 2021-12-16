@@ -165,6 +165,7 @@ solard_driver_t http_driver = {
 	SOLARD_DRIVER_TRANSPORT,
 	"ip",
 	http_new,
+	0,
 	http_open,
 	http_close,
 	http_read,

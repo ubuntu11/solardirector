@@ -1,6 +1,6 @@
 
 all:
-	for d in core smanet js transports roles; do $(MAKE) -j $$MAKE_JOBS -C $$d; done
+	for d in core smanet js transports; do $(MAKE) -j $$MAKE_JOBS -C $$d; done
 	@for d in *; do if test -f $$d/Makefile; then make -C $$d || exit 1; fi; done
 
 install release clean cleanall::

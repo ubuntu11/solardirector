@@ -1,5 +1,0 @@
-#!/bin/bash
-(cd ../../lib; make clean; make -j 9 TARGET=win32)
-make clean; make -j 9 TARGET=win32 && sudo cp jbd.exe /data/
-(cd ../../lib; make clean; make -j 9)
-make clean; make -j 9 && make install

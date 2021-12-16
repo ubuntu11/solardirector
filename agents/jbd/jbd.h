@@ -10,21 +10,57 @@ LICENSE file in the root directory of this source tree.
 #ifndef __JBD_H
 #define __JBD_H
 
-#include <stdint.h>
-#include "battery.h"
+#include <pthread.h>
+#include "agent.h"
 #include "jbd_regs.h"
-#include "state.h"
+
+#define JBD_NAME_LEN 32
+#define JBD_MAX_TEMPS 8
+#define JBD_MAX_CELLS 32
+
+
+struct jbd_data {
+	float capacity;			/* Battery pack capacity, in AH */
+	float voltage;			/* Pack voltage */
+	float current;			/* Pack current */
+	int ntemps;			/* Number of temps */
+	float temps[JBD_MAX_TEMPS];	/* Temp values */
+	int ncells;			/* Number of cells, updated by BMS */
+	float cellvolt[JBD_MAX_CELLS]; /* Per-cell voltages, updated by BMS */
+	float cell_min;
+	float cell_max;
+	float cell_diff;
+	float cell_avg;
+	float cell_total;
+	uint32_t balancebits;		/* Balance bitmask */
+};
+typedef struct jbd_data jbd_data_t;
 
 struct jbd_session {
-	char name[SOLARD_NAME_LEN];	/* Our instance name (from battery) */
 	solard_agent_t *ap;		/* Agent config pointer */
+	char transport[SOLARD_TRANSPORT_LEN];
+	char target[SOLARD_TARGET_LEN];
+	char topts[SOLARD_TOPTS_LEN];
 	solard_driver_t *tp;		/* Our transport */
 	void *tp_handle;		/* Our transport handle */
+	int (*can_get)(struct jbd_session *s, int id, uint8_t *data, int datasz);
+	int (*reader)(struct jbd_session *);
 	uint16_t state;			/* Pack state */
+	jbd_data_t data;
 	uint8_t fetstate;		/* Mosfet state */
 	uint8_t balancing;		/* 0=off, 1=on, 2=only when charging */
+	int errcode;			/* error indicator */
+	char errmsg[256];		/* Error message if errcode !0 */
+	pthread_mutex_t lock;
 };
 typedef struct jbd_session jbd_session_t;
+
+/* States */
+#define JBD_STATE_OPEN		0x01
+#define JBD_STATE_RUNNING	0x02
+#define JBD_STATE_CHARGING	0x10
+#define JBD_STATE_DISCHARGING	0x20
+#define JBD_STATE_BALANCING	0x40
 
 struct jbd_protect {
 	unsigned sover: 1;		/* Single overvoltage protection */
@@ -60,7 +96,7 @@ int jbd_verify(uint8_t *buf, int len);
 int jbd_cmd(uint8_t *pkt, int pkt_size, int action, uint16_t reg, uint8_t *data, int data_len);
 int jbd_rw(jbd_session_t *s, uint8_t action, uint8_t reg, uint8_t *data, int datasz);
 
-/* Main */
+/* Driver */
 int jbd_open(void *handle);
 int jbd_close(void *handle);
 
@@ -73,7 +109,7 @@ int jbd_config(void *,int,...);
 int jbd_config_add_params(json_value_t *);
 
 /* Info */
-json_value_t *jbd_info(void *handle);
+int jbd_info(jbd_session_t *);
 
 /* Control */
 int jbd_control(void *handle,char *,char *,json_value_t *);

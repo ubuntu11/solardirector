@@ -82,11 +82,11 @@ void display(cellmon_config_t *conf) {
 			cell_max = 0.0;
 			cell_total = 0;
 			for(y=0; y < pp->ncells; y++) {
-				if (pp->cellvolt[y] < cell_min) cell_min = pp->cellvolt[y];
-				if (pp->cellvolt[y] > cell_max) cell_max = pp->cellvolt[y];
-				values[y][x] = pp->cellvolt[y];
+				if (pp->cells[y].voltage < cell_min) cell_min = pp->cells[y].voltage;
+				if (pp->cells[y].voltage > cell_max) cell_max = pp->cells[y].voltage;
+				values[y][x] = pp->cells[y].voltage;
 //				dprintf(1,"values[%d][%d]: %.3f\n", y, x, values[y][x]);
-				cell_total += pp->cellvolt[y];
+				cell_total += pp->cells[y].voltage;
 			}
 			cap += pp->capacity;
 			pack_reported++;
@@ -212,9 +212,7 @@ void display(cellmon_config_t *conf) {
 
 	printf("\n");
 	printf("Total packs: %d\n", pack_reported);
-#if 0
-	printf("Capacity: %2.1f\n", cap);
 	kwh = (cap * 48.0) / 1000.0;
+//	printf("Capacity: %2.1f\n", cap);
 	printf("kWh: %2.1f (80%%: %2.1f, 60%%: %2.1f)\n", kwh, (kwh * .8), (kwh * .6));
-#endif
 }

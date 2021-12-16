@@ -491,6 +491,7 @@ solard_driver_t serial_driver = {
 	SOLARD_DRIVER_TRANSPORT,
 	"serial",
 	serial_new,
+	0,
 	serial_open,
 	serial_close,
 	serial_read,

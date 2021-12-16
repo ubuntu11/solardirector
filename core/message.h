@@ -25,32 +25,15 @@ LICENSE file in the root directory of this source tree.
 
 struct solard_message {
 	union {
-		char role[SOLARD_ROLE_LEN];
 		char id[SOLARD_ID_LEN];
+		char name[SOLARD_NAME_LEN];
 	};
-	char name[SOLARD_NAME_LEN];
 	char func[SOLARD_FUNC_LEN];
-#if 0
-	union {
-		char action[SOLARD_ACTION_LEN];
-		char param[SOLARD_ACTION_LEN];
-	};
-#endif
 	char replyto[SOLARD_ID_LEN];
 	char data[SOLARD_MAX_PAYLOAD_SIZE];
-	int data_len;
-#if 0
-	int size;
-	char *data;
-	int data_len;
-	char _d;
-#endif
 };
 typedef struct solard_message solard_message_t;
 
-//solard_message_t *solard_message_alloc(char *data, int data_len);
-//void solard_message_free(solard_message_t *);
-//void solard_getmsg(void *, char *, char *, int, char *);
 solard_message_t *solard_getmsg(char *, char *, int, char *);
 void solard_ingest(list, int);
 void solard_message_dump(solard_message_t *,int);

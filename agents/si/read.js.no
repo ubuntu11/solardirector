@@ -1,0 +1,21 @@
+
+// If the grid is on and we dont want to charge from it
+// and emergency charge is not on
+print("GdOn:",si.GdOn);
+print("charge_from_grid:",si.charge_from_grid);
+print("si.charge_amps:",si.charge_amps);
+print("si.grid_charge_amps:",si.grid_charge_amps);
+print("voltage: ",si.voltage);
+print("frequency: ",si.frequency);
+//if (si.GdOn && !si.charge_from_grid && !si.ec_state && (si.charge_amps != si.grid_charge_amps)) {
+//if (!si.charge_from_grid && si.charge_mode && (si.charge_amps != si.grid_charge_amps)) {
+//	si.charge_amps = 350;
+//	print("NEW si.charge_amps",si.charge_amps);
+//}
+si.voltage = 7;
+print("voltage: ",si.voltage);
+print("charge_amps: ",si.charge_amps);
+si.charge_amps = 2;
+print("charge_amps: ",si.charge_amps);
+si.charge_amps = 3;
+print("charge_amps: ",si.charge_amps);

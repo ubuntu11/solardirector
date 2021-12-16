@@ -12,7 +12,7 @@ LICENSE file in the root directory of this source tree.
 int smanet_command(smanet_session_t *s, int cmd, smanet_packet_t *p, uint8_t *buf, int buflen) {
 	int control,count,r;
 
-	dprintf(1,"src: %04x, dest: %04x, cmd: %d, packet: %p, buf: %p, buflen: %d\n", s->src, s->dest, cmd, p, buf, buflen);
+	dprintf(smanet_dlevel,"src: %04x, dest: %04x, cmd: %d, packet: %p, buf: %p, buflen: %d\n", s->src, s->dest, cmd, p, buf, buflen);
 
 	if (!p) return 1;
 	if (cmd <= 0 || cmd > 60) return 1;
@@ -27,7 +27,7 @@ int smanet_command(smanet_session_t *s, int cmd, smanet_packet_t *p, uint8_t *bu
 		/* Optimized for 19200 */
 		usleep(550000);
 		r = smanet_recv_packet(s,count,cmd,p,0);
-		dprintf(1,"r: %d\n", r);
+		dprintf(smanet_dlevel,"r: %d\n", r);
 		if (r < 0) break;
 		if (r == 1) break;
 		if (r == 2) {
@@ -38,13 +38,13 @@ int smanet_command(smanet_session_t *s, int cmd, smanet_packet_t *p, uint8_t *bu
 		if (r == 3) continue;
 		if (!p->response) continue;
 		s->timeouts = 0;
-		dprintf(1,"p->command: %02x, cmd: %02x\n", p->command, cmd);
+		dprintf(smanet_dlevel,"p->command: %02x, cmd: %02x\n", p->command, cmd);
 		if (p->command != cmd) continue;
 		count = p->count;
-		dprintf(1,"count: %d\n",count);
+		dprintf(smanet_dlevel,"count: %d\n",count);
 		if (!count) break;
 	}
-	dprintf(1,"returning: %d\n", r);
+	dprintf(smanet_dlevel,"returning: %d\n", r);
 	return r;
 }
 
@@ -57,11 +57,11 @@ int smanet_get_net_start(smanet_session_t *s, long *sn, char *type, int typesz) 
 	s->dest = 0;
 	if (smanet_command(s,CMD_GET_NET_START,p,0,0)) return 1;
 	*sn = getlong(p->data);
-	dprintf(1,"type: %p, buflen: %d\n", type, typesz);
+	dprintf(smanet_dlevel,"type: %p, buflen: %d\n", type, typesz);
 	if (type && typesz) {
 		type[0] = 0;
 		strncat(type,(char *)&p->data[4],8);
-		dprintf(1,"type: %s\n", type);
+		dprintf(smanet_dlevel,"type: %s\n", type);
 	}
 	smanet_free_packet(p);
 	return 0;
@@ -74,7 +74,7 @@ int smanet_cfg_net_adr(smanet_session_t *s, int addr) {
 	p = smanet_alloc_packet(4);
 	if (!p) return 0;
 
-	dprintf(1,"setting addr to %d\n", addr);
+	dprintf(smanet_dlevel,"setting addr to %d\n", addr);
 	putlong(&data[0],s->serial);
 	putlong(&data[4],addr);
 	if (smanet_command(s,CMD_CFG_NETADR,p,data,sizeof(data))) return 1;

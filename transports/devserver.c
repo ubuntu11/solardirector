@@ -54,7 +54,7 @@ int devserver_send(socket_t fd, uint8_t opcode, uint8_t unit, uint16_t control, 
 	dprintf(dlevel,"bytes: %d\n", bytes);
 	if (bytes < 0) return -1;
 	sent += bytes;
-	if (debug >= 5) bindump("SENDING",data,data_len);
+	if (debug >= dlevel+1) bindump("SENDING",data,data_len);
 	bytes = send(fd,data,data_len,0);
 	dprintf(dlevel,"bytes: %d\n", bytes);
 	if (bytes < 0) return -1;

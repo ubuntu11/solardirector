@@ -18,6 +18,7 @@ int jk_config(void *h, int req, ...) {
 	va_start(va,req);
 	dprintf(1,"req: %d\n", req);
 	switch(req) {
+#if 0
 	case SOLARD_CONFIG_GET_INFO:
 		{
 			json_value_t **vp = va_arg(va,json_value_t **);
@@ -27,6 +28,7 @@ int jk_config(void *h, int req, ...) {
 				r = 0;
 			}
 		}
+#endif
 	}
 	dprintf(1,"returning: %d\n", r);
 	return r;

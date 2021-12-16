@@ -555,7 +555,7 @@ static jsdouble NaN;
  * On Alpha platform this is handled via Compiler option.
  */
 //#define FIX_FPU() _control87(MCW_EM | PC_53, MCW_EM | MCW_PC)
-#define FIX_FPU() /* wtfrudoing */ 
+#define FIX_FPU() /* wtfrudoing */
 
 #else
 

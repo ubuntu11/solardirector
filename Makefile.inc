@@ -121,7 +121,7 @@ SRC_ROOT ?= $(shell echo $$(dirname $(current_makefile)))
 
 # Debugging?
 ifeq ($(DEBUG),yes)
-CFLAGS+=-Wall -DDEBUG -D_DEBUG -g
+CFLAGS+=-Wall -DDEBUG -D_DEBUG -g -O0
 #DEBUG_SUFFIX=_debug
 else
 CFLAGS+=-O2 -pipe

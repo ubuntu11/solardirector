@@ -69,6 +69,7 @@
 #include "jslock.h"
 #include "jsmath.h"
 #include "jsnum.h"
+#include "json.h"
 #include "jsobj.h"
 #include "jsopcode.h"
 #include "jsparse.h"
@@ -78,6 +79,11 @@
 #include "jsscript.h"
 #include "jsstr.h"
 #include "prmjtime.h"
+
+#ifdef DEBUG_MEM
+#undef DEBUG_MEM
+#endif
+#include "debug.h"
 
 #if JS_HAS_FILE_OBJECT
 #include "jsfile.h"
@@ -149,8 +155,7 @@ TryArgumentFormatter(JSContext *cx, const char **formatp, JSBool fromJS,
 }
 
 JS_PUBLIC_API(JSBool)
-JS_ConvertArguments(JSContext *cx, uintN argc, jsval *argv, const char *format,
-                    ...)
+JS_ConvertArguments(JSContext *cx, uintN argc, jsval *argv, const char *format, ...)
 {
     va_list ap;
     JSBool ok;
@@ -231,18 +236,15 @@ JS_ConvertArgumentsVA(JSContext *cx, uintN argc, jsval *argv,
           case 'S':
           case 'W':
             str = js_ValueToString(cx, *sp);
-            if (!str)
-                return JS_FALSE;
+            if (!str) return JS_FALSE;
             *sp = STRING_TO_JSVAL(str);
             if (c == 's') {
                 const char *bytes = js_GetStringBytes(cx, str);
-                if (!bytes)
-                    return JS_FALSE;
+                if (!bytes) return JS_FALSE;
                 *va_arg(ap, const char **) = bytes;
             } else if (c == 'W') {
                 const jschar *chars = js_GetStringChars(cx, str);
-                if (!chars)
-                    return JS_FALSE;
+                if (!chars) return JS_FALSE;
                 *va_arg(ap, const jschar **) = chars;
             } else {
                 *va_arg(ap, JSString **) = str;
@@ -1304,13 +1306,45 @@ JS_PUBLIC_API(JSBool)
 JS_InitStandardClasses(JSContext *cx, JSObject *obj)
 {
 	JSAtom *atom;
-	typedef JSObject *(*initfunc_t)(JSContext *cx, JSObject *obj);
-	initfunc_t f,funcs[] = {
-		js_InitArrayClass,
-		js_InitBlockClass,
-		0
+	typedef JSObject *(js_initfunc_t)(JSContext *,JSObject *);
+#define FUNC(n) { #n, n }
+	struct {
+		char *name;
+		js_initfunc_t *func;
+	} *f, funcs[] = {
+		FUNC(js_InitArrayClass),
+		FUNC(js_InitBlockClass),
+		FUNC(js_InitBooleanClass),
+		FUNC(js_InitCallClass),
+		FUNC(js_InitExceptionClasses),
+		FUNC(js_InitMathClass),
+		FUNC(js_InitNumberClass),
+		FUNC(js_InitRegExpClass),
+		FUNC(js_InitStringClass),
+		FUNC(js_InitEval),
+#if JS_HAS_SCRIPT_OBJECT
+		FUNC(js_InitScriptClass),
+#endif
+#if JS_HAS_XML_SUPPORT
+		FUNC(js_InitXMLClasses),
+#endif
+#if JS_HAS_FILE_OBJECT
+		FUNC(js_InitFileClass),
+#endif
+#if JS_HAS_GENERATORS
+		FUNC(js_InitIteratorClasses),
+#endif
+		FUNC(js_InitDateClass),
+#if JS_HAS_JSON_OBJECT
+		FUNC(js_InitJSONClass),
+#endif
+		FUNC(js_InitConsoleClass),
+		FUNC(js_InitSocketClass),
+		{0}
 	};
+#undef FUNC
 
+//	printf("JS_InitStandardClasses: cx: %p, obj: %p\n", cx, obj);
 	CHECK_REQUEST(cx);
 
 	/* Define a top-level property 'undefined' with the undefined value. */
@@ -1322,11 +1356,19 @@ JS_InitStandardClasses(JSContext *cx, JSObject *obj)
 	/* Function and Object require cooperative bootstrapping magic. */
 	if (!js_InitFunctionAndObjectClasses(cx, obj)) return JS_FALSE;
 
-	for(f = funcs; f; f++) {
-		if (!f(cx,obj)) return JS_FALSE;
+	for(f=funcs; f->name; f++) {
+//		printf("calling: %s\n", f->name);
+		if (!f->func(cx,obj)) {
+			char msg[128];
+			sprintf(msg,"Error calling initfunc: %s", f->name);
+			JS_ReportError(cx, msg);
+			return JS_FALSE;
+		}
 	}
+	return JS_TRUE;
 
 	/* Initialize the rest of the standard objects and functions. */
+#if 0
 	return js_InitArrayClass(cx, obj) &&
 	js_InitBlockClass(cx, obj) &&
 	js_InitBooleanClass(cx, obj) &&
@@ -1350,6 +1392,7 @@ JS_InitStandardClasses(JSContext *cx, JSObject *obj)
 	js_InitIteratorClasses(cx, obj) &&
 #endif
 	js_InitDateClass(cx, obj);
+#endif
 }
 
 #define CLASP(name)                 ((JSClass *)&js_##name##Class)
@@ -1414,6 +1457,9 @@ static JSStdName standard_class_atoms[] = {
 #endif
 #if JS_HAS_GENERATORS
     {js_InitIteratorClasses,            EAGER_ATOM_AND_CLASP(StopIteration)},
+#endif
+#if JS_HAS_JSON_OBJECT
+    {js_InitJSONClass,                  EAGER_ATOM_AND_CLASP(JSON)},
 #endif
     {NULL,                              0, NULL, NULL}
 };
@@ -3229,6 +3275,19 @@ JS_DefinePropertyWithTinyId(JSContext *cx, JSObject *obj, const char *name,
                           SPROP_HAS_SHORTID, tinyid);
 }
 
+JS_PUBLIC_API(JSBool)
+JS_DefineConstants(JSContext *cx, JSObject *obj, JSConstantSpec *cs) {
+	JSBool ok;
+
+	CHECK_REQUEST(cx);
+	for(ok = JS_TRUE; cs->name; cs++) {
+		ok = DefineProperty(cx, obj, cs->name, cs->value, 0, 0,
+			JSPROP_ENUMERATE|JSPROP_READONLY|JSPROP_PERMANENT|JSPROP_EXPORTED, 0, 0);
+		if (!ok) break;
+	}
+	return ok;
+}
+
 static JSBool
 LookupProperty(JSContext *cx, JSObject *obj, const char *name, JSObject **objp,
                JSProperty **propp)
@@ -3503,6 +3562,13 @@ JS_LookupPropertyWithFlags(JSContext *cx, JSObject *obj, const char *name,
     if (ok)
         *vp = LookupResult(cx, obj, obj2, prop);
     return ok;
+}
+
+JS_PUBLIC_API(JSBool)
+JS_GetPropertyById(JSContext *cx, JSObject *obj, jsid id, jsval *vp)
+{
+    CHECK_REQUEST(cx);
+    return OBJ_GET_PROPERTY(cx, obj, id, vp);
 }
 
 JS_PUBLIC_API(JSBool)
@@ -5009,21 +5075,18 @@ JS_EvaluateUCScriptForPrincipals(JSContext *cx, JSObject *obj,
 }
 
 JS_PUBLIC_API(JSBool)
-JS_CallFunction(JSContext *cx, JSObject *obj, JSFunction *fun, uintN argc,
-                jsval *argv, jsval *rval)
+JS_CallFunction(JSContext *cx, JSObject *obj, JSFunction *fun, uintN argc, jsval *argv, jsval *rval)
 {
     JSBool ok;
 
     CHECK_REQUEST(cx);
-    ok = js_InternalCall(cx, obj, OBJECT_TO_JSVAL(FUN_OBJECT(fun)), argc, argv,
-                         rval);
+    ok = js_InternalCall(cx, obj, OBJECT_TO_JSVAL(FUN_OBJECT(fun)), argc, argv, rval);
     LAST_FRAME_CHECKS(cx, ok);
     return ok;
 }
 
 JS_PUBLIC_API(JSBool)
-JS_CallFunctionName(JSContext *cx, JSObject *obj, const char *name, uintN argc,
-                    jsval *argv, jsval *rval)
+JS_CallFunctionName(JSContext *cx, JSObject *obj, const char *name, uintN argc, jsval *argv, jsval *rval)
 {
     JSBool ok;
     jsval fval;
@@ -5047,12 +5110,12 @@ JS_CallFunctionName(JSContext *cx, JSObject *obj, const char *name, uintN argc,
         return JS_FALSE;
     ok = js_InternalCall(cx, obj, fval, argc, argv, rval);
     LAST_FRAME_CHECKS(cx, ok);
+//    printf("JS_CallFunctionName: ok: %d\n", ok);
     return ok;
 }
 
 JS_PUBLIC_API(JSBool)
-JS_CallFunctionValue(JSContext *cx, JSObject *obj, jsval fval, uintN argc,
-                     jsval *argv, jsval *rval)
+JS_CallFunctionValue(JSContext *cx, JSObject *obj, jsval fval, uintN argc, jsval *argv, jsval *rval)
 {
     JSBool ok;
 
@@ -5827,18 +5890,76 @@ JS_SetGCZeal(JSContext *cx, uint8 zeal)
 
 /************************************************************************/
 
-#if 0
-#if !defined(STATIC_JS_API) && defined(XP_WIN)
-
-#include <windows.h>
-
-/*
- * Initialization routine for the JS DLL.
- */
-BOOL WINAPI DllMain (HINSTANCE hDLL, DWORD dwReason, LPVOID lpReserved)
+#if JS_HAS_JSON_OBJECT
+JS_PUBLIC_API(JSBool)
+JS_Stringify(JSContext *cx, jsval *vp, JSObject *replacer, jsval space,
+             JSONWriteCallback callback, void *data)
 {
-    return TRUE;
+    CHECK_REQUEST(cx);
+    return js_Stringify(cx, vp, replacer, space, callback, data);
 }
 
+JS_PUBLIC_API(JSBool)
+JS_TryJSON(JSContext *cx, jsval *vp)
+{
+    CHECK_REQUEST(cx);
+    return js_TryJSON(cx, vp);
+}
+
+JS_PUBLIC_API(JSONParser *)
+JS_BeginJSONParse(JSContext *cx, jsval *vp)
+{
+    CHECK_REQUEST(cx);
+    return js_BeginJSONParse(cx, vp);
+}
+
+JS_PUBLIC_API(JSBool)
+JS_ConsumeJSONText(JSContext *cx, JSONParser *jp, const jschar *data, uint32 len)
+{
+    CHECK_REQUEST(cx);
+    return js_ConsumeJSONText(cx, jp, data, len);
+}
+
+JS_PUBLIC_API(JSBool)
+JS_FinishJSONParse(JSContext *cx, JSONParser *jp, jsval reviver)
+{
+    CHECK_REQUEST(cx);
+    return js_FinishJSONParse(cx, jp, reviver);
+}
+#if 0
+JS_PUBLIC_API(JSBool)
+JS_Stringify(JSContext *cx, jsval *vp, JSObject *replacer, JSONWriteCallback callback, void *data)
+{
+    CHECK_REQUEST(cx);
+    return js_Stringify(cx, vp, replacer, callback, data, 0);
+}
+
+JS_PUBLIC_API(JSBool)
+JS_TryJSON(JSContext *cx, jsval *vp)
+{
+    CHECK_REQUEST(cx);
+    return js_TryJSON(cx, vp);
+}
+
+JS_PUBLIC_API(JSONParser *)
+JS_BeginJSONParse(JSContext *cx, jsval *vp)
+{
+    CHECK_REQUEST(cx);
+    return js_BeginJSONParse(cx, vp);
+}
+
+JS_PUBLIC_API(JSBool)
+JS_ConsumeJSONText(JSContext *cx, JSONParser *jp, const jschar *data, uint32 len)
+{
+    CHECK_REQUEST(cx);
+    return js_ConsumeJSONText(cx, jp, data, len);
+}
+
+JS_PUBLIC_API(JSBool)
+JS_FinishJSONParse(JSContext *cx, JSONParser *jp)
+{
+    CHECK_REQUEST(cx);
+    return js_FinishJSONParse(cx, jp);
+}
 #endif
 #endif

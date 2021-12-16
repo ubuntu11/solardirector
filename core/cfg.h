@@ -27,6 +27,7 @@ struct _cfg_item {
 };
 typedef struct _cfg_item CFG_ITEM;
 typedef struct _cfg_item cfg_item;
+typedef struct _cfg_item cfg_item_t;
 #define CFG_ITEM_SIZE sizeof(struct _cfg_item)
 
 /* Define the section info structure */
@@ -44,6 +45,7 @@ struct _cfg_info {
 	char filename[256];	/* Filename */
 	list sections;		/* Section list */
 	int dirty;		/* A section or item has been updated */
+	char errmsg[128];
 };
 typedef struct _cfg_info CFG_INFO;
 //typedef struct _cfg_info cfg_info;
@@ -72,12 +74,15 @@ extern "C" {
 /* functions */
 CFG_INFO *cfg_create(char *);
 CFG_SECTION *cfg_create_section(CFG_INFO *,char *);
+int cfg_delete_section(CFG_INFO *,char *);
 void cfg_destroy(CFG_INFO *);
 CFG_INFO *cfg_read(char *);
 int cfg_write(CFG_INFO *);
 CFG_SECTION *cfg_get_section(CFG_INFO *,char *);
+CFG_ITEM *cfg_section_get_item(cfg_section_t *,char *);
 
 char *cfg_get_item(CFG_INFO *,char *,char *);
+int cfg_delete_item(CFG_INFO *,char *,char *);
 char *cfg_get_string(CFG_INFO *,char *,char *,char *);
 int cfg_get_bool(CFG_INFO *, char *, char *, int);
 int cfg_get_int(CFG_INFO *, char *, char *, int);

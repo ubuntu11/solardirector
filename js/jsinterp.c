@@ -1358,8 +1358,7 @@ bad:
 }
 
 JSBool
-js_InternalInvoke(JSContext *cx, JSObject *obj, jsval fval, uintN flags,
-                  uintN argc, jsval *argv, jsval *rval)
+js_InternalInvoke(JSContext *cx, JSObject *obj, jsval fval, uintN flags, uintN argc, jsval *argv, jsval *rval)
 {
     jsval *invokevp;
     void *mark;
@@ -1374,6 +1373,7 @@ js_InternalInvoke(JSContext *cx, JSObject *obj, jsval fval, uintN flags,
     memcpy(invokevp + 2, argv, argc * sizeof *argv);
 
     ok = js_Invoke(cx, argc, invokevp, flags);
+//    printf("js_InternalInvoke: js_Invoke: ok: %d\n",ok);
     if (ok) {
         /*
          * Store *rval in the a scoped local root if a scope is open, else in
@@ -1382,6 +1382,7 @@ js_InternalInvoke(JSContext *cx, JSObject *obj, jsval fval, uintN flags,
          * example) callers do not need to manage roots for local, temporary
          * references to such results.
          */
+//	printf("js_InternalInvoke: rval: %p\n", rval);
         *rval = *invokevp;
         if (JSVAL_IS_GCTHING(*rval) && *rval != JSVAL_NULL) {
             if (cx->localRootStack) {

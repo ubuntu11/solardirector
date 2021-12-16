@@ -124,56 +124,70 @@ void _outrelay(char *label, int r1, int r2) {
 }
 
 void display_info(si_session_t *s) {
-	si_info_t newinfo, *info;
+	_outpower("Active Grid",&s->info.active.grid);
+	_outpower("Active SI",&s->info.active.si);
+	_outpower("ReActive Grid",&s->info.reactive.grid);
+	_outpower("ReActive SI",&s->info.reactive.si);
+	_outpower("AC1 Voltage",&s->info.volt);
+	dfloat("AC1 Frequency","%2.2f",s->info.frequency);
+	_outpower("AC2 Voltage",&s->info.ac2_volt);
+	dfloat("AC2 Frequency","%2.2f",s->info.ac2_frequency);
+	dfloat("Battery Voltage","%3.2f",s->info.battery_voltage);
+	dfloat("Battery Current","%3.2f",s->info.battery_current);
+	dfloat("Battery Temp","%3.2f",s->info.battery_temp);
+	dfloat("Battery SoC","%3.2f",s->info.battery_soc);
+	dfloat("Battery CVSP","%3.2f",s->info.battery_cvsp);
+	_outrelay("Master Relay",s->info.relay1,s->info.relay2);
+	_outrelay("Slave1 Relays",s->info.s1_relay1,s->info.s1_relay2);
+	_outrelay("Slave2 Relays",s->info.s2_relay1,s->info.s2_relay2);
+	_outrelay("Slave3 Relays",s->info.s3_relay1,s->info.s3_relay2);
+	_dstr("Generator Running",s->info.GnRn ? "true" : "false");
+	_dstr("Generator Autostart",s->info.AutoGn ? "true" : "false");
+	_dstr("AutoLodExt",s->info.AutoLodExt ? "true" : "false");
+	_dstr("AutoLodSoc",s->info.AutoLodSoc ? "true" : "false");
+	_dstr("Tm1",s->info.Tm1 ? "true" : "false");
+	_dstr("Tm2",s->info.Tm2 ? "true" : "false");
+	_dstr("ExtPwrDer",s->info.ExtPwrDer ? "true" : "false");
+	_dstr("ExtVfOk",s->info.ExtVfOk ? "true" : "false");
+	_dstr("Grid On",s->info.GdOn ? "true" : "false");
+	_dstr("Error",s->info.Error ? "true" : "false");
+	_dstr("Run",s->info.Run ? "true" : "false");
+	_dstr("Battery Fan On",s->info.BatFan ? "true" : "false");
+	_dstr("Acid Circulation On",s->info.AcdCir ? "true" : "false");
+	_dstr("MccBatFan",s->info.MccBatFan ? "true" : "false");
+	_dstr("MccAutoLod",s->info.MccAutoLod ? "true" : "false");
+	_dstr("CHP #1 On",s->info.Chp ? "true" : "false");
+	_dstr("CHP #2 On",s->info.ChpAdd ? "true" : "false");
+	_dstr("SiComRemote",s->info.SiComRemote ? "true" : "false");
+	_dstr("Overload",s->info.OverLoad ? "true" : "false");
+	_dstr("ExtSrcConn",s->info.ExtSrcConn ? "true" : "false");
+	_dstr("Silent",s->info.Silent ? "true" : "false");
+	_dstr("Current",s->info.Current ? "true" : "false");
+	_dstr("FeedSelfC",s->info.FeedSelfC ? "true" : "false");
+	_dint("Charging procedure",s->info.charging_proc);
+	_dint("State",s->info.state);
+	_dint("Error Message",s->info.errmsg);
+	dfloat("TotLodPwr","%3.2f",s->info.TotLodPwr);
+	dfloat("PVPwrAt","%3.2f",s->info.PVPwrAt);
+	dfloat("GdCsmpPwrAt","%3.2f",s->info.GdCsmpPwrAt);
+	dfloat("GdFeedPwr","%3.2f",s->info.GdFeedPwr);
+}
 
-	if (si_get_info(s,&newinfo)) return;
-	info = &newinfo;
+int monitor(si_session_t *s, int interval) {
+	while(1) {
+		if (si_read(s,(void *)0xDEADBEEF,0)) {
+			log_error("unable to read data");
+			return 1;
+		}
+#ifdef __WIN32
+		system("cls");
+		system("time /t");
+#else
+		system("clear; echo \"**** $(date) ****\"; echo \"\"");
+#endif
 
-	_outpower("Active Grid",&info->active.grid);
-	_outpower("Active SI",&info->active.si);
-	_outpower("ReActive Grid",&info->reactive.grid);
-	_outpower("ReActive SI",&info->reactive.si);
-	_outpower("AC1 Voltage",&info->voltage);
-	dfloat("AC1 Frequency","%2.2f",info->frequency);
-	_outpower("AC2 Voltage",&info->ac2);
-	dfloat("AC2 Frequency","%2.2f",info->ac2_frequency);
-	dfloat("Battery Voltage","%3.2f",info->battery_voltage);
-	dfloat("Battery Current","%3.2f",info->battery_current);
-	dfloat("Battery Temp","%3.2f",info->battery_temp);
-	dfloat("Battery SoC","%3.2f",info->battery_soc);
-	dfloat("Battery CVSP","%3.2f",info->battery_cvsp);
-	_outrelay("Master Relay",info->bits.relay1,info->bits.relay2);
-	_outrelay("Slave1 Relays",info->bits.s1_relay1,info->bits.s1_relay2);
-	_outrelay("Slave2 Relays",info->bits.s2_relay1,info->bits.s2_relay2);
-	_outrelay("Slave3 Relays",info->bits.s3_relay1,info->bits.s3_relay2);
-	_dstr("Generator Running",info->bits.GnRn ? "true" : "false");
-	_dstr("Generator Autostart",info->bits.AutoGn ? "true" : "false");
-	_dstr("AutoLodExt",info->bits.AutoLodExt ? "true" : "false");
-	_dstr("AutoLodSoc",info->bits.AutoLodSoc ? "true" : "false");
-	_dstr("Tm1",info->bits.Tm1 ? "true" : "false");
-	_dstr("Tm2",info->bits.Tm2 ? "true" : "false");
-	_dstr("ExtPwrDer",info->bits.ExtPwrDer ? "true" : "false");
-	_dstr("ExtVfOk",info->bits.ExtVfOk ? "true" : "false");
-	_dstr("Grid On",info->bits.GdOn ? "true" : "false");
-	_dstr("Error",info->bits.Error ? "true" : "false");
-	_dstr("Run",info->bits.Run ? "true" : "false");
-	_dstr("Battery Fan On",info->bits.BatFan ? "true" : "false");
-	_dstr("Acid Circulation On",info->bits.AcdCir ? "true" : "false");
-	_dstr("MccBatFan",info->bits.MccBatFan ? "true" : "false");
-	_dstr("MccAutoLod",info->bits.MccAutoLod ? "true" : "false");
-	_dstr("CHP #1 On",info->bits.Chp ? "true" : "false");
-	_dstr("CHP #2 On",info->bits.ChpAdd ? "true" : "false");
-	_dstr("SiComRemote",info->bits.SiComRemote ? "true" : "false");
-	_dstr("Overload",info->bits.OverLoad ? "true" : "false");
-	_dstr("ExtSrcConn",info->bits.ExtSrcConn ? "true" : "false");
-	_dstr("Silent",info->bits.Silent ? "true" : "false");
-	_dstr("Current",info->bits.Current ? "true" : "false");
-	_dstr("FeedSelfC",info->bits.FeedSelfC ? "true" : "false");
-	_outpower("Load",&info->load);
-	_dint("Charging procedure",info->charging_proc);
-	_dint("State",info->state);
-	_dint("Error Message",info->errmsg);
-	dfloat("PVPwrAt","%3.2f",info->PVPwrAt);
-	dfloat("GdCsmpPwrAt","%3.2f",info->GdCsmpPwrAt);
-	dfloat("GdFeedPwr","%3.2f",info->GdFeedPwr);
+		display_info(s);
+		sleep(interval);
+	}
+	return 0;
 }

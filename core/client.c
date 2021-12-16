@@ -259,18 +259,31 @@ solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,cha
 		};
 		s->cfg = cfg_read(configfile);
 		if (s->cfg) {
+			struct mqtt_config *conf = &s->mqtt_config;
+
 			cfg_get_tab(s->cfg,agent_tab);
 			if (debug) cfg_disp_tab(agent_tab,"agent",0);
-			if (mqtt_get_config(s->cfg,&s->mqtt_config)) goto client_init_error;
+			struct cfg_proctab tab[] = {
+				{ "mqtt", "broker", "Broker URL", DATA_TYPE_STRING,&s->mqtt_config.host,sizeof(conf->host), 0 },
+				{ "mqtt", "clientid", "Client ID", DATA_TYPE_STRING,&conf->clientid,sizeof(conf->clientid), 0 },
+				{ "mqtt", "username", "Broker username", DATA_TYPE_STRING,&conf->username,sizeof(conf->username), 0 },
+				{ "mqtt", "password", "Broker password", DATA_TYPE_STRING,&conf->password,sizeof(conf->password), 0 },
+				CFG_PROCTAB_END
+			};
+
+			cfg_get_tab(s->cfg,tab);
+#ifdef DEBUG
+			if (debug) cfg_disp_tab(tab,"MQTT",0);
+#endif
 		}
 	} else {
 		dprintf(1,"mqtt_info: %s\n", mqtt_info);
 		if (!strlen(mqtt_info)) strcpy(mqtt_info,"localhost");
 		strncpy(s->mqtt_config.host,strele(0,",",mqtt_info),sizeof(s->mqtt_config.host)-1);
 		strncpy(s->mqtt_config.clientid,strele(1,",",mqtt_info),sizeof(s->mqtt_config.clientid)-1);
-		strncpy(s->mqtt_config.user,strele(2,",",mqtt_info),sizeof(s->mqtt_config.user)-1);
-		strncpy(s->mqtt_config.pass,strele(3,",",mqtt_info),sizeof(s->mqtt_config.pass)-1);
-		dprintf(1,"host: %s, clientid: %s, user: %s, pass: %s\n", s->mqtt_config.host, s->mqtt_config.clientid, s->mqtt_config.user, s->mqtt_config.pass);
+		strncpy(s->mqtt_config.username,strele(2,",",mqtt_info),sizeof(s->mqtt_config.username)-1);
+		strncpy(s->mqtt_config.password,strele(3,",",mqtt_info),sizeof(s->mqtt_config.password)-1);
+		dprintf(1,"host: %s, clientid: %s, user: %s, pass: %s\n", s->mqtt_config.host, s->mqtt_config.clientid, s->mqtt_config.username, s->mqtt_config.password);
 	}
 	dprintf(1,"configfile: %s\n", configfile);
 
@@ -289,9 +302,9 @@ solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,cha
 		dprintf(4,"NEW clientid: %s\n",s->mqtt_config.clientid);
 	}
 	if (!strlen(s->id)) strcpy(s->id,s->mqtt_config.clientid);
-	s->m = mqtt_new(&s->mqtt_config,client_getmsg,s);
+	s->m = mqtt_new(client_getmsg,s);
 	if (!s->m) goto client_init_error;
-//	if (mqtt_setcb(s->m,s,client_mqtt_reconnect,client_callback,0)) return 0;
+        if (mqtt_newclient(s->m, &s->mqtt_config)) goto client_init_error;
 	if (mqtt_connect(s->m,20)) goto client_init_error;
 
 	/* Subscribe to our clientid */

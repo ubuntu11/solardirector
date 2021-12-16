@@ -54,8 +54,8 @@ int jbd_get_info(void *handle,jbd_info_t *info) {
 	return r;
 }
 
-json_value_t *jbd_info(void *handle) {
-	jbd_session_t *s = handle;
+int jbd_info(jbd_session_t *s) {
+	char str[65536];
 	jbd_info_t info;
 	json_value_t *j,*a;
 	char version[16];
@@ -65,17 +65,17 @@ json_value_t *jbd_info(void *handle) {
 	int bytes;
 
 	dprintf(1,"s: %p\n", s);
-	if (!handle) return 0;
+	if (!s) return 1;
 
 	/* Get the info */
-	if (jbd_open(s) < 0) return 0;
+	if (jbd_open(s) < 0) return 1;
 	memset(&info,0,sizeof(info));
-	if (jbd_get_info(s,&info)) return 0;
+	if (jbd_get_info(s,&info)) return 1;
 
 	/* Get balance info */
-	if (jbd_eeprom_start(s) < 0) return 0;
+	if (jbd_eeprom_start(s) < 0) return 1;
 	bytes = jbd_rw(s, JBD_CMD_READ, JBD_REG_FUNCMASK, data, sizeof(data));
-	if (bytes < 0) return 0;
+	if (bytes < 0) return 1;
 	val = jbd_getshort(data);
 	dprintf(1,"val: %d\n", val);
 	if (val & JBD_FUNC_CHG_BALANCE)
@@ -90,7 +90,7 @@ json_value_t *jbd_info(void *handle) {
 	dprintf(1,"mem_start: %ld\n",mem_start);
 
 	j = json_create_object();
-	if (!j) return 0;
+	if (!j) return 1;
 	json_add_string(j,"agent_name","jbd");
 	json_add_string(j,"agent_role",SOLARD_ROLE_BATTERY);
 	json_add_string(j,"agent_description","JBD BMS Agent");
@@ -107,7 +107,12 @@ json_value_t *jbd_info(void *handle) {
 	json_array_add_descriptor(a,(json_descriptor_t){ "BALANCE_CONTROL", DATA_TYPE_INT, "select", 3, (int []){ 0,1,2 }, 3, (char *[]){ "off", "on", "charge" } });
 	json_add_value(j,"controls",a);
 	jbd_config_add_params(j);
+	json_tostring(j,str,sizeof(str)-1,0);
+//	agent_mktopic(topic,sizeof(topic)-1,s->ap,s->ap->instance_name,SOLARD_FUNC_INFO);
+//	mqtt_pub(s->ap->m,topic,str,0,1);
+	printf("%s\n",str);
+	json_destroy(j);
 
 	dprintf(1,"mem_used: %ld\n",mem_used() - mem_start);
-	return j;
+	return 0;
 }

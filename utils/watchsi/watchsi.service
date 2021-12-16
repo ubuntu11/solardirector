@@ -1,0 +1,11 @@
+[Unit]
+Description=Sunny Island Agent Watcher
+After=network-online.target network.target rsyslog.service si.service
+
+[Service]
+Type=simple
+ExecStart=/opt/sd/bin/watchsi
+Restart=never
+
+[Install]
+WantedBy=multi-user.target

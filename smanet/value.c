@@ -33,7 +33,7 @@ Params
 #define CH_DOUBLE	0x05
 #define CH_ARRAY	0x08
 
-#define dlevel 5
+#define dlevel 1
 
 void smanet_clear_values(smanet_session_t *s) {
 	smanet_channel_t *c;
@@ -54,7 +54,7 @@ static int _read_values(smanet_session_t *s, smanet_channel_t *c) {
 	smanet_channel_t *vc;
 	smanet_value_t *v;
 
-	dprintf(1,"id: %d, c->id, c->mask: %04x, index: %02x\n", c->id, c->mask, c->index);
+	dprintf(smanet_dlevel,"id: %d, c->id, c->mask: %04x, index: %02x\n", c->id, c->mask, c->index);
 
 	p = smanet_alloc_packet(2048);
 	if (!p) return 1;
@@ -76,7 +76,7 @@ static int _read_values(smanet_session_t *s, smanet_channel_t *c) {
 	*((uint8_t *)&data[2]) = 0;
 	r = smanet_command(s,CMD_GET_DATA,p,data,sizeof(data));
 	if (r) return r;
-	if (debug >= dlevel+1) bindump("values",p->data,p->dataidx);
+//	if (debug >= dlevel+1) bindump("values",p->data,p->dataidx);
 
 	sptr = p->data;
 	eptr = p->data + p->dataidx;
@@ -85,13 +85,13 @@ static int _read_values(smanet_session_t *s, smanet_channel_t *c) {
 	index = (uint8_t) *(uint8_t *) sptr++;
 	count = (uint16_t) *(uint16_t *) sptr;
 	sptr += 2;
-	dprintf(1,"mask: %04x, index: %02x, count: %d\n",mask,index,count);
+	dprintf(smanet_dlevel,"mask: %04x, index: %02x, count: %d\n",mask,index,count);
 	if (mask & CH_SPOT) {
 		timestamp = *(time_t *) sptr;
 		sptr += 4;
 		time_base = *(long *) sptr;
 		sptr += 4;
-		dprintf(1,"ts: %ld, time_base: %ld\n", timestamp, time_base);
+		dprintf(smanet_dlevel,"ts: %ld, time_base: %ld\n", timestamp, time_base);
 	}
 	list_reset(s->channels);
 	while(sptr < eptr) {
@@ -99,40 +99,41 @@ static int _read_values(smanet_session_t *s, smanet_channel_t *c) {
 		if (!vc) break;
 		m1 = mask >> 8;
 		m2 = vc->mask >> 8;
-//		dprintf(1,"m1: %02x, m2: %02x, and: %02x\n", m1, m2, m1 & m2);
+//		dprintf(smanet_dlevel,"m1: %02x, m2: %02x, and: %02x\n", m1, m2, m1 & m2);
 		if ((m1 & m2) == 0) continue;
-		dprintf(1,"vc->name: %s, format: %04x\n", vc->name, vc->format);
+		dprintf(smanet_dlevel,"vc->name: %s, format: %04x\n", vc->name, vc->format);
 		v = &s->values[vc->id];
-		dprintf(1,"c->type: %d (%s)\n", c->type, typestr(c->type));
-		dprintf(1,"offset: %04x\n", sptr - p->data);
+		dprintf(smanet_dlevel,"c->type: %d (%s)\n", c->type, typestr(c->type));
+		dprintf(smanet_dlevel,"offset: %04x\n", sptr - p->data);
 		switch(vc->type) {
 		case DATA_TYPE_BYTE:
 			v->bval = *(uint8_t *) sptr++;
-			dprintf(1,"bval: %d (%02X)\n", v->bval, v->bval);
+			dprintf(smanet_dlevel,"bval: %d (%02X)\n", v->bval, v->bval);
 			break;
 		case DATA_TYPE_SHORT:
 			v->wval = (uint16_t) *(uint16_t *) sptr;
-			dprintf(1,"wval: %d (%04x)\n", v->wval, v->wval);
+			dprintf(smanet_dlevel,"wval: %d (%04x)\n", v->wval, v->wval);
 			sptr += 2;
 			break;
+		case DATA_TYPE_INT:
 		case DATA_TYPE_LONG:
 			v->lval = (uint32_t) *(uint32_t *) sptr;
-			dprintf(1,"lval: %ld (%08lx)\n", v->lval, v->lval);
+			dprintf(smanet_dlevel,"lval: %ld (%08lx)\n", v->lval, v->lval);
 			sptr += 4;
 			break;
 		case DATA_TYPE_FLOAT:
 			v->fval = *(float *) sptr;
-			dprintf(1,"lval: %f\n", v->fval);
+			dprintf(smanet_dlevel,"lval: %f\n", v->fval);
 			sptr += 4;
 			break;
 		case DATA_TYPE_DOUBLE:
 			v->dval = *(double *) sptr;
-			dprintf(1,"lval: %lf\n", v->dval);
+			dprintf(smanet_dlevel,"lval: %lf\n", v->dval);
 			sptr += 8;
 			break;
 		default:
 			v->dval = 0;
-			dprintf(1,"unhandled format: %d\n", vc->format);
+			dprintf(smanet_dlevel,"unhandled format: %d\n", vc->format);
 			break;
 		}
 		v->type = vc->type;
@@ -141,36 +142,36 @@ static int _read_values(smanet_session_t *s, smanet_channel_t *c) {
 		case CH_BYTE:
 			v->type = DATA_TYPE_BYTE;
 			v->bval = (uint8_t) *(uint8_t *) sptr++;
-			dprintf(1,"bval: %d (%02X)\n", v->bval, v->bval);
+			dprintf(smanet_dlevel,"bval: %d (%02X)\n", v->bval, v->bval);
 			break;
 		case CH_SHORT:
 			v->type = DATA_TYPE_SHORT;
 			v->wval = (uint16_t) *(uint16_t *) sptr;
-			dprintf(1,"wval: %d (%04x)\n", v->wval, v->wval);
+			dprintf(smanet_dlevel,"wval: %d (%04x)\n", v->wval, v->wval);
 			sptr += 2;
 			break;
 		case CH_LONG:
 			v->type = DATA_TYPE_LONG;
 			v->lval = (uint32_t) *(uint32_t *) sptr;
-			dprintf(1,"lval: %ld (%08lx)\n", v->lval, v->lval);
+			dprintf(smanet_dlevel,"lval: %ld (%08lx)\n", v->lval, v->lval);
 			sptr += 4;
 			break;
 		case CH_FLOAT:
 			v->type = DATA_TYPE_FLOAT;
 			v->fval = *(float *) sptr;
-			dprintf(1,"lval: %f\n", v->fval);
+			dprintf(smanet_dlevel,"lval: %f\n", v->fval);
 			sptr += 4;
 			break;
 		case CH_DOUBLE:
 			v->type = DATA_TYPE_DOUBLE;
 			v->dval = *(double *) sptr;
-			dprintf(1,"lval: %lf\n", v->dval);
+			dprintf(smanet_dlevel,"lval: %lf\n", v->dval);
 			sptr += 8;
 			break;
 		default:
 			v->type = DATA_TYPE_UNKNOWN;
 			v->dval = 0;
-			dprintf(1,"unhandled format: %d\n", vc->format);
+			dprintf(smanet_dlevel,"unhandled format: %d\n", vc->format);
 			break;
 		}
 #endif
@@ -181,16 +182,16 @@ static int _read_values(smanet_session_t *s, smanet_channel_t *c) {
 }
 
 static int _get_value(smanet_session_t *s, smanet_channel_t *c, smanet_value_t *v) {
-	if (s->values) dprintf(1,"timestamp: %d\n", s->values[c->id].timestamp);
+	if (s->values) dprintf(smanet_dlevel,"timestamp: %d\n", s->values[c->id].timestamp);
 	if ((!s->values || s->values[c->id].timestamp == 0) && _read_values(s,c)) return 1;
-	*v = s->values[c->id];
+	if (v) *v = s->values[c->id];
 	return 0;
 }
 
 static double _getdval(smanet_value_t *v) {
 	double val;
 
-	dprintf(1,"ts: %d\n", v->timestamp);
+	dprintf(smanet_dlevel,"ts: %d\n", v->timestamp);
 	switch(v->type) {
 	case DATA_TYPE_BYTE:
 		val = v->bval;
@@ -208,10 +209,10 @@ static double _getdval(smanet_value_t *v) {
 		val = v->dval;
 		break;
 	default:
-		dprintf(1,"unhandled type(%d)!\n",v->type);
+		dprintf(smanet_dlevel,"unhandled type(%d)!\n",v->type);
 		val = 0.0;
 	}
-	dprintf(1,"returning: %lf\n", val);
+	dprintf(smanet_dlevel,"returning: %lf\n", val);
 	return val;
 }
 
@@ -220,30 +221,33 @@ int smanet_get_value(smanet_session_t *s, char *name, double *dest, char **text)
 	smanet_value_t v;
 	double d;
 
-	if (!dest) return 1;
-	if ((c = smanet_get_channel(s, name)) == 0) return 1;
+	dprintf(1,"getting channel: %s\n", name);
+	if ((c = smanet_get_channel(s, name)) == 0) {
+		dprintf(1,"error getting channel!\n", name);
+		return 1;
+	}
 	if (_get_value(s, c, &v)) return 1;
 	d = _getdval(&v);
-	dprintf(1,"d: %f\n", d);
-	dprintf(1,"c->mask & CH_PARA: %d\n", c->mask & CH_PARA);
+	dprintf(smanet_dlevel,"d: %f\n", d);
+	dprintf(smanet_dlevel,"c->mask & CH_PARA: %d\n", c->mask & CH_PARA);
 	if ((c->mask & CH_PARA) == 0) {
-		dprintf(1,"c->mask & CH_COUNTER: %d\n", c->mask & CH_COUNTER);
+		dprintf(smanet_dlevel,"c->mask & CH_COUNTER: %d\n", c->mask & CH_COUNTER);
 		if (c->mask & CH_COUNTER) {
-			dprintf(1,"gain: %f\n", c->gain);
+			dprintf(smanet_dlevel,"gain: %f\n", c->gain);
 			d *= c->gain;
 		}
-		dprintf(1,"c->mask & CH_ANALOG: %d\n", c->mask & CH_ANALOG);
+		dprintf(smanet_dlevel,"c->mask & CH_ANALOG: %d\n", c->mask & CH_ANALOG);
 		if (c->mask & CH_ANALOG) {
-			dprintf(1,"gain: %f, offset: %f\n", c->gain, c->offset);
+			dprintf(smanet_dlevel,"gain: %f, offset: %f\n", c->gain, c->offset);
 			d = (d * c->gain) + c->offset;
 		}
 	}
-	dprintf(1,"d: %f\n", d);
-	*dest = d;
+	dprintf(smanet_dlevel,"d: %f\n", d);
+	if (dest) *dest = d;
 
 	/* Get the text value, if any */
 	if (text) *text = 0;
-	dprintf(1,"c->mask & CH_STATUS: %d\n", c->mask & CH_STATUS);
+	dprintf(smanet_dlevel,"c->mask & CH_STATUS: %d\n", c->mask & CH_STATUS);
 	if (c->mask & CH_STATUS && text) {
 		register char *p;
 		register int i;
@@ -251,7 +255,7 @@ int smanet_get_value(smanet_session_t *s, char *name, double *dest, char **text)
 		i = 0;
 		list_reset(c->strings);
 		while((p = list_get_next(c->strings)) != 0) {
-			dprintf(1,"p: %s\n", p);
+			dprintf(smanet_dlevel,"p: %s\n", p);
 			if (i == d) {
 				*text = p;
 				break;
@@ -267,7 +271,7 @@ int smanet_get_valuebyname(smanet_session_t *s, char *name, double *dest) {
 	smanet_channel_t *c;
 
 	c = smanet_get_channelbyname(s,name);
-	dprintf(1,"c: %p\n", c);
+	dprintf(smanet_dlevel,"c: %p\n", c);
 	if (!c) return 0;
 	return smanet_get_value(s,c,dest);
 }
@@ -277,7 +281,7 @@ int smanet_get_optionval(smanet_session_t *s, smanet_channel_t *c, char *opt) {
 	register int i;
 	int r;
 
-	dprintf(1,"opt: %s\n", opt);
+	dprintf(smanet_dlevel,"opt: %s\n", opt);
 
 	if ((c->mask & CH_STATUS) == 0) return -1;
 
@@ -285,14 +289,14 @@ int smanet_get_optionval(smanet_session_t *s, smanet_channel_t *c, char *opt) {
 	r = -1;
 	list_reset(c->strings);
 	while((p = list_get_next(c->strings)) != 0) {
-		dprintf(1,"p: %s\n", p);
+		dprintf(smanet_dlevel,"p: %s\n", p);
 		if (strcmp(p,opt) == 0) {
 			r = i;
 			break;
 		}
 		i++;
 	}
-	dprintf(1,"returning: %d\n", r);
+	dprintf(smanet_dlevel,"returning: %d\n", r);
 	return r;
 }
 #endif
@@ -310,16 +314,16 @@ int smanet_get_optionbyname(smanet_session_t *s, char *name, char *dest, int des
 	register int i;
 	double index;
 
-	dprintf(1,"name: %s\n", name);
+	dprintf(smanet_dlevel,"name: %s\n", name);
 
 //	c = smanet_get_channelbyname(s,name);
 	if (smanet_get_channel(s,name,c)) return 1;
 	if (smanet_get_value(s, c, &index)) return 1;
-	dprintf(1,"index: %f\n", index);
+	dprintf(smanet_dlevel,"index: %f\n", index);
 	i = 0;
 	list_reset(c->strings);
 	while((p = list_get_next(c->strings)) != 0) {
-		dprintf(1,"p: %s\n", p);
+		dprintf(smanet_dlevel,"p: %s\n", p);
 		if (i == index) {
 			strncpy(dest,p,destlen);
 			return 0;
@@ -335,7 +339,7 @@ static int _write_value(smanet_session_t *s, smanet_channel_t *c, smanet_value_t
 	uint8_t data[16];
 	int i;
 
-	dprintf(1,"id: %d, name: %s, mask: %04x, index: %02x\n", c->id, c->name, c->mask, c->index);
+	dprintf(smanet_dlevel,"id: %d, name: %s, mask: %04x, index: %02x\n", c->id, c->name, c->mask, c->index);
 
 #if 0
 	{
@@ -345,7 +349,7 @@ static int _write_value(smanet_session_t *s, smanet_channel_t *c, smanet_value_t
 
 		v1 = _getval(&s->values[c->id]);
 		v2 = _getval(nv);
-		dprintf(1,"v1: %lf, v2: %lf\n", v1, v2);
+		dprintf(smanet_dlevel,"v1: %lf, v2: %lf\n", v1, v2);
 		if (v1 == v2) return 0;
 	}
 #endif
@@ -357,7 +361,7 @@ static int _write_value(smanet_session_t *s, smanet_channel_t *c, smanet_value_t
 	*((uint8_t *)&data[2]) = c->index;
 	*((uint16_t *)&data[3]) = 1;
 	i = 5;
-	dprintf(1,"type: %d (%s)\n", nv->type, typestr(nv->type));
+	dprintf(smanet_dlevel,"type: %d (%s)\n", nv->type, typestr(nv->type));
 	switch(nv->type) {
 	case DATA_TYPE_BYTE:
 		*((uint8_t *)&data[i]) = nv->bval;
@@ -380,10 +384,10 @@ static int _write_value(smanet_session_t *s, smanet_channel_t *c, smanet_value_t
 		i += 8;
 		break;
 	default:
-		dprintf(1,"unhandled type: %d\n", nv->type);
+		dprintf(smanet_dlevel,"unhandled type: %d\n", nv->type);
 		return 1;
 	}
-	if (debug > dlevel+1) bindump("data",data,i);
+//	if (debug > dlevel+1) bindump("data",data,i);
 	if (smanet_command(s,CMD_SET_DATA,p,data,i)) return 1;
 	smanet_free_packet(p);
 	/* if no values allocated yet, do so now */
@@ -401,7 +405,7 @@ static int _write_value(smanet_session_t *s, smanet_channel_t *c, smanet_value_t
 }
 
 static void _setdval(smanet_value_t *v, double val) {
-	dprintf(1,"val : %f, type: %d(%s)\n", val, v->type, typestr(v->type));
+	dprintf(smanet_dlevel,"val : %f, type: %d(%s)\n", val, v->type, typestr(v->type));
 	switch(v->type) {
 	case DATA_TYPE_BYTE:
 		v->bval = val;
@@ -419,10 +423,20 @@ static void _setdval(smanet_value_t *v, double val) {
 		v->dval = val;
 		break;
 	default:
-		dprintf(1,"unhandled type(%d)!\n",v->type);
+		dprintf(smanet_dlevel,"unhandled type(%d)!\n",v->type);
 		v->dval = 0.0;
 		break;
 	}
+}
+
+int smanet_reset_value(smanet_session_t *s, char *name) {
+	smanet_channel_t *c;
+	smanet_value_t val;
+
+	if ((c = smanet_get_channel(s, name)) == 0) return 1;
+
+	_setdval(&val,-1);
+	return _write_value(s, c, &val);
 }
 
 int smanet_set_value(smanet_session_t *s, char *name, double val, char *text) {
@@ -434,12 +448,12 @@ int smanet_set_value(smanet_session_t *s, char *name, double val, char *text) {
 		register char *p;
 		int i,found;
 
-		dprintf(1,"text: %s\n", text);
+		dprintf(smanet_dlevel,"text: %s\n", text);
 
 		i=found=0;
 		list_reset(c->strings);
 		while((p = list_get_next(c->strings)) != 0) {
-			dprintf(1,"option: %s\n", p);
+			dprintf(smanet_dlevel,"option: %s\n", p);
 			if (strcmp(p,text) == 0) {
 				val = i;
 				found = 1;
@@ -447,7 +461,7 @@ int smanet_set_value(smanet_session_t *s, char *name, double val, char *text) {
 			}
 			i++;
 		}
-		dprintf(1,"found: %d\n", found);
+		dprintf(smanet_dlevel,"found: %d\n", found);
 		if (!found) return 1;
 	}
 	v.type = c->type;
@@ -492,30 +506,30 @@ int smanet_set_optionbyname(smanet_session_t *s, char *name, char *opt) {
 	smanet_value_t v;
 	int i,found;
 
-	dprintf(1,"name: %s, opt: %s\n", name, opt);
+	dprintf(smanet_dlevel,"name: %s, opt: %s\n", name, opt);
 
 	if (!s) return 1;
 	/* My SI6048 simply refuses to set option 0 (no value/default) */
 	if (strcmp(opt,"---") == 0) return 1;
 	c = smanet_get_channelbyname(s,name);
-	dprintf(1,"c: %p\n", c);
+	dprintf(smanet_dlevel,"c: %p\n", c);
 	if (!c) return 1;
 	if ((c->mask & CH_STATUS) == 0) return 1;
-	dprintf(1,"count: %d\n", list_count(c->strings));
+	dprintf(smanet_dlevel,"count: %d\n", list_count(c->strings));
 	if (!list_count(c->strings)) return 1;
 	i=found=0;
 	list_reset(c->strings);
 	while((p = list_get_next(c->strings)) != 0) {
-		dprintf(1,"option: %s\n", p);
+		dprintf(smanet_dlevel,"option: %s\n", p);
 		if (strcmp(p,opt) == 0) {
 			found = 1;
 			break;
 		}
 		i++;
 	}
-	dprintf(1,"found: %d\n", found);
+	dprintf(smanet_dlevel,"found: %d\n", found);
 	if (!found) return 1;
-	dprintf(1,"i: %d\n", i);
+	dprintf(smanet_dlevel,"i: %d\n", i);
 	time(&v.timestamp);
 	v.type = DATA_TYPE_BYTE;
 	v.bval = i;
@@ -608,7 +622,7 @@ char *smanet_get_option(smanet_session_t *s, smanet_channel_t *c) {
 	i = 0;
 	list_reset(c->strings);
 	while((p = list_get_next(c->strings)) != 0) {
-		dprintf(1,"p: %s\n", p);
+		dprintf(smanet_dlevel,"p: %s\n", p);
 		if (i == c->value.bval) return p;
 		i++;
 	}
@@ -633,7 +647,7 @@ static int _set_value(smanet_value_t *v, double val) {
 		v->dval = val;
 		break;
 	default:
-		dprintf(1,"unhandled type!\n");
+		dprintf(smanet_dlevel,"unhandled type!\n");
 		return 1;
 		break;
 	}

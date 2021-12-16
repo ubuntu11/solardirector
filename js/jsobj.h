@@ -385,8 +385,14 @@ js_LeaveSharpObject(JSContext *cx, JSIdArray **idap);
 extern void
 js_TraceSharpMap(JSTracer *trc, JSSharpObjectMap *map);
 
+//extern JSBool
+//js_HasOwnPropertyHelper(JSContext *cx, JSLookupPropOp lookup, jsval *vp);
+
 extern JSBool
-js_HasOwnPropertyHelper(JSContext *cx, JSLookupPropOp lookup, jsval *vp);
+js_HasOwnPropertyHelper(JSContext *cx, JSLookupPropOp lookup, uintN argc, jsval *vp);
+
+extern JSBool
+js_HasOwnProperty(JSContext *cx, JSLookupPropOp lookup, JSObject *obj, jsid id, jsval *vp);
 
 extern JSObject *
 js_InitBlockClass(JSContext *cx, JSObject* obj);

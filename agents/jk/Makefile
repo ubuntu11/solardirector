@@ -1,6 +1,6 @@
 
 PROGNAME=jk
-SRCS=main.c io.c info.c read.c config.c
+SRCS=main.c jk.c io.c info.c read.c config.c
 TRANSPORTS=bluetooth,ip,can,serial,rdev
 
 BLUETOOTH=yes

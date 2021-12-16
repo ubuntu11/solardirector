@@ -957,6 +957,7 @@ solard_driver_t can_driver = {
 	SOLARD_DRIVER_TRANSPORT,
 	"can",
 	can_new,
+	0,
 	can_open,
 	can_close,
 	can_read,

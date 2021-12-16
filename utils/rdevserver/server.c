@@ -69,7 +69,7 @@ int server(rdev_config_t *conf, int port) {
 			goto rdev_server_error;
 		} else if (pid == 0) {
 			_exit(devserver(&conf->ds,c));
-#if 0
+#if 1
 		} else {
 			dprintf(1,"waiting on pid...\n");
 			waitpid(pid,&status,0);

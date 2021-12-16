@@ -74,4 +74,16 @@ jsdtrace_execute_start(JSScript *script);
 extern void
 jsdtrace_execute_done(JSScript *script);
 
+char *
+jsdtrace_filename(JSStackFrame *fp);
+char *
+jsdtrace_funcclass_name(JSFunction *fun);
+char *
+jsdtrace_function_name(JSContext *cx, JSStackFrame *fp, JSFunction *fun);
+int
+jsdtrace_linenumber(JSContext *cx, JSStackFrame *fp);
+
+
+
+
 #endif /* _JSDTRACE_H */

@@ -90,4 +90,6 @@ int smanet_get_net_start(smanet_session_t *s, long *sn, char *type, int len);
 int smanet_cfg_net_adr(smanet_session_t *s, int);
 int smanet_syn_online(smanet_session_t *s);
 
+#define smanet_dlevel 6
+
 #endif

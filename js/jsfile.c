@@ -45,7 +45,6 @@
 
 #include "jsstddef.h"
 #include "jsfile.h"
-#include <dirent.h>
 
 /* ----------------- Platform-specific includes and defines ----------------- */
 #if defined(XP_WIN) || defined(XP_OS2)
@@ -89,8 +88,8 @@
 #include <string.h>
 
 /* NSPR dependencies */
-//#include <nspr/prio.h>
-//#include <nspr/prerror.h>
+#include "prio.h"
+#include "prerror.h"
 
 #define SPECIAL_FILE_STRING     "Special File"
 #define CURRENTDIR_PROPERTY     "currentDir"
@@ -235,8 +234,8 @@ typedef struct JSFile {
     JSBool      hasAutoflush;   /* should we force a flush for each line break? */
     JSBool      isNative;       /* if the file is using OS-specific file FILE type */
     /* We can actually put the following two in a union since they should never be used at the same time */
-//    PRFileDesc  *handle;        /* the handle for the file, if open.  */
-    FILE        *fp;  /* native handle, for stuff NSPR doesn't do. */
+    PRFileDesc  *handle;        /* the handle for the file, if open.  */
+    FILE        *nativehandle;  /* native handle, for stuff NSPR doesn't do. */
     JSBool      isPipe;         /* if the file is really an OS pipe */
 } JSFile;
 
@@ -756,7 +755,8 @@ js_ResetAttributes(JSFile * file)
 {
     file->mode = file->type = 0;
     file->isOpen = JS_FALSE;
-    file->fp = NULL;
+    file->handle = NULL;
+    file->nativehandle = NULL;
     file->hasRandomAccess = JS_TRUE; /* Innocent until proven guilty. */
     file->hasAutoflush = JS_FALSE;
     file->isNative = JS_FALSE;
@@ -782,7 +782,9 @@ js_FileOpen(JSContext *cx, JSObject *obj, JSFile *file, char *mode){
 }
 
 /* Buffered version of PR_Read. Used by js_FileRead */
-static int32 js_BufferedRead(JSFile *f, unsigned char *buf, int32 len) {
+static int32
+js_BufferedRead(JSFile *f, unsigned char *buf, int32 len)
+{
     int32 count = 0;
 
     while (f->nbBytesInBuf>0&&len>0) {
@@ -796,8 +798,9 @@ static int32 js_BufferedRead(JSFile *f, unsigned char *buf, int32 len) {
     }
 
     if (len > 0) {
-//        count += (!f->isNative) ? PR_Read(f->handle, buf, len) : fread(buf, 1, len, f->nativehandle);
-        count += fread(buf, 1, len, f->fp);
+        count += (!f->isNative)
+                 ? PR_Read(f->handle, buf, len)
+                 : fread(buf, 1, len, f->nativehandle);
     }
     return count;
 }
@@ -887,7 +890,8 @@ js_FileRead(JSContext *cx, JSFile *file, jschar *buf, int32 len, int32 mode)
     return count;
 }
 
-static int32 js_FileSeek(JSContext *cx, JSFile *file, int32 len, int32 mode)
+static int32
+js_FileSeek(JSContext *cx, JSFile *file, int32 len, int32 mode)
 {
     int32 count = 0, i;
     jsint remainder;
@@ -896,8 +900,7 @@ static int32 js_FileSeek(JSContext *cx, JSFile *file, int32 len, int32 mode)
 
     switch (mode) {
       case ASCII:
-//        count = PR_Seek(file->handle, len, PR_SEEK_CUR);
-        count = fseek(file->fp, len, SEEK_CUR);
+        count = PR_Seek(file->handle, len, PR_SEEK_CUR);
         break;
 
       case UTF8:
@@ -933,8 +936,7 @@ static int32 js_FileSeek(JSContext *cx, JSFile *file, int32 len, int32 mode)
         break;
 
       case UCS2:
-//        count = PR_Seek(file->handle, len*2, PR_SEEK_CUR)/2;
-        count = fseek(file->fp, len*2, SEEK_CUR)/2;
+        count = PR_Seek(file->handle, len*2, PR_SEEK_CUR)/2;
         break;
 
       default:
@@ -966,8 +968,9 @@ js_FileWrite(JSContext *cx, JSFile *file, jschar *buf, int32 len, int32 mode)
         for (i = 0; i<len; i++)
             aux[i] = buf[i] % 256;
 
-//        count = (!file->isNative) ? PR_Write(file->handle, aux, len) : fwrite(aux, 1, len, file->nativehandle);
-        count = fwrite(aux, 1, len, file->fp);
+        count = (!file->isNative)
+                ? PR_Write(file->handle, aux, len)
+                : fwrite(aux, 1, len, file->nativehandle);
 
         if (count==-1) {
             JS_free(cx, aux);
@@ -989,8 +992,9 @@ js_FileWrite(JSContext *cx, JSFile *file, jschar *buf, int32 len, int32 mode)
             }
             i+=j;
         }
-//        j = (!file->isNative) ? PR_Write(file->handle, utfbuf, i) : fwrite(utfbuf, 1, i, file->nativehandle);
-        j = fwrite(utfbuf, 1, i, file->fp);
+        j = (!file->isNative)
+            ? PR_Write(file->handle, utfbuf, i)
+            : fwrite(utfbuf, 1, i, file->nativehandle);
 
         if (j<i) {
             JS_free(cx, utfbuf);
@@ -1000,8 +1004,9 @@ js_FileWrite(JSContext *cx, JSFile *file, jschar *buf, int32 len, int32 mode)
         break;
 
       case UCS2:
-//        count = (!file->isNative) ? PR_Write(file->handle, buf, len*2) >> 1 : fwrite(buf, 1, len*2, file->nativehandle) >> 1;
-        count = fwrite(buf, 1, len*2, file->fp) >> 1;
+        count = (!file->isNative)
+                ? PR_Write(file->handle, buf, len*2) >> 1
+                : fwrite(buf, 1, len*2, file->nativehandle) >> 1;
 
         if (count == -1)
             return 0;
@@ -1021,25 +1026,24 @@ js_FileWrite(JSContext *cx, JSFile *file, jschar *buf, int32 len, int32 mode)
 }
 
 /* ----------------------------- Property checkers -------------------------- */
-static JSBool js_exists(JSContext *cx, JSFile *file)
+static JSBool
+js_exists(JSContext *cx, JSFile *file)
 {
     if (file->isNative) {
         /* It doesn't make sense for a pipe of stdstream. */
         return JS_FALSE;
     }
 
-//    return PR_Access(file->path, PR_ACCESS_EXISTS) == PR_SUCCESS;
-    return access(file->path, F_OK) == 0;
+    return PR_Access(file->path, PR_ACCESS_EXISTS) == PR_SUCCESS;
 }
 
 static JSBool
 js_canRead(JSContext *cx, JSFile *file)
 {
     if (!file->isNative) {
-        if (file->isOpen && !(file->mode & O_RDONLY))
+        if (file->isOpen && !(file->mode & PR_RDONLY))
             return JS_FALSE;
-//        return PR_Access(file->path, PR_ACCESS_READ_OK) == PR_SUCCESS;
-	return access(file->path, R_OK) == 0;
+        return PR_Access(file->path, PR_ACCESS_READ_OK) == PR_SUCCESS;
     }
 
     if (file->isPipe) {
@@ -1054,10 +1058,9 @@ static JSBool
 js_canWrite(JSContext *cx, JSFile *file)
 {
     if (!file->isNative) {
-        if (file->isOpen && !(file->mode & O_WRONLY))
+        if (file->isOpen && !(file->mode & PR_WRONLY))
             return JS_FALSE;
-//        return PR_Access(file->path, PR_ACCESS_WRITE_OK) == PR_SUCCESS;
-	return access(file->path, W_OK) == 0;
+        return PR_Access(file->path, PR_ACCESS_WRITE_OK) == PR_SUCCESS;
     }
 
     if(file->isPipe) {
@@ -1073,23 +1076,17 @@ static JSBool
 js_isFile(JSContext *cx, JSFile *file)
 {
     if (!file->isNative) {
-	struct stat sb;
-
-	if (fstat(file->fp,&sb) < 0) {
-            JS_ReportErrorNumber(cx, JSFile_GetErrorMessage, NULL, JSFILEMSG_CANNOT_ACCESS_FILE_STATUS, file->path);
-            return JS_FALSE;
-	}
-	return (sb.st_mode & S_IFREG);
-#if 0
         PRFileInfo info;
 
-        if (file->isOpen ? PR_GetOpenFileInfo(file->handle, &info) : PR_GetFileInfo(file->path, &info) != PR_SUCCESS) {
-            JS_ReportErrorNumber(cx, JSFile_GetErrorMessage, NULL, JSFILEMSG_CANNOT_ACCESS_FILE_STATUS, file->path);
+        if (file->isOpen
+            ? PR_GetOpenFileInfo(file->handle, &info)
+            : PR_GetFileInfo(file->path, &info) != PR_SUCCESS) {
+            JS_ReportErrorNumber(cx, JSFile_GetErrorMessage, NULL,
+                                 JSFILEMSG_CANNOT_ACCESS_FILE_STATUS, file->path);
             return JS_FALSE;
         }
 
         return info.type == PR_FILE_FILE;
-#endif
     }
 
     /* This doesn't make sense for a pipe of stdstream. */
@@ -1202,7 +1199,9 @@ js_name(JSContext *cx, JSFile *file, jsval *vp)
 }
 
 /* ------------------------------ File object methods ---------------------------- */
-static JSBool file_open(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
+static JSBool
+file_open(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval)
+{
     JSFile      *file = JS_GetInstancePrivate(cx, obj, &js_FileClass, NULL);
     JSString	*strmode, *strtype;
     char        *ctype, *mode;
@@ -1886,19 +1885,21 @@ out:
     return JS_FALSE;
 }
 
-static JSBool file_list(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
-	DIR *dirp;
-	struct dirent *ent;
-	JSFile      *file = JS_GetInstancePrivate(cx, obj, &js_FileClass, NULL);
-	JSObject    *array;
-	JSObject    *eachFile;
-	jsint       len;
-	jsval       v;
-	JSRegExp    *re = NULL;
-	JSFunction  *func = NULL;
-	JSString    *str;
-	jsval       args[1];
-	char        *filePath;
+static JSBool
+file_list(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval)
+{
+    PRDir       *dir;
+    PRDirEntry  *entry;
+    JSFile      *file = JS_GetInstancePrivate(cx, obj, &js_FileClass, NULL);
+    JSObject    *array;
+    JSObject    *eachFile;
+    jsint       len;
+    jsval       v;
+    JSRegExp    *re = NULL;
+    JSFunction  *func = NULL;
+    JSString    *str;
+    jsval       args[1];
+    char        *filePath;
 
     SECURITY_CHECK(cx, NULL, "list", file);
     JSFILE_CHECK_NATIVE("list");
@@ -2073,17 +2074,6 @@ out:
     return JS_FALSE;
 }
 
-static JSBool
-file_exists(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval)
-{
-    JSFile *file = JS_GetInstancePrivate(cx, obj, &js_FileClass, NULL);
-	int r;
-
-	printf("file: %p\n", file);
-	r = js_exists(cx, file);
-	printf("r: %d\n", r);
-	return JS_FALSE;
-}
 
 static void
 file_finalize(JSContext *cx, JSObject *obj)
@@ -2238,7 +2228,6 @@ static JSFunctionSpec file_functions[] = {
     { "mkdir",          file_mkdir, 0},
     { "toString",       file_toString, 0},
     { "toURL",          file_toURL, 0},
-    { "exists",         file_exists, 0},
     {0}
 };
 

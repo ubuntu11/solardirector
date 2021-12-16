@@ -19,7 +19,7 @@ LICENSE file in the root directory of this source tree.
 smanet_packet_t *smanet_alloc_packet(int data_len) {
 	smanet_packet_t *p;
 
-	dprintf(1,"data_len: %d\n", data_len);
+	dprintf(smanet_dlevel,"data_len: %d\n", data_len);
 
 	p = calloc(1,sizeof(*p));
 	if (!p) return 0;
@@ -55,25 +55,25 @@ int smanet_recv_packet(smanet_session_t *s, uint8_t count, int command, smanet_p
 
 	if (!s || !packet) return 1;
 
-	dprintf(1,"command: %02x, count: %02x, timeout: %d\n", command, count, timeout);
+	dprintf(smanet_dlevel,"command: %02x, count: %02x, timeout: %d\n", command, count, timeout);
 	cmo = (uint8_t) ((char) count) - 1;
-	dprintf(1,"cmo: %02x\n", cmo);
+	dprintf(smanet_dlevel,"cmo: %02x\n", cmo);
 
 	len = smanet_read_frame(s,data,sizeof(data),5);
 	if (len < 0) return -1;
 	if (len == 0) {
-		dprintf(1,"timeout!\n");
+		dprintf(smanet_dlevel,"timeout!\n");
 		return 2;
 	}
-	if (debug >= dlevel) bindump("recv packet",data,len);
+//	if (debug >= dlevel) bindump("recv packet",data,len);
 
 	/* This method works on little endian */
 	h = (struct packet_header *) data; 
-	dprintf(1,"src: %04x, dest: %04x, control: %02x, count: %d, command: %02x\n",
+	dprintf(smanet_dlevel,"src: %04x, dest: %04x, control: %02x, count: %d, command: %02x\n",
 		h->src, h->dest, h->control, h->count, h->command);
 	/* Not the packet we're looking for, re-q the request */
-	dprintf(1,"h->command: %02x, command: %02x, test: %d\n", h->command, command, h->command != command);
-	dprintf(1,"h->count: %02x, cmo: %02x, test: %d\n", h->count, cmo, h->count && h->count != cmo);
+	dprintf(smanet_dlevel,"h->command: %02x, command: %02x, test: %d\n", h->command, command, h->command != command);
+	dprintf(smanet_dlevel,"h->count: %02x, cmo: %02x, test: %d\n", h->count, cmo, h->count && h->count != cmo);
 	if ((h->count && h->count != cmo) || h->command != command) return 3;
 	packet->src = h->src;
 	packet->dest = h->dest;
@@ -84,12 +84,12 @@ int smanet_recv_packet(smanet_session_t *s, uint8_t count, int command, smanet_p
 	if (packet->control & CONTROL_RESPONSE) packet->response = 1;
 	if (packet->control & CONTROL_BLOCK) packet->block = 1;
 
-	dprintf(1,"sizeof(h): %d\n", sizeof(*h));
+	dprintf(smanet_dlevel,"sizeof(h): %d\n", sizeof(*h));
 	data_len = len - 7;
- 	dprintf(1,"data_len: %d\n", data_len);
+ 	dprintf(smanet_dlevel,"data_len: %d\n", data_len);
 	if (packet->dataidx + data_len > packet->datasz) {
 		packet->datasz += 1024;
-		dprintf(1,"NEW datasz: %d\n", packet->datasz);
+		dprintf(smanet_dlevel,"NEW datasz: %d\n", packet->datasz);
 		packet->data = realloc(packet->data,packet->datasz);
 		if (!packet->data) return 1;
 	}
@@ -104,7 +104,7 @@ int smanet_send_packet(smanet_session_t *s, uint16_t src, uint16_t dest, uint8_t
 	uint8_t data[264];
 	int i;
 
-	dprintf(1,"src: %04x, dest: %04x, ctrl: %02x, cnt: %d, cmd: %02x, buffer: %p, buflen: %d\n",
+	dprintf(smanet_dlevel,"src: %04x, dest: %04x, ctrl: %02x, cnt: %d, cmd: %02x, buffer: %p, buflen: %d\n",
 		src,dest,ctrl,cnt,cmd,buffer,buflen);
 	if (buflen > 255) return 1;
 
@@ -116,7 +116,7 @@ int smanet_send_packet(smanet_session_t *s, uint16_t src, uint16_t dest, uint8_t
 	data[i++] = cmd;
 	memcpy(&data[i],buffer,buflen);
 	i += buflen;
-	if (debug >= dlevel) bindump("send packet",data,i);
+//	if (debug >= dlevel) bindump("send packet",data,i);
 	smanet_write_frame(s,data,i);
 	return 0;
 }

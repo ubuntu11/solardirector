@@ -1,0 +1,624 @@
+common.c(130) solard_get_dirs: BINDIR: /opt/sd/bin, ETCDIR: /opt/sd/etc, LIBDIR: /opt/sd/lib, LOGDIR: /opt/sd/log
+agent.c(509) agent_init: section_name: solard
+agent.c(510) agent_init: configfile: sdtest.conf
+agent.c(524) agent_init: ap->m: 0x223ab58
+config.c(135) config_get_section: looking for section: solard
+config.c(145) config_get_section: NOT found!
+config.c(116) config_create_section: name: solard, flags: 00
+config.c(72) config_section_add_property: prop: name: agent_notify, id: 0, flags: 00, def: 0x51bdc7
+config.c(55) config_section_get_property: section: solard, name: agent_notify
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0e980, pp: (nil)
+config.c(87) config_section_add_property: adding: agent_notify
+config.c(72) config_section_add_property: prop: name: agent_error, id: 0, flags: 00, def: 0x51bdfd
+config.c(55) config_section_get_property: section: solard, name: agent_error
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0e9f0, pp: (nil)
+config.c(87) config_section_add_property: adding: agent_error
+config.c(72) config_section_add_property: prop: name: agent_warning, id: 0, flags: 00, def: 0x51bdfd
+config.c(55) config_section_get_property: section: solard, name: agent_warning
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0ea60, pp: (nil)
+config.c(87) config_section_add_property: adding: agent_warning
+config.c(72) config_section_add_property: prop: name: interval, id: 0, flags: 00, def: 0x51be3e
+config.c(55) config_section_get_property: section: solard, name: interval
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0ead0, pp: (nil)
+config.c(87) config_section_add_property: adding: interval
+config.c(72) config_section_add_property: prop: name: notify, id: 0, flags: 00, def: 0x51be5d
+config.c(55) config_section_get_property: section: solard, name: notify
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0eb40, pp: (nil)
+config.c(87) config_section_add_property: adding: notify
+config.c(72) config_section_add_property: prop: name: agents, id: 0, flags: 04, def: (nil)
+config.c(55) config_section_get_property: section: solard, name: agents
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0ebb0, pp: (nil)
+config.c(87) config_section_add_property: adding: agents
+config.c(72) config_section_add_property: prop: name: batteries, id: 0, flags: 06, def: (nil)
+config.c(55) config_section_get_property: section: solard, name: batteries
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0ec20, pp: (nil)
+config.c(87) config_section_add_property: adding: batteries
+agent.c(368) agent_config_init: adding common...
+config.c(135) config_get_section: looking for section: solard
+config.c(138) config_get_section: name: solard
+config.c(140) config_get_section: found
+config.c(72) config_section_add_property: prop: name: bindir, id: 0, flags: 00, def: (nil)
+config.c(55) config_section_get_property: section: solard, name: bindir
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0e070, pp: (nil)
+config.c(87) config_section_add_property: adding: bindir
+config.c(72) config_section_add_property: prop: name: etcdir, id: 0, flags: 00, def: (nil)
+config.c(55) config_section_get_property: section: solard, name: etcdir
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0e0e0, pp: (nil)
+config.c(87) config_section_add_property: adding: etcdir
+config.c(72) config_section_add_property: prop: name: libdir, id: 0, flags: 00, def: (nil)
+config.c(55) config_section_get_property: section: solard, name: libdir
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0e150, pp: (nil)
+config.c(87) config_section_add_property: adding: libdir
+config.c(72) config_section_add_property: prop: name: logdir, id: 0, flags: 00, def: (nil)
+config.c(55) config_section_get_property: section: solard, name: logdir
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0e1c0, pp: (nil)
+config.c(87) config_section_add_property: adding: logdir
+config.c(72) config_section_add_property: prop: name: debug, id: 0, flags: 00, def: (nil)
+config.c(55) config_section_get_property: section: solard, name: debug
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0e230, pp: (nil)
+config.c(87) config_section_add_property: adding: debug
+agent.c(370) agent_config_init: adding agent...
+config.c(135) config_get_section: looking for section: solard
+config.c(138) config_get_section: name: solard
+config.c(140) config_get_section: found
+config.c(72) config_section_add_property: prop: name: name, id: 0, flags: 00, def: (nil)
+config.c(55) config_section_get_property: section: solard, name: name
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0d9e0, pp: (nil)
+config.c(87) config_section_add_property: adding: name
+config.c(72) config_section_add_property: prop: name: read_interval, id: 0, flags: 00, def: 0x53f6a7
+config.c(55) config_section_get_property: section: solard, name: read_interval
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0da50, pp: (nil)
+config.c(87) config_section_add_property: adding: read_interval
+config.c(72) config_section_add_property: prop: name: open_before_read, id: 0, flags: 00, def: 0x53f6c6
+config.c(55) config_section_get_property: section: solard, name: open_before_read
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0dac0, pp: (nil)
+config.c(87) config_section_add_property: adding: open_before_read
+config.c(72) config_section_add_property: prop: name: close_after_read, id: 0, flags: 00, def: 0x53f6c6
+config.c(55) config_section_get_property: section: solard, name: close_after_read
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0db30, pp: (nil)
+config.c(87) config_section_add_property: adding: close_after_read
+config.c(72) config_section_add_property: prop: name: write_interval, id: 0, flags: 00, def: 0x53f6a7
+config.c(55) config_section_get_property: section: solard, name: write_interval
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0dba0, pp: (nil)
+config.c(87) config_section_add_property: adding: write_interval
+config.c(72) config_section_add_property: prop: name: open_before_write, id: 0, flags: 00, def: 0x53f6c6
+config.c(55) config_section_get_property: section: solard, name: open_before_write
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0dc10, pp: (nil)
+config.c(87) config_section_add_property: adding: open_before_write
+config.c(72) config_section_add_property: prop: name: close_after_write, id: 0, flags: 00, def: 0x53f6c6
+config.c(55) config_section_get_property: section: solard, name: close_after_write
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0dc80, pp: (nil)
+config.c(87) config_section_add_property: adding: close_after_write
+config.c(72) config_section_add_property: prop: name: script_dir, id: 0, flags: 00, def: (nil)
+config.c(55) config_section_get_property: section: solard, name: script_dir
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0dcf0, pp: (nil)
+config.c(87) config_section_add_property: adding: script_dir
+config.c(72) config_section_add_property: prop: name: init_script, id: 0, flags: 00, def: 0x53f733
+config.c(55) config_section_get_property: section: solard, name: init_script
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0dd60, pp: (nil)
+config.c(87) config_section_add_property: adding: init_script
+config.c(72) config_section_add_property: prop: name: start_script, id: 0, flags: 00, def: 0x53f748
+config.c(55) config_section_get_property: section: solard, name: start_script
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0ddd0, pp: (nil)
+config.c(87) config_section_add_property: adding: start_script
+config.c(72) config_section_add_property: prop: name: read_script, id: 0, flags: 00, def: 0x53f75d
+config.c(55) config_section_get_property: section: solard, name: read_script
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0de40, pp: (nil)
+config.c(87) config_section_add_property: adding: read_script
+config.c(72) config_section_add_property: prop: name: write_script, id: 0, flags: 00, def: 0x53f772
+config.c(55) config_section_get_property: section: solard, name: write_script
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0deb0, pp: (nil)
+config.c(87) config_section_add_property: adding: write_script
+config.c(72) config_section_add_property: prop: name: run_script, id: 0, flags: 00, def: 0x53f786
+config.c(55) config_section_get_property: section: solard, name: run_script
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0df20, pp: (nil)
+config.c(87) config_section_add_property: adding: run_script
+config.c(72) config_section_add_property: prop: name: stop_script, id: 0, flags: 00, def: 0x53f799
+config.c(55) config_section_get_property: section: solard, name: stop_script
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0df90, pp: (nil)
+config.c(87) config_section_add_property: adding: stop_script
+config.c(135) config_get_section: looking for section: agent
+config.c(138) config_get_section: name: solard
+config.c(145) config_get_section: NOT found!
+config.c(116) config_create_section: name: agent, flags: 06
+config.c(72) config_section_add_property: prop: name: name, id: 11, flags: 00, def: (nil)
+config.c(55) config_section_get_property: section: agent, name: name
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0d9e0, pp: (nil)
+config.c(87) config_section_add_property: adding: name
+config.c(72) config_section_add_property: prop: name: read_interval, id: 12, flags: 00, def: 0x53f6a7
+config.c(55) config_section_get_property: section: agent, name: read_interval
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0da50, pp: (nil)
+config.c(87) config_section_add_property: adding: read_interval
+config.c(72) config_section_add_property: prop: name: open_before_read, id: 13, flags: 00, def: 0x53f6c6
+config.c(55) config_section_get_property: section: agent, name: open_before_read
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0dac0, pp: (nil)
+config.c(87) config_section_add_property: adding: open_before_read
+config.c(72) config_section_add_property: prop: name: close_after_read, id: 14, flags: 00, def: 0x53f6c6
+config.c(55) config_section_get_property: section: agent, name: close_after_read
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0db30, pp: (nil)
+config.c(87) config_section_add_property: adding: close_after_read
+config.c(72) config_section_add_property: prop: name: write_interval, id: 15, flags: 00, def: 0x53f6a7
+config.c(55) config_section_get_property: section: agent, name: write_interval
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0dba0, pp: (nil)
+config.c(87) config_section_add_property: adding: write_interval
+config.c(72) config_section_add_property: prop: name: open_before_write, id: 16, flags: 00, def: 0x53f6c6
+config.c(55) config_section_get_property: section: agent, name: open_before_write
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0dc10, pp: (nil)
+config.c(87) config_section_add_property: adding: open_before_write
+config.c(72) config_section_add_property: prop: name: close_after_write, id: 17, flags: 00, def: 0x53f6c6
+config.c(55) config_section_get_property: section: agent, name: close_after_write
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0dc80, pp: (nil)
+config.c(87) config_section_add_property: adding: close_after_write
+config.c(72) config_section_add_property: prop: name: script_dir, id: 18, flags: 00, def: (nil)
+config.c(55) config_section_get_property: section: agent, name: script_dir
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0dcf0, pp: (nil)
+config.c(87) config_section_add_property: adding: script_dir
+config.c(72) config_section_add_property: prop: name: init_script, id: 19, flags: 00, def: 0x53f733
+config.c(55) config_section_get_property: section: agent, name: init_script
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0dd60, pp: (nil)
+config.c(87) config_section_add_property: adding: init_script
+config.c(72) config_section_add_property: prop: name: start_script, id: 20, flags: 00, def: 0x53f748
+config.c(55) config_section_get_property: section: agent, name: start_script
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0ddd0, pp: (nil)
+config.c(87) config_section_add_property: adding: start_script
+config.c(72) config_section_add_property: prop: name: read_script, id: 21, flags: 00, def: 0x53f75d
+config.c(55) config_section_get_property: section: agent, name: read_script
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0de40, pp: (nil)
+config.c(87) config_section_add_property: adding: read_script
+config.c(72) config_section_add_property: prop: name: write_script, id: 22, flags: 00, def: 0x53f772
+config.c(55) config_section_get_property: section: agent, name: write_script
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0deb0, pp: (nil)
+config.c(87) config_section_add_property: adding: write_script
+config.c(72) config_section_add_property: prop: name: run_script, id: 23, flags: 00, def: 0x53f786
+config.c(55) config_section_get_property: section: agent, name: run_script
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0df20, pp: (nil)
+config.c(87) config_section_add_property: adding: run_script
+config.c(72) config_section_add_property: prop: name: stop_script, id: 24, flags: 00, def: 0x53f799
+config.c(55) config_section_get_property: section: agent, name: stop_script
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0df90, pp: (nil)
+config.c(87) config_section_add_property: adding: stop_script
+agent.c(373) agent_config_init: adding mqtt...
+config.c(135) config_get_section: looking for section: mqtt
+config.c(138) config_get_section: name: solard
+config.c(138) config_get_section: name: agent
+config.c(145) config_get_section: NOT found!
+config.c(116) config_create_section: name: mqtt, flags: 02
+config.c(72) config_section_add_property: prop: name: host, id: 0, flags: 00, def: 0x53f7a6
+config.c(55) config_section_get_property: section: mqtt, name: host
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0d740, pp: (nil)
+config.c(87) config_section_add_property: adding: host
+config.c(72) config_section_add_property: prop: name: port, id: 0, flags: 00, def: 0x53f7bf
+config.c(55) config_section_get_property: section: mqtt, name: port
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0d7b0, pp: (nil)
+config.c(87) config_section_add_property: adding: port
+config.c(72) config_section_add_property: prop: name: clientid, id: 0, flags: 00, def: 0x53f7d7
+config.c(55) config_section_get_property: section: mqtt, name: clientid
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0d820, pp: (nil)
+config.c(87) config_section_add_property: adding: clientid
+config.c(72) config_section_add_property: prop: name: username, id: 0, flags: 00, def: 0x53f7d7
+config.c(55) config_section_get_property: section: mqtt, name: username
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0d890, pp: (nil)
+config.c(87) config_section_add_property: adding: username
+config.c(72) config_section_add_property: prop: name: password, id: 0, flags: 00, def: 0x53f7d7
+config.c(55) config_section_get_property: section: mqtt, name: password
+config.c(65) config_section_get_property: NOT found
+config.c(75) config_section_add_property: p: 0x7ffdf7c0d900, pp: (nil)
+config.c(87) config_section_add_property: adding: password
+config.c(135) config_get_section: looking for section: solard
+config.c(138) config_get_section: name: solard
+config.c(140) config_get_section: found
+agent.c(391) agent_config_init: p->name: mqtt_host
+config.c(72) config_section_add_property: prop: name: mqtt_host, id: 25, flags: 00, def: 0x53f7a6
+config.c(55) config_section_get_property: section: solard, name: mqtt_host
+config.c(61) config_section_get_property: found
+config.c(75) config_section_add_property: p: 0x223d818, pp: 0x223d818
+agent.c(391) agent_config_init: p->name: mqtt_port
+config.c(72) config_section_add_property: prop: name: mqtt_port, id: 26, flags: 00, def: 0x53f7bf
+config.c(55) config_section_get_property: section: solard, name: mqtt_port
+config.c(61) config_section_get_property: found
+config.c(75) config_section_add_property: p: 0x223d8c8, pp: 0x223d8c8
+agent.c(391) agent_config_init: p->name: mqtt_clientid
+config.c(72) config_section_add_property: prop: name: mqtt_clientid, id: 27, flags: 00, def: 0x53f7d7
+config.c(55) config_section_get_property: section: solard, name: mqtt_clientid
+config.c(61) config_section_get_property: found
+config.c(75) config_section_add_property: p: 0x223d978, pp: 0x223d978
+agent.c(391) agent_config_init: p->name: mqtt_username
+config.c(72) config_section_add_property: prop: name: mqtt_username, id: 28, flags: 00, def: 0x53f7d7
+config.c(55) config_section_get_property: section: solard, name: mqtt_username
+config.c(61) config_section_get_property: found
+config.c(75) config_section_add_property: p: 0x223da28, pp: 0x223da28
+agent.c(391) agent_config_init: p->name: mqtt_password
+config.c(72) config_section_add_property: prop: name: mqtt_password, id: 29, flags: 00, def: 0x53f7d7
+config.c(55) config_section_get_property: section: solard, name: mqtt_password
+config.c(61) config_section_get_property: found
+config.c(75) config_section_add_property: p: 0x223dad8, pp: 0x223dad8
+agent.c(397) agent_config_init: script_dir(0):
+agent.c(401) agent_config_init: NEW script_dir(26): /opt/sd/lib/scripts/solard
+agent.c(404) agent_config_init: done!
+agent.c(529) agent_init: mqtt_info:
+config.c(498) config_read: filename: sdtest.conf
+config.c(385) config_read_ini: filename: sdtest.conf
+config.c(387) config_read_ini: cfg: 0x223dd98
+config.c(394) config_read_ini: cfgsec->name:
+config.c(135) config_get_section: looking for section:
+config.c(138) config_get_section: name: solard
+config.c(138) config_get_section: name: agent
+config.c(138) config_get_section: name: mqtt
+config.c(145) config_get_section: NOT found!
+config.c(116) config_create_section: name: , flags: 08
+config.c(394) config_read_ini: cfgsec->name: SOLARD
+config.c(135) config_get_section: looking for section: SOLARD
+config.c(138) config_get_section: name: solard
+config.c(140) config_get_section: found
+config.c(399) config_read_ini: item->keyword: AGENT_NOTIFY
+config.c(55) config_section_get_property: section: solard, name: AGENT_NOTIFY
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: AGENT_ERROR
+config.c(55) config_section_get_property: section: solard, name: AGENT_ERROR
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: AGENT_WARNING
+config.c(55) config_section_get_property: section: solard, name: AGENT_WARNING
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: INTERVAL
+config.c(55) config_section_get_property: section: solard, name: INTERVAL
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: BINDIR
+config.c(55) config_section_get_property: section: solard, name: BINDIR
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: ETCDIR
+config.c(55) config_section_get_property: section: solard, name: ETCDIR
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: LIBDIR
+config.c(55) config_section_get_property: section: solard, name: LIBDIR
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: LOGDIR
+config.c(55) config_section_get_property: section: solard, name: LOGDIR
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: DEBUG
+config.c(55) config_section_get_property: section: solard, name: DEBUG
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: NAME
+config.c(55) config_section_get_property: section: solard, name: NAME
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: READ_INTERVAL
+config.c(55) config_section_get_property: section: solard, name: READ_INTERVAL
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: OPEN_BEFORE_READ
+config.c(55) config_section_get_property: section: solard, name: OPEN_BEFORE_READ
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: CLOSE_AFTER_READ
+config.c(55) config_section_get_property: section: solard, name: CLOSE_AFTER_READ
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: WRITE_INTERVAL
+config.c(55) config_section_get_property: section: solard, name: WRITE_INTERVAL
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: OPEN_BEFORE_WRITE
+config.c(55) config_section_get_property: section: solard, name: OPEN_BEFORE_WRITE
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: CLOSE_AFTER_WRITE
+config.c(55) config_section_get_property: section: solard, name: CLOSE_AFTER_WRITE
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: SCRIPT_DIR
+config.c(55) config_section_get_property: section: solard, name: SCRIPT_DIR
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: INIT_SCRIPT
+config.c(55) config_section_get_property: section: solard, name: INIT_SCRIPT
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: START_SCRIPT
+config.c(55) config_section_get_property: section: solard, name: START_SCRIPT
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: READ_SCRIPT
+config.c(55) config_section_get_property: section: solard, name: READ_SCRIPT
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: WRITE_SCRIPT
+config.c(55) config_section_get_property: section: solard, name: WRITE_SCRIPT
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: RUN_SCRIPT
+config.c(55) config_section_get_property: section: solard, name: RUN_SCRIPT
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: STOP_SCRIPT
+config.c(55) config_section_get_property: section: solard, name: STOP_SCRIPT
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: MQTT_HOST
+config.c(55) config_section_get_property: section: solard, name: MQTT_HOST
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: MQTT_PORT
+config.c(55) config_section_get_property: section: solard, name: MQTT_PORT
+config.c(61) config_section_get_property: found
+config.c(399) config_read_ini: item->keyword: MQTT_CLIENTID
+config.c(55) config_section_get_property: section: solard, name: MQTT_CLIENTID
+config.c(61) config_section_get_property: found
+config.c(394) config_read_ini: cfgsec->name: 97E42A8E-328F-4267-A461-62CA2B08C65D
+config.c(135) config_get_section: looking for section: 97E42A8E-328F-4267-A461-62CA2B08C65D
+config.c(138) config_get_section: name: solard
+config.c(138) config_get_section: name: agent
+config.c(138) config_get_section: name: mqtt
+config.c(138) config_get_section: name:
+config.c(145) config_get_section: NOT found!
+config.c(116) config_create_section: name: 97E42A8E-328F-4267-A461-62CA2B08C65D, flags: 08
+config.c(399) config_read_ini: item->keyword: AGENT_NAME
+config.c(55) config_section_get_property: section: 97E42A8E-328F-4267-A461-62CA2B08C65D, name: AGENT_NAME
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(399) config_read_ini: item->keyword: AGENT_PATH
+config.c(55) config_section_get_property: section: 97E42A8E-328F-4267-A461-62CA2B08C65D, name: AGENT_PATH
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(399) config_read_ini: item->keyword: AGENT_ROLE
+config.c(55) config_section_get_property: section: 97E42A8E-328F-4267-A461-62CA2B08C65D, name: AGENT_ROLE
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(399) config_read_ini: item->keyword: NAME
+config.c(55) config_section_get_property: section: 97E42A8E-328F-4267-A461-62CA2B08C65D, name: NAME
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(399) config_read_ini: item->keyword: TRANSPORT
+config.c(55) config_section_get_property: section: 97E42A8E-328F-4267-A461-62CA2B08C65D, name: TRANSPORT
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(399) config_read_ini: item->keyword: TARGET
+config.c(55) config_section_get_property: section: 97E42A8E-328F-4267-A461-62CA2B08C65D, name: TARGET
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(399) config_read_ini: item->keyword: MANAGED
+config.c(55) config_section_get_property: section: 97E42A8E-328F-4267-A461-62CA2B08C65D, name: MANAGED
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(394) config_read_ini: cfgsec->name: E220800E-1EE9-48DB-AF1C-0B44C6B8EDE5
+config.c(135) config_get_section: looking for section: E220800E-1EE9-48DB-AF1C-0B44C6B8EDE5
+config.c(138) config_get_section: name: solard
+config.c(138) config_get_section: name: agent
+config.c(138) config_get_section: name: mqtt
+config.c(138) config_get_section: name:
+config.c(138) config_get_section: name: 97E42A8E-328F-4267-A461-62CA2B08C65D
+config.c(145) config_get_section: NOT found!
+config.c(116) config_create_section: name: E220800E-1EE9-48DB-AF1C-0B44C6B8EDE5, flags: 08
+config.c(399) config_read_ini: item->keyword: AGENT_NAME
+config.c(55) config_section_get_property: section: E220800E-1EE9-48DB-AF1C-0B44C6B8EDE5, name: AGENT_NAME
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(399) config_read_ini: item->keyword: AGENT_PATH
+config.c(55) config_section_get_property: section: E220800E-1EE9-48DB-AF1C-0B44C6B8EDE5, name: AGENT_PATH
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(399) config_read_ini: item->keyword: AGENT_ROLE
+config.c(55) config_section_get_property: section: E220800E-1EE9-48DB-AF1C-0B44C6B8EDE5, name: AGENT_ROLE
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(399) config_read_ini: item->keyword: NAME
+config.c(55) config_section_get_property: section: E220800E-1EE9-48DB-AF1C-0B44C6B8EDE5, name: NAME
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(399) config_read_ini: item->keyword: TRANSPORT
+config.c(55) config_section_get_property: section: E220800E-1EE9-48DB-AF1C-0B44C6B8EDE5, name: TRANSPORT
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(399) config_read_ini: item->keyword: TARGET
+config.c(55) config_section_get_property: section: E220800E-1EE9-48DB-AF1C-0B44C6B8EDE5, name: TARGET
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(399) config_read_ini: item->keyword: MANAGED
+config.c(55) config_section_get_property: section: E220800E-1EE9-48DB-AF1C-0B44C6B8EDE5, name: MANAGED
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(394) config_read_ini: cfgsec->name: 54A7A15A-ECFF-448B-86BC-216E540BBB5C
+config.c(135) config_get_section: looking for section: 54A7A15A-ECFF-448B-86BC-216E540BBB5C
+config.c(138) config_get_section: name: solard
+config.c(138) config_get_section: name: agent
+config.c(138) config_get_section: name: mqtt
+config.c(138) config_get_section: name:
+config.c(138) config_get_section: name: 97E42A8E-328F-4267-A461-62CA2B08C65D
+config.c(138) config_get_section: name: E220800E-1EE9-48DB-AF1C-0B44C6B8EDE5
+config.c(145) config_get_section: NOT found!
+config.c(116) config_create_section: name: 54A7A15A-ECFF-448B-86BC-216E540BBB5C, flags: 08
+config.c(399) config_read_ini: item->keyword: AGENT_NAME
+config.c(55) config_section_get_property: section: 54A7A15A-ECFF-448B-86BC-216E540BBB5C, name: AGENT_NAME
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(399) config_read_ini: item->keyword: AGENT_PATH
+config.c(55) config_section_get_property: section: 54A7A15A-ECFF-448B-86BC-216E540BBB5C, name: AGENT_PATH
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(399) config_read_ini: item->keyword: AGENT_ROLE
+config.c(55) config_section_get_property: section: 54A7A15A-ECFF-448B-86BC-216E540BBB5C, name: AGENT_ROLE
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(399) config_read_ini: item->keyword: NAME
+config.c(55) config_section_get_property: section: 54A7A15A-ECFF-448B-86BC-216E540BBB5C, name: NAME
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(399) config_read_ini: item->keyword: TRANSPORT
+config.c(55) config_section_get_property: section: 54A7A15A-ECFF-448B-86BC-216E540BBB5C, name: TRANSPORT
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(399) config_read_ini: item->keyword: TARGET
+config.c(55) config_section_get_property: section: 54A7A15A-ECFF-448B-86BC-216E540BBB5C, name: TARGET
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(399) config_read_ini: item->keyword: MANAGED
+config.c(55) config_section_get_property: section: 54A7A15A-ECFF-448B-86BC-216E540BBB5C, name: MANAGED
+config.c(65) config_section_get_property: NOT found
+config.c(412) config_read_ini: adding...
+config.c(217) config_dump: dumping...
+config.c(221) config_dump: section: solard
+config.c(226) config_dump:   prop: name: agent_notify, id: 1, type: 5(INT), value: 600
+config.c(226) config_dump:   prop: name: agent_error, id: 2, type: 5(INT), value: 300
+config.c(226) config_dump:   prop: name: agent_warning, id: 3, type: 5(INT), value: 300
+config.c(226) config_dump:   prop: name: interval, id: 4, type: 5(INT), value: 15
+config.c(226) config_dump:   prop: name: notify, id: 5, type: 2(STRING), value:
+config.c(226) config_dump:   prop: name: agents, id: -1, type: 12(LIST), value:
+config.c(226) config_dump:   prop: name: batteries, id: -1, type: 12(LIST), value:
+config.c(226) config_dump:   prop: name: bindir, id: 6, type: 2(STRING), value: /opt/sd/bin
+config.c(226) config_dump:   prop: name: etcdir, id: 7, type: 2(STRING), value: /opt/sd/etc
+config.c(226) config_dump:   prop: name: libdir, id: 8, type: 2(STRING), value: /opt/sd/lib
+config.c(226) config_dump:   prop: name: logdir, id: 9, type: 2(STRING), value: /opt/sd/log
+config.c(226) config_dump:   prop: name: debug, id: 10, type: 5(INT), value: 6
+config.c(226) config_dump:   prop: name: name, id: 11, type: 2(STRING), value: solard
+config.c(226) config_dump:   prop: name: read_interval, id: 12, type: 5(INT), value: 30
+config.c(226) config_dump:   prop: name: open_before_read, id: 13, type: 10(BOOLEAN), value: False
+config.c(226) config_dump:   prop: name: close_after_read, id: 14, type: 10(BOOLEAN), value: False
+config.c(226) config_dump:   prop: name: write_interval, id: 15, type: 5(INT), value: 30
+config.c(226) config_dump:   prop: name: open_before_write, id: 16, type: 10(BOOLEAN), value: False
+config.c(226) config_dump:   prop: name: close_after_write, id: 17, type: 10(BOOLEAN), value: False
+config.c(226) config_dump:   prop: name: script_dir, id: 18, type: 2(STRING), value: .
+config.c(226) config_dump:   prop: name: init_script, id: 19, type: 2(STRING), value: init.js
+config.c(226) config_dump:   prop: name: start_script, id: 20, type: 2(STRING), value: start.js
+config.c(226) config_dump:   prop: name: read_script, id: 21, type: 2(STRING), value: read.js
+config.c(226) config_dump:   prop: name: write_script, id: 22, type: 2(STRING), value: write.js
+config.c(226) config_dump:   prop: name: run_script, id: 23, type: 2(STRING), value: run.js
+config.c(226) config_dump:   prop: name: stop_script, id: 24, type: 2(STRING), value: stop.js
+config.c(226) config_dump:   prop: name: mqtt_host, id: 25, type: 2(STRING), value: localhost
+config.c(226) config_dump:   prop: name: mqtt_port, id: 26, type: 5(INT), value: 1883
+config.c(226) config_dump:   prop: name: mqtt_clientid, id: 27, type: 2(STRING), value: 57418d30-38df-4915-b5d4-e2af7cebc4c4
+config.c(226) config_dump:   prop: name: mqtt_username, id: 28, type: 2(STRING), value:
+config.c(226) config_dump:   prop: name: mqtt_password, id: 29, type: 2(STRING), value:
+config.c(221) config_dump: section: agent
+config.c(226) config_dump:   prop: name: name, id: 11, type: 2(STRING), value: solard
+config.c(226) config_dump:   prop: name: read_interval, id: 12, type: 5(INT), value: 30
+config.c(226) config_dump:   prop: name: open_before_read, id: 13, type: 10(BOOLEAN), value: False
+config.c(226) config_dump:   prop: name: close_after_read, id: 14, type: 10(BOOLEAN), value: False
+config.c(226) config_dump:   prop: name: write_interval, id: 15, type: 5(INT), value: 30
+config.c(226) config_dump:   prop: name: open_before_write, id: 16, type: 10(BOOLEAN), value: False
+config.c(226) config_dump:   prop: name: close_after_write, id: 17, type: 10(BOOLEAN), value: False
+config.c(226) config_dump:   prop: name: script_dir, id: 18, type: 2(STRING), value: .
+config.c(226) config_dump:   prop: name: init_script, id: 19, type: 2(STRING), value: init.js
+config.c(226) config_dump:   prop: name: start_script, id: 20, type: 2(STRING), value: start.js
+config.c(226) config_dump:   prop: name: read_script, id: 21, type: 2(STRING), value: read.js
+config.c(226) config_dump:   prop: name: write_script, id: 22, type: 2(STRING), value: write.js
+config.c(226) config_dump:   prop: name: run_script, id: 23, type: 2(STRING), value: run.js
+config.c(226) config_dump:   prop: name: stop_script, id: 24, type: 2(STRING), value: stop.js
+config.c(221) config_dump: section: mqtt
+config.c(226) config_dump:   prop: name: host, id: 25, type: 2(STRING), value: localhost
+config.c(226) config_dump:   prop: name: port, id: 26, type: 5(INT), value: 1883
+config.c(226) config_dump:   prop: name: clientid, id: 27, type: 2(STRING), value: 57418d30-38df-4915-b5d4-e2af7cebc4c4
+config.c(226) config_dump:   prop: name: username, id: 28, type: 2(STRING), value:
+config.c(226) config_dump:   prop: name: password, id: 29, type: 2(STRING), value:
+config.c(221) config_dump: section:
+config.c(221) config_dump: section: 97E42A8E-328F-4267-A461-62CA2B08C65D
+config.c(226) config_dump:   prop: name: AGENT_NAME, id: 0, type: 2(STRING), value: jbd
+config.c(226) config_dump:   prop: name: AGENT_PATH, id: 0, type: 2(STRING), value: ../agents/jbd/jbd
+config.c(226) config_dump:   prop: name: AGENT_ROLE, id: 0, type: 2(STRING), value: Battery
+config.c(226) config_dump:   prop: name: NAME, id: 0, type: 2(STRING), value: pack_01
+config.c(226) config_dump:   prop: name: TRANSPORT, id: 0, type: 2(STRING), value: ip
+config.c(226) config_dump:   prop: name: TARGET, id: 0, type: 2(STRING), value: pack_01
+config.c(226) config_dump:   prop: name: MANAGED, id: 0, type: 2(STRING), value: True
+config.c(221) config_dump: section: E220800E-1EE9-48DB-AF1C-0B44C6B8EDE5
+config.c(226) config_dump:   prop: name: AGENT_NAME, id: 0, type: 2(STRING), value: jbd
+config.c(226) config_dump:   prop: name: AGENT_PATH, id: 0, type: 2(STRING), value: ../agents/jbd/jbd
+config.c(226) config_dump:   prop: name: AGENT_ROLE, id: 0, type: 2(STRING), value: Battery
+config.c(226) config_dump:   prop: name: NAME, id: 0, type: 2(STRING), value: pack_01
+config.c(226) config_dump:   prop: name: TRANSPORT, id: 0, type: 2(STRING), value: ip
+config.c(226) config_dump:   prop: name: TARGET, id: 0, type: 2(STRING), value: pack_01
+config.c(226) config_dump:   prop: name: MANAGED, id: 0, type: 2(STRING), value: True
+config.c(221) config_dump: section: 54A7A15A-ECFF-448B-86BC-216E540BBB5C
+config.c(226) config_dump:   prop: name: AGENT_NAME, id: 0, type: 2(STRING), value: jbd
+config.c(226) config_dump:   prop: name: AGENT_PATH, id: 0, type: 2(STRING), value: ../agents/jbd/jbd
+config.c(226) config_dump:   prop: name: AGENT_ROLE, id: 0, type: 2(STRING), value: Battery
+config.c(226) config_dump:   prop: name: NAME, id: 0, type: 2(STRING), value: pack_01
+config.c(226) config_dump:   prop: name: TRANSPORT, id: 0, type: 2(STRING), value: ip
+config.c(226) config_dump:   prop: name: TARGET, id: 0, type: 2(STRING), value: pack_01
+config.c(226) config_dump:   prop: name: MANAGED, id: 0, type: 2(STRING), value: True
+agent.c(413) agent_mqtt_init: host: localhost, clientid: 57418d30-38df-4915-b5d4-e2af7cebc4c4, user: , pass:
+agent.c(52) agent_mktopic: name: solard, func: Status
+mqtt.c(158) mqtt_newclient: mqtt_config: host: localhost, clientid: 57418d30-38df-4915-b5d4-e2af7cebc4c4, username: , password: , lwt: SolarD/solard/Status
+mqtt.c(162) mqtt_newclient: create rc: 0
+mqtt.c(170) mqtt_newclient: setcb rc: 0
+mqtt.c(218) mqtt_connect: interval: 20
+mqtt.c(225) mqtt_connect: lwt: SolarD/solard/Status
+mqtt.c(245) mqtt_connect: connecting...
+mqtt.c(248) mqtt_connect: rc: 0
+mqtt.c(302) mqtt_pub: topic: SolarD/solard/Status, message: Online
+mqtt.c(326) mqtt_pub: publishing...
+mqtt.c(329) mqtt_pub: rc: 0
+mqtt.c(342) mqtt_pub: waiting...
+mqtt.c(344) mqtt_pub: rc: 0
+mqtt.c(347) mqtt_pub: delivered message... token: 1
+Subscribing to the following topics:
+agent.c(64) agent_sub: name: all, func: Ping
+agent.c(52) agent_mktopic: name: all, func: Ping
+SolarD/all/Ping
+mqtt.c(380) mqtt_sub: topic: SolarD/all/Ping
+mqtt.c(385) mqtt_sub: rc: 0
+agent.c(64) agent_sub: name: All, func: Ping
+agent.c(52) agent_mktopic: name: All, func: Ping
+SolarD/All/Ping
+mqtt.c(380) mqtt_sub: topic: SolarD/All/Ping
+mqtt.c(385) mqtt_sub: rc: 0
+agent.c(64) agent_sub: name: solard, func: Ping
+agent.c(52) agent_mktopic: name: solard, func: Ping
+SolarD/solard/Ping
+mqtt.c(380) mqtt_sub: topic: SolarD/solard/Ping
+mqtt.c(385) mqtt_sub: rc: 0
+agent.c(64) agent_sub: name: 57418d30-38df-4915-b5d4-e2af7cebc4c4, func: Ping
+agent.c(52) agent_mktopic: name: 57418d30-38df-4915-b5d4-e2af7cebc4c4, func: Ping
+SolarD/57418d30-38df-4915-b5d4-e2af7cebc4c4/Ping
+mqtt.c(380) mqtt_sub: topic: SolarD/57418d30-38df-4915-b5d4-e2af7cebc4c4/Ping
+mqtt.c(385) mqtt_sub: rc: 0
+agent.c(64) agent_sub: name: 57418d30-38df-4915-b5d4-e2af7cebc4c4, func: (null)
+agent.c(52) agent_mktopic: name: 57418d30-38df-4915-b5d4-e2af7cebc4c4, func: (null)
+SolarD/57418d30-38df-4915-b5d4-e2af7cebc4c4
+mqtt.c(380) mqtt_sub: topic: SolarD/57418d30-38df-4915-b5d4-e2af7cebc4c4
+mqtt.c(385) mqtt_sub: rc: 0
+agent.c(576) agent_init: logfp: 0x7faaee8aa400
+jsengine.c(174) JS_EngineInit: Initialize JS Engine...
+jsengine.c(179) JS_EngineInit: rtsize: 67108864
+jsglobal.c(179) JS_CreateGlobalObject: Creating global object...
+jsglobal.c(186) JS_CreateGlobalObject: Defining global props...
+jsglobal.c(191) JS_CreateGlobalObject: Defining global funcs...
+jsglobal.c(197) JS_CreateGlobalObject: Setting global private...
+jsglobal.c(202) JS_CreateGlobalObject: Adding standard classes...
+jsglobal.c(49) global_getprop: is_int: 0
+jsglobal.c(210) JS_CreateGlobalObject: done!
+jsengine.c(218) JS_EngineAddInitFunc: adding(0): name: agent, func: 0x5181a5, priv: 0x223af48
+jsengine.c(218) JS_EngineAddInitFunc: adding(1): name: mqtt, func: 0x513d32, priv: 0x223ab58
+agent.c(279) agent_start_script: script_dir: .
+agent.c(284) agent_start_script: script: ./init.js, bg: 0
+jsengine.c(283) JS_EngineExec: engine: 0x2260638, filename: ./init.js, newcx: 0
+jsengine.c(81) _getcx: locking global cx
+jsengine.c(83) _getcx: done, returning cx...
+jsengine.c(98) script_error: cx: 0x22627d0, message: can't open ./init.js: No such file or directory, report: 0x7ffdf7c0df20
+jsengine.c(102) script_error: cx: 0x22627d0, global: 0x2270000

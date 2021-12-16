@@ -1,0 +1,31 @@
+#!/bin/bash
+
+DB=power
+years=/tmp/years.dat
+
+mysql --database=${DB} -N -B -e "SELECT table_name FROM  INFORMATION_SCHEMA.tables WHERE table_schema = \"${DB}\" AND table_name like 'usage_2%' ORDER BY table_name;" 2>/dev/null | sed 's:^usage_::' > $years
+num=97
+Q="SELECT DATE_FORMAT(a.date,\"%m-%d\") as \"date\""
+while read year
+do
+	echo $year
+	ch=$(echo $num | awk '{printf "%c", $1}')
+	((num++))
+	Q="${Q},${ch}.kw as \"$year\""
+done < $years
+num=97
+Q="${Q} FROM"
+while read year
+do
+	ch=$(echo $num | awk '{printf "%c", $1}')
+	if test -n "$last_year"; then
+		lch=$(echo $last_num | awk '{printf "%c", $1}')
+		Q="${Q} LEFT JOIN usage_${year} AS $ch ON (MONTH(${lch}.date) = MONTH(${ch}.date) AND DAY(${lch}.date) = DAY(${ch}.date))"
+	else
+		Q="${Q} usage_${year} AS $ch"
+	fi
+	last_year=$year
+	last_num=$num
+	((num++))
+done < $years
+mysql --database=${DB} -e "CREATE VIEW power_usage AS ${Q}"

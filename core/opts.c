@@ -291,13 +291,14 @@ void opt_init(opt_proctab_t *opts) {
 	register opt_proctab_t *opt;
 
 	/* Init the options table */
-//	DLOG(LOG_DEBUG,"opt_init: initializing options table...");
+	dprintf(dlevel,"initializing options table...\n");
 	for(opt = opts; opt->keyword; opt++) {
-		DPRINTF("opt: key: %s, type: %d(%s), len: %d, req: %d\n", opt->keyword, opt->type, typestr(opt->type), opt->len, opt->reqd);
+		dprintf(dlevel,"opt: key: %s, type: %d(%s), len: %d, req: %d\n", opt->keyword, opt->type, typestr(opt->type), opt->len, opt->reqd);
 
 #if 0
 		/* If an option is not reqd, all opts after aren't either... */
-		if (opt->keyword[0] && opt->keyword[0] != '-') {
+		dprintf(dlevel,"keyword[0]: %c\n", *opt->keyword);
+		if (*opt->keyword && *opt->keyword != '-') {
 			if (i)
 				opt->reqd = 0;
 			else if (opt->reqd == 0)
@@ -306,9 +307,11 @@ void opt_init(opt_proctab_t *opts) {
 #endif
 
 		/* Set default value */
+		dprintf(dlevel,"value: %p\n", opt->value);
 		if (opt->value) conv_type(opt->type,opt->dest,opt->len,DATA_TYPE_STRING,opt->value,strlen(opt->value));
 		opt->have = 0;
 	}
+	dprintf(dlevel,"done!\n");
 	return;
 }
 
@@ -318,7 +321,7 @@ int opt_process(int argc,char **argv,opt_proctab_t *opts) {
 	register int i;
 
 	name[0] = 0;
-	if (argv[0]) strncat(name,argv[0],sizeof(name)-1);
+	if (argv && argv[0]) strncat(name,argv[0],sizeof(name)-1);
 
 	/* Create the getopt string */
 	DLOG(LOG_DEBUG,"opt_process: creating getopt string...");

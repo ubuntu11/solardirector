@@ -12,6 +12,7 @@ LICENSE file in the root directory of this source tree.
 
 #include "driver.h"
 #include "buffer.h"
+#include <pthread.h>
 
 #if 0
    /* Nur bei analogen Parameterkanaelen sinnvoll! */
@@ -104,6 +105,8 @@ struct smanet_session {
 	uint16_t dest;
 	int timeouts;
 	int commands;
+	pthread_mutex_t lock;
+	char errmsg[128];
 };
 typedef struct smanet_session smanet_session_t;
 
@@ -117,6 +120,7 @@ smanet_channel_t *smanet_get_channel(smanet_session_t *s, char *);
 
 int smanet_get_value(smanet_session_t *, char *, double *, char **);
 int smanet_set_value(smanet_session_t *, char *, double, char *);
+int smanet_reset_value(smanet_session_t *, char *);
 
 #if 0
 //int smanet_get_value(smanet_session_t *, smanet_channel_t *, double *);
@@ -131,5 +135,13 @@ int smanet_set_optionbyname(smanet_session_t *s, char *, char *);
 #endif
 
 void smanet_clear_values(smanet_session_t *);
+char *smanet_get_errmsg(smanet_session_t *);
+int smanet_lock(smanet_session_t *);
+int smanet_unlock(smanet_session_t *);
+
+#ifdef JS
+#include "jsengine.h"
+int smanet_jsinit(JSEngine *js, smanet_session_t *s);
+#endif
 
 #endif

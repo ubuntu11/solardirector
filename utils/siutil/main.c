@@ -36,6 +36,36 @@ int si_config(void *h, int req, ...) {
 	return 1;
 }
 
+int si_startstop(si_session_t *s, int op) {
+	int retries,bytes;
+	uint8_t data[8],b;
+
+	dprintf(1,"op: %d\n", op);
+
+	b = (op ? 1 : 2);
+	dprintf(1,"b: %d\n", b);
+	retries=10;
+	while(retries--) {
+		dprintf(1,"writing...\n");
+		bytes = si_can_write(s,0x35c,&b,1);
+		dprintf(1,"bytes: %d\n", bytes);
+		if (bytes < 0) return 1;
+		dprintf(1,"reading...\n");
+		if (s->can_read(s,0x307,data,8) == 0) {
+			if (debug >= 3) bindump("data",data,8);
+			dprintf(1,"*** data[3] & 2: %d\n", data[3] & 0x0002);
+			if (op) {
+				if (data[3] & 0x0002) return 0;
+			} else {
+				if ((data[3] & 0x0002) == 0) return 0;
+			}
+		}
+		sleep(1);
+	}
+	if (retries < 0) printf("start failed.\n");
+	return (retries < 0 ? 1 : 0);
+}
+
 void usage(char *myname) {
 	printf("usage: %s [-alps] -n chan | ChanName [value]\n",myname);
         printf("  -j            JSON output\n");
@@ -55,30 +85,45 @@ enum ACTIONS {
 	ACTION_FILE
 };
 
-//int si_config(void *h, int req, ...) { return(1); }
-
 static solard_driver_t *transports[] = { &can_driver, &serial_driver, &rdev_driver, 0 };
+
+int double_equals(double a, double b) {
+	double r;
+
+	if (a > b) r = a - b;
+	else r = b - a;
+	dprintf(1,"a: %f, b: %f, r: %f\n", a, b, r);
+	return (r > 0.00001);
+}
 
 int main(int argc, char **argv) {
 	si_session_t *s;
 	int param,list,all;
 	char configfile[256],cantpinfo[256],smatpinfo[256],chanpath[256],filename[256];
-	int start_flag,stop_flag,ver_flag,quiet_flag;
+	int start_flag,stop_flag,ver_flag,quiet_flag,force_flag,mon_flag,mon_interval;
+//	int clear_flag;
 	opt_proctab_t opts[] = {
                 /* Spec, dest, type len, reqd, default val, have */
 		{ "-b",0,0,0,0,0 },
-		{ "-s|Start Sunny Island",&start_flag,DATA_TYPE_BOOL,0,0,"N" },
-		{ "-S|Stop Sunny Island",&stop_flag,DATA_TYPE_BOOL,0,0,"N" },
 		{ "-l|list",&list,DATA_TYPE_BOOL,0,0,"N" },
 		{ "-p|list params",&param,DATA_TYPE_BOOL,0,0,"N" },
 		{ "-a|list all",&all,DATA_TYPE_BOOL,0,0,"N" },
 		{ "-f:%|get/set vals in file",&filename,DATA_TYPE_STRING,sizeof(filename)-1,0,"" },
 		{ "-v|verify settings in file",&ver_flag,DATA_TYPE_BOOL,0,0,"N" },
+		{ "-w|write anyway (force)",&force_flag,DATA_TYPE_BOOL,0,0,"N" },
 		{ "-q|dont list changes",&quiet_flag,DATA_TYPE_BOOL,0,0,"N" },
+		{ "-R|Start Sunny Island",&start_flag,DATA_TYPE_BOOL,0,0,"N" },
+		{ "-S|Stop Sunny Island",&stop_flag,DATA_TYPE_BOOL,0,0,"N" },
 		{ "-t::|CAN <transport,target,topts>",&cantpinfo,DATA_TYPE_STRING,sizeof(cantpinfo)-1,0,"" },
-		{ "-u::|SMANET <transport,target,topts>",&smatpinfo,DATA_TYPE_STRING,sizeof(smatpinfo)-1,0,"" },
+		{ "-s::|SMANET <transport,target,topts>",&smatpinfo,DATA_TYPE_STRING,sizeof(smatpinfo)-1,0,"" },
 		{ "-c::|configfile",&configfile,DATA_TYPE_STRING,sizeof(configfile)-1,0,"" },
 		{ "-p::|channels path",&chanpath,DATA_TYPE_STRING,sizeof(chanpath)-1,0,"" },
+#if 0
+		/* XXX doesnt work */
+		{ "-x|clear value (set default)",&clear_flag,DATA_TYPE_BOOL,0,0,"N" },
+#endif
+		{ "-m|monitor info",&mon_flag,DATA_TYPE_BOOL,0,0,"N" },
+		{ "-n:d|monitor interval (default: 3s)",&mon_interval,DATA_TYPE_INT,0,0,"1" },
 		OPTS_END
 	};
 	char can_transport[SOLARD_TRANSPORT_LEN],can_target[SOLARD_TARGET_LEN],can_topts[SOLARD_TOPTS_LEN];
@@ -89,7 +134,6 @@ int main(int argc, char **argv) {
 	smanet_channel_t *c;
 	solard_driver_t *tp;
 	void *tp_handle;
-	si_info_t info;
 
 	log_open("siutil",0,logopts);
 
@@ -126,7 +170,10 @@ int main(int argc, char **argv) {
 			source = 2;
 		}
 	} else if (argc > 1) {
-		action = ACTION_SET;
+		if (strcmp(argv[1],"-l") == 0)
+			action = ACTION_LIST;
+		else
+			action = ACTION_SET;
 	} else if (argc > 0) {
 		action = ACTION_GET;
 	}
@@ -180,8 +227,10 @@ int main(int argc, char **argv) {
 		/* Load the can driver */
 		dprintf(1,"can_transport: %s, can_target: %s, can_topts: %s\n", can_transport, can_target, can_topts);
 		tp = find_driver(transports,can_transport);
+		dprintf(1,"tp: %p\n", tp);
 		if (!tp) return 1;
 		tp_handle = tp->new(0,can_target,can_topts);
+		dprintf(1,"tp_handle: %p\n", tp_handle);
 		if (!tp_handle) return 1;
 	}
 
@@ -204,7 +253,7 @@ int main(int argc, char **argv) {
 			CFG_PROCTAB_END
 		};
 		cfg_get_tab(cfg,tab);
-		if (debug) cfg_disp_tab(tab,"can",0);
+		if (debug) cfg_disp_tab(tab,"smanet",0);
 	}
         if (!strlen(sma_transport) || !strlen(sma_target)) {
 #if defined(__WIN32) || defined(__WIN64)
@@ -223,16 +272,22 @@ int main(int argc, char **argv) {
 		/* Load the smanet driver */
 		dprintf(1,"sma_transport: %s, sma_target: %s, sma_topts: %s\n", sma_transport, sma_target, sma_topts);
 		tp = find_driver(transports,sma_transport);
+		dprintf(1,"tp: %p\n", tp);
 		if (!tp) return 1;
 		tp_handle = tp->new(0,sma_target,sma_topts);
+		dprintf(1,"tp_handle: %p\n", tp_handle);
 		if (!tp_handle) return 1;
 
 		s->smanet = smanet_init(tp, tp_handle);
 		if (!s->smanet) return 1;
 	}
 
-	if (start_flag) return si_startstop(s,1);
-	else if (stop_flag) return si_startstop(s,0);
+	dprintf(1,"source: %d\n", source);
+	if (start_flag || stop_flag) {
+		si_driver.open(s);
+		if (start_flag) return si_startstop(s,1);
+		else if (stop_flag) return si_startstop(s,0);
+	}
 
 	if (s->smanet) {
 		if (strlen(chanpath)) smanet_set_chanpath(s->smanet,chanpath);
@@ -288,6 +343,7 @@ int main(int argc, char **argv) {
 			while(fgets(line,sizeof(line)-1,fp)) {
 				dprintf(1,"line: %s\n", line);
 				if (*line == '#') continue;
+				*label = *value = 0;
 				strncpy(label,strele(0," ",line),sizeof(label)-1);
 				strncpy(value,strele(1," ",line),sizeof(value)-1);
 				dprintf(1,"label: %s, value: %s\n", label, value);
@@ -297,18 +353,18 @@ int main(int argc, char **argv) {
 				}
 				if (strlen(value)) {
 					if (!text) {
-						dv = atof(value);
+						dv = strtod(value,0);
 						dprintf(1,"dv: %f, d: %f\n", dv, d);
-						if (dv < d || dv > d) {
-							if (ver_flag) printf("%s %f != %f\n",label,d,dv);
+						if (double_equals(dv,d) || force_flag) {
+							if (ver_flag && !force_flag) printf("%s %f != %f\n",label,d,dv);
 							else if (smanet_set_value(s->smanet,label,dv,0))
 								printf("%s: error setting value: %f\n", label, dv);
 							else if (!quiet_flag) printf("%s %f -> %f\n",label,d,dv);
 						}
 					} else {
 						dprintf(1,"value: %s, text: %s\n", value, text);
-						if (strcmp(value,text) != 0) {
-							if (ver_flag) printf("%s %s != %s\n",label,text,value);
+						if (strcmp(value,text) != 0 || force_flag) {
+							if (ver_flag && !force_flag) printf("%s %s != %s\n",label,text,value);
 							else if (smanet_set_value(s->smanet,label,0,value))
 								printf("%s: error setting value: %f\n", label, dv);
 							else if (!quiet_flag) printf("%s %s -> %s\n",label,text,value);
@@ -324,10 +380,22 @@ int main(int argc, char **argv) {
 		}
 		break;
 	case ACTION_INFO:
-		memset(&info,0,sizeof(info));
-		si_driver.open(s);
-//		if (si_get_info(s,&info)) return 1;
-		display_info(s);
+		if (si_driver.open(s)) {
+			log_error("unable to open si driver");
+			return 1;
+		}
+		/* XXX Important */
+		s->readonly = 1;
+		dprintf(1,"mon_flag: %d\n", mon_flag);
+		if (mon_flag) {
+			monitor(s,mon_interval);
+		} else {
+			if (si_read(s,(void *)0xDEADBEEF,0)) {
+				log_error("unable to read data");
+				return 1;
+			}
+			display_info(s);
+		}
 		break;
 	case ACTION_LIST:
 		if (argc > 0) {
@@ -339,8 +407,15 @@ int main(int argc, char **argv) {
 				log_error("%s: channel not found\n",argv[0]);
 				return 1;
 			}
+			if ((c->mask & CH_STATUS) == 0) {
+				log_error("%s: channel has no options\n",argv[0]);
+				return 1;
+			}
 			list_reset(c->strings);
-			while((p = list_get_next(c->strings)) != 0) printf("%s\n", p);
+			while((p = list_get_next(c->strings)) != 0) {
+				if (strcmp(p,"---")==0) continue;
+				printf("%s\n", p);
+			}
 		} else {
 			dprintf(1,"channel_count: %d\n", list_count(s->smanet->channels));
 			list_reset(s->smanet->channels);
@@ -352,13 +427,23 @@ int main(int argc, char **argv) {
 			double d;
 			char *text;
 
-			if (smanet_get_value(s->smanet,argv[0],&d,&text)) {
-				log_write(LOG_ERROR,"%s: error getting value\n",argv[0]);
-				return 1;
-			}
-			if (text) printf("%s\n",text);
-			else if ((int)d == d) printf("%d\n",(int)d);
-			else printf("%f\n",d);
+#if 0
+			dprintf(1,"clear_flag: %d\n", clear_flag);
+			if (clear_flag)  {
+				if (smanet_reset_value(s->smanet,argv[0])) {
+					log_write(LOG_ERROR,"%s: error getting value\n",argv[0]);
+					return 1;
+				}
+			} else {
+#endif
+				if (smanet_get_value(s->smanet,argv[0],&d,&text)) {
+					log_write(LOG_ERROR,"%s: error getting value\n",argv[0]);
+					return 1;
+				}
+				if (text) printf("%s\n",text);
+				else if ((int)d == d) printf("%d\n",(int)d);
+				else printf("%f\n",d);
+//			}
 		}
 		break;
 	case ACTION_SET:

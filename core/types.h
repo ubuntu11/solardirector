@@ -24,7 +24,7 @@ LICENSE file in the root directory of this source tree.
         DATA_TYPE_QUAD,                 /* Quadword - 64 bit */
         DATA_TYPE_FLOAT,                /* Float -- 32 bit */
         DATA_TYPE_DOUBLE,               /* Double -- 64 bit */
-        DATA_TYPE_BOOL,              /* (int) Yes/No,True/False,on/off */
+        DATA_TYPE_BOOL,                 /* (int) Yes/No,True/False,on/off */
         DATA_TYPE_DATE,                 /* (char 23) DD-MMM-YYYY HH:MM:SS.HH */
         DATA_TYPE_LIST,                 /* Itemlist */
         DATA_TYPE_MAX                   /* Max data type number */
@@ -42,7 +42,7 @@ enum DATA_TYPE {
 	DATA_TYPE_F32,
 	DATA_TYPE_F64,
 	DATA_TYPE_BOOL,
-        DATA_TYPE_TIMESTAMP,		/* (char 22) YYYYMMDD HH:MM:SS.HHHH */
+        DATA_TYPE_DATE,			/* (char 23) DD-MMM-YYYY HH:MM:SS.HH */
         DATA_TYPE_LIST,                 /* Itemlist */
 	DATA_TYPE_I128,
 	DATA_TYPE_U8,
@@ -50,8 +50,9 @@ enum DATA_TYPE {
 	DATA_TYPE_U32,
 	DATA_TYPE_U64,
 	DATA_TYPE_U128,
-        DATA_TYPE_DATE,                 /* (char 23) DD/MM/YYYY */
-	DATA_TYPE_BITMASK,		/* Char 64 0s and 1s */
+	DAYA_TYPE_BIT,
+        DATA_TYPE_TIMESTAMP,		/* (char 22) YYYYMMDD HH:MM:SS.HHHH */
+	DATA_TYPE_BITMASK,		/* 0s and 1s */
 	DATA_TYPE_IPV4,			/* Char 64 0s and 1s */
 	DATA_TYPE_IPV6,			/* Char 64 0s and 1s */
 	DATA_TYPE_PHONE,		/* +CC (AAA)NNN-NNNN */
@@ -63,7 +64,7 @@ enum DATA_TYPE {
 #define DATA_TYPE_BYTE DATA_TYPE_I8
 #define	DATA_TYPE_SHORT DATA_TYPE_I16
 #define	DATA_TYPE_INT DATA_TYPE_I32
-#define	DATA_TYPE_LONG DATA_TYPE_I32
+//#define	DATA_TYPE_LONG DATA_TYPE_I32
 #define	DATA_TYPE_QUAD DATA_TYPE_I64
 #define DATA_TYPE_UBYTE DATA_TYPE_U8
 #define DATA_TYPE_USHORT DATA_TYPE_U16

@@ -1,4 +1,3 @@
-
 /*
 Copyright (c) 2021, Stephen P. Shoecraft
 All rights reserved.
@@ -8,243 +7,248 @@ LICENSE file in the root directory of this source tree.
 */
 
 #include "si.h"
-#include <pthread.h>
 #include "transports.h"
-#include "roles.h"
 
-#define TESTING 0
-#define CONFIG_FROM_MQTT 0
+#define TESTING 1
+
+#define DEBUG_STARTUP 1
+
+#if DEBUG_STARTUP
+#define _ST_DEBUG LOG_DEBUG
+#else
+#define _ST_DEBUG 0
+#endif
 
 char *si_agent_version_string = "1.0";
 
+static int si_agent_init(int argc, char **argv, opt_proctab_t *si_opts, si_session_t *s) {
+	config_property_t si_props[] = {
+		{ "debug", DATA_TYPE_INT, &debug, 0, 0, 0,
+			"range", 3, (int []){ 0, 99, 1 }, 1, (char *[]) { "debug level" }, 0, 1, 0 },
+		{ "readonly", DATA_TYPE_BOOL, &s->readonly, 0, "1", 0, 0, 0, 0, 0, 0, 0, 1, 0 },
+		{ "startup_charge_mode", DATA_TYPE_INT, &s->startup_charge_mode, 0, "0", 0,
+			"select", 3, (int []){ 0, 1, 2 }, 1, (char *[]){ "Off","On","CV" }, 0, 1, 0 },
+		{ "charge_mode", DATA_TYPE_INT, &s->charge_mode, 0, "0", 0,
+			"select", 3, (int []){ 0, 1, 2 }, 3, (char *[]){ "Off","On","CV" }, 0, 1, 0 },
+		{ "charge_method", DATA_TYPE_INT, &s->charge_method, 0, "1", 0,
+			"select", 2, (int []){ 0, 1 }, 2, (char *[]){ "CC/CV","oneshot" }, 0, 1, 0 },
+		{ "cv_method", DATA_TYPE_INT, &s->cv_method, 0, "0", 0,
+			"select", 2, (int []){ 0, 1 }, 2, (char *[]){ "time","amps" }, 0, 1, 0 },
+		{ "cv_time", DATA_TYPE_INT, &s->cv_time, 0, "90", 0,
+			"range", 3, (int []){ 0, 1440, 1 }, 1, (char *[]){ "CV Time" }, "minutes", 1, 0 },
+		{ "cv_cutoff", DATA_TYPE_FLOAT, &s->cv_cutoff, 0, "5", 0,
+			0, 0, 0, 1, (char *[]){ "CV Cutoff" }, "V", 1, 0 },
+		{ "min_voltage", DATA_TYPE_FLOAT, &s->min_voltage, 0, 0, 0,
+			"range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 },
+			1, (char *[]){ "Min Battery Voltage" }, "V", 1, 0 },
+		{ "max_voltage", DATA_TYPE_FLOAT, &s->max_voltage, 0, 0, 0,
+			"range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 },
+			1, (char *[]){ "Max Battery Voltage" }, "V", 1, 0 },
+		{ "charge_start_voltage", DATA_TYPE_FLOAT, &s->charge_start_voltage, 0, 0, 0,
+//			CONFIG_FLAG_READONLY | CONFIG_FLAG_NOSAVE,
+			"range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 },
+			1, (char *[]){ "Start charging at this voltage" }, "V", 1, 0 },
+		{ "charge_end_voltage", DATA_TYPE_FLOAT, &s->charge_end_voltage, 0, 0, 0,
+//			CONFIG_FLAG_READONLY | CONFIG_FLAG_NOSAVE,
+			"range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 },
+			1, (char *[]){ "Stop charging at this voltage" }, "V", 1, 0 },
 #if 0
-solard_driver_t *si_transports[] = { &can_driver, &serial_driver, &rdev_driver, 0 };
-
-static void *si_new(void *conf, void *driver, void *driver_handle) {
-	si_session_t *s;
-
-	log_write(LOG_INFO,"SMA Sunny Island Agent version %s\n",si_agent_version_string);
-	log_write(LOG_INFO,"Starting up...\n");
-
-	s = calloc(1,sizeof(*s));
-	if (!s) {
-		perror("si_new: calloc");
-		return 0;
-	}
-	s->ap = conf;
-	s->can = driver;
-	s->can_handle = driver_handle;
-	s->desc = list_create();
-
-	/* Start background recv thread */
-	dprintf(1,"driver name: %s\n", s->can->name);
-	if (strcmp(s->can->name,"can") == 0) {
-		pthread_attr_t attr;
-		
-		/* Create a detached thread */
-		if (pthread_attr_init(&attr)) {
-			perror("si_new: pthread_attr_init");
-			goto si_new_error;
-		}
-		if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED)) {
-			perror("si_new: pthread_attr_setdetachstate");
-			goto si_new_error;
-		}
-		solard_set_state(s,SI_STATE_RUNNING);
-		if (pthread_create(&s->th,&attr,&si_recv_thread,s)) {
-			perror("si_new: pthread_create");
-			goto si_new_error;
-		}
-		dprintf(1,"setting func to local data\n");
-		s->can_read = si_get_local_can_data;
-	} else {
-		dprintf(1,"setting func to remote data\n");
-		s->can_read = si_get_remote_can_data;
-	}
-
-	dprintf(1,"returning: %p\n", s);
-	return s;
-si_new_error:
-	free(s);
-	return 0;
-}
-
-static int si_open(si_session_t *s) {
-	int r;
-
-	dprintf(3,"s: %p\n", s);
-
-	r = 0;
-	if (!solard_check_state(s,SI_STATE_OPEN)) {
-		if (s->can->open(s->can_handle) == 0)
-			solard_set_state(s,SI_STATE_OPEN);
-		else
-			r = 1;
-	}
-	dprintf(3,"returning: %d\n", r);
-	return r;
-}
-
-static int si_close(void *handle) {
-	/* We only close when shutdown */
-	return 0;
-#if 0
-	si_session_t *s = handle;
-	int r;
-
-	dprintf(3,"s: %p\n", s);
-	r = 0;
-	if (solard_check_state(s,SI_STATE_OPEN)) {
-		if (s->can->close(s->can_handle) == 0)
-			solard_clear_state(s,SI_STATE_OPEN);
-		else
-			r = 1;
-	}
-	dprintf(3,"returning: %d\n", r);
-	return r;
+		{ "charge_start_soc", DATA_TYPE_FLOAT, &s->charge_start_voltage, 0, 0, 0,
+			"range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 },
+			1, (char *[]){ "Start charging at this voltage" }, "V", 1, 0 },
+		{ "charge_end_soc", DATA_TYPE_FLOAT, &s->charge_end_voltage, 0, 0, 0,
+			"range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 },
+			1, (char *[]){ "Stop charging at this voltage" }, "V", 1, 0 },
 #endif
-}
+		{ "charge_min_amps", DATA_TYPE_FLOAT, &s->charge_min_amps, 0, 0, 0,
+			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Minimum charge amps" }, "A", 1, 0 },
+		{ "charge_amps", DATA_TYPE_FLOAT, &s->std_charge_amps, 0, 0, 0,
+			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Charge Amps" }, "A", 1, 0 },
 
-solard_driver_t si_driver = {
-	SOLARD_DRIVER_AGENT,
-	"si",
-	si_new,				/* New */
-	(solard_driver_open_t)si_open,			/* Open */
-	(solard_driver_close_t)si_close,			/* Close */
-	(solard_driver_read_t)si_read,			/* Read */
-	(solard_driver_write_t)si_write,			/* Write */
-	si_config,			/* Config */
-};
+		{ "have_grid", DATA_TYPE_BOOL, &s->have_grid, 0, "-1", 0,
+			"range", 3, (int []){ -1, 0, 1 }, 
+			3, (char *[]){ "Not set", "No", "Yes" }, 0, 1, 0 },
+		{ "charge_from_grid", DATA_TYPE_BOOL, &s->charge_from_grid, 0, "-1", 0,
+			"range", 3, (int []){ -1, 0, 1 }, 
+			3, (char *[]){ "Not set", "No", "Yes" }, 0, 1, 0 },
+		{ "grid_soc_enabled", DATA_TYPE_BOOL, &s->grid_soc_enabled, 0, "-1", 0,
+			"range", 3, (int []){ -1, 0, 1 }, 
+			3, (char *[]){ "Not set", "No", "Yes" }, 0, 1, 0 },
+		{ "grid_soc_stop", DATA_TYPE_FLOAT, &s->grid_soc_stop, 0, "-1", 0,
+			"range", 3, (float []){ 0.0, 100.0, .1 },
+			1, (char *[]){ "Stop charging at this SoC" }, "%", 1, 1 },
+		{ "grid_charge_amps", DATA_TYPE_FLOAT, &s->grid_charge_amps, 0, 0, 0,
+			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Charge amps when grid is connected" }, "A", 1, 0 },
 
-int si_startstop(si_session_t *s, int op) {
-	int retries;
-	uint8_t data[8],b;
+		{ "have_gen", DATA_TYPE_BOOL, &s->have_gen, 0, "-1", 0,
+			"range", 3, (int []){ -1, 0, 1 }, 
+			3, (char *[]){ "Not set", "No", "Yes" }, 0, 1, 0 },
+		{ "gen_soc_stop", DATA_TYPE_FLOAT, &s->gen_soc_stop, 0, "-1", 0,
+			"range", 3, (float []){ 0.0, 100.0, .1 },
+			1, (char *[]){ "Stop charging at this SoC" }, "%", 1, 1 },
+		{ "gen_charge_amps", DATA_TYPE_FLOAT, &s->gen_charge_amps, 0, 0, 0,
+			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Charge amps when gen is connected" }, "A", 1, 0 },
 
-	dprintf(1,"op: %d\n", op);
-
-	b = (op ? 1 : 2);
-	dprintf(1,"b: %d\n", b);
-	retries=10;
-	while(retries--) {
-		dprintf(1,"writing...\n");
-		if (si_can_write(s,0x35c,&b,1) < 0) return 1;
-		dprintf(1,"reading...\n");
-		if (s->can_read(s,0x307,data,8) == 0) {
-			if (debug >= 3) bindump("data",data,8);
-			dprintf(1,"*** data[3] & 2: %d\n", data[3] & 0x0002);
-			if (op) {
-				if (data[3] & 0x0002) return 0;
-			} else {
-				if ((data[3] & 0x0002) == 0) return 0;
-			}
-		}
-		sleep(1);
-	}
-	if (retries < 0) printf("start failed.\n");
-	return (retries < 0 ? 1 : 0);
-}
-#endif
-
+		{ "charge_at_max", DATA_TYPE_BOOL, &s->charge_at_max, 0, 0, 0,
+			0, 0, 0, 1, (char *[]){ "Charge at max_voltage" }, 0, 0 },
+		{ "charge_creep", DATA_TYPE_BOOL, &s->charge_creep, 0, 0, 0,
+			0, 0, 0, 1, (char *[]){ "Increase voltage to maintain charge amps" }, 0, 0 },
+		{ "can_transport", DATA_TYPE_STRING, s->can_transport, sizeof(s->can_transport)-1, 0, 0,
+			0, 0, 0, 0, 0, 0, 1, 0 },
+		{ "can_target", DATA_TYPE_STRING, s->can_target, sizeof(s->can_target)-1, 0, 0,
+			0, 0, 0, 0, 0, 0, 1, 0 },
+		{ "can_topts", DATA_TYPE_STRING, s->can_topts, sizeof(s->can_topts)-1, 0, 0,
+			0, 0, 0, 0, 0, 0, 1, 0 },
+		{ "can_fallback", DATA_TYPE_BOOL, &s->can_fallback, 0, "N", 0,
+			0, 0, 0, 1, (char *[]){ "Fallback to NULL driver if CAN init fails" }, 0, 0 },
+		{ "smanet_transport", DATA_TYPE_STRING, &s->smanet_transport, sizeof(s->smanet_transport)-1, 0, 0,
+			0, 0, 0, 0, 0, 0, 1, 0 },
+		{ "smanet_target", DATA_TYPE_STRING, &s->smanet_target, sizeof(s->smanet_target)-1, 0, 0,
+			0, 0, 0, 0, 0, 0, 1, 0 },
+		{ "smanet_topts", DATA_TYPE_STRING, &s->smanet_topts, sizeof(s->smanet_topts)-1, 0, 0,
+			0, 0, 0, 0, 0, 0, 1, 0 },
+		{ "smanet_channels_path", DATA_TYPE_STRING, &s->smanet_channels_path, sizeof(s->smanet_channels_path)-1, 0, 0,
+			0, 0, 0, 0, 0, 0, 1, 0 },
+		{ "sim", DATA_TYPE_BOOL, &s->sim, 0, "N", 0,
+			0, 0, 0, 1, (char *[]){ "Run simulation" }, 0, 0 },
+		{ "sim_step", DATA_TYPE_FLOAT, &s->sim_step, 0, "0.1", 0,
+			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "SIM Voltage Step" }, 0, 1, 1 },
+		{ "discharge_amps", DATA_TYPE_FLOAT, &s->discharge_amps, 0, "1200", 0,
+			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Discharge Amps" }, "A", 1, 0 },
+		{ "interval", DATA_TYPE_INT, &s->interval, 0, "10", 0,
+			"range", 3, (int []){ 0, 10000, 1 }, 1, (char *[]) { "Interval" }, "S", 1, 0 },
+		{ "capacity", DATA_TYPE_FLOAT, &s->soc, 0, 0, CONFIG_FLAG_READONLY | CONFIG_FLAG_NOSAVE,
+			"range", 3, (float []){ 0, 100, .1 }, 1, (char *[]){ "State of Charge" }, 0, 1, 1 },
+		{ "user_soc", DATA_TYPE_FLOAT, &s->user_soc, 0, "-1", 0,
+			"range", 3, (float []){ 0, 100, .1 }, 1, (char *[]){ "State of Charge" }, 0, 1, 1 },
 #if 0
-static void getconf(si_session_t *s) {
-	int from_mqtt;
-	cfg_proctab_t mytab[] = {
-		{ "si", "config_from_mqtt", 0, DATA_TYPE_LOGICAL, &from_mqtt, 0, "N" },
-		{ "si", "readonly", 0, DATA_TYPE_LOGICAL, &s->readonly, 0, "N" },
-		{ "si", "soc", 0, DATA_TYPE_FLOAT, &s->user_soc, 0, "-1" },
-		{ "si", "startup_charge_mode", 0, DATA_TYPE_INT, &s->startup_charge_mode, 0, "1" },
-		{ "si", "charge_min_amps", 0, DATA_TYPE_FLOAT, &s->charge_min_amps, 0, "-1" },
-		{ "si", "charge_creep", "Increase charge voltage in order to maintain charge amps", DATA_TYPE_BOOL, &s->charge_creep, 0, "yes" },
-		{ "si", "sim_step", 0, DATA_TYPE_FLOAT, &s->sim_step, 0, ".1" },
-		{ "si", "interval", 0, DATA_TYPE_INT, &s->interval, 0, "10" },
-		CFG_PROCTAB_END
+		{ "grid_start_timeout", DATA_TYPE_INT, &s->grid_start_timeout, 0, "90", 0,
+			"range", 3, (int []){ 0, 1440, 1 }, 1, (char *[]){ "Time to wait for grid to start" }, "S", 1, 0 },
+		{ "grid_stop_timeout", DATA_TYPE_INT, &s->grid_stop_timeout, 0, "90", 0,
+			"range", 3, (int []){ 0, 1440, 1 }, 1, (char *[]){ "Time to wait for grid to stop" }, "S", 1, 0 },
+		{ "gen_start_timeout", DATA_TYPE_INT, &s->gen_start_timeout, 0, "90", 0,
+			"range", 3, (int []){ 0, 1440, 1 }, 1, (char *[]){ "Time to wait for gen to start" }, "S", 1, 0 },
+		{ "gen_stop_timeout", DATA_TYPE_INT, &s->gen_stop_timeout, 0, "90", 0,
+			"range", 3, (int []){ 0, 1440, 1 }, 1, (char *[]){ "Time to wait for gen to stop" }, "S", 1, 0 },
+#endif
+		{ "notify", DATA_TYPE_STRING, &s->notify_path, sizeof(s->notify_path)-1, 0, 0,
+			0, 0, 0, 1, (char *[]){ "Notify program" }, 0, 1, 0 },
+		{ "have_battery_temp", DATA_TYPE_BOOL, &s->have_battery_temp, 0, "N", 0,
+			0, 0, 0, 1, (char *[]){ "Is battery temp available" }, 0, 0 },
+#include "si_info_props.c"
+		{ 0 }
 	};
-#if CONFIG_FROM_MQTT
-	char topic[SOLARD_TOPIC_SIZE];
-	solard_message_t *msg;
-	list lp;
-#endif
+	config_function_t si_funcs[] = {
+		{0}
+	};
 
-	from_mqtt = 0;
-        cfg_get_tab(s->ap->cfg,mytab);
-        if (debug) cfg_disp_tab(mytab,"si",1);
-	dprintf(1,"fn: %p\n", s->ap->cfg->filename);
-	if (s->ap->cfg->filename) return;
+	s->ap = agent_init(argc,argv,si_opts,&si_driver,s,si_props,si_funcs);
+	dprintf(1,"ap: %p\n",s->ap);
+	if (!s->ap) return 1;
+	return 0;
+}
 
-#if CONFIG_FROM_MQTT
-	/* Sub to our config topic */
- //       sprintf(topic,"%s/%s/%s/%s",SOLARD_TOPIC_ROOT,SOLARD_ROLE_INVERTER"/%s/"SOLARD_FUNC_CONFIG"/+",s->ap->instance_name);
-	agent_mktopic(topic,sizeof(topic)-1,s->ap,s->name,SOLARD_FUNC_CONFIG);
-        if (mqtt_sub(s->ap->m,topic)) return;
+#ifdef SI_CB
+static int si_cb(void *ctx) {
+	si_session_t *s = ctx;
 
-	/* Ingest any config messages */
-	dprintf(1,"ingesting...\n");
-	solard_ingest(s->ap->mq,2);
-	dprintf(1,"back from ingest...\n");
+	/* Get the relay/func bits */
+	dprintf(1,"getting bits...\n");
+	if (si_get_bits(s)) return 1;
 
-	/* Process messages as config requests */
-	lp = list_create();
-	dprintf(1,"mq count: %d\n", list_count(s->ap->mq));
-	list_reset(s->ap->mq);
-	while((msg = list_get_next(s->ap->mq)) != 0) {
-		memset(&req,0,sizeof(req));
-		strncat(req.name,msg->param,sizeof(req.name)-1);
-		req.type = DATA_TYPE_STRING;
-		dprintf(1,"data len: %d\n", msg->data_len);
-		strncat(req.sval,msg->data,sizeof(req.sval)-1);
-		dprintf(1,"req: name: %s, type: %d(%s), sval: %s\n", req.name, req.type, typestr(req.type), req.sval);
-		list_add(lp,&req,sizeof(req));
-		list_delete(s->ap->mq,msg);
-	}
-	dprintf(1,"lp count: %d\n", list_count(lp));
-	if (list_count(lp)) si_config(s,"Set","si_control",lp);
-	list_destroy(lp);
-	mqtt_unsub(s->ap->m,topic);
-#endif
+	if (s->info.GdOn != s->grid_connected) log_info("Grid %s\n",(s->grid_connected ? "connected" : "disconnected"));
+	if (s->info.GnOn != s->gen_connected) log_info("Generator %s\n",(s->gen_connected ? "connected" : "disconnected"));
+	if ((s->info.GdOn != s->grid_connected) || (s->info.GnOn != s->gen_connected)) si_write_va(s);
+	s->grid_connected = s->info.GdOn;
+	s->gen_connected = s->info.GnOn;
 
-	dprintf(1,"done\n");
-	return;
-
+	return 0;
 }
 #endif
 
 int main(int argc, char **argv) {
-	solard_agent_t *ap;
-//	si_session_t *s;
+	char cantpinfo[256];
+	char smatpinfo[256];
+	opt_proctab_t si_opts[] = {
+		{ "-t::|CAN transport,target,opts",&cantpinfo,DATA_TYPE_STRING,sizeof(cantpinfo)-1,0,"" },
+		{ "-u::|SMANET transport,target,opts",&smatpinfo,DATA_TYPE_STRING,sizeof(smatpinfo)-1,0,"" },
+		OPTS_END
+	};
+	si_session_t *s;
+	time_t start,end,diff;
+
 #if TESTING
-	char *args[] = { "si", "-d", "6", "-c", "sitest.conf" };
+	char *args[] = { "si", "-d", "7", "-c", "sitest.conf" };
 	argc = (sizeof(args)/sizeof(char *));
 	argv = args;
 #endif
 
-        log_write(LOG_INFO,"SMA Sunny Island Agent version %s\n",si_agent_version_string);
-        log_write(LOG_INFO,"Starting up...\n");
+	time(&start);
 
-	ap = agent_init(argc,argv,0,&si_driver,si_transports,&inverter_driver);
-	dprintf(1,"ap: %p\n",ap);
-	if (!ap) return 1;
+	log_open("si",0,LOG_INFO|LOG_WARNING|LOG_ERROR|LOG_SYSERR|_ST_DEBUG);
 
-#if 0
-	/* Get our session */
-	if (ap->role->config(ap->role_handle,SOLARD_CONFIG_GET_HANDLE,&s)) return 1;
+//	log_write(LOG_INFO,"SMA Sunny Island Agent version %s\n",si_agent_version_string);
+//	log_write(LOG_INFO,"Starting up...\n");
 
-	/* Read our specific config */
-	getconf(s);
+	/* Init the SI driver */
+	s = si_driver.new(0,0,0);
+	if (!s) return 1;
 
-	/* Readonly? */
-	dprintf(1,"readonly: %d\n", s->readonly);
-	if (s->readonly)
-		si_driver.write  = 0;
-	else
-		charge_init(s);
+	if (si_agent_init(argc,argv,si_opts,s)) return 1;
+
+	/* -t takes precedence over config */
+	dprintf(1,"cantpinfo: %s\n", cantpinfo);
+	if (strlen(cantpinfo)) {
+		*s->can_transport = *s->can_target = *s->can_topts = 0;
+		strncat(s->can_transport,strele(0,",",cantpinfo),sizeof(s->can_transport)-1);
+		strncat(s->can_target,strele(1,",",cantpinfo),sizeof(s->can_target)-1);
+		strncat(s->can_topts,strele(2,",",cantpinfo),sizeof(s->can_topts)-1);
+	}
+	dprintf(1,"s->can_transport: %s, s->can_target: %s, s->can_topts: %s\n", s->can_transport, s->can_target, s->can_topts);
+
+	if (si_can_init(s)) {
+		log_error(s->errmsg);
+		return 1;
+	}
+
+	dprintf(1,"smatpinfo: %s\n", smatpinfo);
+	if (strlen(smatpinfo)) {
+		*s->smanet_transport = *s->smanet_target = *s->smanet_topts = 0;
+		strncat(s->smanet_transport,strele(0,",",smatpinfo),sizeof(s->smanet_transport)-1);
+		strncat(s->smanet_target,strele(1,",",smatpinfo),sizeof(s->smanet_target)-1);
+		strncat(s->smanet_topts,strele(2,",",smatpinfo),sizeof(s->smanet_topts)-1);
+        }
+	si_smanet_init(s);
+
+	/* Init charge params */
+	charge_init(s);
+
+	/* Interval cannot be more than 30s */
+	if (s->interval > 30) {
+		log_warning("interval reduced to 30s (was: %d)\n",s->interval);
+		s->interval = 30;
+	}
 
 	/* Read and write intervals are the same */
-	ap->read_interval = ap->write_interval = s->interval;
+	s->ap->read_interval = s->ap->write_interval = s->interval;
+
+	/* We are starting up */
 	s->startup = 1;
+
+#ifdef SI_CB
+	/* Set callback */
+	agent_set_callback(s->ap,si_cb,s);
 #endif
 
+	/* Init JS */
+	si_jsinit(s);
+	if (s->smanet) smanet_jsinit(s->ap->js, s->smanet);
+
+	time(&end);
+	diff = end - start;
+	dprintf(1,"--> startup time: %d\n", diff);
+
 	/* Go */
-	log_write(LOG_INFO,"Agent Running!\n");
-	agent_run(ap);
+	agent_run(s->ap);
 	return 0;
 }

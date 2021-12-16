@@ -33,6 +33,8 @@ typedef int socket_t;
 #define INVALID_SOCKET -1
 #endif
 
+#define dlevel 7
+
 struct ip_session {
 	socket_t sock;
 	char target[SOLARD_TARGET_LEN];
@@ -58,7 +60,7 @@ static void *ip_new(void *conf, void *target, void *topts) {
 		s->port = atoi(p);
 	}
 	if (!s->port) s->port = DEFAULT_PORT;
-	dprintf(5,"target: %s, port: %d\n", s->target, s->port);
+	dprintf(dlevel,"target: %s, port: %d\n", s->target, s->port);
 	return s;
 }
 
@@ -88,14 +90,14 @@ static int ip_open(void *handle) {
 		}
 	}
 	if (!he) strcpy(temp,s->target);
-	dprintf(3,"temp: %s\n",temp);
+	dprintf(dlevel,"temp: %s\n",temp);
 
 	memset(&addr,0,sizeof(addr));
 	sin_size = sizeof(addr);
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = inet_addr(temp);
 	addr.sin_port = htons(s->port);
-	dprintf(3,"connecting...\n");
+	dprintf(dlevel,"connecting...\n");
 	if (connect(s->sock,(struct sockaddr *)&addr,sin_size) < 0) {
 		lprintf(LOG_SYSERR,"connect to %s", s->target);
 		return 1;
@@ -109,7 +111,7 @@ static int ip_read(void *handle, void *buf, int buflen) {
 	struct timeval tv;
 	fd_set rdset;
 
-	dprintf(5,"buf: %p, buflen: %d\n", buf, buflen);
+	dprintf(dlevel,"buf: %p, buflen: %d\n", buf, buflen);
 
 	tv.tv_usec = 0;
 	tv.tv_sec = 1;
@@ -118,16 +120,16 @@ static int ip_read(void *handle, void *buf, int buflen) {
 
 	if (s->sock == INVALID_SOCKET) return -1;
 
-	dprintf(5,"reading...\n");
+	dprintf(dlevel,"reading...\n");
 	bidx=0;
 	while(1) {
 		FD_SET(s->sock,&rdset);
 		num = select(s->sock+1,&rdset,0,0,&tv);
-		dprintf(5,"num: %d\n", num);
+		dprintf(dlevel,"num: %d\n", num);
 		if (!num) break;
-		dprintf(5,"buf: %p, bufen: %d\n", buf, buflen);
+		dprintf(dlevel,"buf: %p, bufen: %d\n", buf, buflen);
 		bytes = recv(s->sock, buf, buflen, 0);
-		dprintf(5,"bytes: %d\n", bytes);
+		dprintf(dlevel,"bytes: %d\n", bytes);
 		if (bytes < 0) {
 			if (errno == EAGAIN) continue;
 			bidx = -1;
@@ -142,9 +144,9 @@ static int ip_read(void *handle, void *buf, int buflen) {
 		}
 	}
 #ifdef DEBUG
-	if (debug >= 5) bindump("ip_read",buf,bidx);
+	if (debug >= dlevel+1) bindump("ip_read",buf,bidx);
 #endif
-	dprintf(5,"returning: %d\n", bidx);
+	dprintf(dlevel,"returning: %d\n", bidx);
 	return bidx;
 }
 
@@ -152,14 +154,14 @@ static int ip_write(void *handle, void *buf, int buflen) {
 	ip_session_t *s = handle;
 	int bytes;
 
-	dprintf(1,"s->sock: %p\n", s->sock);
+	dprintf(dlevel,"s->sock: %p\n", s->sock);
 
 	if (s->sock == INVALID_SOCKET) return -1;
 #ifdef DEBUG
-	if (debug >= 5) bindump("ip_write",buf,buflen);
+	if (debug >= dlevel+1) bindump("ip_write",buf,buflen);
 #endif
 	bytes = send(s->sock, buf, buflen, 0);
-	dprintf(1,"bytes: %d\n", bytes);
+	dprintf(dlevel,"bytes: %d\n", bytes);
 	return bytes;
 }
 
@@ -168,7 +170,7 @@ static int ip_close(void *handle) {
 	ip_session_t *s = handle;
 
 	if (s->sock != INVALID_SOCKET) {
-		dprintf(5,"closing...\n");
+		dprintf(dlevel,"closing...\n");
 		SOCKET_CLOSE(s->sock);
 		s->sock = INVALID_SOCKET;
 	}
@@ -183,7 +185,7 @@ static int ip_config(void *h, int func, ...) {
 	va_start(ap,func);
 	switch(func) {
 	default:
-		dprintf(1,"error: unhandled func: %d\n", func);
+		dprintf(dlevel,"error: unhandled func: %d\n", func);
 		break;
 	}
 	return r;
@@ -193,6 +195,7 @@ solard_driver_t ip_driver = {
 	SOLARD_DRIVER_TRANSPORT,
 	"ip",
 	ip_new,
+	0,
 	ip_open,
 	ip_close,
 	ip_read,

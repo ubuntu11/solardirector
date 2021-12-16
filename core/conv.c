@@ -567,7 +567,19 @@ void log2chr(char *dest,int dlen,int *src,int slen) {
 }
 
 void log2str(char *dest,int dlen,int *src,int slen) {
-	sprintf(dest,"%s",(*src == 0 ? "False" : "True"));
+	char *p;
+	switch(*src) {
+	case -1:
+		p = "null";
+		break;
+	case 0:
+		p = "False";
+		break;
+	default:
+		p = "True";
+		break;
+	}
+	sprintf(dest,p);
 	return;
 }
 
@@ -881,20 +893,25 @@ void str2dbl(double *dest,int dlen,char *src,int slen) {
 }
 
 void str2log(int *dest,int dlen,char *src,int slen) {
+#if 0
 	dprintf(DLEVEL,"src: %s",src);
 	*dest = (strcasecmp(src,"true")==0 || strcasecmp(src,"yes")==0 || strcmp(src,"1")==0) ? 1 : 0;
 	dprintf(DLEVEL,"dest: %d",*dest);
-#if 0
+#endif
 	register char *ptr, ch;
 
 	dprintf(DLEVEL,"src: %s",src);
+	if (strcmp(src,"-1")==0 || strcasecmp(src,"null")==0) {
+		*dest = -1;
+		dprintf(DLEVEL,"dest: %d",*dest);
+		return;
+	}
 	for(ptr = src; *ptr && isspace(*ptr); ptr++);
 	dprintf(DLEVEL,"ptr: %s",ptr);
 	ch = toupper(*ptr);
 	dprintf(DLEVEL,"ch: %c",ch);
 	*dest = (ch == 'T' || ch == 'Y' || ch == '1' ? 1 : 0);
 	dprintf(DLEVEL,"dest: %d",*dest);
-#endif
 	return;
 }
 

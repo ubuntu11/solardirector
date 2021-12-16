@@ -6094,7 +6094,7 @@ xml_hasOwnProperty(JSContext *cx, uintN argc, jsval *vp)
         *vp = JSVAL_TRUE;
         return JS_TRUE;
     }
-    return js_HasOwnPropertyHelper(cx, js_LookupProperty, vp);
+    return js_HasOwnPropertyHelper(cx, js_LookupProperty, 1, vp);
 }
 
 /* XML and XMLList */

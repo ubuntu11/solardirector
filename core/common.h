@@ -79,7 +79,7 @@ struct solard_power {
 };
 typedef struct solard_power solard_power_t;
 
-extern char SOLARD_BINDIR[], SOLARD_ETCDIR[], SOLARD_LIBDIR[], SOLARD_LOGDIR[];
+extern char SOLARD_BINDIR[256], SOLARD_ETCDIR[256], SOLARD_LIBDIR[256], SOLARD_LOGDIR[256];
 
 #if defined(__WIN32) && defined(NEED_EXPORT)
 #ifdef DLL_EXPORT
@@ -90,17 +90,38 @@ extern char SOLARD_BINDIR[], SOLARD_ETCDIR[], SOLARD_LIBDIR[], SOLARD_LOGDIR[];
 #define DLLCALL __cdecl
 #endif
 
+typedef unsigned int bool;
+
 #include "types.h"
 #include "opts.h"
 #include "cfg.h"
+#include "config.h"
 #include "message.h"
 #include "json.h"
 #include "utils.h"
 #include "debug.h"
 #include "state.h"
 #include "mqtt.h"
-#include "ic.h"
+
+#define Black "\033[0;30m"
+#define Red "\033[0;31m"
+#define Green "\033[0;32m"
+#define Yellow "\033[0;33m"
+#define Blue "\033[0;34m"
+#define Purple "\033[0;35m"
+#define Cyan "\033[0;36m"
+#define White "\033[0;37m"
 
 int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_opts);
+int solard_common_config(cfg_info_t *,char *);
+
+#ifdef JS
+#include "jsapi.h"
+void jsvaltotype(enum DATA_TYPE dtype, void *dest, int dlen, JSContext *cx, jsval val);
+jsval typetojsval(JSContext *cx,enum DATA_TYPE type, void *src, int len);
+JSPropertySpec *configtoprops(config_t *cp, char *name, JSPropertySpec *add);
+JSBool common_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval, config_t *, JSPropertySpec *);
+JSBool common_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval, config_t *, JSPropertySpec *);
+#endif
 
 #endif

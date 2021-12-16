@@ -11,44 +11,11 @@ LICENSE file in the root directory of this source tree.
 
 void solard_message_dump(solard_message_t *msg, int dlevel) {
 	if (!msg) return;
-#if 0
-	dprintf(dlevel,"msg: role: %s, name: %s, func: %s, action: %s, replyto: %s, data(%d): %s\n",
-		msg->role,msg->name,msg->func,msg->action,msg->replyto,msg->data_len,msg->data);
-#endif
-	dprintf(dlevel,"msg: role: %s, name: %s, func: %s, replyto: %s, data(%d): %s\n",
-		msg->role,msg->name,msg->func,msg->replyto,msg->data_len,msg->data);
+	dprintf(dlevel,"msg: id: %s, name: %s, func: %s, replyto: %s, data(%d): %s\n",
+		msg->id,msg->name,msg->func,msg->replyto,strlen(msg->data),msg->data);
 }
 
-/* SolarD/Role/Name/Func/Action/ .. ID? */
-
-#if 0
-solard_message_t *solard_message_alloc(char *data, int data_len) {
-	solard_message_t *msg;
-	int size;
-
-	size = sizeof(struct solard_message) + data_len + 1;
-	dprintf(1,"data_len: %d, size: %d\n", data_len, size);
-	msg = calloc(size,1);
-	if (!msg) {
-		log_write(LOG_SYSERR,"solard_message_alloc: calloc");
-		return 0;
-	}
-	msg->size = size;
-	msg->data = &msg->_d;
-	if (data && data_len) {
-		memcpy(msg->data,data,data_len);
-		msg->data_len = data_len;
-		msg->data[msg->data_len] = 0;
-	}
-	dprintf(1,"data(%d): %s\n", msg->data_len, msg->data);
-	return msg;
-}
-
-void solard_message_free(solard_message_t *msg) {
-	free(msg);
-}
-#endif
-
+/* Topic format:  SolarD/<id|name>/func (status,info,data,etc) */
 solard_message_t *solard_getmsg(char *topic, char *message, int msglen, char *replyto) {
 	solard_message_t newmsg,*msg;
 	char *root;
@@ -62,18 +29,14 @@ solard_message_t *solard_getmsg(char *topic, char *message, int msglen, char *re
 
 	msg = &newmsg;
 	memset(&newmsg,0,sizeof(newmsg));
-//	msg = solard_message_alloc(message,msglen);
-	/* Put the role into ID since ID is bigger */
 	strncat(msg->id,strele(1,"/",topic),sizeof(msg->id)-1);
-	strncat(msg->name,strele(2,"/",topic),sizeof(msg->name)-1);
-	strncat(msg->func,strele(3,"/",topic),sizeof(msg->func)-1);
+	strncat(msg->func,strele(2,"/",topic),sizeof(msg->func)-1);
 	if (message && msglen) {
 		memcpy(msg->data,message,msglen);
-		msg->data_len = msglen;
-		msg->data[msg->data_len] = 0;
+		msg->data[msglen] = 0;
 	}
 	if (replyto) strncat(msg->replyto,replyto,sizeof(msg->replyto)-1);
-	solard_message_dump(msg,1);
+	if (debug >= 5) solard_message_dump(msg,5);
 	return msg;
 }
 

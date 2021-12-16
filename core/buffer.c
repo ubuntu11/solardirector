@@ -41,6 +41,6 @@ int buffer_get(buffer_t *b, uint8_t *data, int datasz) {
 		}
 		data[i] = b->buffer[b->index++];
 	}
-	if (debug >= 8) bindump("data",data,i);
+//	if (debug >= 8) bindump("data",data,i);
 	return i;
 }

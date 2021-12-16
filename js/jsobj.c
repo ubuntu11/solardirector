@@ -160,7 +160,7 @@ ReportStrictSlot(JSContext *cx, uint32 slot)
 static JSBool
 obj_getSlot(JSContext *cx, JSObject *obj, jsval id, jsval *vp)
 {
-    uint32 slot;
+//    uint32 slot;
     jsid propid;
     JSAccessMode mode;
     uintN attrs;
@@ -168,7 +168,7 @@ obj_getSlot(JSContext *cx, JSObject *obj, jsval id, jsval *vp)
     JSClass *clasp;
     JSExtendedClass *xclasp;
 
-    slot = (uint32) JSVAL_TO_INT(id);
+//    slot = (uint32) JSVAL_TO_INT(id);
     if (id == INT_TO_JSVAL(JSSLOT_PROTO)) {
         propid = ATOM_TO_JSID(cx->runtime->atomState.protoAtom);
         mode = JSACC_PROTO;
@@ -1467,6 +1467,7 @@ obj_unwatch(JSContext *cx, uintN argc, jsval *vp)
  * 'instanceof' operators.
  */
 
+#if 0
 /* Proposed ECMA 15.2.4.5. */
 static JSBool
 obj_hasOwnProperty(JSContext *cx, uintN argc, jsval *vp)
@@ -1537,6 +1538,138 @@ js_HasOwnPropertyHelper(JSContext *cx, JSLookupPropOp lookup, jsval *vp)
         OBJ_DROP_PROPERTY(cx, obj2, prop);
     return JS_TRUE;
 }
+
+JSBool
+js_HasOwnProperty(JSContext *cx, JSLookupPropOp lookup, JSObject *obj, jsid id,
+                  JSObject **objp, JSProperty **propp)
+{
+    JSScopeProperty *sprop;
+    JSClass *clasp;
+    JSExtendedClass *xclasp;
+    JSObject *outer;
+
+    if (!(lookup ? lookup : js_LookupProperty)(cx, obj, id, objp, propp))
+        return false;
+    if (!*propp)
+        return true;
+
+    if (*objp == obj)
+        return true;
+
+	clasp = OBJ_GET_CLASS(cx, *objp);
+        if (!(clasp->flags & JSCLASS_IS_EXTENDED) ||
+            !(xclasp = (JSExtendedClass *) clasp)->outerObject) {
+            outer = NULL;
+        } else {
+            outer = xclasp->outerObject(cx, *objp);
+            if (!outer)
+                return JS_FALSE;
+        }
+        if (OBJ_IS_NATIVE(*objp) && OBJ_GET_CLASS(cx, obj) == clasp) {
+            /*
+             * The combination of JSPROP_SHARED and JSPROP_PERMANENT in a
+             * delegated property makes that property appear to be direct in
+             * all delegating instances of the same native class.  This hack
+             * avoids bloating every function instance with its own 'length'
+             * (AKA 'arity') property.  But it must not extend across class
+             * boundaries, to avoid making hasOwnProperty lie (bug 320854).
+             *
+             * It's not really a hack, of course: a permanent property can't
+             * be deleted, and JSPROP_SHARED means "don't allocate a slot in
+             * any instance, prototype or delegating".  Without a slot, and
+             * without the ability to remove and recreate (with differences)
+             * the property, there is no way to tell whether it is directly
+             * owned, or indirectly delegated.
+             */
+            sprop = (JSScopeProperty *)propp;
+            if (SPROP_IS_SHARED_PERMANENT(sprop))
+		return true;
+        } else {
+		*propp = NULL;
+	}
+//    if (propp) OBJ_DROP_PROPERTY(cx, objp, propp);
+    return JS_TRUE;
+}
+#else
+static JSBool
+obj_hasOwnProperty(JSContext *cx, uintN argc, jsval *vp)
+{
+    JSObject *obj;
+
+    obj = JS_THIS_OBJECT(cx, vp);
+    return obj &&
+           js_HasOwnPropertyHelper(cx, obj->map->ops->lookupProperty, argc, vp);
+}
+
+JSBool
+js_HasOwnPropertyHelper(JSContext *cx, JSLookupPropOp lookup, uintN argc,
+                        jsval *vp)
+{
+    jsid id;
+    JSObject *obj;
+
+    if (!JS_ValueToId(cx, argc != 0 ? vp[2] : JSVAL_VOID, &id))
+        return JS_FALSE;
+    obj = JS_THIS_OBJECT(cx, vp);
+    return obj && js_HasOwnProperty(cx, lookup, obj, id, vp);
+}
+
+JSBool
+js_HasOwnProperty(JSContext *cx, JSLookupPropOp lookup, JSObject *obj, jsid id, jsval *vp)
+{
+    JSObject *obj2;
+    JSProperty *prop;
+    JSScopeProperty *sprop;
+
+    if (!lookup(cx, obj, id, &obj2, &prop))
+        return JS_FALSE;
+    if (!prop) {
+        *vp = JSVAL_FALSE;
+    } else if (obj2 == obj) {
+        *vp = JSVAL_TRUE;
+    } else {
+        JSClass *clasp;
+        JSExtendedClass *xclasp;
+        JSObject *outer;
+
+        clasp = OBJ_GET_CLASS(cx, obj2);
+        if (!(clasp->flags & JSCLASS_IS_EXTENDED) ||
+            !(xclasp = (JSExtendedClass *) clasp)->outerObject) {
+            outer = NULL;
+        } else {
+            outer = xclasp->outerObject(cx, obj2);
+            if (!outer)
+                return JS_FALSE;
+        }
+        if (outer == obj) {
+            *vp = JSVAL_TRUE;
+        } else if (OBJ_IS_NATIVE(obj2) && OBJ_GET_CLASS(cx, obj) == clasp) {
+            /*
+             * The combination of JSPROP_SHARED and JSPROP_PERMANENT in a
+             * delegated property makes that property appear to be direct in
+             * all delegating instances of the same native class.  This hack
+             * avoids bloating every function instance with its own 'length'
+             * (AKA 'arity') property.  But it must not extend across class
+             * boundaries, to avoid making hasOwnProperty lie (bug 320854).
+             *
+             * It's not really a hack, of course: a permanent property can't
+             * be deleted, and JSPROP_SHARED means "don't allocate a slot in
+             * any instance, prototype or delegating".  Without a slot, and
+             * without the ability to remove and recreate (with differences)
+             * the property, there is no way to tell whether it is directly
+             * owned, or indirectly delegated.
+             */
+            sprop = (JSScopeProperty *)prop;
+            *vp = BOOLEAN_TO_JSVAL(SPROP_IS_SHARED_PERMANENT(sprop));
+        } else {
+            *vp = JSVAL_FALSE;
+        }
+    }
+    if (prop)
+        OBJ_DROP_PROPERTY(cx, obj2, prop);
+    return JS_TRUE;
+}
+#endif
 
 /* Proposed ECMA 15.2.4.6. */
 static JSBool

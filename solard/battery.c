@@ -113,8 +113,17 @@ void getpack(solard_config_t *conf, char *name, char *data) {
 
 	battery_from_json(&bat,data);
 //	battery_dump(&bat,3);
-	solard_set_state((&bat),BATTERY_STATE_UPDATED);
-	time(&bat.last_update);
+	/* See if this pack is ours */
+	dprintf(1,"name: %s\n", bat.name);
+	pp = find_pack_by_name(conf,bat.name);
+	if (!pp) {
+		dprintf(1,"not mine, ignoring...\n");
+		return;
+	}
+	memcpy(pp,&bat,sizeof(bat));
+	solard_set_state(pp,BATTERY_STATE_UPDATED);
+	time(&pp->last_update);
+#if 0
 
 	pp = find_pack_by_name(conf,bat.name);
 	if (!pp) {
@@ -126,5 +135,6 @@ void getpack(solard_config_t *conf, char *name, char *data) {
 		dprintf(7,"updating pack...\n");
 		memcpy(pp,&bat,sizeof(bat));
 	}
+#endif
 	return;
 };

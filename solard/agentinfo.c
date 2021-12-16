@@ -31,7 +31,21 @@ void agentinfo_dump(solard_agentinfo_t *info) {
 	}
 }
 
+json_value_t *agentinfo_to_json(solard_agentinfo_t *info) {
+	cfg_proctab_t cfg_tab[] = { INFO_TAB(0) };
+
+	return json_from_cfgtab(cfg_tab);
+}
+
 void agentinfo_pub(solard_config_t *conf, solard_agentinfo_t *info) {
+	char entry[1024],temp[128];
+	json_value_t *v;
+
+	v = agentinfo_to_json(info);
+	json_dumps_r(v,entry,sizeof(entry)-1);
+	sprintf(temp,"%s/%s",SOLARD_FUNC_CONFIG,info->name);
+	agent_pub(conf->ap,temp,entry,1);
+#if 0
 	cfg_proctab_t info_tab[] = { INFO_TAB(0) }, *t;
 	char entry[1024],temp[128],temp2[256];
 	int er;
@@ -51,7 +65,9 @@ void agentinfo_pub(solard_config_t *conf, solard_agentinfo_t *info) {
 		er -= strlen(temp2);
 	}
 	dprintf(1,"entry: %s\n", entry);
-	agent_pub(conf->ap,SOLARD_FUNC_CONFIG,"Settings",0,entry,1);
+	sprintf(temp,"%s/%s",SOLARD_FUNC_CONFIG,info->name);
+	agent_pub(conf->ap,temp,entry,1);
+#endif
 }
 
 void agentinfo_getcfg(cfg_info_t *cfg, char *sname, solard_agentinfo_t *info) {
@@ -91,7 +107,7 @@ int agentinfo_set(solard_agentinfo_t *info, char *key, char *value) {
 	return r;
 }
 
-int agentinfo_add(solard_config_t *conf, solard_agentinfo_t *info) {
+solard_agentinfo_t *agentinfo_add(solard_config_t *conf, solard_agentinfo_t *info) {
 	solard_agentinfo_t *ap;
 	char *agent_path,*agent_role;
 
@@ -100,8 +116,8 @@ int agentinfo_add(solard_config_t *conf, solard_agentinfo_t *info) {
 	dprintf(1,"info: agent: %s, role: %s, name: %s, transport: %s, target: %s\n", info->agent, info->role, info->name, info->transport, info->target);
 	if (!strlen(info->agent) || !strlen(info->transport) || !strlen(info->target)) {
 		/* invalid */
-		dprintf(1,"agent is not valid, not adding\n");
-		return 1;
+		sprintf(conf->errmsg,"agent is not valid, not adding\n");
+		return 0;
 	}
 
 	agent_path = agent_role = 0;
@@ -116,8 +132,7 @@ int agentinfo_add(solard_config_t *conf, solard_agentinfo_t *info) {
 			if (strcmp(ap->name,info->name) == 0) {
 				/* name exists */
 				strcpy(conf->errmsg,"name already exists");
-				dprintf(1,"%s\n",conf->errmsg);
-				return 1;
+				return 0;
 			}
 		}
 	}
@@ -130,10 +145,9 @@ int agentinfo_add(solard_config_t *conf, solard_agentinfo_t *info) {
 			strcpy(info->role, agent_role);
 		} else {
 			dprintf(1,"getting role...\n");
-			if (agent_get_role(conf, info)) return 1;
+			if (agent_get_role(conf, info)) return 0;
 		}
 	}
-	list_add(conf->agents, info, sizeof(*info));
 
 	/* Now add to the role base lists */
 	if (strcmp(info->role,SOLARD_ROLE_BATTERY)==0) {
@@ -142,18 +156,29 @@ int agentinfo_add(solard_config_t *conf, solard_agentinfo_t *info) {
 		memset(&newbat,0,sizeof(newbat));
 		strcpy(newbat.name,info->name);
 		time(&newbat.last_update);
-		list_add(conf->batteries,&newbat,sizeof(newbat));
+		info->data = list_add(conf->batteries,&newbat,sizeof(newbat));
+		dprintf(1,"info->data: %p\n", info->data);
+		if (!info->data) {
+			sprintf(conf->errmsg,"unable to add new battery to list: %s",strerror(errno));
+			return 0;
+		}
 	} else if (strcmp(info->role,SOLARD_ROLE_INVERTER)==0) {
 		solard_inverter_t newinv;
 
 		memset(&newinv,0,sizeof(newinv));
 		strcpy(newinv.name,info->name);
 		time(&newinv.last_update);
-		list_add(conf->inverters,&newinv,sizeof(newinv));
+		info->data = list_add(conf->inverters,&newinv,sizeof(newinv));
+		dprintf(1,"info->data: %p\n", info->data);
+		if (!info->data) {
+			sprintf(conf->errmsg,"unable to add new inverter to list: %s",strerror(errno));
+			return 0;
+		}
 	}
 
-	dprintf(1,"added!\n");
-	return 0;
+	/* Add the new agent */
+	dprintf(1,"adding...\n");
+	return list_add(conf->agents, info, sizeof(*info));
 }
 
 int agentinfo_get(solard_config_t *conf, char *entry) {

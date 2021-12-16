@@ -9,6 +9,7 @@ LICENSE file in the root directory of this source tree.
 
 #define THREAD_SAFE 0
 #define DEBUG_LIST 0
+#define dlevel 4
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -298,6 +299,7 @@ void *list_get_next(list lp) {
 	list_item ip;
 	void *item;
 
+	DPRINTF("lp: %p\n",lp);
 	if (!lp) return 0;
 
 #if THREAD_SAFE
@@ -305,8 +307,10 @@ void *list_get_next(list lp) {
 #endif
 
 	item = 0;
+	DPRINTF("lp->next: %p\n",lp->next);
 	if (lp->next) {
 		ip = lp->next;
+		DPRINTF("ip->next: %p\n",ip->next);
 		lp->next = ip->next;
 		item = ip->item;
 	}

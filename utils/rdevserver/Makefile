@@ -2,6 +2,6 @@
 PROGNAME=$(shell basename $(shell pwd))
 SRCS=main.c server.c
 
-BLUETOOTH=yes
+BLUETOOTH=no
 
 include ../../Makefile.sd

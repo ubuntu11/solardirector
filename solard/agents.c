@@ -17,8 +17,20 @@ LICENSE file in the root directory of this source tree.
 #define STATFUNC stat
 #endif
 
+solard_agentinfo_t *agent_find(solard_config_t *conf, char *name) {
+	solard_agentinfo_t *info;
+
+	dprintf(5,"name: %s\n",name);
+	list_reset(conf->agents);
+	while((info = list_get_next(conf->agents)) != 0) {
+		dprintf(6,"info->name: %s\n",info->name);
+		if (strcmp(info->name,name)==0) return info;
+	}
+	return 0;
+}
+
 int agent_start(solard_config_t *conf, solard_agentinfo_t *info) {
-	char prog[256],logfile[256],*args[32];
+	char logfile[256],*args[64],dval[16];
 	int i;
 
 	if (!conf->ap->cfg && solard_write_config(conf)) return 1;
@@ -32,11 +44,19 @@ int agent_start(solard_config_t *conf, solard_agentinfo_t *info) {
 
 	/* Exec the agent */
 	i = 0;
+#if 0
 	strncpy(prog,info->path,sizeof(prog)-1);
 #ifdef __WIN32
-//	strcat(prog,".exe");
+	strcat(prog,".exe");
 #endif
 	args[i++] = prog;
+#endif
+	args[i++] = info->path;
+	if (debug) {
+		args[i++] = "-d";
+		sprintf(dval,"%d",debug);
+		args[i++] = dval;
+	}
 	if (conf->ap->cfg->filename) {
 		args[i++] = "-c";
 		args[i++] = conf->ap->cfg->filename;
@@ -59,16 +79,35 @@ int agent_start(solard_config_t *conf, solard_agentinfo_t *info) {
 	}
 	args[i++] = "-l";
 	args[i++] = logfile;
+	args[i++] = "-a";
 	args[i++] = 0;
-	info->pid = solard_exec(info->path,args,logfile,0);
-	dprintf(1,"pid: %d\n", info->pid);
+	dprintf(4,"calling solard_exec...\n");
+	info->pid = solard_exec(info->path,args,0,0);
+	dprintf(4,"pid: %d\n", info->pid);
 	if (info->pid < 0) {
 		log_write(LOG_SYSERR,"agent_start: exec");
 		return 1;
 	}
-	info->state = 0;
+	solard_clear_state(info,AGENTINFO_STATUS_MASK);
 	time(&info->started);
 	return 0;
+}
+
+int agent_stop(solard_config_t *conf, solard_agentinfo_t *info) {
+	int status,r;
+
+	/* If running, kill it */
+	r = 1;
+	if (info->pid > 0) {
+		log_info("Killing agent: %s\n", info->name);
+		solard_kill(info->pid);
+		sleep(1);
+		if (solard_checkpid(info->pid, &status)) {
+			dprintf(1,"status: %d\n", status);
+			r = 0;
+		}
+	}
+	return r;
 }
 
 void agent_warning(solard_config_t *conf, solard_agentinfo_t *info, int num) {
@@ -131,7 +170,7 @@ int check_agents(void *ctx) {
 	list_reset(conf->agents);
 	while((info = list_get_next(conf->agents)) != 0) {
 		time(&cur);
-		dprintf(1,"name: %s\n",info->name);
+		dprintf(2,"name: %s\n",info->name);
 		if (info->managed) {
 			/* Give it a little bit to start up */
 			if ((cur - info->started) < 31) continue;
@@ -211,12 +250,25 @@ int agent_get_role(solard_config_t *conf, solard_agentinfo_t *info) {
 	/* Exec the agent with the -I option and capture the output */
 	i = 0;
 	args[i++] = info->path;
+#if 0
+	/* Turn off debug output */
+//	if (debug > 0) {
+		args[i++] = "-d";
+		args[i++] = "-1";
+//		sprintf(temp,"%d",debug);
+//		args[i++] = temp;
+//	}
+#endif
 	args[i++] = "-c";
 	args[i++] = configfile;
 	args[i++] = "-n";
 	args[i++] = info->name;
-//	args[i++] = "-d";
-//	args[i++] = "2";
+	args[i++] = "-l";
+#ifdef WINDOWS
+	args[i++] = "NUL:";
+#else
+	args[i++] = "/dev/null";
+#endif
 	args[i++] = "-I";
 	args[i++] = 0;
 
@@ -225,8 +277,8 @@ int agent_get_role(solard_config_t *conf, solard_agentinfo_t *info) {
 	status = solard_exec(info->path,args,logfile,1);
 	dprintf(1,"status: %d\n", status);
 	if (status != 0) {
-		sprintf(configfile,"type %s",logfile);
-		system(configfile);
+//		sprintf(configfile,"type %s",logfile);
+//		system(configfile);
 		goto agent_get_role_error;
 	}
 
@@ -286,29 +338,3 @@ agent_get_role_error:
 	if (output) free(output);
 	return r;
 }
-
-#if 0
-void add_agent(solard_config_t *conf, char *role, json_value_t *v) {
-	solard_agentinfo_t info;
-	json_proctab_t info_tab[] = {
-		{ "agent_name",DATA_TYPE_STRING,&info.agent,sizeof(info.agent)-1,0 },
-		{ "agent_path",DATA_TYPE_STRING,&info.path,sizeof(info.path)-1,0 },
-		{ "agent_role",DATA_TYPE_STRING,&info.role,sizeof(info.role)-1,0 },
-		{ "name",DATA_TYPE_STRING,&info.name,sizeof(info.name)-1,0 },
-		{ "transport",DATA_TYPE_STRING,&info.transport,sizeof(info.transport)-1,0 },
-		{ "target",DATA_TYPE_STRING,&info.target,sizeof(info.target)-1,0 },
-		{ "topts",DATA_TYPE_STRING,&info.topts,sizeof(info.topts)-1,0 },
-		{ "managed",DATA_TYPE_BOOL,&info.managed,0,0 },
-		JSON_PROCTAB_END
-	};
-
-	/* Get the info */
-	memset(&info,0,sizeof(info));
-	info.managed = 1;
-	json_to_tab(info_tab,v);
-
-	agentinfo_newid(&info);
-	if (agentinfo_add(conf, &info)) return;
-	solard_write_config(conf);
-}
-#endif

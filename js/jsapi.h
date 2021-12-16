@@ -1430,6 +1430,11 @@ struct JSPropertySpec {
     JSPropertyOp    setter;
 };
 
+struct JSConstantSpec {
+	const char *name;
+	jsval value;
+};
+	
 struct JSFunctionSpec {
     const char      *name;
     JSNative        call;
@@ -1569,6 +1574,9 @@ extern JS_PUBLIC_API(JSBool)
 JS_DefineProperty(JSContext *cx, JSObject *obj, const char *name, jsval value,
                   JSPropertyOp getter, JSPropertyOp setter, uintN attrs);
 
+extern JS_PUBLIC_API(JSBool)
+JS_DefineConstants(JSContext *cx, JSObject *obj, JSConstantSpec *cs);
+
 /*
  * Determine the attributes (JSPROP_* flags) of a property on a given object.
  *
@@ -1624,6 +1632,9 @@ JS_LookupProperty(JSContext *cx, JSObject *obj, const char *name, jsval *vp);
 extern JS_PUBLIC_API(JSBool)
 JS_LookupPropertyWithFlags(JSContext *cx, JSObject *obj, const char *name,
                            uintN flags, jsval *vp);
+
+extern JS_PUBLIC_API(JSBool)
+JS_GetPropertyById(JSContext *cx, JSObject *obj, jsid id, jsval *vp);
 
 extern JS_PUBLIC_API(JSBool)
 JS_GetProperty(JSContext *cx, JSObject *obj, const char *name, jsval *vp);
@@ -2618,6 +2629,79 @@ JS_ClearContextThread(JSContext *cx);
 extern JS_PUBLIC_API(void)
 JS_SetGCZeal(JSContext *cx, uint8 zeal);
 #endif
+
+/************************************************************************/
+#if 0
+/*
+ * JSON functions
+ */
+typedef JSBool (* JSONWriteCallback)(const jschar *buf, uint32 len, void *data);
+
+/*
+ * JSON.stringify as specificed by ES3.1 (draft)
+ */
+JS_PUBLIC_API(JSBool)
+JS_Stringify(JSContext *cx, jsval *vp, JSObject *replacer, 
+             JSONWriteCallback callback, void *data);
+
+/*
+ * Retrieve a toJSON function. If found, set vp to its result.
+ */
+JS_PUBLIC_API(JSBool)
+JS_TryJSON(JSContext *cx, jsval *vp);
+
+/*
+ * JSON.parse as specificed by ES3.1 (draft)
+ */
+struct JSONParser;
+typedef struct JSONParser JSONParser;
+JS_PUBLIC_API(JSONParser *)
+JS_BeginJSONParse(JSContext *cx, jsval *vp);
+
+JS_PUBLIC_API(JSBool)
+JS_ConsumeJSONText(JSContext *cx, JSONParser *jp, const jschar *data, uint32 len);
+
+JS_PUBLIC_API(JSBool)
+JS_FinishJSONParse(JSContext *cx, JSONParser *jp);
+#else
+/*
+ * JSON functions
+ */
+typedef JSBool (* JSONWriteCallback)(const jschar *buf, uint32 len, void *data);
+
+/*
+ * JSON.stringify as specified by ES3.1 (draft)
+ */
+JS_PUBLIC_API(JSBool)
+JS_Stringify(JSContext *cx, jsval *vp, JSObject *replacer, jsval space,
+             JSONWriteCallback callback, void *data);
+
+/*
+ * Retrieve a toJSON function. If found, set vp to its result.
+ */
+JS_PUBLIC_API(JSBool)
+JS_TryJSON(JSContext *cx, jsval *vp);
+
+/*
+ * JSON.parse as specified by ES3.1 (draft)
+ */
+struct JSONParser;
+typedef struct JSONParser JSONParser;
+JS_PUBLIC_API(JSONParser *)
+JS_BeginJSONParse(JSContext *cx, jsval *vp);
+
+JS_PUBLIC_API(JSBool)
+JS_ConsumeJSONText(JSContext *cx, JSONParser *jp, const jschar *data, uint32 len);
+
+JS_PUBLIC_API(JSBool)
+JS_FinishJSONParse(JSContext *cx, JSONParser *jp, jsval reviver);
+#endif
+/************************************************************************/
+
+JSObject *JS_CreateGlobalObject(JSContext *, void *);
+JSObject *js_InitJSONClass(JSContext *cx, JSObject *);
+JSObject *js_InitConsoleClass(JSContext *cx, JSObject *);
+JSObject *js_InitSocketClass(JSContext *cx, JSObject *);
 
 JS_END_EXTERN_C
 

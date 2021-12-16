@@ -470,6 +470,12 @@ typedef unsigned long JSUword;
 #define JS_ARRAY_LENGTH(array) (sizeof (array) / sizeof (array)[0])
 #define JS_ARRAY_END(array)    ((array) + JS_ARRAY_LENGTH(array))
 
+#define jschar(c) ((jschar) c)
+#define jsdouble(d) ((jsdouble) d)
+//#define bool int
+#define true 1
+#define false 0
+
 JS_END_EXTERN_C
 
 #endif /* jstypes_h___ */

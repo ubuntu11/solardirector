@@ -1,7 +1,6 @@
 
 PROGNAME=jbd
-SRCS=main.c io.c read.c info.c config.c control.c
-#TRANSPORTS=ip.c serial.c can.c
+SRCS=main.c jbd.c config.c info.c
 
 #BLUETOOTH=yes
 

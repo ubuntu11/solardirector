@@ -28,7 +28,7 @@ int jk_get_info(void *handle) {
 	if (strncmp(s->tp->name,"can",3)==0) 
 		r = jk_can_get_info(s);
 	else if (strcmp(s->tp->name,"bt")==0)
-		r = jk_bt_read(s,0);
+		r = jk_bt_read(s);
 	else
 		r = jk_std_get_info(s);
 	dprintf(1,"r: %d\n", r);

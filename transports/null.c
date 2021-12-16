@@ -13,9 +13,9 @@ static void *null_new(void *conf, void *target, void *topts) {
 
 	s = calloc(1,sizeof(*s));
 	if (!s) return 0;
-	s->conf = conf;
-	strncpy(s->target,target,sizeof(s->target)-1);
-	strncpy(s->topts,topts,sizeof(s->topts)-1);
+	if (conf) s->conf = conf;
+	if (target) strncpy(s->target,target,sizeof(s->target)-1);
+	if (topts) strncpy(s->topts,topts,sizeof(s->topts)-1);
 
 	return s;
 }
@@ -43,10 +43,11 @@ static int null_config(void *h, int func, ...) {
 	return r;
 }
 
-solard_driver_t null_transport = {
+solard_driver_t null_driver = {
 	SOLARD_DRIVER_TRANSPORT,
 	"null",
 	null_new,		/* New */
+	0,			/* Destroy */
 	null_openclose,		/* Open */
 	null_openclose,		/* Close */
 	null_readwrite,		/* Read */

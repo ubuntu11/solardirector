@@ -123,7 +123,11 @@ static int rdev_can_close(void *handle) {
 #if defined(__WIN32) || defined(__WIN64)
 static solard_driver_t *transports[] = { &serial_driver, 0 };
 #else
+#ifdef BLUETOOTH
 static solard_driver_t *transports[] = { &bt_driver, &can_driver, &serial_driver, 0 };
+#else
+static solard_driver_t *transports[] = { &can_driver, &serial_driver, 0 };
+#endif
 #endif
 
 int add_device(rdev_config_t *conf, char *name) {
