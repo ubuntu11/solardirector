@@ -1,5 +1,5 @@
 
 PROGNAME=$(shell basename $(shell pwd))
-SRCS=main.c
+SRCS=main.c list.c
 
 include ../../Makefile.sd

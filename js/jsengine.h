@@ -7,10 +7,15 @@
 #include <pthread.h>
 
 typedef JSObject *(js_initfunc_t)(JSContext *,void *);
+typedef JSObject *(js_initclass_t)(JSContext *, JSObject *);
 
 struct js_initfuncinfo {
 	char *name;
-	js_initfunc_t *func;
+	int type;
+	union {
+		js_initfunc_t *func;
+		js_initclass_t *class;
+	};
 	void *priv;
 };
 typedef struct js_initfuncinfo js_initfuncinfo_t;
@@ -25,6 +30,7 @@ struct JSEngine {
 	int stacksize;
 	js_outputfunc_t *output;
 	list scripts;
+	char errmsg[128];
 };
 typedef struct JSEngine JSEngine;
 
@@ -32,7 +38,15 @@ JSEngine *JS_EngineInit(int rtsize, js_outputfunc_t *);
 JSEngine *JS_DupEngine(JSEngine *e);
 int JS_EngineDestroy(JSEngine *);
 int JS_EngineAddInitFunc(JSEngine *, char *name, js_initfunc_t *func, void *priv);
+int JS_EngineAddInitClass(JSEngine *, char *name, js_initclass_t *func);
+int _JS_EngineExec(JSEngine *, char *, JSContext *cx);
 int JS_EngineExec(JSEngine *, char *, int);
 int JS_EngineSetStacksize(JSEngine *,int);
+JSBool JS_EngineExecString(JSEngine *e, char *string);
+JSContext *JS_EngineNewContext(JSEngine *e);
+int JS_EngineExecFunc(JSEngine *e, char *filename, char *funcname, int argc, jsval **argv);
+typedef JSObject *(jsobjinit_t)(JSContext *cx, void *priv);
+int JS_EngineAddObject(JSEngine *e, jsobjinit_t *func, void *priv);
+char *JS_EngineGetErrmsg(JSEngine *e);
 
 #endif

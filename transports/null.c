@@ -11,7 +11,7 @@ typedef struct null_session null_session_t;
 static void *null_new(void *conf, void *target, void *topts) {
 	null_session_t *s;
 
-	s = calloc(1,sizeof(*s));
+	s = calloc(sizeof(*s),1);
 	if (!s) return 0;
 	if (conf) s->conf = conf;
 	if (target) strncpy(s->target,target,sizeof(s->target)-1);
@@ -43,11 +43,18 @@ static int null_config(void *h, int func, ...) {
 	return r;
 }
 
+static int null_destroy(void *handle) {
+	null_session_t *s = handle;
+
+        free(s);
+        return 0;
+}
+
 solard_driver_t null_driver = {
 	SOLARD_DRIVER_TRANSPORT,
 	"null",
 	null_new,		/* New */
-	0,			/* Destroy */
+	null_destroy,		/* Destroy */
 	null_openclose,		/* Open */
 	null_openclose,		/* Close */
 	null_readwrite,		/* Read */

@@ -46,7 +46,7 @@ static void *ip_new(void *conf, void *target, void *topts) {
 	ip_session_t *s;
 	char *p;
 
-	s = calloc(1,sizeof(*s));
+	s = calloc(sizeof(*s),1);
 	if (!s) {
 		perror("ip_new: malloc");
 		return 0;
@@ -191,11 +191,19 @@ static int ip_config(void *h, int func, ...) {
 	return r;
 }
 
+static int ip_destroy(void *handle) {
+	ip_session_t *s = handle;
+
+	if (s->sock != INVALID_SOCKET) ip_close(s);
+        free(s);
+        return 0;
+}
+
 solard_driver_t ip_driver = {
 	SOLARD_DRIVER_TRANSPORT,
 	"ip",
 	ip_new,
-	0,
+	ip_destroy,
 	ip_open,
 	ip_close,
 	ip_read,

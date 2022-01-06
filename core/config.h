@@ -17,13 +17,15 @@ enum CONFIG_FILE_FORMAT {
 #define CONFIG_FLAG_NOSAVE	0x02	/* Do not save to file/mqtt */
 #define CONFIG_FLAG_NOID	0x04	/* Do not assign an ID */
 #define CONFIG_FLAG_FILEONLY	0x08	/* Exists in file only (not visible by mqtt/js) */
+#define CONFIG_FLAG_VOLATILE	0x10	/* Contents are volatile - needs refresh/function */
+#define CONFIG_FLAG_FUNCTION	0x80	/* dest is a pointer to get/set function, def = context */
 
 struct config_property {
 	char *name;
-	enum DATA_TYPE type;		/* Data type */
+	int type;			/* Data type */
 	void *dest;			/* Ptr to storage */
-	int len;			/* Length of storage */
-	char *def;			/* Default value */
+	int dsize;			/* Size of storage */
+	void *def;			/* Default value */
 	uint16_t flags;			/* Flags */
         char *scope;			/* Scope (select/range/etc) */
         int nvalues;			/* # of scope values */
@@ -33,12 +35,16 @@ struct config_property {
         char *units;			/* Units */
         float scale;			/* Scale for numerics */
 	int precision;			/* Decimal places */
+	/* Not exposed */
+	int len;			/* actual length of storage */
 	int id;				/* Property ID */
 	int dirty;			/* Has been updated since last write */
 };
 typedef struct config_property config_property_t;
+typedef int (config_property_getset_t)(void *ctx, config_property_t *);
 
-typedef int (config_funccall_t)(void *,char *,char *,char *);
+//typedef int (config_funccall_t)(void *ctx,char *name,char *value,char *errmsg);
+typedef int (config_funccall_t)(void *ctx, list args, char *errmsg);
 struct config_function {
 	char *name;
 	config_funccall_t *func;
@@ -77,10 +83,6 @@ struct config {
 		cfg_info_t *cfg;
 		json_value_t *v;
 	};
-	union {
-		cfg_proctab_t *cfgtab;
-		json_proctab_t *json;
-	};
 	int dirty;
 };
 typedef struct config config_t;
@@ -90,6 +92,7 @@ char *config_get_errmsg(config_t *);
 void config_dump(config_t *cp);
 void config_add_props(config_t *, char *, config_property_t *, int flags);
 void config_add_funcs(config_t *, config_function_t *);
+int config_add_info(config_t *, json_object_t *);
 
 config_section_t *config_get_section(config_t *, char *);
 int config_read(config_t *, char *, enum CONFIG_FILE_FORMAT);
@@ -101,27 +104,39 @@ config_property_t *config_section_dup_property(config_section_t *, config_proper
 
 config_section_t *config_get_section(config_t *,char *);
 config_section_t *config_create_section(config_t *,char *,int);
+//config_property_t *config_get_property(config_t *cp, char *sname, char *name);
 config_property_t *config_section_get_property(config_section_t *s, char *name);
 config_property_t *config_section_add_property(config_t *cp, config_section_t *s, config_property_t *p, int flags);
+config_property_t *config_section_add_props(config_t *cp, config_section_t *s, config_property_t *p);
 
 config_function_t *config_function_get(config_t *, char *name);
 int config_function_set(config_t *, char *name, config_function_t *);
 
+json_value_t *config_to_json(config_t *cp);
+int config_from_json(config_t *cp, json_value_t *v);
 int config_write(config_t *);
 int config_add(config_t *cp,char *section, char *label, char *value);
 int config_del(config_t *cp,char *section, char *label, char *value);
 int config_get(config_t *cp,char *section, char *label, char *value);
 int config_set(config_t *cp,char *section, char *label, char *value);
 //int config_pub(config_t *cp, mqtt_session_t *m);
-json_value_t *config_tojson(config_t *cp);
 config_property_t *config_find_property(config_t *cp, char *name);
 config_property_t *config_get_propbyid(config_t *cp, int);
 
 //typedef int (config_process_callback_t)(void *,char *,char *,char *,char *);
-//int config_process(solard_message_t *msg,config_process_callback_t *func,void *ctx,char *errmsg);
+int config_process(config_t *cp, char *req);
 
 void config_build_propmap(config_t *cp);
 
 #define CONFIG_GETMAP(cp,id) ((cp->map && id >= 0 && id < cp->map_maxid && cp->map[id]) ? cp->map[id] : 0)
+
+#ifdef JS
+#include "jsapi.h"
+#include "jsengine.h"
+JSPropertySpec *config_to_props(config_t *cp, char *name, JSPropertySpec *add);
+JSBool config_jsgetprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval, config_t *, JSPropertySpec *);
+JSBool config_jssetprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval, config_t *, JSPropertySpec *);
+int config_jsinit(JSEngine *e, config_t *cp);
+#endif
 
 #endif

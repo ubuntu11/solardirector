@@ -565,7 +565,7 @@ int cfg_set_tab(CFG_INFO *info, struct cfg_proctab *tab, int empty) {
 
 	for(i=0; tab[i].section; i++) {
 		ent = &tab[i];
-		conv_type(DATA_TYPE_STRING,temp,sizeof(temp),ent->type,ent->dest,ent->dlen);
+		conv_type(DATA_TYPE_STRING,temp,sizeof(temp)-1,ent->type,ent->dest,ent->dlen);
 		dprintf(DLEVEL,"cfg_set_tab: section: %s, keyword: %s, value: %s\n",
 			ent->section, ent->keyword, temp);
 		if (empty || strlen(temp)) cfg_set_item(info,ent->section,ent->keyword,ent->desc,temp);
@@ -602,7 +602,7 @@ void cfg_disp_tab(struct cfg_proctab *tab, char *name, int logopt) {
 	for(ent = tab; ent->section; ent++) {
 		dprintf(DLEVEL,"ent->section: %s", ent->section);
 		dprintf(DLEVEL,"keyword: %s", ent->keyword);
-		conv_type(DATA_TYPE_STRING,temp,sizeof(temp),ent->type,ent->dest,ent->dlen);
+		conv_type(DATA_TYPE_STRING,temp,sizeof(temp)-1,ent->type,ent->dest,ent->dlen);
 		dprintf(DLEVEL,"temp: %s", temp);
 		sprintf(stemp,"[%s]",ent->section);
 		log_write(LOG_INFO,format,stemp,ent->keyword,temp);

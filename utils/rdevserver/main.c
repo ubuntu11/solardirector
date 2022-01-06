@@ -23,22 +23,26 @@ LICENSE file in the root directory of this source tree.
 static void *rdev_recv_thread(void *handle) {
 	rdev_config_t *conf = handle;
 	struct can_frame frame;
-	int bytes;
+	int bytes,idx;
+	uint32_t mask;
 
 	dprintf(3,"thread started!\n");
 	while(solard_check_state(conf,RDEV_STATE_OPEN)) {
 		bytes = conf->can->read(conf->can_handle,&frame,0xffff);
 		dprintf(7,"bytes: %d\n", bytes);
 		if (bytes < 0) {
-			memset(&conf->bitmap,0,sizeof(conf->bitmap));
+			memset(&conf->bitmaps,0,sizeof(conf->bitmaps));
 			sleep(1);
 			continue;
 		}
  		if (bytes != sizeof(frame)) continue;
 		dprintf(7,"frame.can_id: %03x\n",frame.can_id);
-		if (frame.can_id < 0x300 || frame.can_id > 0x30a) continue;
-		memcpy(&conf->frames[frame.can_id - 0x300],&frame,sizeof(frame));
-		conf->bitmap |= 1 << (frame.can_id - 0x300);
+		if (frame.can_id >= NFRAMES) continue;
+		idx = frame.can_id / 32;
+		mask = 1 << (frame.can_id % 32);
+		dprintf(7,"idx: %d, mask: %08x\n",idx,mask);
+		memcpy(&conf->frames[frame.can_id],&frame,sizeof(frame));
+		conf->bitmaps[idx] |= mask;
 	}
 	dprintf(3,"thread returning!\n");
 	return 0;
@@ -76,7 +80,7 @@ rdev_can_open_error:
 static int rdev_can_read(void *handle, void *buf, int buflen) {
 	rdev_config_t *conf = handle;
 	char what[16];
-	uint16_t mask;
+	uint32_t mask;
 	int id,idx,retries;
 
 	dprintf(5,"buf: %p, buflen: %d\n", buf, buflen);
@@ -85,21 +89,21 @@ static int rdev_can_read(void *handle, void *buf, int buflen) {
 
 	id = buflen;
 	dprintf(5,"id: %03x\n", id);
-	if (id < 0x300 || id > 0x30F) return 0;
+	if (id >= NFRAMES) return 0;
 
-	idx = id - 0x300;
-	mask = 1 << idx;
-	dprintf(5,"mask: %04x, bitmap: %04x\n", mask, conf->bitmap);
+	idx = id / 32;
+	mask = 1 << (id % 32);
+	dprintf(5,"mask: %08x, bitmaps[%d]: %08x\n", mask, idx, conf->bitmaps[idx]);
 	retries=5;
 	while(retries--) {
-		if ((conf->bitmap & mask) == 0) {
+		if ((conf->bitmaps[idx] & mask) == 0) {
 			dprintf(5,"bit not set, sleeping...\n");
 			sleep(1);
 			continue;
 		}
 		sprintf(what,"%03x", id);
-		if (debug >= 5) bindump(what,&conf->frames[idx],conf->frames[idx].can_dlc);
-		memcpy(buf,&conf->frames[idx],sizeof(struct can_frame));
+		if (debug >= 5) bindump(what,&conf->frames[id],conf->frames[idx].can_dlc);
+		memcpy(buf,&conf->frames[id],sizeof(struct can_frame));
 		return sizeof(struct can_frame);
 	}
 	return 0;
@@ -211,7 +215,7 @@ int main(int argc,char **argv) {
 	list devices;
 	cfg_proctab_t tab[] = {
 		{ "rdev", "port", "Network port", DATA_TYPE_INT,&port, 0, "3900" },
-		{ "rdev","devices","Device list",DATA_TYPE_LIST,&devices,0, 0 },
+		{ "rdev","devices","Device list",DATA_TYPE_STRING_LIST,&devices,0, 0 },
 		CFG_PROCTAB_END
 	};
 	devserver_io_t dummy_dev = { "dummy", "dummy", 0, 0, 0, 0 };

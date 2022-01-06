@@ -29,6 +29,8 @@ struct __attribute__((packed, aligned(1))) can_frame {
 #include <linux/can.h>
 #endif
 
+#define SOLARD_PATH_MAX		256
+
 #define SOLARD_ID_LEN		38
 #define SOLARD_NAME_LEN		32
 #define SOLARD_TRANSPORT_LEN	32
@@ -79,7 +81,7 @@ struct solard_power {
 };
 typedef struct solard_power solard_power_t;
 
-extern char SOLARD_BINDIR[256], SOLARD_ETCDIR[256], SOLARD_LIBDIR[256], SOLARD_LOGDIR[256];
+extern char SOLARD_BINDIR[SOLARD_PATH_MAX], SOLARD_ETCDIR[SOLARD_PATH_MAX], SOLARD_LIBDIR[SOLARD_PATH_MAX], SOLARD_LOGDIR[SOLARD_PATH_MAX];
 
 #if defined(__WIN32) && defined(NEED_EXPORT)
 #ifdef DLL_EXPORT
@@ -90,7 +92,7 @@ extern char SOLARD_BINDIR[256], SOLARD_ETCDIR[256], SOLARD_LIBDIR[256], SOLARD_L
 #define DLLCALL __cdecl
 #endif
 
-typedef unsigned int bool;
+//typedef unsigned int bool;
 
 #include "types.h"
 #include "opts.h"
@@ -117,11 +119,7 @@ int solard_common_config(cfg_info_t *,char *);
 
 #ifdef JS
 #include "jsapi.h"
-void jsvaltotype(enum DATA_TYPE dtype, void *dest, int dlen, JSContext *cx, jsval val);
-jsval typetojsval(JSContext *cx,enum DATA_TYPE type, void *src, int len);
-JSPropertySpec *configtoprops(config_t *cp, char *name, JSPropertySpec *add);
-JSBool common_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval, config_t *, JSPropertySpec *);
-JSBool common_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval, config_t *, JSPropertySpec *);
+int common_jsinit(JSEngine *e);
 #endif
 
 #endif

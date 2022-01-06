@@ -1340,6 +1340,11 @@ JS_InitStandardClasses(JSContext *cx, JSObject *obj)
 #endif
 		FUNC(js_InitConsoleClass),
 		FUNC(js_InitSocketClass),
+		FUNC(js_InitCANClass),
+#if 0
+		FUNC(js_InitSerialClass),
+		FUNC(js_InitBluetoothClass),
+#endif
 		{0}
 	};
 #undef FUNC
@@ -3283,6 +3288,18 @@ JS_DefineConstants(JSContext *cx, JSObject *obj, JSConstantSpec *cs) {
 	for(ok = JS_TRUE; cs->name; cs++) {
 		ok = DefineProperty(cx, obj, cs->name, cs->value, 0, 0,
 			JSPROP_ENUMERATE|JSPROP_READONLY|JSPROP_PERMANENT|JSPROP_EXPORTED, 0, 0);
+		if (!ok) break;
+	}
+	return ok;
+}
+
+JS_PUBLIC_API(JSBool)
+JS_DefineAliases(JSContext *cx, JSObject *obj, JSAliasSpec *as) {
+	JSBool ok;
+
+	CHECK_REQUEST(cx);
+	for(ok = JS_TRUE; as->name; as++) {
+		ok = JS_AliasProperty(cx, obj, as->name, as->alias);	
 		if (!ok) break;
 	}
 	return ok;

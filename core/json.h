@@ -12,29 +12,14 @@ LICENSE file in the root directory of this source tree.
 
 #include "cfg.h"
 #include "types.h"
-//#include "parson.h"
 
-struct json_descriptor {
-	char *name;
-	enum DATA_TYPE type;
-	char *scope;
-	int nvalues;
-	void *values;
-	int nlabels;
-	char **labels;
-	char *units;
-	float scale;
-	char *format;
-};
-typedef struct json_descriptor json_descriptor_t;
-
+struct json_value;
 typedef struct json_value json_value_t;
 
 typedef void (json_ptcallback_t)(char *,void *,int,json_value_t *);
-
 struct json_proctab {
 	char *field;
-	enum DATA_TYPE type;
+	int type;
 	void *ptr;
 	int len;
 	json_ptcallback_t *cb;
@@ -43,102 +28,100 @@ typedef struct json_proctab json_proctab_t;
 
 #define JSON_PROCTAB_END { 0, 0, 0, 0, 0 }
 
+/* All of these Must match underlying lib */
 struct json_object {
     json_value_t  *wrapping_value;
-    char       **names;
-    json_value_t **values;
-    size_t       count;
-    size_t       capacity;
+    size_t        *cells;
+    unsigned long *hashes;
+    char         **names;
+    json_value_t  **values;
+    size_t        *cell_ixs;
+    size_t         count;
+    size_t         item_capacity;
+    size_t         cell_capacity;
 };
 typedef struct json_object json_object_t;
 
 struct json_array {
-    json_value_t  *wrapping_value;
+    json_value_t *wrapping_value;
     json_value_t **items;
     size_t       count;
     size_t       capacity;
 };
 typedef struct json_array json_array_t;
 
-typedef struct json_string {
-    char *chars;
-    size_t length;
-} JSON_String;
-
-enum json_value_type {
-	JSONError   = -1,
-	JSONNull    = 1,
-	JSONString  = 2,
-	JSONNumber  = 3,
-	JSONObject  = 4,
-	JSONArray   = 5,
-	JSONBoolean = 6
-};
-typedef int json_value_Type;
-#define __HAVE_JSON_TYPES 1
-
-/* Type definitions */
-union json_value_value {
-	JSON_String  string;
-	double       number;
-	json_object_t *object;
-	json_array_t  *array;
-	int          boolean;
-	int          null;
-};
-typedef union json_value_value json_value_value_t;
-
-struct json_value {
-    struct json_value *parent;
-    json_value_Type  type;
-    json_value_value_t value;
-};
-typedef struct json_value JSON_Value;
-
-struct descriptor_scope {
-	int type;
-	union {
-		struct {
-			int min;
-			int max;
-			int step;
-		} range;
-		int *values;
-	};
+enum JSON_TYPE {
+	JSON_TYPE_NULL    = 1,
+	JSON_TYPE_STRING  = 2,
+	JSON_TYPE_NUMBER  = 3,
+	JSON_TYPE_OBJECT  = 4,
+	JSON_TYPE_ARRAY   = 5,
+	JSON_TYPE_BOOLEAN = 6
 };
 
 char *json_typestr(int);
-json_value_t *json_create_object(void);
-json_value_t *json_create_array(void);
-int json_destroy(json_value_t *);
 json_value_t *json_parse(char *);
 
-int json_add_string(json_value_t *,char *,char *);
-int json_add_boolean(json_value_t *,char *,int);
-int json_add_number(json_value_t *,char *,double);
-int json_add_value(json_value_t *,char *,json_value_t *);
-#define json_add_object(v,n,o) json_add_value(v,n,(json_value_t *)o)
-int json_add_descriptor(json_value_t *,char *,json_descriptor_t);
+/* Values */
+enum JSON_TYPE json_value_get_type(json_value_t *);
+char *json_value_get_string(json_value_t *);
+double json_value_get_number(json_value_t *);
+json_object_t *json_value_get_object(json_value_t *);
+json_array_t *json_value_get_array(json_value_t *);
+int json_value_get_boolean(json_value_t *);
+int json_destroy_value(json_value_t *);
 
-char *json_get_string(json_value_t *,char *);
-double json_get_number(json_value_t *,char *);
-int json_get_boolean(json_value_t *,char *);
-json_value_t *json_get_value(json_value_t *,char *);
-void json_conv_value(enum DATA_TYPE, void *, int, json_value_t *);
+/* Objects */
+json_object_t *json_create_object(void);
+json_value_t *json_object_get_value(json_object_t *);
+char *json_object_get_string(json_object_t *,char *);
+int json_object_get_boolean(json_object_t *,char *,int);
+double json_object_get_number(json_object_t *,char *);
+json_object_t *json_object_get_object(json_object_t *,char *);
+json_array_t *json_object_get_array(json_object_t *,char *);
+char *json_object_dotget_string(json_object_t *,char *);
+int json_object_dotget_boolean(json_object_t *,char *);
+double json_object_dotget_number(json_object_t *,char *);
+json_value_t *json_object_dotget_value(json_object_t *, char *);
+json_object_t *json_object_dotget_object(json_object_t *o,char *n);
+json_array_t *json_object_dotget_array(json_object_t *o,char *n);
+int json_object_delete_value(json_object_t *, char *);
+int json_object_set_string(json_object_t *,char *,char *);
+int json_object_set_boolean(json_object_t *,char *,int);
+int json_object_set_number(json_object_t *,char *,double);
+int json_object_set_object(json_object_t *,char *,json_object_t *);
+int json_object_set_array(json_object_t *,char *,json_array_t *);
+int json_object_set_value(json_object_t *,char *,json_value_t *);
+int json_object_add_array(json_object_t *o,char *n,json_array_t *a);
+int json_object_add_value(json_object_t *o,char *n,json_value_t *v);
+//double json_object_dotget_number(json_object_t *, char *);
+int json_object_dotset_value(json_object_t *o, char *label, json_value_t *v);
 
-int json_array_add_string(json_value_t *,char *);
-int json_array_add_strings(json_value_t *,char *);
-int json_array_add_boolean(json_value_t *,int);
-int json_array_add_number(json_value_t *,double);
-int json_array_add_value(json_value_t *,json_value_t *);
-int json_array_add_descriptor(json_value_t *,json_descriptor_t);
+int json_object_remove(json_object_t *, char *);
+int json_destroy_object(json_object_t *);
+
+/* Arrays */
+json_array_t *json_create_array(void);
+json_value_t *json_array_get_value(json_array_t *);
+int json_array_add_string(json_array_t *,char *);
+int json_array_add_strings(json_array_t *,char *);
+int json_array_add_boolean(json_array_t *,int);
+int json_array_add_number(json_array_t *,double);
+int json_array_add_object(json_array_t *,json_object_t *);
+int json_array_add_array(json_array_t *,json_array_t *);
+int json_array_add_value(json_array_t *,json_value_t *);
+int json_array_remove(json_object_t *, int);
+int json_destroy_array(json_array_t *);
 
 int json_tostring(json_value_t *,char *,int,int);
 char *json_dumps(json_value_t *,int);
 int json_dumps_r(json_value_t *,char *,int);
-const char *json_string (const JSON_Value *value);
+//const char *json_string(const JSON_Value *value);
 void json_free_serialized_string(char *string);
 #define json_free_string(s) json_free_serialized_string(s)
+
+int json_to_type(int, void *, int, json_value_t *);
+json_value_t *json_from_type(int, void *, int);
 
 json_value_t *json_from_tab(json_proctab_t *);
 int json_to_tab(json_proctab_t *, json_value_t *);
@@ -146,21 +129,6 @@ int json_to_tab(json_proctab_t *, json_value_t *);
 typedef int (json_ifunc_t)(void *,char *,char *);
 int json_iter(char *name, json_value_t *v, json_ifunc_t *func, void *ctx);
 
-int json_object_remove(json_object_t *, char *);
 
-#ifndef TAINT
-char *json_object_dotget_string(json_object_t *, char *);
-json_array_t *json_object_dotget_array(json_object_t *, char *);
-double json_object_dotget_number(json_object_t *, char *);
-int json_type(json_value_t *);
-#define json_type(v) v->type
-#define json_object(v) v->value.object
-#define json_array(v) v->value.array
-#define json_string(v) v->value.string.chars
-#define json_strlen(v) v->value.string.length
-#define json_number(v) v->value.number
-#define json_bool(v) v->value.boolean
-#endif
-json_value_t *json_from_cfgtab(cfg_proctab_t *);
-
+//json_value_t *json_from_cfgtab(cfg_proctab_t *);
 #endif

@@ -1,3 +1,4 @@
+#!/bin/bash
 
 inc=$1
 test -z "$1" && exit 0
@@ -46,7 +47,7 @@ if test $have_start -eq 0; then
 	exit 1
 fi
 
-printf "\tconfig_property_t si_props[] = {\n";
+printf "\tconfig_property_t ${name}_props[] = {\n";
 while read n
 do
 #	echo $n

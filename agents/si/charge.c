@@ -139,7 +139,7 @@ void charge_stop(si_session_t *s, int rep) {
 
 void charge_start(si_session_t *s, int rep) {
 
-	if (!s->info.Run) return;
+	if (!s->data.Run) return;
 
 	if (solard_check_state(s,SI_STATE_CHARGING)) return;
 	if (si_check_config(s)) {
@@ -148,7 +148,7 @@ void charge_start(si_session_t *s, int rep) {
 		return;
 	}
 
-	if (s->have_battery_temp && s->info.battery_temp <= 0.0) {
+	if (s->have_battery_temp && s->data.battery_temp <= 0.0) {
 		log_write(LOG_WARNING,"battery_temp <= 0.0, not starting charge\n");
 		return;
 	}
@@ -164,7 +164,7 @@ void charge_start(si_session_t *s, int rep) {
 	s->charge_mode = 1;
 	s->charge_amps_soc_modifier = 1.0;
 	s->charge_amps_temp_modifier = 1.0;
-	s->start_temp = s->info.battery_temp;
+	s->start_temp = s->data.battery_temp;
 }
 
 static void cvremain(time_t start, time_t end) {
@@ -187,7 +187,7 @@ static void cvremain(time_t start, time_t end) {
 
 void charge_start_cv(si_session_t *s, int rep) {
 
-	if (!s->info.Run) return;
+	if (!s->data.Run) return;
 
 //	charge_stop(s,0);
 	if (si_check_config(s)) {
@@ -201,7 +201,7 @@ void charge_start_cv(si_session_t *s, int rep) {
 	s->charge_voltage = s->charge_end_voltage;
 	s->charge_amps = s->std_charge_amps;
 	time(&s->cv_start_time);
-	s->start_temp = s->info.battery_temp;
+	s->start_temp = s->data.battery_temp;
 	s->baidx = s->bafull = 0;
 }
 
@@ -233,12 +233,12 @@ float pct(float val1, float val2) {
 static void incvolt(si_session_t *s) {
 	float battery_amps;
 
-	battery_amps = s->info.battery_current * -1;;
+	battery_amps = s->data.battery_current * -1;;
 	dprintf(0,"battery_amps: %.1f, charge_amps: %.1f, pct: %f\n", battery_amps, s->charge_amps, pct(battery_amps,s->charge_amps));
 //	if (battery_amps >= s->charge_amps) return;
 	if (pct(battery_amps,s->charge_amps) > -5.0) return;
-	dprintf(0,"frequency: %.1f\n", s->info.frequency);
-	if (s->info.frequency > 0.0 && (s->info.frequency < 50.0 || s->info.frequency < 60.0)) return;
+	dprintf(0,"ac1_frequency: %.1f\n", s->data.ac1_frequency);
+	if (s->data.ac1_frequency > 0.0 && (s->data.ac1_frequency < 50.0 || s->data.ac1_frequency < 60.0)) return;
 	dprintf(0,"charge_voltage: %.1f, max_voltage: %.1f\n", s->charge_voltage, s->max_voltage);
 	if ((s->charge_voltage + 0.1) >= s->max_voltage) return;
 	s->charge_voltage += 0.1;
@@ -293,25 +293,25 @@ ec_again:
 	dprintf(1,"state: %d (%s)\n", s->ec_state, statestr(s->ec_state));
 	switch(s->ec_state) {
 	case EC_STATE_NONE:
-		if ((s->info.battery_voltage-0.0001) <= s->charge_start_voltage) {
+		if ((s->data.battery_voltage-0.0001) <= s->charge_start_voltage) {
 			/* Start the charge asap */
 			charge_start(s,1);
 
 			/* If we have no AC2 freq */
-			dprintf(1,"ac2_frequency: %.1f\n", s->info.ac2_frequency);
-			if (s->info.ac2_frequency < 2.0) {
+			dprintf(1,"ac2_frequency: %.1f\n", s->data.ac2_frequency);
+			if (s->data.ac2_frequency < 2.0) {
 				/* Do we have a gen? */
 				dprintf(1,"ExtSrc: %s\n", s->ExtSrc);
 				if (!strstr(s->ExtSrc,"Gen")) {
 					si_notify(s,"ERROR: voltage (%.1f) below EC threshold (%.1f) and no grid/gen!", 
-						s->info.battery_voltage, s->charge_start_voltage);
+						s->data.battery_voltage, s->charge_start_voltage);
 					s->ec_state = EC_STATE_CHARGING;
 					goto ec_again;
 				} else {
 					s->ec_state = EC_STATE_GENSTART;
 					goto ec_again;
 				}
-			} else if (!s->info.GdOn) {
+			} else if (!s->data.GdOn) {
 				s->ec_state = EC_STATE_GRIDSTART;
 				goto ec_again;
 			}
@@ -343,8 +343,8 @@ ec_again:
 		}
 		break;
 	case EC_STATE_GENWAITON:
-		dprintf(1,"GnRn: %d, ac2_frequency: %.1f\n", s->info.GnRn, s->info.ac2_frequency);
-		if (s->info.GnRn && s->info.ac2_frequency > 2.0) {
+		dprintf(1,"GnRn: %d, ac2_frequency: %.1f\n", s->data.GnRn, s->data.ac2_frequency);
+		if (s->data.GnRn && s->data.ac2_frequency > 2.0) {
 			/* Gen is running, connect it */
 			s->gen_started = 1;
 			s->ec_state = EC_STATE_GRIDSTART;
@@ -375,15 +375,15 @@ ec_again:
 		/* Restore GnManStr value */
 		if (smanet_set_value(s->smanet,"GnManStr",0,s->gen_save))
 			log_error("unable to restore Gen state to: %s\n",s->gen_save);
-		if (s->info.GnRn)
+		if (s->data.GnRn)
 			s->ec_state = EC_STATE_GENWAITOFF;
 		else
 			s->ec_state = EC_STATE_NONE;
 		goto ec_again;
 		break;
 	case EC_STATE_GENWAITOFF:
-		dprintf(1,"GnRn: %d\n", s->info.GnRn);
-		if (s->info.GnRn) {
+		dprintf(1,"GnRn: %d\n", s->data.GnRn);
+		if (s->data.GnRn) {
 			time_t t;
 			int diff;
 
@@ -446,33 +446,33 @@ ec_again:
 #endif
 
 	dprintf(1,"battery_voltage: %.1f, charge_start_voltage: %.1f, charge_end_voltage: %.1f\n",
-		s->info.battery_voltage, s->charge_start_voltage, s->charge_end_voltage);
-	if ((s->info.battery_voltage-0.0001) <= s->charge_start_voltage) {
+		s->data.battery_voltage, s->charge_start_voltage, s->charge_end_voltage);
+	if ((s->data.battery_voltage-0.0001) <= s->charge_start_voltage) {
 		/* Start charging */
 		s->force_charge = 1;
 		charge_start(s,1);
 	}
 
 	if (solard_check_state(s,SI_STATE_CHARGING)) {
-		if (s->charge_voltage != s->last_charge_voltage || s->info.battery_current != s->last_battery_amps) {
-			lprintf(0,"Charge Voltage: %.1f, Battery Amps: %.1f\n",s->charge_voltage,s->info.battery_current);
+		if (s->charge_voltage != s->last_charge_voltage || s->data.battery_current != s->last_battery_amps) {
+			lprintf(0,"Charge Voltage: %.1f, Battery Amps: %.1f\n",s->charge_voltage,s->data.battery_current);
 			s->last_charge_voltage = s->charge_voltage;
-			s->last_battery_amps = s->info.battery_current;
+			s->last_battery_amps = s->data.battery_current;
 		}
 		if (s->have_battery_temp) {
 			/* If battery temp is <= 0, stop charging immediately */
-			dprintf(1,"battery_temp: %2.1f\n", s->info.battery_temp);
-			if (s->info.battery_temp <= 0.0) {
+			dprintf(1,"battery_temp: %2.1f\n", s->data.battery_temp);
+			if (s->data.battery_temp <= 0.0) {
 				charge_stop(s,1);
 				return;
 			}
 			/* If battery temp <= 5C, reduce charge rate by 1/4 */
-			if (s->info.battery_temp <= 5.0) s->charge_amps /= 4.0;
+			if (s->data.battery_temp <= 5.0) s->charge_amps /= 4.0;
 
 			/* Watch for rise in battery temp, anything above 5 deg C is an error */
 			/* We could lower charge amps until temp goes down and then set that as max amps */
-			if (pct(s->info.battery_temp,s->start_temp) > 5) {
-				log_error("current_temp: %.1f, start_temp: %.1f\n", s->info.battery_temp, s->start_temp);
+			if (pct(s->data.battery_temp,s->start_temp) > 5) {
+				log_error("current_temp: %.1f, start_temp: %.1f\n", s->data.battery_temp, s->start_temp);
 				charge_stop(s,1);
 				return;
 			}
@@ -481,7 +481,7 @@ ec_again:
 		/* CC */
 		if (s->charge_mode == 1) {
 			dprintf(1,"charge_at_max: %d, charge_creep: %d\n", s->charge_at_max, s->charge_creep);
-			if ((s->info.battery_voltage+0.0001) >= s->charge_end_voltage) {
+			if ((s->data.battery_voltage+0.0001) >= s->charge_end_voltage) {
 				if (s->charge_method == 1) charge_start_cv(s,1);
 				else charge_stop(s,1);
 			} else if (!s->charge_at_max && s->charge_creep) {
@@ -503,7 +503,7 @@ ec_again:
 				float amps,avg;
 				int i;
 
-				amps = s->info.battery_current * -1;
+				amps = s->data.battery_current * -1;
 				dprintf(0,"battery_amps: %f, charge_amps: %f\n", amps, s->charge_amps);
 
 				/* Amps < 0 (battery drain) will clear the hist */

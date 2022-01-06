@@ -1,0 +1,37 @@
+
+printf("===> READING\n");
+
+si.last_check = Date();
+printf("last_checK: %s\n", si.last_check);
+exit(0);
+
+if (0 == 1) {
+var fields = inverter_fields.concat(charger_fields).unique().sort();
+printf("fields: %s\n", fields);
+var si_fields = [];
+for (var key in si) si_fields.push(key);
+printf("si_fields: %s\n", si_fields.unique().sort());
+}
+
+//j = JSON.stringify(si,inverter_fields,4);
+//printf("j: %s\n", j);
+//mqtt.pub(SOLARD_TOPIC_ROOT+"/"+agent.name+"/"+SOLARD_FUNC_DATA,j,0);
+
+
+var format = "%-25.25s %s\n"
+printf(format,"Voltage",si.voltage);
+printf(format,"Frequency",si.frequency);
+printf(format,"Capacity",sprintf("%.1f",si.capacity));
+printf(format,"Load",si.TotLodPwr);
+printf(format,"Run",si.Run);
+
+var j = JSON.parse("{}");
+
+var getKeys = function (obj) {
+  var keysArr = [];
+  for (var key in obj) {
+    keysArr.push(key);
+  }
+  printf(keysArr);
+}
+getKeys(si);

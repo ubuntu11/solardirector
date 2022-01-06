@@ -13,12 +13,18 @@ LICENSE file in the root directory of this source tree.
 #include <stdlib.h>
 #include "mqtt.h"
 #include "utils.h"
-#include "debug.h"
 #include "config.h"
 
-#define TIMEOUT 10000L
+#define DEBUG_MQTT 0
+#define dlevel 5
 
-#define dlevel 2
+#ifdef DEBUG
+#undef DEBUG
+#endif
+#define DEBUG DEBUG_MQTT
+#include "debug.h"
+
+#define TIMEOUT 10000L
 
 struct mqtt_session {
 	mqtt_config_t config;
@@ -49,58 +55,38 @@ int mqtt_get_config(void *cfg, mqtt_config_t *conf) {
 }
 #endif
 
-#if 0
-int mqtt_add_config(mqtt_session_t *m, void *cp) {
-	config_property_t mqtt_props[] = {
-		{ "broker", DATA_TYPE_STRING, m->config.host, sizeof(m->config.host)-1, "", 0, 0, 0, 0, 0, 0, 0, 1, 0 },
-		{ "clientid", DATA_TYPE_STRING, m->config.clientid, sizeof(m->config.clientid)-1, "", 0, 0, 0, 0, 0, 0, 0, 1, 0 },
-//		{ "username", DATA_TYPE_STRING, m->config.username, sizeof(m->config.username)-1, 0, "", 0, 0, 0, 0, 0, 0, 1, 0 },
-//		{ "password", DATA_TYPE_STRING, m->config.password, sizeof(m->config.password)-1, 0, "", 0, 0, 0, 0, 0, 0, 1, 0 },
-		{ 0 }
-	};
-	config_propdir_t mqtt_propdir[] = {
-		{ "mqtt", mqtt_props, 0 },
-		{ 0 }
-	};
-
-	dprintf(1,"m: %p\n", m);
-	if (!m) return 1;
-
-	config_add_props((config_t *)cp, mqtt_propdir);
-	return 0;
-}
-#endif
-
 void logProperties(MQTTProperties *props) {
 	int i = 0;
 
-	dprintf(1,"props->count: %d\n", props->count);
+	dprintf(dlevel,"props->count: %d\n", props->count);
 	for (i = 0; i < props->count; ++i) {
 		int id = props->array[i].identifier;
+#if DEBUG
 		const char* name = MQTTPropertyName(id);
+#endif
 //		char* intformat = "Property name %s value %d";
 
-		dprintf(1,"prop: id: %d, name: %s\n", id, name);
+		dprintf(dlevel,"prop: id: %d, name: %s\n", id, name);
 		switch (MQTTProperty_getType(id)) {
 		case MQTTPROPERTY_TYPE_BYTE:
-			dprintf(1, "value %d", props->array[i].value.byte);
+			dprintf(dlevel, "value %d", props->array[i].value.byte);
 			break;
 		case MQTTPROPERTY_TYPE_TWO_BYTE_INTEGER:
-			dprintf(1, "value %d", props->array[i].value.integer2);
+			dprintf(dlevel, "value %d", props->array[i].value.integer2);
 			break;
 		case MQTTPROPERTY_TYPE_FOUR_BYTE_INTEGER:
-			dprintf(1, "value %d", props->array[i].value.integer4);
+			dprintf(dlevel, "value %d", props->array[i].value.integer4);
 			break;
 		case MQTTPROPERTY_TYPE_VARIABLE_BYTE_INTEGER:
-			dprintf(1, "value %d", props->array[i].value.integer4);
+			dprintf(dlevel, "value %d", props->array[i].value.integer4);
 			break;
 		case MQTTPROPERTY_TYPE_BINARY_DATA:
 		case MQTTPROPERTY_TYPE_UTF_8_ENCODED_STRING:
-			dprintf(1, "value %s %.*s", name, props->array[i].value.data.len, props->array[i].value.data.data);
+			dprintf(dlevel, "value %s %.*s", name, props->array[i].value.data.len, props->array[i].value.data.data);
 			break;
 		case MQTTPROPERTY_CODE_USER_PROPERTY:
 		case MQTTPROPERTY_TYPE_UTF_8_STRING_PAIR:
-			dprintf(1, "key %.*s value %.*s", props->array[i].value.data.len, props->array[i].value.data.data, props->array[i].value.value.len, props->array[i].value.value.data);
+			dprintf(dlevel, "key %.*s value %.*s", props->array[i].value.data.len, props->array[i].value.data.data, props->array[i].value.value.len, props->array[i].value.value.data);
 			break;
 		}
 	}
@@ -117,7 +103,7 @@ static int mqtt_getmsg(void *ctx, char *topicName, int topicLen, MQTTClient_mess
 	dprintf(4,"topicLen: %d\n", topicLen);
 	if (topicLen) {
 		len = topicLen > sizeof(topic)-1 ? sizeof(topic)-1 : topicLen;
-		dprintf(1,"len: %d\n", len);
+		dprintf(dlevel,"len: %d\n", len);
 		memcpy(topic,topicName,len);
 		topic[len] = 0;
 	} else {
@@ -156,12 +142,12 @@ int mqtt_newclient(struct mqtt_session *s, mqtt_config_t *config) {
 
 	/* Set the config */
 	s->config = *config;
-	dprintf(1,"mqtt_config: host: %s, clientid: %s, username: %s, password: %s, lwt: %s\n",
+	dprintf(dlevel,"mqtt_config: host: %s, clientid: %s, username: %s, password: %s, lwt: %s\n",
 		s->config.host, s->config.clientid, s->config.username, s->config.password, s->config.lwt_topic);
 
 	opts.MQTTVersion = MQTTVERSION_5;
 	rc = MQTTClient_createWithOptions(&s->c, s->config.host, s->config.clientid, MQTTCLIENT_PERSISTENCE_NONE, NULL, &opts);
-	dprintf(2,"create rc: %d\n", rc);
+	dprintf(dlevel,"create rc: %d\n", rc);
 	if (rc != MQTTCLIENT_SUCCESS) {
 		log_error("MQTTClient_create failed");
 		return 1;
@@ -169,7 +155,7 @@ int mqtt_newclient(struct mqtt_session *s, mqtt_config_t *config) {
 
 	/* Set callback BEFORE connect */
 	rc = MQTTClient_setCallbacks(s->c, s, 0, mqtt_getmsg, 0);
-	dprintf(2,"setcb rc: %d\n", rc);
+	dprintf(dlevel,"setcb rc: %d\n", rc);
 	if (rc != MQTTCLIENT_SUCCESS) {
 		log_error("MQTTClient_setCallbacks failed");
 		return 1;
@@ -217,14 +203,14 @@ int mqtt_connect(mqtt_session_t *s, int interval) {
 
 	if (!s) return 1;
 
-	dprintf(2,"interval: %d\n", interval);
+	dprintf(dlevel,"interval: %d\n", interval);
 
 	conn_opts.MQTTVersion = MQTTVERSION_5;
 	conn_opts.keepAliveInterval = interval;
 	conn_opts.connectTimeout = 3;
 	conn_opts.cleanstart = 1;
 	conn_opts.ssl = s->ssl_opts;
-	dprintf(2,"lwt: %s\n", s->config.lwt_topic);
+	dprintf(dlevel,"lwt: %s\n", s->config.lwt_topic);
 	if (strlen(s->config.lwt_topic)) {
 		will_opts.topicName = s->config.lwt_topic;
 		will_opts.message = "Offline";
@@ -244,10 +230,10 @@ int mqtt_connect(mqtt_session_t *s, int interval) {
 			conn_opts.password = s->config.password;
 	}
 
-	dprintf(2,"connecting...\n");
+	dprintf(dlevel,"connecting...\n");
 	response = MQTTClient_connect5(s->c, &conn_opts, 0, 0);
 	rc = response.reasonCode;
-	dprintf(2,"rc: %d\n", rc);
+	dprintf(dlevel,"rc: %d\n", rc);
 	if (rc != MQTTCLIENT_SUCCESS) {
 		if (rc == 5) {
 			log_error("MQTT: bad username or password\n");
@@ -266,23 +252,23 @@ int mqtt_connect(mqtt_session_t *s, int interval) {
 int mqtt_disconnect(mqtt_session_t *s, int timeout) {
 	int rc;
 
-	dprintf(2,"timeout: %d\n", timeout);
+	dprintf(dlevel,"timeout: %d\n", timeout);
 
 	if (!s) return 1;
 	rc = MQTTClient_disconnect5(s->c, timeout, MQTTREASONCODE_SUCCESS, 0);
-	dprintf(2,"rc: %d\n", rc);
+	dprintf(dlevel,"rc: %d\n", rc);
 	return rc;
 }
 
 int mqtt_reconnect(mqtt_session_t *s) {
 	char *topic;
 
-	dprintf(2,"reconnecting...\n");
+	dprintf(dlevel,"reconnecting...\n");
 	if (mqtt_disconnect(s,5)) return 1;
 	if (mqtt_connect(s,20)) return 1;
 	list_reset(s->subs);
 	while((topic = list_get_next(s->subs)) != 0) mqtt_sub(s,topic);
-	dprintf(2,"reconnect done!\n");
+	dprintf(dlevel,"reconnect done!\n");
 	return 0;
 }
 
@@ -301,7 +287,7 @@ int mqtt_pub(mqtt_session_t *s, char *topic, char *message, int wait, int retain
 //	options.WriteTimeout
 	int rc,rt,retry;
 
-	dprintf(2,"topic: %s, message: %s\n", topic, message);
+	dprintf(dlevel,"topic: %s, message: %s\n", topic, message);
 
 	if (message) {
 		pubmsg.payload = message;
@@ -325,12 +311,12 @@ int mqtt_pub(mqtt_session_t *s, char *topic, char *message, int wait, int retain
 	token = 0;
 	retry = 0;
 again:
-	dprintf(2,"publishing...\n");
+	dprintf(dlevel,"publishing...\n");
 	response = MQTTClient_publishMessage5(s->c, topic, &pubmsg, &token);
 	rc = response.reasonCode;
-	dprintf(2,"rc: %d\n", rc);
+	dprintf(dlevel,"rc: %d\n", rc);
 	if (rc != MQTTCLIENT_SUCCESS) {
-		dprintf(2,"publish error\n");
+		dprintf(dlevel,"publish error\n");
 		if (!retry) {
 			mqtt_reconnect(s);
 			retry = 1;
@@ -341,12 +327,12 @@ again:
 	}
 	MQTTResponse_free(response);
 	if (wait) {
-		dprintf(2,"waiting...\n");
+		dprintf(dlevel,"waiting...\n");
 		rc = MQTTClient_waitForCompletion(s->c, token, TIMEOUT);
-		dprintf(2,"rc: %d\n", rc);
+		dprintf(dlevel,"rc: %d\n", rc);
 		if (rc != MQTTCLIENT_SUCCESS) return 1;
 	}
-	dprintf(2,"delivered message... token: %d\n",token);
+	dprintf(dlevel,"delivered message... token: %d\n",token);
 	if (rt) MQTTProperties_free(&pubmsg.properties);
 	return 0;
 }
@@ -354,9 +340,9 @@ again:
 int mqtt_setcb(mqtt_session_t *s, void *ctx, MQTTClient_connectionLost *cl, MQTTClient_messageArrived *ma, MQTTClient_deliveryComplete *dc) {
 	int rc;
 
-	dprintf(2,"s: %p, ctx: %p, ma: %p\n", s, ctx, ma);
+	dprintf(dlevel,"s: %p, ctx: %p, ma: %p\n", s, ctx, ma);
 	rc = MQTTClient_setCallbacks(s->c, ctx, cl, ma, dc);
-	dprintf(2,"rc: %d\n", rc);
+	dprintf(dlevel,"rc: %d\n", rc);
 	if (rc) log_write(LOG_ERROR,"MQTTClient_setCallbacks: rc: %d\n", rc);
 	return rc;
 }
@@ -379,12 +365,12 @@ int mqtt_sub(mqtt_session_t *s, char *topic) {
 	int rc;
 
 	opts.noLocal = 1;
-	dprintf(2,"topic: %s\n", topic);
+	dprintf(dlevel,"topic: %s\n", topic);
 	response = MQTTClient_subscribe5(s->c, topic, 1, &opts, 0);
 	rc = response.reasonCode;
 	if (rc == MQTTREASONCODE_GRANTED_QOS_1) rc = 0;
 	MQTTResponse_free(response);
-	dprintf(2,"rc: %d\n", rc);
+	dprintf(dlevel,"rc: %d\n", rc);
 	if (rc == MQTTCLIENT_SUCCESS) mqtt_addsub(s,topic);
 	return rc;
 }
@@ -392,7 +378,7 @@ int mqtt_sub(mqtt_session_t *s, char *topic) {
 int mqtt_submany(mqtt_session_t *s, int count, char **topic) {
 	int i,rc,*qos;
 
-	dprintf(2,"s: %p, count: %d\n", s, count);
+	dprintf(dlevel,"s: %p, count: %d\n", s, count);
 	qos = calloc(1,sizeof(int)*count);
 	if (!qos) {
 		log_write(LOG_SYSERR,"mqtt_submany: calloc");
@@ -401,7 +387,7 @@ int mqtt_submany(mqtt_session_t *s, int count, char **topic) {
 	for(i=0; i < count; i++) qos[i] = 1;
 	rc = MQTTClient_subscribeMany(s->c, count, topic, qos);
 	free(qos);
-	dprintf(2,"rc: %d\n", rc);
+	dprintf(dlevel,"rc: %d\n", rc);
 	if (rc == MQTTCLIENT_SUCCESS) {
 		for(i=0; i < count; i++)
 			mqtt_addsub(s,topic[i]);
@@ -413,24 +399,24 @@ int mqtt_unsub(mqtt_session_t *s, char *topic) {
 	MQTTResponse response = MQTTResponse_initializer;
 	int rc;
 
-	dprintf(2,"s: %p, topic: %s\n", s, topic);
+	dprintf(dlevel,"s: %p, topic: %s\n", s, topic);
 	response = MQTTClient_unsubscribe5(s->c, topic, 0);
 	rc = response.reasonCode;
-	dprintf(2,"rc: %d\n", rc);
+	dprintf(dlevel,"rc: %d\n", rc);
 	return rc;
 }
 
 int mqtt_unsubmany(mqtt_session_t *s, int count, char **topic) {
 	int rc;
 
-	dprintf(2,"s: %p, topic: %p\n", s, topic);
+	dprintf(dlevel,"s: %p, topic: %p\n", s, topic);
 	rc = MQTTClient_unsubscribeMany(s->c, count, topic);
-	dprintf(2,"rc: %d\n", rc);
+	dprintf(dlevel,"rc: %d\n", rc);
 	return rc;
 }
 
-
-#include "jsapi.h"
+#ifdef JS
+#include "jsengine.h"
 
 enum MQTT_PROPERTY_ID {
 	MQTT_PROPERTY_ID_NONE,
@@ -461,24 +447,21 @@ int mqtt_pub(mqtt_session_t *s, char *topic, char *message, int retain) { return
 int mqtt_sub(mqtt_session_t *s, char *topic) { return 0; }
 #endif
 
-#ifdef JS
-#include "jsengine.h"
-
 static JSBool mqtt_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 	mqtt_session_t *m;
 	int prop_id;
 
 	m = JS_GetPrivate(cx, obj);
-	dprintf(1,"m: %p\n", m);
+	dprintf(dlevel,"m: %p\n", m);
 	if (!m) {
 		JS_ReportError(cx, "private is null!");
 		return JS_FALSE;
 	}
 
-	dprintf(1,"is_int: %d\n", JSVAL_IS_INT(id));
+	dprintf(dlevel,"is_int: %d\n", JSVAL_IS_INT(id));
 	if (JSVAL_IS_INT(id)) {
 		prop_id = JSVAL_TO_INT(id);
-		dprintf(1,"prop_id: %d", prop_id);
+		dprintf(dlevel,"prop_id: %d", prop_id);
 		switch(prop_id) {
 		case MQTT_PROPERTY_ID_HOST:
 			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,m->config.host));
@@ -507,7 +490,7 @@ static JSBool mqtt_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) 
 
 	if (JSVAL_IS_INT(id)) {
 		prop_id = JSVAL_TO_INT(id);
-		dprintf(1,"mqtt_setprop: prop_id: %d", prop_id);
+		dprintf(dlevel,"mqtt_setprop: prop_id: %d", prop_id);
 		switch(prop_id) {
 		default:
 			break;
@@ -537,13 +520,8 @@ static JSBool mqtt_jspub(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, 
 	mqtt_session_t *m;
 
 	m = JS_GetPrivate(cx, obj);
-	dprintf(1,"m: %p\n", m);
-	if (!m) {
-		JS_ReportError(cx, "private is null!");
-		return JS_FALSE;
-	}
 
-	dprintf(1,"argc: %d\n", argc);
+	dprintf(5,"argc: %d\n", argc);
 	if (argc < 2) {
 		JS_ReportError(cx, "not enough parms");
 		return JS_FALSE;
@@ -555,7 +533,7 @@ static JSBool mqtt_jspub(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, 
 		retain = JSVAL_TO_INT(argv[2]);
 	else
 		retain = 0;
-	dprintf(1,"topic: %s, message: %s, retain: %d\n", topic, message, retain);
+	dprintf(5,"topic: %s, message: %s, retain: %d\n", topic, message, retain);
         mqtt_pub(m,topic,message,1,retain);
     	return JS_TRUE;
 }

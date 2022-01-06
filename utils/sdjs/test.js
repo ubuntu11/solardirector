@@ -8,38 +8,38 @@ else {
 
 String.prototype.trim = function(){ return this.replace(/^\s*/, '').replace(/\s*$/, ''); }
 
-Console.writeln("Enter a filename: ");
+console.log("Enter a filename: ");
 var strfile = Console.read().trim();
 
-Console.writeln("Creating file object for "+strfile);
+console.log("Creating file object for "+strfile);
 var file = new File(strfile);
 
 var done = false;
 do {
     
-    Console.writeln("Do what with "+strfile+"?");
-    Console.writeln("1) Check if exists. ");
-    Console.writeln("2) Update modifcation time. ");
-    Console.writeln("3) Create file. ");
-    Console.writeln("4) Quit. ");
+    console.log("Do what with "+strfile+"?");
+    console.log("1) Check if exists. ");
+    console.log("2) Update modifcation time. ");
+    console.log("3) Create file. ");
+    console.log("4) Quit. ");
     var choice = parseInt(Console.read());
     if (choice == 1){
         if (file.exists()){
-            Console.writeln("Yeppers, file exists.");
+            console.log("Yeppers, file exists.");
         }
 		else {
-			Console.writeln("Nope, it doesn't exist yet.");
+			console.log("Nope, it doesn't exist yet.");
 		}
     }
     else if (choice == 2){
         try {
             if (file.touch()){
-                Console.writeln("File access and modification time update.");
+                console.log("File access and modification time update.");
             }
         }
         catch (e){
-            Console.writeln("Time update failed, Exception caught: ");
-            Console.writeln(e);
+            console.log("Time update failed, Exception caught: ");
+            console.log(e);
         }
     }
     else if (choice == 3){
@@ -49,8 +49,8 @@ do {
 		}
 		catch (e)
 		{
-			Console.writeln("Creation failed. Exception caught: ");
-			Console.writeln(e);
+			console.log("Creation failed. Exception caught: ");
+			console.log(e);
 		}
     }
     else if (choice == 4){

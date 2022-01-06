@@ -84,7 +84,7 @@ static void *serial_new(void *conf, void *target, void *topts) {
 	serial_session_t *s;
 	char *p;
 
-	s = calloc(1,sizeof(*s));
+	s = calloc(sizeof(*s),1);
 	if (!s) {
 		log_write(LOG_SYSERR,"serial_new: calloc(%d)",sizeof(*s));
 		return 0;
@@ -461,8 +461,10 @@ static int serial_close(void *handle) {
 	serial_session_t *s = handle;
 
 #ifdef _WIN32
-	CloseHandle(s->h);
-	s->h = INVALID_HANDLE_VALUE;
+	if (s->h != INVALID_HANDLE_VALUE) {
+		CloseHandle(s->h);
+		s->h = INVALID_HANDLE_VALUE;
+	}
 #else
 	dprintf(1,"fd: %d\n",s->fd);
 	if (s->fd >= 0) {
@@ -487,11 +489,20 @@ static int serial_config(void *h, int func, ...) {
 	return r;
 }
 
+static int serial_destroy(void *handle) {
+	serial_session_t *s = handle;
+
+        serial_close(s);
+        free(s);
+        return 0;
+}
+
+
 solard_driver_t serial_driver = {
 	SOLARD_DRIVER_TRANSPORT,
 	"serial",
 	serial_new,
-	0,
+	serial_destroy,
 	serial_open,
 	serial_close,
 	serial_read,

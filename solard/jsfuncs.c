@@ -281,7 +281,7 @@ JSObject *JSSolard(JSContext *cx, void *priv) {
 	solard_config_t *conf = priv;
 
 	if (!conf->props) {
-		conf->props = configtoprops(conf->ap->cp, "solard", 0);
+		conf->props = config_to_props(conf->ap->cp, "solard", 0);
 		if (!conf->props) {
 			log_error("unable to create props: %s\n", config_get_errmsg(conf->ap->cp));
 			return 0;

@@ -1,4 +1,6 @@
 
+include "battery.js");
+
 //print(script_name,"start");
 
 //include("jslint.js")
@@ -20,7 +22,7 @@
 //print("count:",solard.batteries.length);
 
 for(var i=0; i < solard.batteries.length; i++) {
-	var bp = solard.batteries[i];
+	dump_battery(solard.batteries[i]);
 	print("name: ",bp.name);
 	print("capacity: ",bp.capacity);
 	print("voltage: ",bp.voltage);

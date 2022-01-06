@@ -112,7 +112,7 @@ int solard_add_config(solard_config_t *conf, char *label, char *value, char *err
 		return 1;
 	}
 
-	conv_type(DATA_TYPE_LIST,&lp,0,DATA_TYPE_STRING,value,strlen(value));
+	conv_type(DATA_TYPE_STRING_LIST,&lp,0,DATA_TYPE_STRING,value,strlen(value));
 	dprintf(1,"lp: %p\n", lp);
 	if (!lp) {
 		strcpy(errmsg,"invalid format (agent_name:agnet_parm[,agent_parm,...]");
@@ -159,8 +159,8 @@ int solard_agent_init(int argc, char **argv, opt_proctab_t *sd_opts, solard_conf
                         "range", 3, (int []){ 0, 1440, 1 }, 1, (char *[]) { "Agent check interval" }, "S", 1, 0 },
 		{ "notify", DATA_TYPE_STRING, &conf->notify_path, sizeof(conf->notify_path)-1, "", 0,
 			0, 0, 0, 0, 0, 0, 1, 0 },
-		{ "agents", DATA_TYPE_LIST, conf->agents, 0, 0, CONFIG_FLAG_NOID },
-		{ "batteries", DATA_TYPE_LIST, conf->batteries, 0, 0, CONFIG_FLAG_NOID | CONFIG_FLAG_NOSAVE },
+		{ "agents", DATA_TYPE_STRING_LIST, conf->agents, 0, 0, CONFIG_FLAG_NOID },
+		{ "batteries", DATA_TYPE_STRING_LIST, conf->batteries, 0, 0, CONFIG_FLAG_NOID | CONFIG_FLAG_NOSAVE },
 		{0}
 	};
 	config_function_t sd_funcs[] = {
@@ -187,27 +187,14 @@ int solard_config(void *h, int req, ...) {
 		conf->ap = va_arg(ap,solard_agent_t *);
 		dprintf(1,"name: %s\n", conf->ap->instance_name);
 		dprintf(1,"conf->ap: %p\n", conf->ap);
-		solard_read_config(conf);
-		r = solard_jsinit(conf);
+		r = solard_read_config(conf);
+#ifdef JS
+		if (!r) r = solard_jsinit(conf);
+#endif
 		break;
 #if 0
 	case SOLARD_CONFIG_MESSAGE:
 		r = solard_config_getmsg(conf,va_arg(ap,solard_message_t *));
-		break;
-#endif
-#if 0
-	case SOLARD_CONFIG_GET_INFO:
-		{
-			json_value_t **vp;
-
-			vp = va_arg(ap,json_value_t **);
-			dprintf(1,"vp: %p\n", vp);
-			if (vp) {
-				*vp = solard_info(conf);
-				dprintf(1,"*vp: %p\n", *vp);
-				if (*vp) r = 0;
-			}
-		}
 		break;
 #endif
 	}

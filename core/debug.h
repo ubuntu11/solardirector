@@ -47,23 +47,23 @@ unsigned long mem_peak(void);
 #ifdef malloc
 #undef malloc
 #endif
-#define malloc(s) mem_alloc(s,0)
+#define malloc(s) mem_alloc((s),0)
 #ifdef calloc
 #undef calloc
 #endif
-#define calloc(n,s) mem_alloc((n)*(s),1)
+#define calloc(n,s) mem_alloc(((n)*(s)),1)
 #ifdef realloc
 #undef realloc
 #endif
-#define realloc(n,s) mem_realloc(n,s)
+#define realloc(n,s) mem_realloc((n),(s))
 #ifdef free
 #undef free
 #endif
-#define free(s) mem_free(s)
+#define free(s) mem_free((s))
 #else
 #include <stdlib.h>
-#define mem_alloc(s,c) (c ? calloc(s,1) : malloc(s))
-#define mem_free(m) free(m)
+#define mem_alloc(s,c) ((c) ? calloc((s),(c)) : malloc((s)))
+#define mem_free(m) free((m))
 #define mem_used() 0L
 #define mem_peak() 0L
 #endif

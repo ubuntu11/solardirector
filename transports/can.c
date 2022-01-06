@@ -38,7 +38,7 @@ static void *can_new(void *conf, void *target, void *topts) {
 
 	dprintf(1,"target: %s, topts: %s\n", target, topts);
 
-	s = calloc(1,sizeof(*s));
+	s = calloc(sizeof(*s),1);
 	if (!s) {
 		perror("can_new: malloc");
 		return 0;
@@ -953,11 +953,19 @@ static int can_config(void *h, int func, ...) {
 	return r;
 }
 
+static int can_destroy(void *handle) {
+	can_session_t *s = handle;
+
+        if (s->fd >= 0) can_close(s);
+        free(s);
+        return 0;
+}
+
 solard_driver_t can_driver = {
 	SOLARD_DRIVER_TRANSPORT,
 	"can",
 	can_new,
-	0,
+	can_destroy,
 	can_open,
 	can_close,
 	can_read,

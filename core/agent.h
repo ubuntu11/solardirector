@@ -12,7 +12,9 @@ LICENSE file in the root directory of this source tree.
 
 #include "common.h"
 #include "driver.h"
+#ifdef JS
 #include "jsengine.h"
+#endif
 
 //struct solard_agent;
 typedef struct solard_agent solard_agent_t;
@@ -22,10 +24,11 @@ typedef int (solard_agent_callback_t)(void *);
 struct solard_agent {
 	char name[SOLARD_NAME_LEN];
 	config_t *cp;
-	cfg_info_t *cfg;
+//	cfg_info_t *cfg;
 	char section_name[CFG_SECTION_NAME_SIZE];
 	solard_driver_t *driver;
 	void *handle;
+	json_value_t *driver_info;
 	mqtt_session_t *m;		/* MQTT Session handle */
 	mqtt_config_t mqtt_config;
 	int read_interval;
@@ -35,14 +38,17 @@ struct solard_agent {
 	uint16_t state;			/* States */
 	int pretty;			/* Format json messages for readability (uses more mem) */
 	char instance_name[SOLARD_NAME_LEN]; /* Agent instance name */
+#ifdef JS
 	JSEngine *js;			/* JavaScript engine */
-	char script_dir[256];
-	char init_script[64];
-	char start_script[64];
-	char stop_script[64];
-	char read_script[64];
-	char write_script[64];
-	char run_script[64];
+	JSPropertySpec *props;
+#endif
+	char script_dir[SOLARD_PATH_MAX];
+	char init_script[SOLARD_PATH_MAX];
+	char start_script[SOLARD_PATH_MAX];
+	char stop_script[SOLARD_PATH_MAX];
+	char read_script[SOLARD_PATH_MAX];
+	char write_script[SOLARD_PATH_MAX];
+	char run_script[SOLARD_PATH_MAX];
 	struct {
 		solard_agent_callback_t *func;	/* Called between read and write */
 		void *ctx;
@@ -52,7 +58,6 @@ struct solard_agent {
 	int mem_last;
 #endif
 	char errmsg[128];
-	JSPropertySpec *props;
 	int mqtt_init;
 	int open_before_read;
 	int close_after_read;
@@ -70,14 +75,19 @@ int agent_run(solard_agent_t *ap);
 void agent_mktopic(char *topic, int topicsz, solard_agent_t *ap, char *name, char *func);
 int agent_sub(solard_agent_t *ap, char *name, char *func);
 int agent_pub(solard_agent_t *ap, char *func, char *message, int retain);
+int agent_pubinfo(solard_agent_t *ap, int disp);
 int agent_reply(solard_agent_t *ap, char *topic, int status, char *message);
 int agent_set_callback(solard_agent_t *, solard_agent_callback_t *, void *);
 void agent_add_msghandler(solard_agent_t *, solard_msghandler_t *, void *);
 
 void *agent_get_handle(solard_agent_t *);
-int agent_start_script(solard_agent_t *ap, char *name, int bg, int newcx);
+int agent_start_script(solard_agent_t *ap, char *name);
 #define agent_run_script(a,n) agent_start_script(a,n,0)
 
 #include "config.h"
+
+#ifdef JS
+int agent_jsinit(JSEngine *e, void *);
+#endif
 
 #endif /* __SD_AGENT_H */

@@ -111,7 +111,7 @@ int battery_to_influxdb(battery_session_t *s) {
 void getpack(solard_config_t *conf, char *name, char *data) {
 	solard_battery_t bat,*pp = &bat;
 
-	battery_from_json(&bat,data);
+//	battery_from_json(&bat,data);
 //	battery_dump(&bat,3);
 	/* See if this pack is ours */
 	dprintf(1,"name: %s\n", bat.name);

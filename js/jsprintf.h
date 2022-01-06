@@ -114,6 +114,8 @@ int fctprintf(void (*out)(char character, void* arg), void* arg, const char* for
 JSBool JS_Printf(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval);
 JSBool JS_SPrintf(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval);
 JSBool JS_DPrintf(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval);
+jsval printf_exception(JSContext *cx, char *msg, ...);
+JSBool js_log_write(int flags, JSContext *cx, uintN argc, jsval *vp);
 
 #ifdef __cplusplus
 }

@@ -37,7 +37,7 @@ int jk_get_info(void *handle) {
 
 json_value_t *jk_info(void *handle) {
 	jk_session_t *s = handle;
-	json_value_t *j,*a;
+	json_object_t *j;
 	long mem_start;
 
 	dprintf(1,"s: %p\n", s);
@@ -53,22 +53,17 @@ json_value_t *jk_info(void *handle) {
 
 	j = json_create_object();
 	if (!j) return 0;
-	json_add_string(j,"agent_name","jk");
-	json_add_string(j,"agent_role",SOLARD_ROLE_BATTERY);
-	json_add_string(j,"agent_description","JIKONG BMS Agent");
-	json_add_string(j,"agent_version",jk_version_string);
-	json_add_string(j,"agent_author","Stephen P. Shoecraft");
-	json_add_string(j,"device_manufacturer","JIKONG");
-	json_add_string(j,"device_model",s->info.model);
+	json_object_set_string(j,"agent_name","jk");
+	json_object_set_string(j,"agent_role",SOLARD_ROLE_BATTERY);
+	json_object_set_string(j,"agent_description","JIKONG BMS Agent");
+	json_object_set_string(j,"agent_version",jk_version_string);
+	json_object_set_string(j,"agent_author","Stephen P. Shoecraft");
+	json_object_set_string(j,"device_manufacturer","JIKONG");
+	json_object_set_string(j,"device_model",s->info.model);
 //	sprintf(version,"%.1f",info.version);
-	json_add_string(j,"device_version",s->info.hwvers);
-	a = json_create_array();
-	json_array_add_descriptor(a,(json_descriptor_t){ "CHARGE_CONTROL", DATA_TYPE_BOOL, 0, 0, 0, 2, (char *[]){ "off", "on" } });
-	json_array_add_descriptor(a,(json_descriptor_t){ "DISCHARGE_CONTROL", DATA_TYPE_BOOL, 0, 0, 0, 2, (char *[]){ "off", "on" } });
-	json_array_add_descriptor(a,(json_descriptor_t){ "BALANCE_CONTROL", DATA_TYPE_INT, "select", 3, (int []){ 0,1,2 }, 3, (char *[]){ "off", "on", "charge" } });
-	json_add_value(j,"controls",a);
+	json_object_set_string(j,"device_version",s->info.hwvers);
 //	jk_config_add_info(j);
 
 	dprintf(1,"mem_used: %ld\n",mem_used() - mem_start);
-	return j;
+	return json_object_get_value(j);
 }

@@ -15,67 +15,32 @@ LICENSE file in the root directory of this source tree.
 char *jbd_version_string = "1.0";
 extern solard_driver_t jbd_driver;
 
-int jbd_reset(void *h, int nargs, char **args, char *errmsg) {
-	jbd_session_t *s = h;
-	uint8_t payload[2];
-	int opened,r;
-#if 0
-2021-06-05 16:33:25,846 INFO client 192.168.1.7:45868 -> server pack_01:23 (9 bytes)
--> 0000   DD 5A E3 02 43 21 FE B7 77                         .Z..C!..w
-
-2021-06-05 16:33:26,032 INFO client 192.168.1.7:45868 <= server pack_01:23 (7 bytes)
-<= 0000   DD E3 80 00 FF 80 77                               ......w
-#endif
-
-#if 0
-2021-06-05 19:34:58,910 INFO client 192.168.1.7:39154 -> server pack_01:23 (9 bytes)
--> 0000   DD 5A 0A 02 18 81 FF 5B 77                         .Z.....[w
-
-2021-06-05 19:34:59,150 INFO client 192.168.1.7:39154 <= server pack_01:23 (7 bytes)
-<= 0000   DD 0A 80 00 FF 80 77                               ......w
-#endif
-
-	dprintf(1,"locking...\n");
-	pthread_mutex_lock(&s->lock);
-	if (!solard_check_state(s,JBD_STATE_OPEN)) {
-		if (jbd_driver.open(s)) {
-			pthread_mutex_unlock(&s->lock);
-			return 1;
-		}
-		opened = 1;
-	}
-	jbd_putshort(payload,0x2143);
-	r = jbd_rw(s, JBD_CMD_WRITE, JBD_REG_RESET, payload, sizeof(payload));
-	if (opened) jbd_driver.close(s);
-	dprintf(1,"unlocking...\n");
-	pthread_mutex_unlock(&s->lock);
-        return r;
-}
-
 static int jbd_agent_init(int argc, char **argv, opt_proctab_t *jbd_opts, jbd_session_t *s) {
 	config_property_t jbd_props[] = {
 #if 0
 		{ "name", DATA_TYPE_STRING, &s->name, sizeof(s->name)-1, 0, 0,
 			0, 0, 0, 0, 0, 0, 1, 0 },
 #endif
-		{ "transport", DATA_TYPE_STRING, s->transport, sizeof(s->transport)-1, 0, 0,
-			0, 0, 0, 0, 0, 0, 1, 0 },
-		{ "target", DATA_TYPE_STRING, s->target, sizeof(s->target)-1, 0, 0,
-			0, 0, 0, 0, 0, 0, 1, 0 },
-		{ "topts", DATA_TYPE_STRING, s->topts, sizeof(s->topts)-1, 0, 0,
-			0, 0, 0, 0, 0, 0, 1, 0 },
-		{0}
-	};
-	config_function_t jbd_funcs[] = {
-#if 0
-		{ "get", jbd_get, s, 1 },
-		{ "set", jbd_set, s, 2 },
-		{ "reset", jbd_reset, s, 0 },
-#endif
+		{ "transport", DATA_TYPE_STRING, s->transport, sizeof(s->transport)-1, 0, 0 },
+		{ "target", DATA_TYPE_STRING, s->target, sizeof(s->target)-1, 0, 0 },
+		{ "topts", DATA_TYPE_STRING, s->topts, sizeof(s->topts)-1, 0, 0 },
+                { "capacity", DATA_TYPE_FLOAT, &s->data.capacity, 0, 0, CONFIG_FLAG_READONLY | CONFIG_FLAG_NOSAVE },
+                { "voltage", DATA_TYPE_FLOAT, &s->data.voltage, 0, 0, CONFIG_FLAG_READONLY | CONFIG_FLAG_NOSAVE },
+                { "current", DATA_TYPE_FLOAT, &s->data.current, 0, 0, CONFIG_FLAG_READONLY | CONFIG_FLAG_NOSAVE },
+                { "ntemps", DATA_TYPE_INT, &s->data.ntemps, 0, 0, CONFIG_FLAG_READONLY | CONFIG_FLAG_NOSAVE },
+                { "temps", DATA_TYPE_FLOAT_ARRAY, &s->data.temps, JBD_MAX_TEMPS, 0, CONFIG_FLAG_READONLY | CONFIG_FLAG_NOSAVE },
+                { "ncells", DATA_TYPE_INT, &s->data.ncells, 0, 0, CONFIG_FLAG_READONLY | CONFIG_FLAG_NOSAVE },
+                { "cellvolt", DATA_TYPE_FLOAT_ARRAY, &s->data.cellvolt, JBD_MAX_CELLS, 0, CONFIG_FLAG_READONLY | CONFIG_FLAG_NOSAVE },
+                { "cell_min", DATA_TYPE_FLOAT, &s->data.cell_min, 0, 0, CONFIG_FLAG_READONLY | CONFIG_FLAG_NOSAVE },
+                { "cell_max", DATA_TYPE_FLOAT, &s->data.cell_max, 0, 0, CONFIG_FLAG_READONLY | CONFIG_FLAG_NOSAVE },
+                { "cell_diff", DATA_TYPE_FLOAT, &s->data.cell_diff, 0, 0, CONFIG_FLAG_READONLY | CONFIG_FLAG_NOSAVE },
+                { "cell_avg", DATA_TYPE_FLOAT, &s->data.cell_avg, 0, 0, CONFIG_FLAG_READONLY | CONFIG_FLAG_NOSAVE },
+                { "cell_total", DATA_TYPE_FLOAT, &s->data.cell_total, 0, 0, CONFIG_FLAG_READONLY | CONFIG_FLAG_NOSAVE },
+                { "balancebits", DATA_TYPE_INT, &s->data.balancebits, 0, 0, CONFIG_FLAG_READONLY | CONFIG_FLAG_NOSAVE },
 		{0}
 	};
 
-	s->ap = agent_init(argc,argv,jbd_opts,&jbd_driver,s,jbd_props,jbd_funcs);
+	s->ap = agent_init(argc,argv,jbd_opts,&jbd_driver,s,jbd_props,0);
 	dprintf(1,"ap: %p\n",s->ap);
 	if (!s->ap) return 1;
 	return 0;
@@ -132,7 +97,7 @@ int jbd_tp_init(jbd_session_t *s) {
 			return 1;
 		} else {
 			sprintf(s->errmsg,"transport is empty!\n");
-			return 1;
+			return 2;
 		}
 	}
 
@@ -179,15 +144,14 @@ int jbd_tp_init(jbd_session_t *s) {
 int main(int argc, char **argv) {
 	jbd_session_t *s;
 	char tpinfo[128];
-	int info_flag;
 	opt_proctab_t opts[] = {
 		/* Spec, dest, type len, reqd, default val, have */
 		{ "-t::|transport,target,opts",&tpinfo,DATA_TYPE_STRING,sizeof(tpinfo)-1,0,"" },
-		{ "-I|agent info",&info_flag,DATA_TYPE_LOGICAL,0,0,"no" },
 		OPTS_END
 	};
+	int status;
 #if TESTING
-	char *args[] = { "jbd", "-d", "6", "-c", "jbdtest.conf" };
+	char *args[] = { "jbd", "-d", "5", "-c", "jbdtest.conf" };
 	argc = sizeof(args)/sizeof(char *);
 	argv = args;
 #endif
@@ -197,10 +161,7 @@ int main(int argc, char **argv) {
 	if (!s) return 1;
 
 	/* Agent init */
-	if (jbd_agent_init(argc,argv,opts,s)) {
-		log_error(s->errmsg);
-		return 1;
-	}
+	if (jbd_agent_init(argc,argv,opts,s)) return 1;
 
 	/* -t takes precedence over config */
 	dprintf(1,"tpinfo: %s\n", tpinfo);
@@ -211,15 +172,25 @@ int main(int argc, char **argv) {
 		strncat(s->topts,strele(2,",",tpinfo),sizeof(s->topts)-1);
 	}
 	dprintf(1,"s->transport: %s, s->target: %s, s->topts: %s\n", s->transport, s->target, s->topts);
-	if (jbd_tp_init(s)) {
-		log_error(s->errmsg);
-		return 1;
-	}
+	status = jbd_tp_init(s);
+	if (status == 2) jbd_driver.read = jbd_driver.write = 0;
+	else if (status) goto jbd_init_error;
 
-	if (info_flag) return jbd_info(s);
+	/* Get hwinfo */
+//	if (jbd_get_hwinfo(s)) return 1;
+	jbd_get_hwinfo(s);
+
+#ifdef JS
+	/* Send info */
+	sprintf(tpinfo,"%s/info.js", SOLARD_LIBDIR);
+	agent_start_script(s->ap, tpinfo);
+#endif
 
 	/* Main loop */
 	log_write(LOG_INFO,"Running...\n");
 	agent_run(s->ap);
 	return 0;
+jbd_init_error:
+	log_error(s->errmsg);
+	return 1;
 }

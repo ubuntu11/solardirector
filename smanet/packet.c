@@ -39,6 +39,7 @@ void smanet_free_packet(smanet_packet_t *p) {
 	return;
 }
 
+#if 0
 struct __attribute__((packed, aligned(1))) packet_header {
 	uint16_t src;
 	uint16_t dest;
@@ -46,18 +47,18 @@ struct __attribute__((packed, aligned(1))) packet_header {
 	uint8_t count;
 	uint8_t command;
 };
+#endif
 
-int smanet_recv_packet(smanet_session_t *s, uint8_t count, int command, smanet_packet_t *packet, int timeout) {
+int smanet_recv_packet(smanet_session_t *s, uint8_t rcount, int rcmd, smanet_packet_t *packet, int timeout) {
 	uint8_t data[284];
 	int len,data_len;
-	struct packet_header *h;
-	uint8_t cmo;
+//	struct packet_header *h;
+	uint16_t src, dest;
+	uint8_t control,hcount,hcmd,cmo,*newd;
 
 	if (!s || !packet) return 1;
 
-	dprintf(smanet_dlevel,"command: %02x, count: %02x, timeout: %d\n", command, count, timeout);
-	cmo = (uint8_t) ((char) count) - 1;
-	dprintf(smanet_dlevel,"cmo: %02x\n", cmo);
+	dprintf(smanet_dlevel,"command: %02x, count: %02x, timeout: %d\n", rcmd, rcount, timeout);
 
 	len = smanet_read_frame(s,data,sizeof(data),5);
 	if (len < 0) return -1;
@@ -67,6 +68,7 @@ int smanet_recv_packet(smanet_session_t *s, uint8_t count, int command, smanet_p
 	}
 //	if (debug >= dlevel) bindump("recv packet",data,len);
 
+#if 0
 	/* This method works on little endian */
 	h = (struct packet_header *) data; 
 	dprintf(smanet_dlevel,"src: %04x, dest: %04x, control: %02x, count: %d, command: %02x\n",
@@ -80,21 +82,41 @@ int smanet_recv_packet(smanet_session_t *s, uint8_t count, int command, smanet_p
 	packet->control = h->control;
 	packet->count = h->count;
 	packet->command = h->command;
+#endif
+	src = _getu16(&data[0]);
+	dest = _getu16(&data[2]);
+	control = data[4];
+	hcount = data[5];
+	hcmd = data[6];
+	dprintf(smanet_dlevel,"src: %04x, dest: %04x, control: %02x, hcount: %d, hcmd: %02x\n",
+		src, dest, control, hcount, hcmd);
+	/* Not the packet we're looking for, re-q the request */
+	dprintf(smanet_dlevel,"hcmd: %02x, rcmd: %02x, test: %d\n", hcmd, rcmd, hcmd != rcmd);
+	cmo = (uint8_t) ((char) rcount) - 1;
+	dprintf(smanet_dlevel,"hcount: %02x, cmo: %02x, test: %d\n", hcount, cmo, hcount && hcount != cmo);
+	if ((hcount && hcount != cmo) || hcmd != rcmd) return 3;
+	packet->src = src;
+	packet->dest = dest;
+	packet->control = control;
+	packet->count = hcount;
+	packet->command = hcmd;
 	if (packet->control & CONTROL_GROUP) packet->group = 1;
 	if (packet->control & CONTROL_RESPONSE) packet->response = 1;
 	if (packet->control & CONTROL_BLOCK) packet->block = 1;
 
-	dprintf(smanet_dlevel,"sizeof(h): %d\n", sizeof(*h));
+//	dprintf(smanet_dlevel,"sizeof(h): %d\n", sizeof(*h));
 	data_len = len - 7;
  	dprintf(smanet_dlevel,"data_len: %d\n", data_len);
 	if (packet->dataidx + data_len > packet->datasz) {
-		packet->datasz += 1024;
+		packet->datasz *= 2;
 		dprintf(smanet_dlevel,"NEW datasz: %d\n", packet->datasz);
-		packet->data = realloc(packet->data,packet->datasz);
-		if (!packet->data) return 1;
+		newd = realloc(packet->data,packet->datasz);
+		if (newd) packet->data = newd;
+		else return 1;
 	}
 	if (data_len) {
-		memcpy(&packet->data[packet->dataidx],data + sizeof(*h),data_len);
+//		memcpy(&packet->data[packet->dataidx],data + sizeof(*h),data_len);
+		memcpy(&packet->data[packet->dataidx],&data[7],data_len);
 		packet->dataidx += data_len;
 	}
 	return 0;

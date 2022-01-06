@@ -35,7 +35,7 @@
 #include <string.h>
 #include <errno.h>
 
-#include "printf.h"
+//#include "printf.h"
 #include "jsengine.h"
 #include "jscntxt.h"
 #include "jsinterp.h"
@@ -44,7 +44,15 @@
 #include "jsdtracef.h"
 #include "jsprf.h"
 
-extern int debug;
+#define DEBUG_JSPRINTF 0
+#define dlevel 6
+
+#ifdef DEBUG
+#undef DEBUG
+#endif
+#define DEBUG DEBUG_JSPRINTF
+
+#include "debug.h"
 
 // define this globally (e.g. gcc -DPRINTF_INCLUDE_CONFIG_H ...) to include the
 // printf_config.h header file
@@ -127,7 +135,6 @@ extern int debug;
 #include <float.h>
 #endif
 
-
 // output function type
 typedef void (*out_fct_type)(char character, char** buffer, size_t idx, size_t *maxlen);
 
@@ -143,9 +150,12 @@ typedef struct {
 static inline void _out_buffer(char character, char **buffer, size_t idx, size_t *maxlen) {
 //	dprintf(8,"idx: %d, maxlen: %d\n", (int)idx, (int)*maxlen);
 	if (idx >= *maxlen) {
-		*buffer = realloc(*buffer,*maxlen *= 2);
-		if (!*buffer) return;
-		dprintf(1,"NEW maxlen: %d\n", (int)*maxlen);
+		char *newbuf;
+
+		newbuf = realloc(*buffer,*maxlen *= 2);
+		if (!newbuf) return;
+		*buffer = newbuf;
+		dprintf(dlevel,"NEW maxlen: %d\n", (int)*maxlen);
 	}
 	*(*buffer + idx) = character;
 }
@@ -594,11 +604,23 @@ enum JSARG_TYPE {
 	JSARG_TYPE_MAX
 };
 
-#if 0
+#if DEBUG
 static char *_typenames[JSARG_TYPE_MAX] = { "Char","Short","UChar","UShort","Int","UInt","Double","String" };
 static char *_typestr(int type) {
 	if (type < 0 || type >= JSARG_TYPE_MAX) return "unknown";
 	return _typenames[type];
+}
+
+static char *_js_typenames[JSTYPE_LIMIT] = { "undefined","object","function","string","number","boolean","null","xml" };
+static char *js_typestr(JSContext *cx, jsval v) {
+	if (JSVAL_IS_OBJECT(v)) return "object";
+	else if (JSVAL_IS_INT(v)) return "int";
+	else if (JSVAL_IS_DOUBLE(v)) return "double";
+	else if (JSVAL_IS_STRING(v)) return "string";
+	else if (JSVAL_IS_BOOLEAN(v)) return "bool";
+	else if (JSVAL_IS_NULL(v)) return "null";
+	else if (JSVAL_IS_VOID(v)) return "void";
+	else return "unknown";
 }
 #endif
 
@@ -610,41 +632,40 @@ static char *_typestr(int type) {
 
 static int _getarg(void *dest, JSContext *cx, int *idx, int argc, jsval *argv, enum JSARG_TYPE type) {
 
-//	printf("idx: %d, argc: %d\n", *idx, argc);
+	dprintf(dlevel,"idx: %d, argc: %d\n", *idx, argc);
 	if (*idx >= argc) return _error(cx, "at least 1 argument is required");
 
-#if 0
-	printf("type: %d(%s)\n", type, _typestr(type));
-	if (JSVAL_IS_BOOLEAN(argv[*idx]) || JSVAL_IS_NUMBER(argv[*idx])) {
-		printf("is_bool: %d, is_int: %d, is_dub: %d\n",
-			JSVAL_IS_BOOLEAN(argv[*idx]), JSVAL_IS_INT(argv[*idx]), JSVAL_IS_DOUBLE(argv[*idx]));
-		if (JSVAL_IS_BOOLEAN(argv[*idx])) printf("bool: %d\n", (JSVAL_TO_BOOLEAN(argv[*idx]) ? 1 : 0));
-		else if (JSVAL_IS_INT(argv[*idx])) printf("int: %d\n", JSVAL_TO_INT(argv[*idx]));
-		else if (JSVAL_IS_DOUBLE(argv[*idx])) printf("dub: %f\n", *JSVAL_TO_DOUBLE(argv[*idx]));
-	}
-#endif
+	dprintf(dlevel,"arg[%d] type: %s\n", *idx, js_typestr(cx, argv[*idx]));
 
+	dprintf(dlevel,"arg type: %d(%s)\n", type, _typestr(type));
 	switch(type) {
 	case JSARG_TYPE_CHAR:
-		_getnum(char);
+//		_getnum(char);
+		jsval_to_type(DATA_TYPE_S8,dest,1,cx,argv[*idx]);
 		break;
 	case JSARG_TYPE_UCHAR:
-		_getnum(unsigned char);
+//		_getnum(unsigned char);
+		jsval_to_type(DATA_TYPE_U8,dest,1,cx,argv[*idx]);
 		break;
 	case JSARG_TYPE_SHORT:
-		_getnum(short);
+//		_getnum(short);
+		jsval_to_type(DATA_TYPE_S16,dest,1,cx,argv[*idx]);
 		break;
 	case JSARG_TYPE_USHORT:
-		_getnum(unsigned short);
+//		_getnum(unsigned short);
+		jsval_to_type(DATA_TYPE_U16,dest,1,cx,argv[*idx]);
 		break;
 	case JSARG_TYPE_INT:
-		_getnum(int);
+//		_getnum(int);
+		jsval_to_type(DATA_TYPE_S32,dest,1,cx,argv[*idx]);
 		break;
 	case JSARG_TYPE_UINT:
-		_getnum(unsigned int);
+//		_getnum(unsigned int);
+		jsval_to_type(DATA_TYPE_U32,dest,1,cx,argv[*idx]);
 		break;
 	case JSARG_TYPE_DOUBLE:
-		_getnum(double);
+//		_getnum(double);
+		jsval_to_type(DATA_TYPE_F64,dest,1,cx,argv[*idx]);
 		break;
 	case JSARG_TYPE_STRING:
 		{
@@ -652,8 +673,10 @@ static int _getarg(void *dest, JSContext *cx, int *idx, int argc, jsval *argv, e
 			char *text;
 
 			str = JS_ValueToString(cx, argv[*idx]);
+			dprintf(dlevel,"str: %p\n", str);
 			if (!str) return _error(cx, "unable to convert argument %d to string",*idx);
 			text = JS_EncodeString(cx, str);
+			dprintf(dlevel,"text: %s\n", text);
 			if (!text) return JS_FALSE;
 			*((char **)dest) = text;
 		}
@@ -1030,6 +1053,7 @@ JSBool JS_Printf(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *r
 	buffer = _getbuf(cx,&buflen);
 	if (!buffer) goto JS_Printf_done;
 	ret = js_vsnprintf(_out_buffer, &buffer, &buflen, cx, obj, argc, argv);
+	dprintf(dlevel,"ret: %d\n", ret);
 	if (ret < 0) {
 		JS_ReportError(cx, "internal error");
 		goto JS_Printf_done;
@@ -1052,12 +1076,41 @@ JSBool JS_SPrintf(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *
 	buffer = _getbuf(cx,&buflen);
 	if (!buffer) goto JS_SPrintf_done;
 	ret = js_vsnprintf(_out_buffer, &buffer, &buflen, cx, obj, argc, argv);
+	dprintf(dlevel,"ret: %d\n", ret);
 	if (ret < 0) {
 		JS_ReportError(cx, "internal error");
 		goto JS_SPrintf_done;
 	}
 	buffer[ret] = 0;
 	*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,buffer));
+	r = JS_TRUE;
+JS_SPrintf_done:
+	if (buffer) free(buffer);
+	return r;
+}
+
+JSBool js_log_write(int flags, JSContext *cx, uintN argc, jsval *vp) {
+	char *buffer;
+	size_t buflen;
+	jsval *argv = vp + 2;
+	int ret,r;
+	JSObject *obj;
+
+        obj = JS_THIS_OBJECT(cx, vp);
+        if (!obj) return JS_FALSE;
+
+	r = JS_FALSE;
+	buffer = _getbuf(cx,&buflen);
+	if (!buffer) goto JS_SPrintf_done;
+	ret = js_vsnprintf(_out_buffer, &buffer, &buflen, cx, obj, argc, argv);
+	dprintf(dlevel,"ret: %d\n", ret);
+	if (ret < 0) {
+		JS_ReportError(cx, "internal error");
+		goto JS_SPrintf_done;
+	}
+	buffer[ret] = 0;
+	dprintf(1,"flags: %04x, buffer: %s\n", flags, buffer);
+	log_write(flags,buffer);
 	r = JS_TRUE;
 JS_SPrintf_done:
 	if (buffer) free(buffer);
@@ -1081,6 +1134,7 @@ JSBool JS_DPrintf(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *
 	}
 
 	buffer = _getbuf(cx,&buflen);
+//	printf("buffer: %p, buflen: %d\n", buffer, buflen);
 	if (!buffer) goto JS_DPrintf_done;
 
 	/* get the debug level */
@@ -1089,6 +1143,7 @@ JSBool JS_DPrintf(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *
 		goto JS_DPrintf_done;
 	}
 	level = JSVAL_TO_INT(argv[0]);
+//	printf("level: %d, debug: %d\n", level, debug);
 	if (level > debug) {
 		r = JS_TRUE;
 		goto JS_DPrintf_done;
@@ -1097,6 +1152,7 @@ JSBool JS_DPrintf(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *
 	argv++;
 
 	ret = js_vsnprintf(_out_buffer, &buffer, &buflen, cx, obj, argc, argv);
+	dprintf(dlevel,"ret: %d\n", ret);
 	if (ret < 0) {
 		JS_ReportError(cx, "internal error");
 		goto JS_DPrintf_done;
@@ -1107,12 +1163,15 @@ JSBool JS_DPrintf(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *
 	*prefix = 0;
 	p = prefix;
 	fp = JS_GetScriptedCaller(cx, NULL);
+//	dprintf(dlevel,"fp: %p\n", fp);
 	if (fp) {
 		char *f = jsdtrace_filename(fp);
-		if (f) p += sprintf(buffer, "%s(%d)", f, jsdtrace_linenumber(cx, fp));
+//		dprintf(dlevel,"f: %p\n", f);
+		if (f) p += sprintf(p, "%s(%d)", f, jsdtrace_linenumber(cx, fp));
+//		dprintf(dlevel,"fp->fun: %p\n", fp->fun);
 		if (fp->fun) p += sprintf(p, " %s", jsdtrace_function_name(cx, fp, fp->fun));
 	}
-	dprintf(1,"prefix: %s\n", prefix);
+//	dprintf(dlevel,"prefix: %s\n", prefix);
 
 	if (e->output) ret = e->output("%s: %s",prefix,buffer);
 	*rval = INT_TO_JSVAL(ret);

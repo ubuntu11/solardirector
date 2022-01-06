@@ -56,7 +56,9 @@ struct solard_config {
 	time_t last_check;			/* Last time agents were checked */
 	long start;
 	char notify_path[256];
+#ifdef JS
 	JSPropertySpec *props;
+#endif
 };
 typedef struct solard_config solard_config_t;
 

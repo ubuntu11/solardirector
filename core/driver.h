@@ -25,13 +25,18 @@ enum SOLARD_DRIVER {
 #include "list.h"
 #include "json.h"
 
-//typedef void *(*solard_driver_new_t)(void *,void *,void *);
+typedef void *(*solard_driver_new_t)(void);
 typedef int (*solard_driver_destroy_t)(void *);
 typedef int (*solard_driver_open_t)(void *);
 typedef int (*solard_driver_read_t)(void *,void *,int);
 typedef int (*solard_driver_write_t)(void *,void *,int);
 typedef int (*solard_driver_close_t)(void *);
 typedef int (*solard_driver_config_t)(void *,int,...);
+
+#define DRIVER_FLAG_OPEN_BEFORE_READ
+#define DRIVER_FLAG_CLOSE_AFTER_READ
+#define DRIVER_FLAG_OPEN_BEFORE_WRITE
+#define DRIVER_FLAG_CLOSE_AFTER_WRITE
 
 struct solard_driver {
 	int type;
@@ -48,29 +53,23 @@ typedef struct solard_driver solard_driver_t;
 
 /* Driver configuration requests */
 enum SOLARD_CONFIG {
-	SOLARD_CONFIG_NONE,
 	SOLARD_CONFIG_INIT,		/* Init driver */
-	SOLARD_CONFIG_MESSAGE,		/* Process MQTT message */
+	SOLARD_CONFIG_GET_INFO,		/* Get driver info */
 	SOLARD_CONFIG_GET_DRIVER,	/* Get driver */
 	SOLARD_CONFIG_GET_HANDLE,	/* Get handle */
-	SOLARD_CONFIG_MAX,
 };
 
+#if 0
 #define SOLARD_CONFIG_GET_TARGET SOLARD_CONFIG_GET_DRIVER
 #define SOLARD_CONFIG_SET_TARGET SOLARD_CONFIG_SET_DRIVER
 #define SOLARD_CONFIG_GET_TOPTS SOLARD_CONFIG_GET_HANDLE
 #define SOLARD_CONFIG_SET_TOPTS SOLARD_CONFIG_SET_HANDLE
+#endif
+
+#define DRIVER_TRANSPORT_SIZE 16
+#define DRIVER_TARGET_SIZE 128
+#define DRIVER_TOPTS_SIZE 64
 
 solard_driver_t *find_driver(solard_driver_t **transports, char *name);
-
-enum SOLARD_CLASS {
-	SOLARD_CLASS_STORAGE,
-	SOLARD_CLASS_INVERTER,
-};
-
-enum SOLARD_STORAGE {
-	SOLARD_STORAGE_BASIC,
-	SOLARD_STORAGE_BATTERY,
-};
 
 #endif /* __SOLARD_DRIVER_H */

@@ -13,27 +13,6 @@ LICENSE file in the root directory of this source tree.
 #include <stdlib.h>
 #include "types.h"
 
-#if 0
-/* Define the data types */
-/* XXX ORDER IS IMPORTANT HERE - DO NOT CHANGE */
-enum DATA_TYPE {
-	DATA_TYPE_UNKNOWN = 0,		/* Unknown */
-	DATA_TYPE_CHAR,			/* Array of chars w/no null */
-	DATA_TYPE_STRING,		/* Array of chars w/null */
-	DATA_TYPE_BYTE,			/* char -- 8 bit */
-	DATA_TYPE_SHORT,		/* Short -- 16 bit */
-	DATA_TYPE_INT,			/* Integer -- 16 | 32 bit */
-	DATA_TYPE_LONG,			/* Long -- 32 bit */
-	DATA_TYPE_QUAD,			/* Quadword - 64 bit */
-	DATA_TYPE_FLOAT,		/* Float -- 32 bit */
-	DATA_TYPE_DOUBLE,		/* Double -- 64 bit */
-	DATA_TYPE_LOGICAL,		/* (int) Yes/No,True/False,on/off */
-	DATA_TYPE_DATE,			/* (char 23) DD-MMM-YYYY HH:MM:SS.HH */
-	DATA_TYPE_LIST,			/* Itemlist */
-	DATA_TYPE_MAX			/* Max data type number */
-};
-#endif
-
 /* Special data types */
 #ifndef WIN32
 typedef char byte;
@@ -53,8 +32,7 @@ char *strele(int num,char *delimiter,char *string);
 int is_ip(char *);
 int get_timestamp(char *ts, int tslen, int local);
 int become_daemon(void);
-void conv_type(int dt,void *d,int dl,int st,void *s,int sl);
-char *typestr(int);
+int conv_type(int dtype,void *dest,int dsize,int stype,void *src,int slen);
 int find_config_file(char *,char *,int);
 
 /* Define the log options */

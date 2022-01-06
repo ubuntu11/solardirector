@@ -18,6 +18,9 @@ LICENSE file in the root directory of this source tree.
 #endif
 #include <pthread.h>
 
+#define NFRAMES 2048
+#define NBITMAPS (NFRAMES/32)
+
 struct rdev_config {
 	cfg_info_t *cfg;
 	list modules;
@@ -25,8 +28,8 @@ struct rdev_config {
 	solard_driver_t *can;
 	void *can_handle;
 	pthread_t th;
-	struct can_frame frames[16];
-	uint32_t bitmap;
+	struct can_frame frames[NFRAMES];
+	uint32_t bitmaps[NBITMAPS];
 	uint16_t state;
 };
 typedef struct rdev_config rdev_config_t;

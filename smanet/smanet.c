@@ -8,7 +8,9 @@ LICENSE file in the root directory of this source tree.
 */
 
 #include "smanet_internal.h"
-#include "common.h"
+#include "transports.h"
+
+static solard_driver_t *smanet_transports[] = { &serial_driver, &rdev_driver, 0 };
 
 static int tp_get(void *handle, uint8_t *buffer, int buflen) {
 	smanet_session_t *s = handle;
@@ -19,44 +21,92 @@ static int tp_get(void *handle, uint8_t *buffer, int buflen) {
 	return bytes;
 }
 
+int smanet_connect(smanet_session_t *s, char *transport, char *target, char *topts) {
 
-smanet_session_t *smanet_init(solard_driver_t *tp, void *tp_handle) {
+	dprintf(1,"transport: %s, target: %s, topts: %s\n", transport, target, topts);
+	if (!transport || !target) return 0;
+	if (!strlen(transport) || !strlen(target)) return 0;
+
+	/* Find the driver */
+	s->tp = find_driver(smanet_transports,transport);
+	if (!s->tp) {
+		sprintf(s->errmsg,"unable to find smanet transport: %s", transport);
+		goto smanet_connect_error;
+	}
+
+	/* Create a new driver instance */
+	s->tp_handle = s->tp->new(s, target, topts ? topts : "");
+	if (!s->tp_handle) {
+		sprintf(s->errmsg,"%s_new: %s", transport, strerror(errno));
+		goto smanet_connect_error;
+	}
+
+	dprintf(1,"opening transport...\n");
+	if (!s->tp->open) {
+		sprintf(s->errmsg,"smanet_connect: transport does not have open func!");
+		goto smanet_connect_error;
+	}
+	if (s->tp->open(s->tp_handle)) {
+		sprintf(s->errmsg,"smanet_connect: unable to open transport");
+		goto smanet_connect_error;
+	}
+	dprintf(1,"opened...\n");
+	if (smanet_get_net_start(s,&s->serial,s->type,sizeof(s->type)-1)) {
+		sprintf(s->errmsg,"smanet_connect: unable to start network");
+		goto smanet_connect_error;
+	}
+	dprintf(1,"serial: %ld, type: %s\n", s->serial, s->type);
+	sleep(1);
+	if (smanet_cfg_net_adr(s,0)) {
+		sprintf(s->errmsg,"smanet_connect: unable to configure network address");
+		goto smanet_connect_error;
+	}
+	s->connected = 1;
+	return 0;
+smanet_connect_error:
+	dprintf(1,"error!\n");
+	s->connected = 0;
+	return 1;
+}
+
+smanet_session_t *smanet_init(char *transport, char *target, char *topts) {
 	smanet_session_t *s;
+
+	dprintf(1,"transport: %s, target: %s, topts: %s\n", transport, target, topts);
 
 	s = calloc(1,sizeof(*s));
 	if (!s) {
 		log_write(LOG_SYSERR,"smanet_init: calloc");
-		return 0;
+		goto smanet_init_error;
 	}
-	s->tp = tp;
-	s->tp_handle = tp_handle;
 	s->channels = list_create();
 	pthread_mutex_init(&s->lock, 0);
 	s->b = buffer_init(256,tp_get,s);
-	if (!s->b) goto smanet_init_error;
+	if (!s->b) {
+		log_write(LOG_SYSERR,"smanet_init: buffer_init");
+		goto smanet_init_error;
+	}
 
 	/* We are addr 1 */
 	s->src = 1;
 
-	dprintf(1,"opening transport...\n");
-	if (!tp->open) {
-		log_error("transport does not have open func!\n");
-		goto smanet_init_error;
-	}
-	if (tp->open(tp_handle)) goto smanet_init_error;
-	if (smanet_get_net_start(s,&s->serial,s->type,sizeof(s->type)-1)) goto smanet_init_error;
-	dprintf(smanet_dlevel,"serial: %ld, type: %s\n", s->serial, s->type);
-	sleep(1);
-	if (smanet_cfg_net_adr(s,0)) goto smanet_init_error;
-	sprintf(s->chanpath,"%s/%s.dat",SOLARD_LIBDIR,s->type);
-	dprintf(1,"done!\n");
+	smanet_connect(s, transport, target, topts ? topts : "");
 	return s;
 
 smanet_init_error:
-	if (tp && tp_handle && tp->close) tp->close(tp_handle);
 	free(s);
-	dprintf(1,"error!\n");
 	return 0;
+}
+
+void smanet_destroy(smanet_session_t *s) {
+	if (!s) return;
+	if (s->tp) {
+		if (s->connected) s->tp->close(s->tp_handle);
+		if (s->tp->destroy) s->tp->destroy(s->tp_handle);
+	}
+	list_destroy(s->channels);
+//	if (s->values) free(values);
+	buffer_free(s->b);
 }
 
 char *smanet_get_errmsg(smanet_session_t *s) {

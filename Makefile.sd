@@ -70,6 +70,14 @@ ifeq ($(JS),yes)
 	LIBS+=-L$(SRC_ROOT)/js -ljs$(SUFFIX) -lm
 endif
 
+ifneq ($(LIBNAME),transports)
+	LIBS+=-L$(SRC_ROOT)/transports -ltransports$(SUFFIX)
+endif
+
+ifneq ($(LIBNAME),core)
+	LIBS+=-L$(SRC_ROOT)/core -lcore$(SUFFIX)
+endif
+
 # Paho MQTT
 ifeq ($(PAHO),yes)
 	ifeq ($(STATIC),yes)

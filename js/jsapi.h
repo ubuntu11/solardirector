@@ -1434,7 +1434,12 @@ struct JSConstantSpec {
 	const char *name;
 	jsval value;
 };
-	
+
+struct JSAliasSpec {
+        char *name;
+        char *alias;
+};
+
 struct JSFunctionSpec {
     const char      *name;
     JSNative        call;
@@ -1576,6 +1581,9 @@ JS_DefineProperty(JSContext *cx, JSObject *obj, const char *name, jsval value,
 
 extern JS_PUBLIC_API(JSBool)
 JS_DefineConstants(JSContext *cx, JSObject *obj, JSConstantSpec *cs);
+
+extern JS_PUBLIC_API(JSBool)
+JS_DefineAliases(JSContext *cx, JSObject *obj, JSAliasSpec *as);
 
 /*
  * Determine the attributes (JSPROP_* flags) of a property on a given object.
@@ -2631,39 +2639,6 @@ JS_SetGCZeal(JSContext *cx, uint8 zeal);
 #endif
 
 /************************************************************************/
-#if 0
-/*
- * JSON functions
- */
-typedef JSBool (* JSONWriteCallback)(const jschar *buf, uint32 len, void *data);
-
-/*
- * JSON.stringify as specificed by ES3.1 (draft)
- */
-JS_PUBLIC_API(JSBool)
-JS_Stringify(JSContext *cx, jsval *vp, JSObject *replacer, 
-             JSONWriteCallback callback, void *data);
-
-/*
- * Retrieve a toJSON function. If found, set vp to its result.
- */
-JS_PUBLIC_API(JSBool)
-JS_TryJSON(JSContext *cx, jsval *vp);
-
-/*
- * JSON.parse as specificed by ES3.1 (draft)
- */
-struct JSONParser;
-typedef struct JSONParser JSONParser;
-JS_PUBLIC_API(JSONParser *)
-JS_BeginJSONParse(JSContext *cx, jsval *vp);
-
-JS_PUBLIC_API(JSBool)
-JS_ConsumeJSONText(JSContext *cx, JSONParser *jp, const jschar *data, uint32 len);
-
-JS_PUBLIC_API(JSBool)
-JS_FinishJSONParse(JSContext *cx, JSONParser *jp);
-#else
 /*
  * JSON functions
  */
@@ -2695,13 +2670,29 @@ JS_ConsumeJSONText(JSContext *cx, JSONParser *jp, const jschar *data, uint32 len
 
 JS_PUBLIC_API(JSBool)
 JS_FinishJSONParse(JSContext *cx, JSONParser *jp, jsval reviver);
-#endif
 /************************************************************************/
 
 JSObject *JS_CreateGlobalObject(JSContext *, void *);
 JSObject *js_InitJSONClass(JSContext *cx, JSObject *);
 JSObject *js_InitConsoleClass(JSContext *cx, JSObject *);
 JSObject *js_InitSocketClass(JSContext *cx, JSObject *);
+JSObject *js_InitCANClass(JSContext *cx, JSObject *);
+JSObject *js_InitSerialClass(JSContext *cx, JSObject *);
+JSObject *js_InitBluetoothClass(JSContext *cx, JSObject *);
+JSObject *jscan_new(JSContext *cx, void *tp, void *handle, char *transport, char *target, char *topts);
+
+static inline jsval js_number_to_jsval(JSContext *cx, double n) {
+	jsval v;
+	JS_NewNumberValue(cx, n, &v);
+	return v;
+}
+#define NUMBER_TO_JSVAL(n) js_number_to_jsval(cx,n) /* XXX cx assumed */
+
+#define JS_NUMCONST(n) { #n, NUMBER_TO_JSVAL((n)) }
+#define JS_STRCONST(n) { #n, STRING_TO_JSVAL(JS_NewStringCopyZ(cx,(n))) }
+
+int jsval_to_type(int dtype, void *dest, int dsize, JSContext *cx, jsval val);
+jsval type_to_jsval(JSContext *cx, int type, void *src, int len);
 
 JS_END_EXTERN_C
 

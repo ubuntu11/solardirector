@@ -9,11 +9,6 @@ LICENSE file in the root directory of this source tree.
 
 #include "sb.h"
 
-static int sb_config_getmsg(sb_session_t *s, solard_message_t *msg) {
-	solard_message_dump(msg,1);
-	return 1;
-}
-
 int sb_config(void *h, int req, ...) {
 	sb_session_t *s = h;
 	va_list va;
@@ -23,8 +18,7 @@ int sb_config(void *h, int req, ...) {
 	va_start(va,req);
 	dprintf(1,"req: %d\n", req);
 	switch(req) {
-	case SOLARD_CONFIG_MESSAGE:
-		r = sb_config_getmsg(s, va_arg(va,solard_message_t *));
+	default:
 		break;
 	}
 	dprintf(1,"returning: %d\n", r);

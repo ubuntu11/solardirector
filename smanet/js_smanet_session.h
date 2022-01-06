@@ -1,0 +1,80 @@
+#define SMANET_SESSION_PROPIDS \
+	SMANET_SESSION_PROPERTY_ID_CONNECTED=1,\
+	SMANET_SESSION_PROPERTY_ID_SERIAL=2,\
+	SMANET_SESSION_PROPERTY_ID_CHANPATH=3,\
+	SMANET_SESSION_PROPERTY_ID_TYPE=4,\
+	SMANET_SESSION_PROPERTY_ID_SRC=5,\
+	SMANET_SESSION_PROPERTY_ID_DEST=6,\
+	SMANET_SESSION_PROPERTY_ID_TIMEOUTS=7,\
+	SMANET_SESSION_PROPERTY_ID_COMMANDS=8,\
+	SMANET_SESSION_PROPERTY_ID_ERRMSG=9
+
+#define SMANET_SESSION_GETPROP \
+		case SMANET_SESSION_PROPERTY_ID_CONNECTED:\
+			*rval = BOOLEAN_TO_JSVAL(s->connected);\
+			break;\
+		case SMANET_SESSION_PROPERTY_ID_SERIAL:\
+			*rval = INT_TO_JSVAL(s->serial);\
+			break;\
+		case SMANET_SESSION_PROPERTY_ID_CHANPATH:\
+			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,s->chanpath));\
+			break;\
+		case SMANET_SESSION_PROPERTY_ID_TYPE:\
+			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,s->type));\
+			break;\
+		case SMANET_SESSION_PROPERTY_ID_SRC:\
+			*rval = INT_TO_JSVAL(s->src);\
+			break;\
+		case SMANET_SESSION_PROPERTY_ID_DEST:\
+			*rval = INT_TO_JSVAL(s->dest);\
+			break;\
+		case SMANET_SESSION_PROPERTY_ID_TIMEOUTS:\
+			*rval = INT_TO_JSVAL(s->timeouts);\
+			break;\
+		case SMANET_SESSION_PROPERTY_ID_COMMANDS:\
+			*rval = INT_TO_JSVAL(s->commands);\
+			break;\
+		case SMANET_SESSION_PROPERTY_ID_ERRMSG:\
+			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,s->errmsg));\
+			break;
+
+#define SMANET_SESSION_SETPROP \
+		case SMANET_SESSION_PROPERTY_ID_CONNECTED:\
+			jsvaltotype(DATA_TYPE_BOOLEAN,&s->connected,0,cx,*vp);\
+			break;\
+		case SMANET_SESSION_PROPERTY_ID_SERIAL:\
+			jsvaltotype(DATA_TYPE_S32,&s->serial,0,cx,*vp);\
+			break;\
+		case SMANET_SESSION_PROPERTY_ID_CHANPATH:\
+			jsvaltotype(DATA_TYPE_STRING,&s->chanpath,sizeof(s->chanpath)-1,cx,*vp);\
+			break;\
+		case SMANET_SESSION_PROPERTY_ID_TYPE:\
+			jsvaltotype(DATA_TYPE_STRING,&s->type,sizeof(s->type)-1,cx,*vp);\
+			break;\
+		case SMANET_SESSION_PROPERTY_ID_SRC:\
+			jsvaltotype(DATA_TYPE_U16,&s->src,0,cx,*vp);\
+			break;\
+		case SMANET_SESSION_PROPERTY_ID_DEST:\
+			jsvaltotype(DATA_TYPE_U16,&s->dest,0,cx,*vp);\
+			break;\
+		case SMANET_SESSION_PROPERTY_ID_TIMEOUTS:\
+			jsvaltotype(DATA_TYPE_S32,&s->timeouts,0,cx,*vp);\
+			break;\
+		case SMANET_SESSION_PROPERTY_ID_COMMANDS:\
+			jsvaltotype(DATA_TYPE_S32,&s->commands,0,cx,*vp);\
+			break;\
+		case SMANET_SESSION_PROPERTY_ID_ERRMSG:\
+			jsvaltotype(DATA_TYPE_STRING,&s->errmsg,sizeof(s->errmsg)-1,cx,*vp);\
+			break;
+
+#define SMANET_SESSION_PROPSPEC \
+		{ "connected",SMANET_SESSION_PROPERTY_ID_CONNECTED,JSPROP_ENUMERATE },\
+		{ "serial",SMANET_SESSION_PROPERTY_ID_SERIAL,JSPROP_ENUMERATE },\
+		{ "chanpath",SMANET_SESSION_PROPERTY_ID_CHANPATH,JSPROP_ENUMERATE },\
+		{ "type",SMANET_SESSION_PROPERTY_ID_TYPE,JSPROP_ENUMERATE },\
+		{ "src",SMANET_SESSION_PROPERTY_ID_SRC,JSPROP_ENUMERATE },\
+		{ "dest",SMANET_SESSION_PROPERTY_ID_DEST,JSPROP_ENUMERATE },\
+		{ "timeouts",SMANET_SESSION_PROPERTY_ID_TIMEOUTS,JSPROP_ENUMERATE },\
+		{ "commands",SMANET_SESSION_PROPERTY_ID_COMMANDS,JSPROP_ENUMERATE },\
+		{ "errmsg",SMANET_SESSION_PROPERTY_ID_ERRMSG,JSPROP_ENUMERATE }
+

@@ -12,25 +12,8 @@ LICENSE file in the root directory of this source tree.
 
 #include "driver.h"
 #include "buffer.h"
+#include "types.h"
 #include <pthread.h>
-
-#if 0
-   /* Nur bei analogen Parameterkanaelen sinnvoll! */
-   if ((chan->wCType & CH_PARA) &&
-       (chan->wCType & CH_ANALOG))
-   {
-      *min = TChannel_GetGain( chan );
-      *max = TChannel_GetOffset( chan );
-      return YE_OK; /* alles ok */
-   }
-   else
-   {
-      /* es gibt keinen festgelegten Wertebereich! */
-      *min = -10000000.0;
-      *max =  10000000.0;
-      return YE_NO_RANGE;
-   }
-#endif
 
 /* Channel type */
 #define CH_ANALOG	0x0001
@@ -58,6 +41,7 @@ struct smanet_channel {
 	uint16_t mask;
 	uint16_t format;
 	int type;
+	int count;
 	uint16_t level;
 	char name[17];
 	char unit[9];
@@ -79,9 +63,10 @@ typedef struct smanet_channel smanet_channel_t;
 #define CHANVER_MAJOR 1
 #define CHANVER_MINOR 0
 
+//struct __attribute__((__packed__)) smanet_value {
 struct smanet_value {
-	long timestamp;
-	enum DATA_TYPE type;
+	time_t timestamp;
+	int type;
 	union {
 		uint8_t bval;
 		uint16_t wval;
@@ -95,11 +80,13 @@ typedef struct smanet_value smanet_value_t;
 struct smanet_session {
 	buffer_t *b;
 	list channels;
-	smanet_value_t *values;
+//	smanet_value_t *values;
+	smanet_value_t values[1024];
 	solard_driver_t *tp;
 	void *tp_handle;
+	bool connected;
 	long serial;
-	char chanpath[256];
+//	char chanpath[256];
 	char type[32];
 	uint16_t src;
 	uint16_t dest;
@@ -110,15 +97,25 @@ struct smanet_session {
 };
 typedef struct smanet_session smanet_session_t;
 
-smanet_session_t *smanet_init(solard_driver_t *, void *);
+struct smanet_multreq {
+	char *name;
+	double value;
+	char *text;
+};
+typedef struct smanet_multreq smanet_multreq_t;
 
-void smanet_set_chanpath(smanet_session_t *s, char *);
-int smanet_read_channels(smanet_session_t *s);
-int smanet_save_channels(smanet_session_t *s);
-int smanet_load_channels(smanet_session_t *s);
+smanet_session_t *smanet_init(char *, char *, char *);
+void smanet_destroy(smanet_session_t *s);
+int smanet_connect(smanet_session_t *, char *, char *, char *);
+
+int smanet_read_channels(smanet_session_t *s, char *);
+int smanet_save_channels(smanet_session_t *s, char *);
+int smanet_load_channels(smanet_session_t *s, char *);
 smanet_channel_t *smanet_get_channel(smanet_session_t *s, char *);
 
+int smanet_get_multvalues(smanet_session_t *, smanet_multreq_t *, int);
 int smanet_get_value(smanet_session_t *, char *, double *, char **);
+int smanet_get_chanvalue(smanet_session_t *, smanet_channel_t *, double *, char **);
 int smanet_set_value(smanet_session_t *, char *, double, char *);
 int smanet_reset_value(smanet_session_t *, char *);
 
@@ -141,7 +138,9 @@ int smanet_unlock(smanet_session_t *);
 
 #ifdef JS
 #include "jsengine.h"
-int smanet_jsinit(JSEngine *js, smanet_session_t *s);
+JSObject *js_InitSMANETClass(JSContext *cx, JSObject *global);
+JSObject *jssmanet_new(JSContext *cx, smanet_session_t *s,char *transport, char *target, char *topts);
+int smanet_jsinit(JSEngine *js);
 #endif
 
 #endif

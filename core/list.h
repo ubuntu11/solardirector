@@ -34,6 +34,8 @@ int list_is_next( list );
 typedef int (*list_compare)(void *, void *);
 int list_sort( list, list_compare, int);
 time_t list_updated(list);
+void list_save_next(list);
+void list_restore_next(list);
 
 #ifdef __cplusplus
 }

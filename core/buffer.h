@@ -17,6 +17,7 @@ struct buffer_info {
 };
 
 buffer_t *buffer_init(int,buffer_read_t *,void *);
+void buffer_free(buffer_t *b);
 int buffer_get(buffer_t *,uint8_t *,int);
 
 #endif

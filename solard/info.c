@@ -11,7 +11,7 @@ LICENSE file in the root directory of this source tree.
 
 json_value_t *solard_info(void *handle) {
 //	solard_config_t *s = handle;
-	json_value_t *j, *a;
+	json_object_t *j;
 	long mem_start;
 //	struct utsname uts;
 
@@ -23,18 +23,15 @@ json_value_t *solard_info(void *handle) {
 
 	j = json_create_object();
 	if (!j) return 0;
-	json_add_string(j,"agent_name","solard");
-	json_add_string(j,"agent_role","Controller");
-	json_add_string(j,"agent_description","SolarD Controller");
-	json_add_string(j,"agent_version","1.0");
-	json_add_string(j,"agent_author","Stephen P. Shoecraft");
-//	json_add_string(j,"host",uts.nodename);
-//	json_add_number(j,"pid",getpid());
-	a = json_create_array();
-//	json_array_add_descriptor(a,(json_descriptor_t){ "CHARGE_CONTROL", DATA_TYPE_BOOL, 0, 0, 0, 2, (char *[]){ "off", "on" } });
-	json_add_value(j,"controls",a);
+	json_object_set_string(j,"agent_name","solard");
+	json_object_set_string(j,"agent_class","Management");
+	json_object_set_string(j,"agent_role","Controller");
+	json_object_set_string(j,"agent_description","SolarD Controller");
+	json_object_set_string(j,"agent_version","1.0");
+	json_object_set_string(j,"agent_author","Stephen P. Shoecraft");
+
 //	solard_config_add_info(j);
 
 	dprintf(1,"mem_used: %ld\n",mem_used() - mem_start);
-	return j;
+	return json_object_get_value(j);
 }

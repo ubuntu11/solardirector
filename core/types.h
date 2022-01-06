@@ -12,60 +12,63 @@ LICENSE file in the root directory of this source tree.
 
 #include <stdint.h>
 #include <sys/types.h>
+#include "osendian.h"
 
-#if 0
-        DATA_TYPE_UNKNOWN = 0,          /* Unknown */
-        DATA_TYPE_CHAR,                 /* Array of chars w/no null */
-        DATA_TYPE_STRING,               /* Array of chars w/null */
-        DATA_TYPE_BYTE,                 /* char -- 8 bit */
-        DATA_TYPE_SHORT,                /* Short -- 16 bit */
-        DATA_TYPE_INT,                  /* Integer -- 16 | 32 bit */
-        DATA_TYPE_LONG,                 /* Long -- 32 bit */
-        DATA_TYPE_QUAD,                 /* Quadword - 64 bit */
-        DATA_TYPE_FLOAT,                /* Float -- 32 bit */
-        DATA_TYPE_DOUBLE,               /* Double -- 64 bit */
-        DATA_TYPE_BOOL,                 /* (int) Yes/No,True/False,on/off */
-        DATA_TYPE_DATE,                 /* (char 23) DD-MMM-YYYY HH:MM:SS.HH */
-        DATA_TYPE_LIST,                 /* Itemlist */
-        DATA_TYPE_MAX                   /* Max data type number */
-#endif
+#define DATA_TYPE_NUMBER	0x01000000
+#define DATA_TYPE_ARRAY		0x02000000
+#define DATA_TYPE_MLIST		0x04000000
 
-enum DATA_TYPE {
-	DATA_TYPE_NULL = 0,
-	DATA_TYPE_CHAR,
-	DATA_TYPE_STRING,
-	DATA_TYPE_I8,
-	DATA_TYPE_I16,
-	DATA_TYPE_I32,
-	DATA_TYPE_LONG,
-	DATA_TYPE_I64,
-	DATA_TYPE_F32,
-	DATA_TYPE_F64,
-	DATA_TYPE_BOOL,
-        DATA_TYPE_DATE,			/* (char 23) DD-MMM-YYYY HH:MM:SS.HH */
-        DATA_TYPE_LIST,                 /* Itemlist */
-	DATA_TYPE_I128,
-	DATA_TYPE_U8,
-	DATA_TYPE_U16,
-	DATA_TYPE_U32,
-	DATA_TYPE_U64,
-	DATA_TYPE_U128,
-	DAYA_TYPE_BIT,
-        DATA_TYPE_TIMESTAMP,		/* (char 22) YYYYMMDD HH:MM:SS.HHHH */
-	DATA_TYPE_BITMASK,		/* 0s and 1s */
-	DATA_TYPE_IPV4,			/* Char 64 0s and 1s */
-	DATA_TYPE_IPV6,			/* Char 64 0s and 1s */
-	DATA_TYPE_PHONE,		/* +CC (AAA)NNN-NNNN */
-	DATA_TYPE_EMAIL,		/* a@b.d */
-	DATA_TYPE_MAX,
-};
+#define DATA_TYPE_NULL		0x00000001		/* No value (void) */
+#define DATA_TYPE_STRING	0x00000002		/* Array of chars w/null */
+#define DATA_TYPE_VOIDP		0x00000004		/* untyped/void pointer */
 
+#define DATA_TYPE_S8	(DATA_TYPE_NUMBER | 0x00000001)	/* 8 bit signed int (byte) */
+#define DATA_TYPE_S16	(DATA_TYPE_NUMBER | 0x00000002)	/* 16 bit signed int (short) */
+#define DATA_TYPE_S32	(DATA_TYPE_NUMBER | 0x00000004)	/* 32 bit signed int (long) */
+#define DATA_TYPE_S64	(DATA_TYPE_NUMBER | 0x00000008)	/* 64 bit signed int (quad) */
+#define DATA_TYPE_U8	(DATA_TYPE_NUMBER | 0x00000010)	/* 8 bit unsigned int */
+#define DATA_TYPE_U16	(DATA_TYPE_NUMBER | 0x00000020)	/* 16 bit unsigned int */
+#define DATA_TYPE_U32	(DATA_TYPE_NUMBER | 0x00000040)	/* 32 bit unsigned int */
+#define DATA_TYPE_U64	(DATA_TYPE_NUMBER | 0x00000080)	/* 64 bit unsigned int */
+#define DATA_TYPE_F32	(DATA_TYPE_NUMBER | 0x00000100)	/* 32 bit floating point (float) */
+#define DATA_TYPE_F64	(DATA_TYPE_NUMBER | 0x00000200)	/* 64 bit floating point (double) */
+#define DATA_TYPE_F128	(DATA_TYPE_NUMBER | 0x00000400)	/* 128 bit floating point (long double) */
+#define DATA_TYPE_BOOL	(DATA_TYPE_NUMBER | 0x00008000)	/* 32 bit signed int */
+
+#define DATA_TYPE_STRING_ARRAY	(DATA_TYPE_ARRAY | DATA_TYPE_STRING)
+#define DATA_TYPE_VOIDP_ARRAY	(DATA_TYPE_ARRAY | DATA_TYPE_VOIDP)
+
+#define DATA_TYPE_S8_ARRAY	(DATA_TYPE_ARRAY | DATA_TYPE_S8)
+#define DATA_TYPE_S16_ARRAY	(DATA_TYPE_ARRAY | DATA_TYPE_S16)
+#define DATA_TYPE_S32_ARRAY	(DATA_TYPE_ARRAY | DATA_TYPE_S32)
+#define DATA_TYPE_S64_ARRAY	(DATA_TYPE_ARRAY | DATA_TYPE_S64)
+#define DATA_TYPE_U8_ARRAY	(DATA_TYPE_ARRAY | DATA_TYPE_U8)
+#define DATA_TYPE_U16_ARRAY	(DATA_TYPE_ARRAY | DATA_TYPE_U16)
+#define DATA_TYPE_U32_ARRAY	(DATA_TYPE_ARRAY | DATA_TYPE_U32)
+#define DATA_TYPE_U64_ARRAY	(DATA_TYPE_ARRAY | DATA_TYPE_U64)
+#define DATA_TYPE_F32_ARRAY	(DATA_TYPE_ARRAY | DATA_TYPE_F32)
+#define DATA_TYPE_F64_ARRAY	(DATA_TYPE_ARRAY | DATA_TYPE_F64)
+#define DATA_TYPE_F128_ARRAY	(DATA_TYPE_ARRAY | DATA_TYPE_F128)
+#define DATA_TYPE_BOOL_ARRAY	(DATA_TYPE_ARRAY | DATA_TYPE_BOOL)
+
+#define DATA_TYPE_STRING_LIST	(DATA_TYPE_MLIST | DATA_TYPE_STRING) 	/* list of character strings */
+
+#define DATA_TYPE_ISNUMBER(t) ((t & DATA_TYPE_NUMBER) != 0)
+#define DATA_TYPE_ISARRAY(t) ((t & DATA_TYPE_ARRAY) != 0)
+#define DATA_TYPE_ISLIST(t) ((t & DATA_TYPE_MLIST) != 0)
+
+/* Aliases */
 #define DATA_TYPE_UNKNOWN DATA_TYPE_NULL
-#define DATA_TYPE_BYTE DATA_TYPE_I8
-#define	DATA_TYPE_SHORT DATA_TYPE_I16
-#define	DATA_TYPE_INT DATA_TYPE_I32
-//#define	DATA_TYPE_LONG DATA_TYPE_I32
-#define	DATA_TYPE_QUAD DATA_TYPE_I64
+#define DATA_TYPE_VOID DATA_TYPE_NULL
+#define DATA_TYPE_BYTE DATA_TYPE_S8
+#define DATA_TYPE_BYTE_ARRAY DATA_TYPE_S8_ARRAY
+#define	DATA_TYPE_SHORT DATA_TYPE_S16
+#define	DATA_TYPE_SHORT_ARRAY DATA_TYPE_S16_ARRAY
+#define	DATA_TYPE_INT DATA_TYPE_S32
+#define	DATA_TYPE_LONG DATA_TYPE_S32
+#define	DATA_TYPE_LONG_ARRAY DATA_TYPE_S32_ARRAY
+#define	DATA_TYPE_QUAD DATA_TYPE_S64
+#define	DATA_TYPE_QUAD_ARRAY DATA_TYPE_S64_ARRAY
 #define DATA_TYPE_UBYTE DATA_TYPE_U8
 #define DATA_TYPE_USHORT DATA_TYPE_U16
 #define DATA_TYPE_UINT DATA_TYPE_U32
@@ -73,10 +76,91 @@ enum DATA_TYPE {
 #define DATA_TYPE_UQUAD DATA_TYPE_U64
 #define DATA_TYPE_FLOAT DATA_TYPE_F32
 #define DATA_TYPE_DOUBLE DATA_TYPE_F64
+#define DATA_TYPE_BOOLEAN DATA_TYPE_BOOL
 #define DATA_TYPE_LOGICAL DATA_TYPE_BOOL
-#define DATA_TYPE_STATE DATA_TYPE_BOOL
+#define DATA_TYPE_FLOAT_ARRAY DATA_TYPE_F32_ARRAY
+#define DATA_TYPE_DOUBLE_ARRAY DATA_TYPE_F64_ARRAY
+
+//typedef int data_type_t;
 
 //typedef uint8_t bool_t;
-typedef int bool_t;
+#ifdef bool
+#undef bool
+#endif
+typedef int bool;
+
+char *typestr(int);
+int typesize(int);
+
+#ifndef TARGET_ENDIAN
+#define TARGET_ENDIAN BYTE_ORDER
+#endif
+
+#if TARGET_ENDIAN == LITTLE_ENDIAN
+//#if BYTE_ORDER == LITTLE_ENDIAN
+#if BYTE_ORDER == BIG_ENDIAN
+#define _gets8(v) (int8_t) *((int8_t *)(v))
+#define _gets16(v) (int16_t) *((int16_t *)(v))
+#define _gets32(v) (int32_t) *((int32_t *)(v))
+#define _gets64(v) (int64_t) *((int64_t *)(v))
+#define _getu8(v) (uint8_t) *((uint8_t *)(v))
+#define _getu16(v) (uint16_t) *((uint16_t *)(v))
+#define _getu32(v) (uint32_t) *((uint32_t *)(v))
+#define _getu64(v) (uint64_t) *((uint64_t *)(v))
+#define _getf32(v) (float) *((float *)(v))
+#define _getf64(v) (double) *( (double *)(v) )
+#define _puts8(p,v) *((int8_t *)(p)) = (v)
+#define _puts16(p,v) *((int16_t *)(p)) = (v)
+#define _puts32(p,v) *((int32_t *)(p)) = (v)
+#define _puts64(p,v)  *((int64_t *)(p)) = (v)
+#define _putu8(p,v) *((uint8_t *)(p)) = (v)
+#define _putu16(p,v) *((uint16_t *)(p)) = (v)
+#define _putu32(p,v) *((uint32_t *)(p)) = (v)
+#define _putu64(p,v)  *(u(int64_t *)(p)) = (v)
+#define _putf32(p,v) *((float *)(p)) = (v)
+#define _putf64(p,v) *((double *)(p)) = (v)
+#else
+#define _gets8(v) (char)( ((char)(v)[0]) )
+#define _gets16(v) (short)( ((short)(v)[1]) << 8 | ((short)(v)[0]) )
+#define _gets32(v) (long)( ((long)(v)[3]) << 24 | ((long)(v)[2]) << 16 | ((long)(v)[1]) << 8 | ((long)(v)[0]) )
+#define _gets64(v) (long long)( ((long long)(v)[7]) << 56 | ((long long)(v)[6]) << 48 | ((long long)(v)[5]) << 40 | ((long long)(v)[4]) << 32 | ((long long)(v)[3]) << 24 | ((long long)(v)[2]) << 16 | ((long long)(v)[1]) << 8 | ((long long)(v)[0]) )
+#define _getu8(v) (unsigned char)( ((unsigned char)(v)[0]) )
+#define _getu16(v) (unsigned short)( ((unsigned short)(v)[1]) << 8 | ((unsigned short)(v)[0]) )
+#define _getu32(v) (unsigned long)( ((unsigned long)(v)[3]) << 24 | ((unsigned long)(v)[2]) << 16 | ((unsigned long)(v)[1]) << 8 | ((unsigned long)(v)[0]) )
+#define _getu64(v) (unsigned long long)( ((unsigned long long)(v)[7]) << 56 | ((unsigned long long)(v)[6]) << 48 | ((unsigned long long)(v)[5]) << 40 | ((unsigned long long)(v)[4]) << 32 | ((unsigned long long)(v)[3]) << 24 | ((unsigned long long)(v)[2]) << 16 | ((unsigned long long)(v)[1]) << 8 | ((unsigned long long)(v)[0]) )
+static inline float _getf32(unsigned char *v) {
+	long val = ( ((long)v[3]) << 24 | ((long)v[2]) << 16 | ((long)v[1]) << 8 | ((long)v[0]) );
+	return *(float *)&val;
+}
+static inline float _getf64(unsigned char *v) {
+	long long val = ( ((long long)(v)[7]) << 56 | ((long long)(v)[6]) << 48 | ((long long)(v)[5]) << 40 | ((long long)(v)[4]) << 32 | ((long long)(v)[3]) << 24 | ((long long)(v)[2]) << 16 | ((long long)(v)[1]) << 8 | ((long long)(v)[0]) );
+	return *(double *)&val;
+}
+//#define si_putlong(p,v) { *((p+3)) = ((int)(v) >> 24); *((p)+2) = ((int)(v) >> 16); *((p+1)) = ((int)(v) >> 8); *((p)) = ((int)(v) & 0x0F); }
+
+#define _puts8(p,v) *((int8_t *)(p)) = (v)
+#define _puts16(p,v) { float t; *((p+1)) = ((short)(t = v) >> 8); *((p)) = (short)(t = v); }
+#define _puts32(p,v) { float t; *((p+1)) = ((long)(t = v) >> 24); *((p+1)) = ((long)(t = v) >> 16); *((p+1)) = ((long)(t = v) >> 8); *((p)) = (long)(t = v); }
+#define _puts64(p,v) { double t; *((p+1)) = ((long long)(t = v) >> 56); *((p+1)) = ((long long)(t = v) >> 48); *((p+1)) = ((long long)(t = v) >> 40); *((p+1)) = ((long long)(t = v) >> 32); *((p+1)) = ((long long)(t = v) >> 24); *((p+1)) = ((long long)(t = v) >> 16); *((p+1)) = ((long long)(t = v) >> 8); *((p)) = (long long)(t = v); }
+#define _putu8(p,v) *((uint8_t *)(p)) = (v)
+#define _putu16(p,v) { float t; *((p+1)) = ((unsigned short)(t = v) >> 8); *((p)) = (unsigned short)(t = v); }
+#define _putu32(p,v) { float t; *((p+1)) = ((unsigned long)(t = v) >> 24); *((p+1)) = ((unsigned long)(t = v) >> 16); *((p+1)) = ((unsigned long)(t = v) >> 8); *((p)) = (unsigned long)(t = v); }
+#define _putu64(p,v) { double t; *((p+1)) = ((unsigned long long)(t = v) >> 56); *((p+1)) = ((unsigned long long)(t = v) >> 48); *((p+1)) = ((unsigned long long)(t = v) >> 40); *((p+1)) = ((unsigned long long)(t = v) >> 32); *((p+1)) = ((unsigned long long)(t = v) >> 24); *((p+1)) = ((unsigned long long)(t = v) >> 16); *((p+1)) = ((unsigned long long)(t = v) >> 8); *((p)) = (unsigned long long)(t = v); }
+#define _putf32(p,v) _putu32(p,v)
+#define _putf64(p,v) _putu64(p,v)
+#endif
+#endif
+
+#if 0
+
+static inline float _getf32(unsigned char *v) {
+	long val = ( ((long)v[3]) << 24 | ((long)v[2]) << 16 | ((long)v[1]) << 8 | ((long)v[0]) );
+	return *(float *)&val;
+}
+static inline float _getf64(unsigned char *v) {
+	long long val = ( ((long long)(v)[7]) << 56 | ((long long)(v)[6]) << 48 | ((long long)(v)[5]) << 40 | ((long long)(v)[4]) << 32 | ((long long)(v)[3]) << 24 | ((long long)(v)[2]) << 16 | ((long long)(v)[1]) << 8 | ((long long)(v)[0]) );
+	return *(double *)&val;
+}
+#endif
 
 #endif

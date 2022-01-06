@@ -24,20 +24,37 @@ LICENSE file in the root directory of this source tree.
 static struct {
         int type;
         char *name;
+	int size;
 } type_info[] = {
-        { DATA_TYPE_UNKNOWN,"UNKNOWN" },
-        { DATA_TYPE_CHAR,"CHAR" },
-        { DATA_TYPE_STRING,"STRING" },
-        { DATA_TYPE_BYTE,"BYTE" },
-        { DATA_TYPE_SHORT,"SHORT" },
-        { DATA_TYPE_INT,"INT" },
-        { DATA_TYPE_LONG,"LONG" },
-        { DATA_TYPE_QUAD,"QUAD" },
-        { DATA_TYPE_FLOAT,"FLOAT" },
-        { DATA_TYPE_DOUBLE,"DOUBLE" },
-        { DATA_TYPE_LOGICAL,"BOOLEAN" },
-        { DATA_TYPE_DATE,"DATE" },
-        { DATA_TYPE_LIST,"LIST" },
+        { DATA_TYPE_NULL,"void",0 },
+	{ DATA_TYPE_STRING,"string",0 },
+        { DATA_TYPE_S8,"S8",1 },
+        { DATA_TYPE_S16,"S16",sizeof(short) },
+        { DATA_TYPE_S32,"S32",sizeof(long) },
+        { DATA_TYPE_S64,"S64",sizeof(long long) },
+        { DATA_TYPE_U8,"U8",1 },
+        { DATA_TYPE_U16,"U16",sizeof(short) },
+        { DATA_TYPE_U32,"U32",sizeof(long) },
+        { DATA_TYPE_U64,"U64",sizeof(long long) },
+        { DATA_TYPE_F32,"F32",sizeof(float) },
+        { DATA_TYPE_F64,"F64",sizeof(double) },
+        { DATA_TYPE_F128,"F128",sizeof(long double) },
+        { DATA_TYPE_BOOL,"bool",sizeof(int) },
+        { DATA_TYPE_STRING,"string",0 },
+        { DATA_TYPE_S8_ARRAY,"S8_ARRAY",0 },
+        { DATA_TYPE_S16_ARRAY,"S16_ARRAY",0 },
+        { DATA_TYPE_S32_ARRAY,"S32_ARRAY",0 },
+        { DATA_TYPE_S64_ARRAY,"S64_ARRAY",0 },
+        { DATA_TYPE_U8_ARRAY,"U8_ARRAY",0 },
+        { DATA_TYPE_U16_ARRAY,"U16_ARRAY",0 },
+        { DATA_TYPE_U32_ARRAY,"U32_ARRAY",0 },
+        { DATA_TYPE_U64_ARRAY,"U64_ARRAY",0 },
+        { DATA_TYPE_F32_ARRAY,"F32_ARRAY",0 },
+        { DATA_TYPE_F64_ARRAY,"F64_ARRAY",0 },
+        { DATA_TYPE_F128_ARRAY,"F128_ARRAY",0 },
+        { DATA_TYPE_BOOL_ARRAY,"BOOL_ARRAY",0 },
+        { DATA_TYPE_STRING_ARRAY,"STRING_ARRAY",0 },
+        { DATA_TYPE_STRING_LIST,"STRING_LIST",0 },
         { 0, 0 }
 };
 
@@ -49,6 +66,16 @@ char *typestr(int type) {
                         return(type_info[x].name);
         }
         return("*BAD TYPE*");
+}
+
+int typesize(int type) {
+        register int x;
+
+        for(x=0; type_info[x].name; x++) {
+                if (type_info[x].type == type)
+                        return(type_info[x].size);
+        }
+        return(0);
 }
 
 int name2dt(char *name) {

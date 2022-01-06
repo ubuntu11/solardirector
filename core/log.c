@@ -96,7 +96,7 @@ int log_open(char *ident,char *filename,int opts) {
 //FILE *log_getfp(void) { return(logfp); }
 
 static int _log_write(int type,char *format,va_list ap) {
-	char message[16384];
+	char message[32768];
 	char dt[32],error[128];
 	register char *ptr;
 	int len;
@@ -122,26 +122,6 @@ static int _log_write(int type,char *format,va_list ap) {
 
 		DPRINTF("prepending time...\n");
 		get_timestamp(dt,sizeof(dt),1);
-#if 0
-		/* Fill the tm struct */
-		t = time(NULL);
-		tptr = 0;
-		DPRINTF("getting localtime\n");
-		tptr = localtime(&t);
-		if (!tptr) {
-			DPRINTF("unable to get localtime!\n");
-			return 1;
-		}
-
-		/* Set month to 1 if month is out of range */
-		if (tptr->tm_mon < 0 || tptr->tm_mon > 11) tptr->tm_mon = 0;
-
-		/* Fill string with yyyymmddhhmmss */
-		sprintf(dt,"%04d-%02d-%02d %02d:%02d:%02d",
-			1900+tptr->tm_year,tptr->tm_mon+1,tptr->tm_mday,
-			tptr->tm_hour,tptr->tm_min,tptr->tm_sec);
-#endif
-
 		strcat(dt,"  ");
 		ptr += sprintf(ptr,"%s",dt);
 	}
@@ -178,11 +158,13 @@ static int _log_write(int type,char *format,va_list ap) {
 	}
 
 	/* Strip all CRs and LFs */
+#if 0
 	DPRINTF("stripping newlines...\n");
 	for(ptr = message; *ptr; ptr++) {
 		if (*ptr == '\n' || *ptr == '\r')
 			strcpy(ptr,ptr+1);
 	}
+#endif
 
 	/* Write the message */
 	DPRINTF("message: %s\n",message);

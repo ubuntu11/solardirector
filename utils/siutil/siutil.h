@@ -8,8 +8,12 @@ extern int outfmt;
 extern FILE *outfp;
 extern char sepch;
 extern char *sepstr;
+extern json_object_t *root_object;
 
-void display_info(si_session_t *);
+void dint(char *label, char *format, int val);
+void dfloat(char *label, char *format, float val);
+void dstr(char *label, char *format, char *val);
+void display_data(si_session_t *,int);
 int monitor(si_session_t *,int);
 
 #endif

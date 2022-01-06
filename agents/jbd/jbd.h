@@ -36,6 +36,14 @@ struct jbd_data {
 };
 typedef struct jbd_data jbd_data_t;
 
+struct jbd_hwinfo {
+	char manufacturer[32];		/* Model name */
+	char model[64];			/* Model name */
+	char mfgdate[9];		/* the production date, YYYYMMDD, zero terminated */
+	char version[8];		/* the software version */
+};
+typedef struct jbd_hwinfo jbd_hwinfo_t;
+
 struct jbd_session {
 	solard_agent_t *ap;		/* Agent config pointer */
 	char transport[SOLARD_TRANSPORT_LEN];
@@ -45,13 +53,18 @@ struct jbd_session {
 	void *tp_handle;		/* Our transport handle */
 	int (*can_get)(struct jbd_session *s, int id, uint8_t *data, int datasz);
 	int (*reader)(struct jbd_session *);
+	jbd_hwinfo_t hwinfo;
+	json_value_t *info;
 	uint16_t state;			/* Pack state */
 	jbd_data_t data;
 	uint8_t fetstate;		/* Mosfet state */
 	uint8_t balancing;		/* 0=off, 1=on, 2=only when charging */
 	int errcode;			/* error indicator */
 	char errmsg[256];		/* Error message if errcode !0 */
-	pthread_mutex_t lock;
+//	pthread_mutex_t lock;
+#ifdef JS
+	JSPropertySpec *props;
+#endif
 };
 typedef struct jbd_session jbd_session_t;
 
@@ -78,14 +91,7 @@ struct jbd_protect {
 	unsigned mos: 1;		/* Software lock MOS */
 };
 
-struct jbd_info {
-	char manufacturer[32];		/* Model name */
-	char model[64];			/* Model name */
-	char mfgdate[9];		/* the production date, YYYYMMDD, zero terminated */
-	float version;			/* the software version */
-};
-typedef struct jbd_info jbd_info_t;
-
+#if 0
 /* I/O */
 int jbd_can_get_crc(jbd_session_t *s, int id, unsigned char *data, int len);
 int jbd_can_get(jbd_session_t *s, int id, unsigned char *data, int datalen, int chk);
@@ -109,7 +115,7 @@ int jbd_config(void *,int,...);
 int jbd_config_add_params(json_value_t *);
 
 /* Info */
-int jbd_info(jbd_session_t *);
+int jbd_get_info(jbd_session_t *);
 
 /* Control */
 int jbd_control(void *handle,char *,char *,json_value_t *);
@@ -119,6 +125,41 @@ int balance_control(jbd_session_t *s, int);
 
 /* Misc */
 int jbd_set_mosfet(jbd_session_t *s, int val);
+#endif
+
+/* jbd.c */
+int jbd_verify(uint8_t *buf, int len);
+int jbd_cmd(uint8_t *pkt, int pkt_size, int action, uint16_t reg, uint8_t *data, int data_len);
+int jbd_can_get(jbd_session_t *s, int id, unsigned char *data, int datalen, int chk);
+int jbd_can_get_crc(jbd_session_t *s, int id, unsigned char *data, int len);
+int jbd_rw(jbd_session_t *s, uint8_t action, uint8_t reg, uint8_t *data, int datasz);
+int jbd_eeprom_start(jbd_session_t *s);
+int jbd_eeprom_end(jbd_session_t *s);
+int jbd_set_mosfet(jbd_session_t *s, int val);
+int jbd_reset(void *h, int nargs, char **args, char *errmsg);
+int jbd_can_get_fetstate(struct jbd_session *s);
+int jbd_can_read(struct jbd_session *s);
+int jbd_std_read(jbd_session_t *s);
+int jbd_get_fetstate(jbd_session_t *s);
+int jbd_read(void *handle, void *buf, int buflen);
+int jbd_get_local_can_data(jbd_session_t *s, int id, uint8_t *data, int datasz);
+int jbd_get_remote_can_data(jbd_session_t *s, int id, uint8_t *data, int datasz);
+int jbd_open(void *handle);
+int jbd_close(void *handle);
+int jbd_free(void *handle);
+
+/* info */
+int jbd_get_hwinfo(jbd_session_t *s);
+
+/* config.c */
+int jbd_config_init(jbd_session_t *s);
+int jbd_config_add_params(json_value_t *j);
+int jbd_get(void *h, char *name, char *value, char *errmsg);
+int jbd_getset(void *h, char *name, char *value, char *errmsg);
+int jbd_config(void *h, int req, ...);
+
+/* jsfuncs.c */
+int jbd_jsinit(jbd_session_t *s);
 
 #define jbd_getshort(p) ((short) ((*((p)) << 8) | *((p)+1) ))
 #define jbd_putshort(p,v) { float tmp; *((p)) = ((int)(tmp = v) >> 8); *((p+1)) = (int)(tmp = v); }

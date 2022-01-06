@@ -1,0 +1,10 @@
+var s = SMANET("rdev","192.168.1.7","serial0");
+printf("connected: %s\n", s.connected);
+r = s.load_channels("/opt/sd/lib/SI6048UM.dat");
+printf("r: %d\n", r);
+var save_gd = s.get("GdManStr");
+printf("GdManStr: %s\n", save_gd);
+exit(0);
+s.set("GdManStr","Start");
+printf("new val: %s\n", s.get("GdManStr"));
+s.set("GdManStr",save_gd);

@@ -9,17 +9,17 @@ LICENSE file in the root directory of this source tree.
 
 #include <string.h>
 #include <stdlib.h>
+#include <dirent.h>
 #include "config.h"
 #include "common.h"
 #ifdef __WIN32
 #include <winsock2.h>
 #endif
 
-#define DIRPATH_LEN 256
-char SOLARD_BINDIR[DIRPATH_LEN];
-char SOLARD_ETCDIR[DIRPATH_LEN];
-char SOLARD_LIBDIR[DIRPATH_LEN];
-char SOLARD_LOGDIR[DIRPATH_LEN];
+char SOLARD_BINDIR[SOLARD_PATH_MAX];
+char SOLARD_ETCDIR[SOLARD_PATH_MAX];
+char SOLARD_LIBDIR[SOLARD_PATH_MAX];
+char SOLARD_LOGDIR[SOLARD_PATH_MAX];
 
 #define CFG 1
 #define dlevel 7
@@ -60,7 +60,7 @@ static int _getcfg(cfg_info_t *cfg, char *section_name, char *dest, char *what, 
 			sprintf(dest,"%s/%s",p,what);
 		}
 	} else {
-		strncpy(dest,p,DIRPATH_LEN-1);
+		strncpy(dest,p,SOLARD_PATH_MAX-1);
 	}
 	dprintf(dlevel,"dest: %s\n", dest);
 	r = 0;
@@ -110,7 +110,7 @@ static void _getpath(cfg_info_t *cfg, char *section_name, char *home, char *dest
 static void _setp(char *name,char *value) {
 	int len=strlen(value);
 	if (len > 1 && value[len-1] == '/') value[len-1] = 0;
-	fixpath(value,DIRPATH_LEN-1);
+	fixpath(value,SOLARD_PATH_MAX-1);
 	os_setenv(name,value,1);
 }
 
@@ -304,41 +304,114 @@ int solard_common_config(cfg_info_t *cfg, char *section_name) {
 }
 
 #ifdef JS
-JSBool common_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval, config_t *cp, JSPropertySpec *props) {
+enum COMMON_PROPERTY_ID {
+	COMMON_PROPERTY_ID_NONE,
+	COMMON_PROPERTY_ID_BINDIR,
+	COMMON_PROPERTY_ID_ETCDIR,
+	COMMON_PROPERTY_ID_LIBDIR,
+	COMMON_PROPERTY_ID_LOGDIR,
+};
+
+static JSBool common_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 	int prop_id;
-	config_property_t *p;
 
 	dprintf(dlevel,"is_int: %d\n", JSVAL_IS_INT(id));
 	if(JSVAL_IS_INT(id)) {
 		prop_id = JSVAL_TO_INT(id);
 		dprintf(dlevel,"prop_id: %d\n", prop_id);
-		p = CONFIG_GETMAP(cp,prop_id);
-		if (!p) p = config_get_propbyid(cp,prop_id);
-		if (!p) {
+		switch(prop_id) {
+		case COMMON_PROPERTY_ID_BINDIR:
+			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,SOLARD_BINDIR));
+			break;
+		case COMMON_PROPERTY_ID_ETCDIR:
+			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,SOLARD_ETCDIR));
+			break;
+		case COMMON_PROPERTY_ID_LIBDIR:
+			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,SOLARD_LIBDIR));
+			break;
+		case COMMON_PROPERTY_ID_LOGDIR:
+			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,SOLARD_LOGDIR));
+			break;
+		default:
+			dprintf(1,"not found\n");
 			JS_ReportError(cx, "property not found");
 			return JS_FALSE;
+			break;
 		}
-		*rval = typetojsval(cx,p->type,p->dest,p->len);
 	}
 	return JS_TRUE;
 }
 
-JSBool common_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp, config_t *cp, JSPropertySpec *props) {
+static JSBool common_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp) {
 	int prop_id;
-	config_property_t *p;
 
 	dprintf(dlevel,"is_int: %d\n", JSVAL_IS_INT(id));
 	if(JSVAL_IS_INT(id)) {
 		prop_id = JSVAL_TO_INT(id);
 		dprintf(dlevel,"prop_id: %d\n", prop_id);
-		p = CONFIG_GETMAP(cp,prop_id);
-		if (!p) p = config_get_propbyid(cp,prop_id);
-		if (!p) {
+		switch(prop_id) {
+		case COMMON_PROPERTY_ID_BINDIR:
+			strncpy(SOLARD_BINDIR,JS_GetStringBytes(JSVAL_TO_STRING(*vp)),sizeof(SOLARD_BINDIR)-1);
+			break;
+		case COMMON_PROPERTY_ID_ETCDIR:
+			strncpy(SOLARD_ETCDIR,JS_GetStringBytes(JSVAL_TO_STRING(*vp)),sizeof(SOLARD_ETCDIR)-1);
+			break;
+		case COMMON_PROPERTY_ID_LIBDIR:
+			strncpy(SOLARD_LIBDIR,JS_GetStringBytes(JSVAL_TO_STRING(*vp)),sizeof(SOLARD_LIBDIR)-1);
+			break;
+		case COMMON_PROPERTY_ID_LOGDIR:
+			strncpy(SOLARD_LOGDIR,JS_GetStringBytes(JSVAL_TO_STRING(*vp)),sizeof(SOLARD_LOGDIR)-1);
+			break;
+		default:
+			dprintf(1,"not found\n");
 			JS_ReportError(cx, "property not found");
 			return JS_FALSE;
+			break;
 		}
-		jsvaltotype(p->type,p->dest,p->len,cx,*vp);
 	}
 	return JS_TRUE;
+}
+
+
+JSObject *JSCommon(JSContext *cx, void *priv) {
+#define COMMON_FLAGS JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_EXPORTED
+	JSPropertySpec common_props[] = {
+		{ "SOLARD_BINDIR", COMMON_PROPERTY_ID_BINDIR, COMMON_FLAGS, common_getprop, &common_setprop },
+		{ "SOLARD_ETCDIR", COMMON_PROPERTY_ID_ETCDIR, COMMON_FLAGS, common_getprop, common_setprop },
+		{ "SOLARD_LIBDIR", COMMON_PROPERTY_ID_LIBDIR, COMMON_FLAGS, common_getprop, common_setprop },
+		{ "SOLARD_LOGDIR", COMMON_PROPERTY_ID_LOGDIR, COMMON_FLAGS, common_getprop, common_setprop },
+		{0}
+	};
+	JSConstantSpec common_consts[] = {
+		JS_STRCONST(SOLARD_TOPIC_ROOT),
+		JS_STRCONST(SOLARD_ROLE_CONTROLLER),
+		JS_STRCONST(SOLARD_ROLE_STORAGE),
+		JS_STRCONST(SOLARD_ROLE_BATTERY),
+		JS_STRCONST(SOLARD_ROLE_INVERTER),
+		JS_STRCONST(SOLARD_ROLE_PRODUCER),
+		JS_STRCONST(SOLARD_ROLE_CONSUMER),
+		JS_STRCONST(SOLARD_FUNC_STATUS),
+		JS_STRCONST(SOLARD_FUNC_INFO),
+		JS_STRCONST(SOLARD_FUNC_DATA),
+		JS_STRCONST(SOLARD_FUNC_CONFIG),
+		JS_STRCONST(SOLARD_FUNC_CONTROL),
+		JS_STRCONST(SOLARD_FUNC_CONTROL),
+		{0}
+	};
+	JSObject *obj = JS_GetGlobalObject(cx);
+
+	dprintf(1,"Defining common properties...\n");
+	if(!JS_DefineProperties(cx, obj, common_props)) {
+		dprintf(1,"error defining common properties\n");
+		return 0;
+	}
+	if(!JS_DefineConstants(cx, obj, common_consts)) {
+		dprintf(1,"error defining common constants\n");
+		return 0;
+	}
+	return obj;
+}
+int common_jsinit(JSEngine *e) {
+	return JS_EngineAddInitFunc(e, "common", JSCommon, 0);
 }
 #endif

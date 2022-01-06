@@ -7,15 +7,19 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#define DEBUG_CONV 0
-#define DLEVEL 4
+#define DEBUG_CONV 1
+#define dlevel 4
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <limits.h>
+#include <stdlib.h>
+#include <errno.h>
 #include <ctype.h>
 #include "utils.h"
+#include "list.h"
 
 #ifdef DEBUG
 #undef DEBUG
@@ -29,6 +33,2192 @@ LICENSE file in the root directory of this source tree.
 #include <inttypes.h>
 #endif
 
+typedef enum {
+    STR2INT_SUCCESS,
+    STR2INT_OVERFLOW,
+    STR2INT_UNDERFLOW,
+    STR2INT_INCONVERTIBLE
+} str2int_errno;
+
+/* Convert string s to int out.
+ *
+ * @param[out] out The converted int. Cannot be NULL.
+ *
+ * @param[in] s Input string to be converted.
+ *
+ *     The format is the same as strtol,
+ *     except that the following are inconvertible:
+ *
+ *     - empty string
+ *     - leading whitespace
+ *     - any trailing characters that are not part of the number
+ *
+ *     Cannot be NULL.
+ *
+ * @param[in] base Base to interpret string in. Same range as strtol (2 to 36).
+ *
+ * @return Indicates if the operation succeeded, or why it failed.
+ */
+str2int_errno str2int(int *out, char *s, int base) {
+    char *end;
+    if (s[0] == '\0' || isspace(s[0]))
+        return STR2INT_INCONVERTIBLE;
+    errno = 0;
+    long l = strtol(s, &end, base);
+    /* Both checks are needed because INT_MAX == LONG_MAX is possible. */
+    if (l > INT_MAX || (errno == ERANGE && l == LONG_MAX))
+        return STR2INT_OVERFLOW;
+    if (l < INT_MIN || (errno == ERANGE && l == LONG_MIN))
+        return STR2INT_UNDERFLOW;
+    if (*end != '\0')
+        return STR2INT_INCONVERTIBLE;
+    *out = l;
+    return STR2INT_SUCCESS;
+}
+
+void str2list(list *dest,char *src) {
+	char temp[2048];
+	int tmax,tlen,q;
+	register char *p;
+	register int i;
+
+	dprintf(dlevel,"dest: %p, src: %s", dest, src);
+	*dest = list_create();
+	dprintf(dlevel,"src: %s",src);
+	if (!src) return;
+
+	p = src;
+	tmax = sizeof(temp)-1;
+	i = q = 0;
+	while(*p) {
+		dprintf(dlevel,"p: %c, q: %d\n", *p, q);
+		if (*p == '\"' && !q)
+			q = 1;
+		else if (*p == '\"' && q)
+			q = 0;
+		else if ((*p == ',' && !q) || i >= tmax) {
+			trim(temp);
+			tlen = strlen(temp);
+			dprintf(dlevel,"adding: %s (%d)\n", temp, tlen);
+			if (tlen) list_add(*dest,temp,tlen+1);
+			i = 0;
+		} else {
+			temp[i++] = *p;
+		}
+		p++;
+	}
+	if (i) {
+		temp[i] = 0;
+		trim(temp);
+		tlen = strlen(temp);
+		dprintf(dlevel,"adding: %s (%d)\n", temp, tlen);
+		if (tlen) list_add(*dest,temp,tlen+1);
+	}
+#if DEBUG
+	dprintf(dlevel,"list:");
+	list_reset(*dest);
+	while( (p = list_get_next(*dest)) != 0) dprintf(dlevel,"\t%s",p);
+#endif
+	return;
+}
+
+int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
+	register int i;
+	int return_len;
+
+	return_len = -1;
+	switch(dt) {
+	case DATA_TYPE_STRING:
+	    {
+		char *dest = d;
+		switch(st) {
+		case DATA_TYPE_STRING:
+			*dest = 0;
+			strncat(dest,s,dl);
+			trim(dest);
+			break;
+		case DATA_TYPE_S8:
+			return_len = snprintf(d,dl,"%d",*((int8_t *)s));
+			break;
+		case DATA_TYPE_S16:
+			return_len = snprintf(d,dl,"%d",*((int16_t *)s));
+			break;
+		case DATA_TYPE_S32:
+			return_len = snprintf(d,dl,"%d",*((int32_t *)s));
+			break;
+		case DATA_TYPE_S64:
+			return_len = snprintf(d,dl,"%lld",*((long long *)s));
+			break;
+		case DATA_TYPE_U8:
+			return_len = snprintf(d,dl,"%u",*((uint8_t *)s));
+			break;
+		case DATA_TYPE_U16:
+			return_len = snprintf(d,dl,"%d",*((uint16_t *)s));
+			break;
+		case DATA_TYPE_U32:
+			return_len = snprintf(d,dl,"%d",*((uint32_t *)s));
+			break;
+		case DATA_TYPE_U64:
+			return_len = snprintf(d,dl,"%lld",*((unsigned long long int *)s));
+			break;
+		case DATA_TYPE_F32:
+			return_len = snprintf(d,dl,"%f",*((float *)s));
+			break;
+		case DATA_TYPE_F64:
+			return_len = snprintf(d,dl,"%lf",*((double *)s));
+			break;
+		case DATA_TYPE_BOOL:
+			return_len = snprintf(d,dl,"%s", *((int *)s) ? "true" : "false");
+			break;
+		case DATA_TYPE_F32_ARRAY:
+		    {
+			float *fa = s;
+			char *p = d;
+
+			*p = 0;
+			for(i=0; i < sl; i++) p += sprintf(p,"%s%f",(i ? "," : ""),fa[i]);
+			return_len = strlen((char *)d);
+		    }
+		    break;
+		case DATA_TYPE_S8_ARRAY:
+		case DATA_TYPE_S16_ARRAY:
+		case DATA_TYPE_S32_ARRAY:
+		case DATA_TYPE_S64_ARRAY:
+		case DATA_TYPE_U8_ARRAY:
+		case DATA_TYPE_U16_ARRAY:
+		case DATA_TYPE_U32_ARRAY:
+		case DATA_TYPE_U64_ARRAY:
+		case DATA_TYPE_F64_ARRAY:
+		case DATA_TYPE_STRING_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		    {
+			int first,dlen,slen;
+			char *ptr, *dest = d;
+			list *src = s;
+
+			dprintf(dlevel,"dest: %p, dlen: %d, list: %p, sl: %d", dest, dl, s, sl);
+			dlen = *dest = 0;
+			if (!s) break;
+			first = 1;
+			list_reset(*src);
+			while( (ptr = list_get_next(*src)) != 0) {
+				slen = strlen(ptr);
+				dprintf(dlevel,"list2str: ptr: %s, len: %d",ptr,slen);
+				dprintf(dlevel,"dlen: %d, slen: %d, dl: %d",dlen,slen,dl);
+				if (dlen + slen >= dl) break;
+				if (first == 0) strcat(dest,",");
+				else first = 0;
+				strcat(dest,ptr);
+			}
+			dprintf(dlevel,"dest: %s",dest);
+		    }
+		    break;
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_S8:
+	    {
+		switch(st) {
+		case DATA_TYPE_STRING:
+			*((int8_t *)d) = strtol(s,0,0);
+			break;
+		case DATA_TYPE_S8:
+			*((int8_t *)d) = *((int8_t *)s);
+			break;
+		case DATA_TYPE_S16:
+			*((int8_t *)d) = *((int16_t *)s);
+			break;
+		case DATA_TYPE_S32:
+			*((int8_t *)d) = *((int32_t *)s);
+			break;
+		case DATA_TYPE_S64:
+			*((int8_t *)d) = *((int64_t *)s);
+			break;
+		case DATA_TYPE_U8:
+			*((int8_t *)d) = *((uint8_t *)s);
+			break;
+		case DATA_TYPE_U16:
+			*((int8_t *)d) = *((uint16_t *)s);
+			break;
+		case DATA_TYPE_U32:
+			*((int8_t *)d) = *((uint32_t *)s);
+			break;
+		case DATA_TYPE_U64:
+			*((int8_t *)d) = *((uint64_t *)s);
+			break;
+		case DATA_TYPE_F32:
+			*((int8_t *)d) = *((float *)s);
+			break;
+		case DATA_TYPE_F64:
+			*((int8_t *)d) = *((double *)s);
+			break;
+		case DATA_TYPE_F128:
+			*((int8_t *)d) = *((long double *)s);
+			break;
+		case DATA_TYPE_BOOL:
+			*((int8_t *)d) = *((int *)s);
+			break;
+		case DATA_TYPE_STRING_ARRAY:
+		    {
+			char **sa = (char **)s;
+			for(i=0; i < sl; i++) dprintf(1,"sa[%d]: %s\n", i, sa[i]);
+			*((int8_t *)d) = strtol(sa[0],0,0);
+		    }
+		    break;
+		case DATA_TYPE_S8_ARRAY:
+		case DATA_TYPE_S16_ARRAY:
+		case DATA_TYPE_S32_ARRAY:
+		case DATA_TYPE_S64_ARRAY:
+		case DATA_TYPE_U8_ARRAY:
+		case DATA_TYPE_U16_ARRAY:
+		case DATA_TYPE_U32_ARRAY:
+		case DATA_TYPE_U64_ARRAY:
+		case DATA_TYPE_F32_ARRAY:
+		case DATA_TYPE_F64_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_S16:
+	    {
+		switch(st) {
+		case DATA_TYPE_STRING:
+			*((int16_t *)d) = strtol(s,0,0);
+			break;
+		case DATA_TYPE_S8:
+			*((int16_t *)d) = *((int8_t *)s);
+			break;
+		case DATA_TYPE_S16:
+			*((int16_t *)d) = *((int16_t *)s);
+			break;
+		case DATA_TYPE_S32:
+			*((int16_t *)d) = *((int32_t *)s);
+			break;
+		case DATA_TYPE_S64:
+			*((int16_t *)d) = *((int64_t *)s);
+			break;
+		case DATA_TYPE_U8:
+			*((int16_t *)d) = *((uint8_t *)s);
+			break;
+		case DATA_TYPE_U16:
+			*((int16_t *)d) = *((uint16_t *)s);
+			break;
+		case DATA_TYPE_U32:
+			*((int16_t *)d) = *((uint32_t *)s);
+			break;
+		case DATA_TYPE_U64:
+			*((int16_t *)d) = *((uint64_t *)s);
+			break;
+		case DATA_TYPE_F32:
+			*((int16_t *)d) = *((float *)s);
+			break;
+		case DATA_TYPE_F64:
+			*((int16_t *)d) = *((double *)s);
+			break;
+		case DATA_TYPE_F128:
+			*((int16_t *)d) = *((long double *)s);
+			break;
+		case DATA_TYPE_BOOL:
+			*((int16_t *)d) = *((int *)s);
+			break;
+		case DATA_TYPE_STRING_ARRAY:
+		    {
+			char **sa = (char **)s;
+			*((int16_t *)d) = strtol(sa[0],0,0);
+		    }
+		    break;
+		case DATA_TYPE_S8_ARRAY:
+		case DATA_TYPE_S16_ARRAY:
+		case DATA_TYPE_S32_ARRAY:
+		case DATA_TYPE_S64_ARRAY:
+		case DATA_TYPE_U8_ARRAY:
+		case DATA_TYPE_U16_ARRAY:
+		case DATA_TYPE_U32_ARRAY:
+		case DATA_TYPE_U64_ARRAY:
+		case DATA_TYPE_F32_ARRAY:
+		case DATA_TYPE_F64_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_S32:
+	    {
+		switch(st) {
+		case DATA_TYPE_STRING:
+			*((int32_t *)d) = strtol(s,0,0);
+			break;
+		case DATA_TYPE_S8:
+			*((int32_t *)d) = *((int8_t *)s);
+			break;
+		case DATA_TYPE_S16:
+			*((int32_t *)d) = *((int16_t *)s);
+			break;
+		case DATA_TYPE_S32:
+			*((int32_t *)d) = *((int32_t *)s);
+			break;
+		case DATA_TYPE_S64:
+			*((int32_t *)d) = *((int64_t *)s);
+			break;
+		case DATA_TYPE_U8:
+			*((int32_t *)d) = *((uint8_t *)s);
+			break;
+		case DATA_TYPE_U16:
+			*((int32_t *)d) = *((uint16_t *)s);
+			break;
+		case DATA_TYPE_U32:
+			*((int32_t *)d) = *((uint32_t *)s);
+			break;
+		case DATA_TYPE_U64:
+			*((int32_t *)d) = *((uint64_t *)s);
+			break;
+		case DATA_TYPE_F32:
+			*((int32_t *)d) = *((float *)s);
+			break;
+		case DATA_TYPE_F64:
+			*((int32_t *)d) = *((double *)s);
+			break;
+		case DATA_TYPE_F128:
+			*((int32_t *)d) = *((long double *)s);
+			break;
+		case DATA_TYPE_BOOL:
+			*((int32_t *)d) = *((int *)s);
+			break;
+		case DATA_TYPE_STRING_ARRAY:
+		    {
+			char **sa = (char **)s;
+			for(i=0; i < sl; i++) dprintf(1,"sa[%d]: %s\n", i, sa[i]);
+			*((int32_t *)d) = strtol(sa[0],0,0);
+		    }
+		    break;
+		case DATA_TYPE_S8_ARRAY:
+		case DATA_TYPE_S16_ARRAY:
+		case DATA_TYPE_S32_ARRAY:
+		case DATA_TYPE_S64_ARRAY:
+		case DATA_TYPE_U8_ARRAY:
+		case DATA_TYPE_U16_ARRAY:
+		case DATA_TYPE_U32_ARRAY:
+		case DATA_TYPE_U64_ARRAY:
+		case DATA_TYPE_F32_ARRAY:
+		case DATA_TYPE_F64_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_S64:
+	    {
+		switch(st) {
+		case DATA_TYPE_STRING:
+			*((int64_t *)d) = strtol(s,0,0);
+			break;
+		case DATA_TYPE_S8:
+			*((int64_t *)d) = *((int8_t *)s);
+			break;
+		case DATA_TYPE_S16:
+			*((int64_t *)d) = *((int16_t *)s);
+			break;
+		case DATA_TYPE_S32:
+			*((int64_t *)d) = *((int32_t *)s);
+			break;
+		case DATA_TYPE_S64:
+			*((int64_t *)d) = *((int64_t *)s);
+			break;
+		case DATA_TYPE_U8:
+			*((int64_t *)d) = *((uint8_t *)s);
+			break;
+		case DATA_TYPE_U16:
+			*((int64_t *)d) = *((uint16_t *)s);
+			break;
+		case DATA_TYPE_U32:
+			*((int64_t *)d) = *((uint32_t *)s);
+			break;
+		case DATA_TYPE_U64:
+			*((int64_t *)d) = *((uint64_t *)s);
+			break;
+		case DATA_TYPE_F32:
+			*((int64_t *)d) = *((float *)s);
+			break;
+		case DATA_TYPE_F64:
+			*((int64_t *)d) = *((double *)s);
+			break;
+		case DATA_TYPE_F128:
+			*((int64_t *)d) = *((long double *)s);
+			break;
+		case DATA_TYPE_BOOL:
+			*((int64_t *)d) = *((int *)s);
+			break;
+		case DATA_TYPE_STRING_ARRAY:
+		    {
+			char **sa = (char **)s;
+			*((int64_t *)d) = strtoll(sa[0],0,0);
+		    }
+		    break;
+		case DATA_TYPE_S8_ARRAY:
+		case DATA_TYPE_S16_ARRAY:
+		case DATA_TYPE_S32_ARRAY:
+		case DATA_TYPE_S64_ARRAY:
+		case DATA_TYPE_U8_ARRAY:
+		case DATA_TYPE_U16_ARRAY:
+		case DATA_TYPE_U32_ARRAY:
+		case DATA_TYPE_U64_ARRAY:
+		case DATA_TYPE_F32_ARRAY:
+		case DATA_TYPE_F64_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_U8:
+	    {
+		switch(st) {
+		case DATA_TYPE_STRING:
+			*((uint8_t *)d) = strtol(s,0,0);
+			break;
+		case DATA_TYPE_S8:
+			*((uint8_t *)d) = *((int8_t *)s);
+			break;
+		case DATA_TYPE_S16:
+			*((uint8_t *)d) = *((int16_t *)s);
+			break;
+		case DATA_TYPE_S32:
+			*((uint8_t *)d) = *((int32_t *)s);
+			break;
+		case DATA_TYPE_S64:
+			*((uint8_t *)d) = *((int64_t *)s);
+			break;
+		case DATA_TYPE_U8:
+			*((uint8_t *)d) = *((uint8_t *)s);
+			break;
+		case DATA_TYPE_U16:
+			*((uint8_t *)d) = *((uint16_t *)s);
+			break;
+		case DATA_TYPE_U32:
+			*((uint8_t *)d) = *((uint32_t *)s);
+			break;
+		case DATA_TYPE_U64:
+			*((uint8_t *)d) = *((uint64_t *)s);
+			break;
+		case DATA_TYPE_F32:
+			*((uint8_t *)d) = *((float *)s);
+			break;
+		case DATA_TYPE_F64:
+			*((uint8_t *)d) = *((double *)s);
+			break;
+		case DATA_TYPE_F128:
+			*((uint8_t *)d) = *((long double *)s);
+			break;
+		case DATA_TYPE_BOOL:
+			*((uint8_t *)d) = *((int *)s);
+			break;
+		case DATA_TYPE_STRING_ARRAY:
+		    {
+			char **sa = (char **)s;
+			*((uint8_t *)d) = strtol(sa[0],0,0);
+		    }
+		    break;
+		case DATA_TYPE_S8_ARRAY:
+		case DATA_TYPE_S16_ARRAY:
+		case DATA_TYPE_S32_ARRAY:
+		case DATA_TYPE_S64_ARRAY:
+		case DATA_TYPE_U8_ARRAY:
+		case DATA_TYPE_U16_ARRAY:
+		case DATA_TYPE_U32_ARRAY:
+		case DATA_TYPE_U64_ARRAY:
+		case DATA_TYPE_F32_ARRAY:
+		case DATA_TYPE_F64_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_U16:
+	    {
+		switch(st) {
+		case DATA_TYPE_STRING:
+			*((uint16_t *)d) = strtol(s,0,0);
+			break;
+		case DATA_TYPE_S8:
+			*((uint16_t *)d) = *((int8_t *)s);
+			break;
+		case DATA_TYPE_S16:
+			*((uint16_t *)d) = *((int16_t *)s);
+			break;
+		case DATA_TYPE_S32:
+			*((uint16_t *)d) = *((int32_t *)s);
+			break;
+		case DATA_TYPE_S64:
+			*((uint16_t *)d) = *((int64_t *)s);
+			break;
+		case DATA_TYPE_U8:
+			*((uint16_t *)d) = *((uint8_t *)s);
+			break;
+		case DATA_TYPE_U16:
+			*((uint16_t *)d) = *((uint16_t *)s);
+			break;
+		case DATA_TYPE_U32:
+			*((uint16_t *)d) = *((uint32_t *)s);
+			break;
+		case DATA_TYPE_U64:
+			*((uint16_t *)d) = *((uint64_t *)s);
+			break;
+		case DATA_TYPE_F32:
+			*((uint16_t *)d) = *((float *)s);
+			break;
+		case DATA_TYPE_F64:
+			*((uint16_t *)d) = *((double *)s);
+			break;
+		case DATA_TYPE_F128:
+			*((uint16_t *)d) = *((long double *)s);
+			break;
+		case DATA_TYPE_BOOL:
+			*((uint16_t *)d) = *((int *)s);
+			break;
+		case DATA_TYPE_STRING_ARRAY:
+		    {
+			char **sa = (char **)s;
+			*((uint16_t *)d) = strtol(sa[0],0,0);
+		    }
+		    break;
+		case DATA_TYPE_S8_ARRAY:
+		case DATA_TYPE_S16_ARRAY:
+		case DATA_TYPE_S32_ARRAY:
+		case DATA_TYPE_S64_ARRAY:
+		case DATA_TYPE_U8_ARRAY:
+		case DATA_TYPE_U16_ARRAY:
+		case DATA_TYPE_U32_ARRAY:
+		case DATA_TYPE_U64_ARRAY:
+		case DATA_TYPE_F32_ARRAY:
+		case DATA_TYPE_F64_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_U32:
+	    {
+		switch(st) {
+		case DATA_TYPE_STRING:
+			*((uint32_t *)d) = strtoul(s,0,0);
+			break;
+		case DATA_TYPE_S8:
+			*((uint32_t *)d) = *((int8_t *)s);
+			break;
+		case DATA_TYPE_S16:
+			*((uint32_t *)d) = *((int16_t *)s);
+			break;
+		case DATA_TYPE_S32:
+			*((uint32_t *)d) = *((int32_t *)s);
+			break;
+		case DATA_TYPE_S64:
+			*((uint32_t *)d) = *((int64_t *)s);
+			break;
+		case DATA_TYPE_U8:
+			*((uint32_t *)d) = *((uint8_t *)s);
+			break;
+		case DATA_TYPE_U16:
+			*((uint32_t *)d) = *((uint16_t *)s);
+			break;
+		case DATA_TYPE_U32:
+			*((uint32_t *)d) = *((uint32_t *)s);
+			break;
+		case DATA_TYPE_U64:
+			*((uint32_t *)d) = *((uint64_t *)s);
+			break;
+		case DATA_TYPE_F32:
+			*((uint32_t *)d) = *((float *)s);
+			break;
+		case DATA_TYPE_F64:
+			*((uint32_t *)d) = *((double *)s);
+			break;
+		case DATA_TYPE_F128:
+			*((uint32_t *)d) = *((long double *)s);
+			break;
+		case DATA_TYPE_BOOL:
+			*((uint32_t *)d) = *((int *)s);
+			break;
+		case DATA_TYPE_STRING_ARRAY:
+		    {
+			char **sa = (char **)s;
+			*((uint32_t *)d) = strtol(sa[0],0,0);
+		    }
+		case DATA_TYPE_S8_ARRAY:
+		case DATA_TYPE_S16_ARRAY:
+		case DATA_TYPE_S32_ARRAY:
+		case DATA_TYPE_S64_ARRAY:
+		case DATA_TYPE_U8_ARRAY:
+		case DATA_TYPE_U16_ARRAY:
+		case DATA_TYPE_U32_ARRAY:
+		case DATA_TYPE_U64_ARRAY:
+		case DATA_TYPE_F32_ARRAY:
+		case DATA_TYPE_F64_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_U64:
+	    {
+		switch(st) {
+		case DATA_TYPE_STRING:
+			*((uint64_t *)d) = strtol(s,0,0);
+			break;
+		case DATA_TYPE_S8:
+			*((uint64_t *)d) = *((int8_t *)s);
+			break;
+		case DATA_TYPE_S16:
+			*((uint64_t *)d) = *((int16_t *)s);
+			break;
+		case DATA_TYPE_S32:
+			*((uint64_t *)d) = *((int32_t *)s);
+			break;
+		case DATA_TYPE_S64:
+			*((uint64_t *)d) = *((int64_t *)s);
+			break;
+		case DATA_TYPE_U8:
+			*((uint64_t *)d) = *((uint8_t *)s);
+			break;
+		case DATA_TYPE_U16:
+			*((uint64_t *)d) = *((uint16_t *)s);
+			break;
+		case DATA_TYPE_U32:
+			*((uint64_t *)d) = *((uint32_t *)s);
+			break;
+		case DATA_TYPE_U64:
+			*((uint64_t *)d) = *((uint64_t *)s);
+			break;
+		case DATA_TYPE_F32:
+			*((uint64_t *)d) = *((float *)s);
+			break;
+		case DATA_TYPE_F64:
+			*((uint64_t *)d) = *((double *)s);
+			break;
+		case DATA_TYPE_F128:
+			*((uint64_t *)d) = *((long double *)s);
+			break;
+		case DATA_TYPE_BOOL:
+			*((uint64_t *)d) = *((int *)s);
+			break;
+		case DATA_TYPE_STRING_ARRAY:
+		    {
+			char **sa = (char **)s;
+			*((uint64_t *)d) = strtol(sa[0],0,0);
+		    }
+		    break;
+		case DATA_TYPE_S8_ARRAY:
+		case DATA_TYPE_S16_ARRAY:
+		case DATA_TYPE_S32_ARRAY:
+		case DATA_TYPE_S64_ARRAY:
+		case DATA_TYPE_U8_ARRAY:
+		case DATA_TYPE_U16_ARRAY:
+		case DATA_TYPE_U32_ARRAY:
+		case DATA_TYPE_U64_ARRAY:
+		case DATA_TYPE_F32_ARRAY:
+		case DATA_TYPE_F64_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_F32:
+	    {
+		switch(st) {
+		case DATA_TYPE_STRING:
+			*((float *)d) = strtod(s,0);
+			break;
+		case DATA_TYPE_S8:
+			*((float *)d) = *((int8_t *)s);
+			break;
+		case DATA_TYPE_S16:
+			*((float *)d) = *((int16_t *)s);
+			break;
+		case DATA_TYPE_S32:
+			*((float *)d) = *((int32_t *)s);
+			break;
+		case DATA_TYPE_S64:
+			*((float *)d) = *((int64_t *)s);
+			break;
+		case DATA_TYPE_U8:
+			*((float *)d) = *((uint8_t *)s);
+			break;
+		case DATA_TYPE_U16:
+			*((float *)d) = *((uint16_t *)s);
+			break;
+		case DATA_TYPE_U32:
+			*((float *)d) = *((uint32_t *)s);
+			break;
+		case DATA_TYPE_U64:
+			*((float *)d) = *((uint64_t *)s);
+			break;
+		case DATA_TYPE_F32:
+			*((float *)d) = *((float *)s);
+			break;
+		case DATA_TYPE_F64:
+			*((float *)d) = *((double *)s);
+			break;
+		case DATA_TYPE_F128:
+			*((float *)d) = *((long double *)s);
+			break;
+		case DATA_TYPE_BOOL:
+			*((float *)d) = *((int *)s);
+			break;
+		case DATA_TYPE_S8_ARRAY:
+		case DATA_TYPE_S16_ARRAY:
+		case DATA_TYPE_S32_ARRAY:
+		case DATA_TYPE_S64_ARRAY:
+		case DATA_TYPE_U8_ARRAY:
+		case DATA_TYPE_U16_ARRAY:
+		case DATA_TYPE_U32_ARRAY:
+		case DATA_TYPE_U64_ARRAY:
+		case DATA_TYPE_F32_ARRAY:
+		case DATA_TYPE_F64_ARRAY:
+		case DATA_TYPE_STRING_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_F64:
+	    {
+		switch(st) {
+		case DATA_TYPE_STRING:
+			*((double *)d) = strtod(s,0);
+			break;
+		case DATA_TYPE_S8:
+			*((double *)d) = *((int8_t *)s);
+			break;
+		case DATA_TYPE_S16:
+			*((double *)d) = *((int16_t *)s);
+			break;
+		case DATA_TYPE_S32:
+			*((double *)d) = *((int32_t *)s);
+			break;
+		case DATA_TYPE_S64:
+			*((double *)d) = *((int64_t *)s);
+			break;
+		case DATA_TYPE_U8:
+			*((double *)d) = *((uint8_t *)s);
+			break;
+		case DATA_TYPE_U16:
+			*((double *)d) = *((uint16_t *)s);
+			break;
+		case DATA_TYPE_U32:
+			*((double *)d) = *((uint32_t *)s);
+			break;
+		case DATA_TYPE_U64:
+			*((double *)d) = *((uint64_t *)s);
+			break;
+		case DATA_TYPE_F32:
+			*((double *)d) = *((float *)s);
+			break;
+		case DATA_TYPE_F64:
+			*((double *)d) = *((double *)s);
+			break;
+		case DATA_TYPE_F128:
+			*((double *)d) = *((long double *)s);
+			break;
+		case DATA_TYPE_BOOL:
+			*((double *)d) = *((int *)s);
+			break;
+		case DATA_TYPE_S8_ARRAY:
+		case DATA_TYPE_S16_ARRAY:
+		case DATA_TYPE_S32_ARRAY:
+		case DATA_TYPE_S64_ARRAY:
+		case DATA_TYPE_U8_ARRAY:
+		case DATA_TYPE_U16_ARRAY:
+		case DATA_TYPE_U32_ARRAY:
+		case DATA_TYPE_U64_ARRAY:
+		case DATA_TYPE_F32_ARRAY:
+		case DATA_TYPE_F64_ARRAY:
+		case DATA_TYPE_STRING_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_BOOL:
+	    {
+		int *da = d;
+		switch(st) {
+		case DATA_TYPE_STRING:
+		    {
+			char ch, *src = s;
+			register char *ptr;
+
+			if (strcmp(src,"-1")==0 || strcasecmp(src,"null")==0) {
+				*((int *)d) = -1;
+			} else {
+				for(ptr = src; *ptr && isspace(*ptr); ptr++);
+				ch = toupper(*ptr);
+				*((int *)d) = (ch == 'T' || ch == 'Y' || ch == '1' ? 1 : 0);
+			}
+		    }
+		    break;
+		case DATA_TYPE_S8:
+			*((int *)d) = *((int8_t *)s);
+			break;
+		case DATA_TYPE_S16:
+			*((int *)d) = *((int16_t *)s);
+			break;
+		case DATA_TYPE_S32:
+			*((int *)d) = *((int32_t *)s);
+			break;
+		case DATA_TYPE_S64:
+			*((int *)d) = *((int64_t *)s);
+			break;
+		case DATA_TYPE_U8:
+			*((int *)d) = *((uint8_t *)s);
+			break;
+		case DATA_TYPE_U16:
+			*((int *)d) = *((uint16_t *)s);
+			break;
+		case DATA_TYPE_U32:
+			*((int *)d) = *((uint32_t *)s);
+			break;
+		case DATA_TYPE_U64:
+			*((int *)d) = *((uint64_t *)s);
+			break;
+		case DATA_TYPE_F32:
+			*((int *)d) = *((float *)s);
+			break;
+		case DATA_TYPE_F64:
+			*((int *)d) = *((int *)s);
+			break;
+		case DATA_TYPE_F128:
+			*((int *)d) = *((long int *)s);
+			break;
+		case DATA_TYPE_BOOL:
+			*((int *)d) = *((int *)s);
+			break;
+		case DATA_TYPE_S8_ARRAY:
+			{
+				int8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S16_ARRAY:
+			{
+				int16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S32_ARRAY:
+			{
+				int32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S64_ARRAY:
+			{
+				int64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U8_ARRAY:
+			{
+				uint8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U16_ARRAY:
+			{
+				uint16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U32_ARRAY:
+			{
+				uint32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U64_ARRAY:
+			{
+				uint64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F32_ARRAY:
+			{
+				float *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F64_ARRAY:
+			{
+				double *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_BOOL_ARRAY:
+			{
+				int *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_STRING_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_S8_ARRAY:
+	    {
+		int8_t *da = d;
+		switch(st) {
+		case DATA_TYPE_STRING:
+		case DATA_TYPE_S8:
+		case DATA_TYPE_S16:
+		case DATA_TYPE_S32:
+		case DATA_TYPE_S64:
+		case DATA_TYPE_U8:
+		case DATA_TYPE_U16:
+		case DATA_TYPE_U32:
+		case DATA_TYPE_U64:
+		case DATA_TYPE_F32:
+		case DATA_TYPE_F64:
+		case DATA_TYPE_BOOL:
+		case DATA_TYPE_S8_ARRAY:
+			{
+				int8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S16_ARRAY:
+			{
+				int16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S32_ARRAY:
+			{
+				int32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S64_ARRAY:
+			{
+				int64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U8_ARRAY:
+			{
+				uint8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U16_ARRAY:
+			{
+				uint16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U32_ARRAY:
+			{
+				uint32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U64_ARRAY:
+			{
+				uint64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F32_ARRAY:
+			{
+				float *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F64_ARRAY:
+			{
+				double *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_BOOL_ARRAY:
+			{
+				int *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_STRING_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_S16_ARRAY:
+	    {
+		int16_t *da = d;
+		switch(st) {
+		case DATA_TYPE_STRING:
+		case DATA_TYPE_S8:
+		case DATA_TYPE_S16:
+		case DATA_TYPE_S32:
+		case DATA_TYPE_S64:
+		case DATA_TYPE_U8:
+		case DATA_TYPE_U16:
+		case DATA_TYPE_U32:
+		case DATA_TYPE_U64:
+		case DATA_TYPE_F32:
+		case DATA_TYPE_F64:
+		case DATA_TYPE_BOOL:
+		case DATA_TYPE_S8_ARRAY:
+			{
+				int8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S16_ARRAY:
+			{
+				int16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S32_ARRAY:
+			{
+				int32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S64_ARRAY:
+			{
+				int64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U8_ARRAY:
+			{
+				uint8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U16_ARRAY:
+			{
+				uint16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U32_ARRAY:
+			{
+				uint32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U64_ARRAY:
+			{
+				uint64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F32_ARRAY:
+			{
+				float *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F64_ARRAY:
+			{
+				double *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_BOOL_ARRAY:
+			{
+				int *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_STRING_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_S32_ARRAY:
+	    {
+		int32_t *da = d;
+		switch(st) {
+		case DATA_TYPE_STRING:
+		case DATA_TYPE_S8:
+		case DATA_TYPE_S16:
+		case DATA_TYPE_S32:
+		case DATA_TYPE_S64:
+		case DATA_TYPE_U8:
+		case DATA_TYPE_U16:
+		case DATA_TYPE_U32:
+		case DATA_TYPE_U64:
+		case DATA_TYPE_F32:
+		case DATA_TYPE_F64:
+		case DATA_TYPE_BOOL:
+		case DATA_TYPE_S8_ARRAY:
+			{
+				int8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S16_ARRAY:
+			{
+				int16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S32_ARRAY:
+			{
+				int32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S64_ARRAY:
+			{
+				int64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U8_ARRAY:
+			{
+				uint8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U16_ARRAY:
+			{
+				uint16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U32_ARRAY:
+			{
+				uint32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U64_ARRAY:
+			{
+				uint64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F32_ARRAY:
+			{
+				float *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F64_ARRAY:
+			{
+				double *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_BOOL_ARRAY:
+			{
+				int *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_STRING_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_S64_ARRAY:
+	    {
+		int64_t *da = d;
+		switch(st) {
+		case DATA_TYPE_STRING:
+		case DATA_TYPE_S8:
+		case DATA_TYPE_S16:
+		case DATA_TYPE_S32:
+		case DATA_TYPE_S64:
+		case DATA_TYPE_U8:
+		case DATA_TYPE_U16:
+		case DATA_TYPE_U32:
+		case DATA_TYPE_U64:
+		case DATA_TYPE_F32:
+		case DATA_TYPE_F64:
+		case DATA_TYPE_BOOL:
+		case DATA_TYPE_S8_ARRAY:
+			{
+				int8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S16_ARRAY:
+			{
+				int16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S32_ARRAY:
+			{
+				int32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S64_ARRAY:
+			{
+				int64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U8_ARRAY:
+			{
+				uint8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U16_ARRAY:
+			{
+				uint16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U32_ARRAY:
+			{
+				uint32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U64_ARRAY:
+			{
+				uint64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F32_ARRAY:
+			{
+				float *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F64_ARRAY:
+			{
+				double *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_BOOL_ARRAY:
+			{
+				int *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_STRING_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_U8_ARRAY:
+	    {
+		uint8_t *da = d;
+		switch(st) {
+		case DATA_TYPE_STRING_ARRAY:
+		    {
+			uint8_t *u8 = (uint8_t *)d;
+			char **sa = (char **)s;
+			int count;
+
+//			dprintf(1,"******* dl: %d, sl: %d\n", dl, sl);
+			count = 0;
+			for(i=0; i < dl && i < sl; i++) {
+//				dprintf(1,"sa[%d]: %s\n", i, sa[i]);
+				u8[i] = (unsigned char) strtol(sa[i],0,0);
+//				dprintf(1,"u8[%d]: %02x\n", i, u8[i]);
+				count++;
+			}
+			return_len = count;
+		    }
+		    break;
+		case DATA_TYPE_STRING:
+		case DATA_TYPE_S8:
+		case DATA_TYPE_S16:
+		case DATA_TYPE_S32:
+		case DATA_TYPE_S64:
+		case DATA_TYPE_U8:
+		case DATA_TYPE_U16:
+		case DATA_TYPE_U32:
+		case DATA_TYPE_U64:
+		case DATA_TYPE_F32:
+		case DATA_TYPE_F64:
+		case DATA_TYPE_BOOL:
+		case DATA_TYPE_S8_ARRAY:
+			{
+				int8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S16_ARRAY:
+			{
+				int16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S32_ARRAY:
+			{
+				int32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S64_ARRAY:
+			{
+				int64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U8_ARRAY:
+			{
+				uint8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U16_ARRAY:
+			{
+				uint16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U32_ARRAY:
+			{
+				uint32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U64_ARRAY:
+			{
+				uint64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F32_ARRAY:
+			{
+				float *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F64_ARRAY:
+			{
+				double *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_BOOL_ARRAY:
+			{
+				int *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_U16_ARRAY:
+	    {
+		uint16_t *da = d;
+		switch(st) {
+		case DATA_TYPE_STRING:
+		case DATA_TYPE_S8:
+		case DATA_TYPE_S16:
+		case DATA_TYPE_S32:
+		case DATA_TYPE_S64:
+		case DATA_TYPE_U8:
+		case DATA_TYPE_U16:
+		case DATA_TYPE_U32:
+		case DATA_TYPE_U64:
+		case DATA_TYPE_F32:
+		case DATA_TYPE_F64:
+		case DATA_TYPE_BOOL:
+		case DATA_TYPE_S8_ARRAY:
+			{
+				int8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S16_ARRAY:
+			{
+				int16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S32_ARRAY:
+			{
+				int32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S64_ARRAY:
+			{
+				int64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U8_ARRAY:
+			{
+				uint8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U16_ARRAY:
+			{
+				uint16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U32_ARRAY:
+			{
+				uint32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U64_ARRAY:
+			{
+				uint64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F32_ARRAY:
+			{
+				float *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F64_ARRAY:
+			{
+				double *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_BOOL_ARRAY:
+			{
+				int *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_STRING_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_U32_ARRAY:
+	    {
+		uint32_t *da = d;
+		switch(st) {
+		case DATA_TYPE_STRING:
+		case DATA_TYPE_S8:
+		case DATA_TYPE_S16:
+		case DATA_TYPE_S32:
+		case DATA_TYPE_S64:
+		case DATA_TYPE_U8:
+		case DATA_TYPE_U16:
+		case DATA_TYPE_U32:
+		case DATA_TYPE_U64:
+		case DATA_TYPE_F32:
+		case DATA_TYPE_F64:
+		case DATA_TYPE_BOOL:
+		case DATA_TYPE_S8_ARRAY:
+			{
+				int8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S16_ARRAY:
+			{
+				int16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S32_ARRAY:
+			{
+				int32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S64_ARRAY:
+			{
+				int64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U8_ARRAY:
+			{
+				uint8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U16_ARRAY:
+			{
+				uint16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U32_ARRAY:
+			{
+				uint32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U64_ARRAY:
+			{
+				uint64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F32_ARRAY:
+			{
+				float *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F64_ARRAY:
+			{
+				double *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_BOOL_ARRAY:
+			{
+				int *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_STRING_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_U64_ARRAY:
+	    {
+		uint64_t *da = d;
+		switch(st) {
+		case DATA_TYPE_STRING:
+		case DATA_TYPE_S8:
+		case DATA_TYPE_S16:
+		case DATA_TYPE_S32:
+		case DATA_TYPE_S64:
+		case DATA_TYPE_U8:
+		case DATA_TYPE_U16:
+		case DATA_TYPE_U32:
+		case DATA_TYPE_U64:
+		case DATA_TYPE_F32:
+		case DATA_TYPE_F64:
+		case DATA_TYPE_BOOL:
+		case DATA_TYPE_S8_ARRAY:
+			{
+				int8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S16_ARRAY:
+			{
+				int16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S32_ARRAY:
+			{
+				int32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S64_ARRAY:
+			{
+				int64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U8_ARRAY:
+			{
+				uint8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U16_ARRAY:
+			{
+				uint16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U32_ARRAY:
+			{
+				uint32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U64_ARRAY:
+			{
+				uint64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F32_ARRAY:
+			{
+				float *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F64_ARRAY:
+			{
+				double *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_BOOL_ARRAY:
+			{
+				int *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_STRING_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_F32_ARRAY:
+	    {
+		float *da = d;
+		switch(st) {
+		case DATA_TYPE_STRING:
+		case DATA_TYPE_S8:
+		case DATA_TYPE_S16:
+		case DATA_TYPE_S32:
+		case DATA_TYPE_S64:
+		case DATA_TYPE_U8:
+		case DATA_TYPE_U16:
+		case DATA_TYPE_U32:
+		case DATA_TYPE_U64:
+		case DATA_TYPE_F32:
+		case DATA_TYPE_F64:
+		case DATA_TYPE_BOOL:
+		case DATA_TYPE_S8_ARRAY:
+			{
+				int8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S16_ARRAY:
+			{
+				int16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S32_ARRAY:
+			{
+				int32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S64_ARRAY:
+			{
+				int64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U8_ARRAY:
+			{
+				uint8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U16_ARRAY:
+			{
+				uint16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U32_ARRAY:
+			{
+				uint32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U64_ARRAY:
+			{
+				uint64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F32_ARRAY:
+			{
+				float *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F64_ARRAY:
+			{
+				double *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_BOOL_ARRAY:
+			{
+				int *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_STRING_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_F64_ARRAY:
+	    {
+		double *da = d;
+
+		switch(st) {
+		case DATA_TYPE_STRING:
+		    {
+			list l;
+			char *p;
+
+			str2list(&l,s);
+			i = 0;
+			list_reset(l);
+			while((p = list_get_next(l)) != 0) {
+				if (i >= dl) break;
+				da[i++] = strtod(p,0);
+			}
+			printf("============> destroying list\n");
+//			list_destroy(l);
+			return_len = i;
+		    }
+		    break;
+		case DATA_TYPE_S8:
+			da[0] = *((int8_t *)s);
+			return_len = 1;
+			break;
+		case DATA_TYPE_S16:
+			da[0] = *((int16_t *)s);
+			return_len = 1;
+			break;
+		case DATA_TYPE_S32:
+			da[0] = *((int32_t *)s);
+			return_len = 1;
+			break;
+		case DATA_TYPE_S64:
+			da[0] = *((int64_t *)s);
+			return_len = 1;
+			break;
+		case DATA_TYPE_U8:
+			da[0] = *((uint8_t *)s);
+			return_len = 1;
+			break;
+		case DATA_TYPE_U16:
+			da[0] = *((uint16_t *)s);
+			return_len = 1;
+			break;
+		case DATA_TYPE_U32:
+			da[0] = *((uint32_t *)s);
+			return_len = 1;
+			break;
+		case DATA_TYPE_U64:
+			da[0] = *((uint64_t *)s);
+			return_len = 1;
+			break;
+		case DATA_TYPE_F32:
+			da[0] = *((float *)s);
+			return_len = 1;
+			break;
+		case DATA_TYPE_F64:
+			da[0] = *((double *)s);
+			return_len = 1;
+			break;
+		case DATA_TYPE_BOOL:
+			da[0] = *((int *)s);
+			return_len = 1;
+			break;
+		case DATA_TYPE_S8_ARRAY:
+			{
+				int8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S16_ARRAY:
+			{
+				int16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S32_ARRAY:
+			{
+				int32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_S64_ARRAY:
+			{
+				int64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U8_ARRAY:
+			{
+				uint8_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U16_ARRAY:
+			{
+				uint16_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U32_ARRAY:
+			{
+				uint32_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_U64_ARRAY:
+			{
+				uint64_t *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F32_ARRAY:
+			{
+				float *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_F64_ARRAY:
+			{
+				double *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_BOOL_ARRAY:
+			{
+				int *sa = s;
+				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
+				return_len = dl;
+			}
+			break;
+		case DATA_TYPE_STRING_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_STRING_ARRAY:
+	    {
+		switch(st) {
+		case DATA_TYPE_STRING:
+		case DATA_TYPE_S8:
+		case DATA_TYPE_S16:
+		case DATA_TYPE_S32:
+		case DATA_TYPE_S64:
+		case DATA_TYPE_U8:
+		case DATA_TYPE_U16:
+		case DATA_TYPE_U32:
+		case DATA_TYPE_U64:
+		case DATA_TYPE_F32:
+		case DATA_TYPE_F64:
+		case DATA_TYPE_BOOL:
+		case DATA_TYPE_S8_ARRAY:
+		case DATA_TYPE_S16_ARRAY:
+		case DATA_TYPE_S32_ARRAY:
+		case DATA_TYPE_S64_ARRAY:
+		case DATA_TYPE_U8_ARRAY:
+		case DATA_TYPE_U16_ARRAY:
+		case DATA_TYPE_U32_ARRAY:
+		case DATA_TYPE_U64_ARRAY:
+		case DATA_TYPE_F32_ARRAY:
+		case DATA_TYPE_F64_ARRAY:
+		case DATA_TYPE_STRING_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_STRING_LIST:
+	    {
+		switch(st) {
+		case DATA_TYPE_STRING:
+		    {
+			char temp[2048];
+			int tmax,tlen,q;
+			list *dest = d;
+			register char *p;
+			register int i;
+
+			*dest = list_create();
+			if (!s) break;
+
+			p = s;
+//			printf("==> src: %s\n", p);
+			tmax = sizeof(temp)-1;
+			i = q = 0;
+			while(*p) {
+//				printf("==> p: %c, q: %d, i: %d\n", *p, q, i);
+				if (*p == '\"' && !q)
+					q = 1;
+				else if (*p == '\"' && q)
+					q = 0;
+				else if ((*p == ',' && !q) || i >= tmax) {
+					temp[i] = 0;
+					trim(temp);
+					tlen = strlen(temp);
+//					printf("==> adding: %s (%d)\n", temp, tlen);
+					if (tlen) list_add(*dest,temp,tlen+1);
+					i = 0;
+				} else {
+					temp[i++] = *p;
+				}
+				p++;
+			}
+			if (i) {
+				temp[i] = 0;
+				trim(temp);
+				tlen = strlen(temp);
+//				dprintf(dlevel,"adding: %s (%d)\n", temp, tlen);
+				if (tlen) list_add(*dest,temp,tlen+1);
+			}
+#if 0
+#if DEBUG
+			dprintf(dlevel,"list:");
+			list_reset(*dest);
+			while( (p = list_get_next(*dest)) != 0) dprintf(dlevel,"\t%s",p);
+#endif
+#endif
+		    }
+		    break;
+		case DATA_TYPE_S8:
+		case DATA_TYPE_S16:
+		case DATA_TYPE_S32:
+		case DATA_TYPE_S64:
+		case DATA_TYPE_U8:
+		case DATA_TYPE_U16:
+		case DATA_TYPE_U32:
+		case DATA_TYPE_U64:
+		case DATA_TYPE_F32:
+		case DATA_TYPE_F64:
+		case DATA_TYPE_BOOL:
+		case DATA_TYPE_S8_ARRAY:
+		case DATA_TYPE_S16_ARRAY:
+		case DATA_TYPE_S32_ARRAY:
+		case DATA_TYPE_S64_ARRAY:
+		case DATA_TYPE_U8_ARRAY:
+		case DATA_TYPE_U16_ARRAY:
+		case DATA_TYPE_U32_ARRAY:
+		case DATA_TYPE_U64_ARRAY:
+		case DATA_TYPE_F32_ARRAY:
+		case DATA_TYPE_F64_ARRAY:
+		case DATA_TYPE_STRING_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	}
+
+	if (return_len < 0) {
+		switch(dt) {
+		case DATA_TYPE_STRING:
+			return strlen((char *)d);
+		case DATA_TYPE_S8:
+			return sizeof(byte);
+		case DATA_TYPE_S16:
+			return sizeof(short);
+		case DATA_TYPE_S32:
+			return sizeof(int);
+		case DATA_TYPE_S64:
+			return sizeof(long long);
+		case DATA_TYPE_F32:
+			return sizeof(float);
+		case DATA_TYPE_F64:
+			return sizeof(double);
+		case DATA_TYPE_BOOL:
+			return sizeof(int);
+		case DATA_TYPE_STRING_LIST:
+			return list_count(*((list *)d));
+		default:
+			return 0;
+		}
+	}
+	return return_len;
+}
+
+#if 0
 typedef void conv_func_t(char *,int,char *,int);
 static long long mystrtoll(const char *nptr, char **endptr, int base) {
 #ifdef __WIN32
@@ -123,19 +2313,19 @@ void chr2chr(char *dest,int dlen,char *src,int slen) {
 	char *send = src + slen;
 
 	/* Copy the fields */
-	dprintf(DLEVEL,"chr2chr: dptr: %p, dlen: %d, dend: %p", dptr,dlen,dend);
-	dprintf(DLEVEL,"chr2chr: sptr: %p, slen: %d, send: %p", sptr,slen,send);
+	dprintf(dlevel,"chr2chr: dptr: %p, dlen: %d, dend: %p", dptr,dlen,dend);
+	dprintf(dlevel,"chr2chr: sptr: %p, slen: %d, send: %p", sptr,slen,send);
 	while(sptr < send && dptr < dend) {
-		dprintf(DLEVEL,"sptr: %p, *sptr: %c",sptr,*sptr);
+		dprintf(dlevel,"sptr: %p, *sptr: %c",sptr,*sptr);
 		*dptr++ = *sptr++;
-		dprintf(DLEVEL,"dptr: %p, *dend: %p",dptr,dend);
+		dprintf(dlevel,"dptr: %p, *dend: %p",dptr,dend);
 	}
 
 	/* Blank fill dest */
-	dprintf(DLEVEL,"dptr: %p, dend: %p",dptr,dend);
+	dprintf(dlevel,"dptr: %p, dend: %p",dptr,dend);
 	while(dptr < dend) *dptr++ = ' ';
-	dprintf(DLEVEL,"dptr: %p, dend: %p",dptr,dend);
-	dprintf(DLEVEL,"chr2chr: done.");
+	dprintf(dlevel,"dptr: %p, dend: %p",dptr,dend);
+	dprintf(dlevel,"chr2chr: done.");
 	return;
 }
 
@@ -146,21 +2336,21 @@ void chr2str(char *dest,int dlen,char *src,int slen) {
 	char *send = src + slen;
 
 	/* Copy the fields */
-	dprintf(DLEVEL,"chr2str: dptr: %p, dlen: %d, dend: %p",
+	dprintf(dlevel,"chr2str: dptr: %p, dlen: %d, dend: %p",
 		dptr,dlen,dend);
-	dprintf(DLEVEL,"chr2str: sptr: %p, slen: %d, send: %p",
+	dprintf(dlevel,"chr2str: sptr: %p, slen: %d, send: %p",
 		sptr,slen,send);
 	while(sptr < send && dptr < dend) {
-		dprintf(DLEVEL,"sptr: %p, *sptr: %c",sptr,*sptr);
+		dprintf(dlevel,"sptr: %p, *sptr: %c",sptr,*sptr);
 		*dptr++ = *sptr++;
-		dprintf(DLEVEL,"dptr: %p, *dend: %p",dptr,dend);
+		dprintf(dlevel,"dptr: %p, *dend: %p",dptr,dend);
 	}
 
 	/* Trim & zero-terminate dest */
-	dprintf(DLEVEL,"dptr: %p, dend: %p",dptr,dend);
+	dprintf(dlevel,"dptr: %p, dend: %p",dptr,dend);
 	while(isspace((int)*dptr)) dptr--;
 	*dptr = 0;
-	dprintf(DLEVEL,"dptr: %p, dend: %p",dptr,dend);
+	dprintf(dlevel,"dptr: %p, dend: %p",dptr,dend);
 	return;
 }
 
@@ -170,7 +2360,7 @@ void chr2byte(byte *dest,int dlen,char *src,int slen) {
 
 	bcopy(src,temp,len);
 	temp[len] = 0;
-	dprintf(DLEVEL,"chr2byte: temp: %s",temp);
+	dprintf(dlevel,"chr2byte: temp: %s",temp);
 	*dest = atoi(temp);
 	return;
 }
@@ -181,7 +2371,7 @@ void chr2short(short *dest,int dlen,char *src,int slen) {
 
 	bcopy(src,temp,len);
 	temp[len] = 0;
-	dprintf(DLEVEL,"chr2short: temp: %s",temp);
+	dprintf(dlevel,"chr2short: temp: %s",temp);
 	*dest = atoi(temp);
 	return;
 }
@@ -192,7 +2382,7 @@ void chr2int(int *dest,int dlen,char *src,int slen) {
 
 	bcopy(src,temp,len);
 	temp[len] = 0;
-	dprintf(DLEVEL,"chr2int: temp: %s",temp);
+	dprintf(dlevel,"chr2int: temp: %s",temp);
 	*dest = atoi(temp);
 	return;
 }
@@ -203,7 +2393,7 @@ void chr2long(long *dest,int dlen,char *src,int slen) {
 
 	bcopy(src,temp,len);
 	temp[len] = 0;
-	dprintf(DLEVEL,"chr2long: temp: %s",temp);
+	dprintf(dlevel,"chr2long: temp: %s",temp);
 	*dest = atol(temp);
 	return;
 }
@@ -214,7 +2404,7 @@ static void chr2quad(myquad_t *dest,int dlen,char *src,int slen) {
 
 	bcopy(src,temp,len);
 	temp[len] = 0;
-	dprintf(DLEVEL,"chr2quad: temp: %s",temp);
+	dprintf(dlevel,"chr2quad: temp: %s",temp);
 	*dest = mystrtoll(temp,0,0);
 	return;
 }
@@ -225,7 +2415,7 @@ void chr2float(float *dest,int dlen,char *src,int slen) {
 
 	bcopy(src,temp,len);
 	temp[len] = 0;
-	dprintf(DLEVEL,"chr2float: temp: %s",temp);
+	dprintf(dlevel,"chr2float: temp: %s",temp);
 	*dest = (float) atof(temp);
 	return;
 }
@@ -236,7 +2426,7 @@ void chr2dbl(double *dest,int dlen,char *src,int slen) {
 
 	bcopy(src,temp,len);
 	temp[len] = 0;
-	dprintf(DLEVEL,"chr2dbl: temp: %s",temp);
+	dprintf(dlevel,"chr2dbl: temp: %s",temp);
 	*dest = atof(temp);
 	return;
 }
@@ -247,7 +2437,7 @@ void chr2log(int *dest,int dlen,char *src,int slen) {
 
 	bcopy(src,temp,len);
 	temp[len] = 0;
-	dprintf(DLEVEL,"chr2log: temp: %s",temp);
+	dprintf(dlevel,"chr2log: temp: %s",temp);
 	*dest = (atoi(temp) == 0 ? 0 : 1);
 	return;
 }
@@ -278,9 +2468,9 @@ void dbl2chr(char *dest,int dlen,double *src,int slen) {
 }
 
 void dbl2str(char *dest,int dlen,double *src,int slen) {
-	dprintf(DLEVEL,"dbl2str: src: %lf",*src);
+	dprintf(dlevel,"dbl2str: src: %lf",*src);
 	snprintf(dest,dlen-1,FMT,*src);
-	dprintf(DLEVEL,"dbl2str: dest: %s",dest);
+	dprintf(dlevel,"dbl2str: dest: %s",dest);
 	return;
 }
 
@@ -485,26 +2675,6 @@ void int2list(list *dest,int dlen,int *src,int slen) {
 }
 
 void list2str(char *dest,int dlen,list *src,int slen) {
-	int first,dl,sl;
-	char *ptr;
-
-	dprintf(DLEVEL,"dest: %p, dlen: %d, list: %p, slen: %d", dest, dlen, src, slen);
-	dl = *dest = 0;
-	if (!src) return;
-	first = 1;
-	list_reset(*src);
-	while( (ptr = list_get_next(*src)) != 0) {
-		sl = strlen(ptr);
-		dprintf(DLEVEL,"list2str: ptr: %s, len: %d",ptr,sl);
-		dprintf(DLEVEL,"dl: %d, sl: %d, dlen: %d",dl,sl,dlen);
-		if (dl + sl >= dlen) break;
-		if (first == 0) strcat(dest,",");
-		else first = 0;
-		strcat(dest,ptr);
-	}
-	dprintf(DLEVEL,"dest: %s",dest);
-	return;
-}
 
 void list2chr(char *dest,int dlen,list *src,int slen) {
 	register int x;
@@ -823,7 +2993,7 @@ void short2list(list *dest,int dlen,short *src,int slen) {
 void str2chr(char *dest,int dlen,char *src,int slen) {
 	register int x,y;
 
-	dprintf(DLEVEL,"src: %s",src);
+	dprintf(dlevel,"src: %s",src);
 	x=y=0;
 	while(x < slen && src[x] != 0 && y < dlen) dest[y++] = src[x++];
 	while(y < dlen) dest[y++] = ' ';
@@ -833,57 +3003,57 @@ void str2chr(char *dest,int dlen,char *src,int slen) {
 
 void str2str(char *dest,int dlen,char *src,int slen) {
 
-	dprintf(DLEVEL,"src: %s",src);
+	dprintf(dlevel,"src: %s",src);
 
 	/* Copy the fields */
 	*dest = 0;
-	dprintf(DLEVEL,"dlen: %d", dlen);
+	dprintf(dlevel,"dlen: %d", dlen);
 	strncat(dest,src,dlen);
 	trim(dest);
 
-	dprintf(DLEVEL,"dest: %s",dest);
+	dprintf(dlevel,"dest: %s",dest);
 	return;
 }
 
 void str2byte(byte *dest,int dlen,char *src,int slen) {
-	dprintf(DLEVEL,"src: %s",src);
+	dprintf(dlevel,"src: %s",src);
 	*dest = atoi(src);
-	dprintf(DLEVEL,"src: %s",src);
+	dprintf(dlevel,"src: %s",src);
 	return;
 }
 
 void str2short(short *dest,int dlen,char *src,int slen) {
-	dprintf(DLEVEL,"src: %s",src);
+	dprintf(dlevel,"src: %s",src);
 	*dest = atoi(src);
-	dprintf(DLEVEL,"dest: %d",*dest);
+	dprintf(dlevel,"dest: %d",*dest);
 	return;
 }
 
 void str2int(int *dest,int dlen,char *src,int slen) {
-	dprintf(DLEVEL,"src: %s",src);
+	dprintf(dlevel,"src: %s",src);
 	*dest = atoi(src);
-	dprintf(DLEVEL,"dest: %d",*dest);
+	dprintf(dlevel,"dest: %d",*dest);
 	return;
 }
 
 void str2long(long *dest,int dlen,char *src,int slen) {
-	dprintf(DLEVEL,"src: %s",src);
+	dprintf(dlevel,"src: %s",src);
 	*dest = atol(src);
-	dprintf(DLEVEL,"dest: %ld",*dest);
+	dprintf(dlevel,"dest: %ld",*dest);
 	return;
 }
 
 void str2quad(myquad_t *dest,int dlen,char *src,int slen) {
-	dprintf(DLEVEL,"src: %s",src);
+	dprintf(dlevel,"src: %s",src);
 	*dest = mystrtoll(src, 0, 0);
-	dprintf(DLEVEL,"dest: %lld",*dest);
+	dprintf(dlevel,"dest: %lld",*dest);
 	return;
 }
 
 void str2float(float *dest,int dlen,char *src,int slen) {
-	dprintf(DLEVEL,"src: %s",src);
+	dprintf(dlevel,"src: %s",src);
 	*dest = (float) atof(src);
-	dprintf(DLEVEL,"dest: %f",*dest);
+	dprintf(dlevel,"dest: %f",*dest);
 	return;
 }
 
@@ -894,24 +3064,24 @@ void str2dbl(double *dest,int dlen,char *src,int slen) {
 
 void str2log(int *dest,int dlen,char *src,int slen) {
 #if 0
-	dprintf(DLEVEL,"src: %s",src);
+	dprintf(dlevel,"src: %s",src);
 	*dest = (strcasecmp(src,"true")==0 || strcasecmp(src,"yes")==0 || strcmp(src,"1")==0) ? 1 : 0;
-	dprintf(DLEVEL,"dest: %d",*dest);
+	dprintf(dlevel,"dest: %d",*dest);
 #endif
 	register char *ptr, ch;
 
-	dprintf(DLEVEL,"src: %s",src);
+	dprintf(dlevel,"src: %s",src);
 	if (strcmp(src,"-1")==0 || strcasecmp(src,"null")==0) {
 		*dest = -1;
-		dprintf(DLEVEL,"dest: %d",*dest);
+		dprintf(dlevel,"dest: %d",*dest);
 		return;
 	}
 	for(ptr = src; *ptr && isspace(*ptr); ptr++);
-	dprintf(DLEVEL,"ptr: %s",ptr);
+	dprintf(dlevel,"ptr: %s",ptr);
 	ch = toupper(*ptr);
-	dprintf(DLEVEL,"ch: %c",ch);
+	dprintf(dlevel,"ch: %c",ch);
 	*dest = (ch == 'T' || ch == 'Y' || ch == '1' ? 1 : 0);
-	dprintf(DLEVEL,"dest: %d",*dest);
+	dprintf(dlevel,"dest: %d",*dest);
 	return;
 }
 
@@ -920,53 +3090,6 @@ void str2date(char *dest,int dlen,char *src,int slen) {
 
 	*dest = 0;
 	strncat(dest,src,len);
-	return;
-}
-
-void str2list(list *dest,int dlen,char *src,int slen) {
-	char temp[2048];
-	int tmax,tlen,q;
-	register char *p;
-	register int i;
-
-	dprintf(DLEVEL,"dest: %p, dlen: %d, src: %s, slen: %d", dest, dlen, src, slen);
-	*dest = list_create();
-	dprintf(DLEVEL,"src: %s",src);
-	if (!src) return;
-
-	p = src;
-	tmax = sizeof(temp)-1;
-	i = q = 0;
-	while(*p) {
-		dprintf(DLEVEL,"p: %c, q: %d\n", *p, q);
-		if (*p == '\"' && !q)
-			q = 1;
-		else if (*p == '\"' && q)
-			q = 0;
-		else if ((*p == ',' && !q) || i >= tmax) {
-			temp[i] = 0;
-			trim(temp);
-			tlen = strlen(temp);
-			dprintf(DLEVEL,"adding: %s (%d)\n", temp, tlen);
-			if (tlen) list_add(*dest,temp,tlen+1);
-			i = 0;
-		} else {
-			temp[i++] = *p;
-		}
-		p++;
-	}
-	if (i) {
-		temp[i] = 0;
-		trim(temp);
-		tlen = strlen(temp);
-		dprintf(DLEVEL,"adding: %s (%d)\n", temp, tlen);
-		if (tlen) list_add(*dest,temp,tlen+1);
-	}
-#if DEBUG
-	dprintf(DLEVEL,"list:");
-	list_reset(*dest);
-	while( (p = list_get_next(*dest)) != 0) dprintf(DLEVEL,"\t%s",p);
-#endif
 	return;
 }
 
@@ -1165,19 +3288,52 @@ static conv_func_t *conv_funcs[13][13] = {
 	},
 };
 
-void conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
+int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 	conv_func_t *func;
 
 //	printf("st: %d(%s), dt: %d(%s)\n", st, typestr(st), dt, typestr(dt));
 	/* Allocate convert temp var */
-	dprintf(DLEVEL,"dest type: %s",typestr(dt));
-	dprintf(DLEVEL,"src type: %s",typestr(st));
+	dprintf(dlevel,"dest type: %s",typestr(dt));
+	dprintf(dlevel,"src type: %s",typestr(st));
 	if ((st > DATA_TYPE_UNKNOWN && st < DATA_TYPE_MAX) &&
 	    (dt > DATA_TYPE_UNKNOWN && dt < DATA_TYPE_MAX)) {
 		func = conv_funcs[st][dt];
-		if (func) func(d,dl,s,sl);
+		if (func) {
+			func(d,dl,s,sl);
+			switch(dt) {
+			case DATA_TYPE_CHAR:
+				return dl;
+			case DATA_TYPE_STRING:
+				return strlen((char *)d);
+			case DATA_TYPE_I8:
+				return sizeof(byte);
+			case DATA_TYPE_I16:
+				return sizeof(short);
+			case DATA_TYPE_I32:
+				return sizeof(int);
+			case DATA_TYPE_LONG:
+				return sizeof(long);
+			case DATA_TYPE_I64:
+				return sizeof(long long);
+			case DATA_TYPE_F32:
+				return sizeof(float);
+			case DATA_TYPE_F64:
+				return sizeof(double);
+			case DATA_TYPE_BOOL:
+				return sizeof(int);
+			case DATA_TYPE_DATE:
+				return strlen(d);
+			case DATA_TYPE_LIST:
+				{
+					list *l = d;
+					return list_count(*l);
+				}
+			default:
+				return 0;
+			}
+		}
 	}
-	return;
+	return -1;
 }
 
 #if 0
@@ -1317,4 +3473,5 @@ static long long mystrtoll(const char *nptr, char *endptr, register int base) {
 		*endptr = (char *)(any ? s - 1 : nptr);
 	return (acc);
 }
+#endif
 #endif

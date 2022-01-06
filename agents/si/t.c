@@ -1,38 +1,12 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <time.h>
 
-#define SI_MAX_BA 10
+#define _getshort(v) (short)( ((v)[1]) << 8 | ((v)[0]) )
+//#define _getlong(p,v) { *((p+3)) = ((int)(v) >> 24); *((p)+2) = ((int)(v) >> 16); *((p+1)) = ((int)(v) >> 8); *((p)) = ((int)(v) & 0x0F); }
+#define _getlong(v) (long) ( ((v)[3]) << 24 | ((v)[2]) << 16 | ((v)[1]) << 8 | ((v)[0]) )
 
-float ba[SI_MAX_BA];
-int baidx,bafull;
 
-void doit(float a) {
-	float amps;
-	int i,count;
+void main(void) {
+	unsigned char d[] = { 0x5D, 0xEF, 0xFF, 0xFF };
+//	long l = &d;
 
-//	printf("a: %f, baidx: %d, bafull: %d\n", a, baidx, bafull);
-	ba[baidx++] = a;
-	if (baidx == SI_MAX_BA) {
-		baidx = 0;
-		bafull = 1;
-	}
-	if (bafull) {
-		amps = 0;
-		count = 0;
-		for(i=0; i < SI_MAX_BA; i++) {
-//			printf("ba[%d]: %f\n", i, ba[i]);
-			amps += ba[i];
-		}
-		printf("amps: %f, count: %d, avg: %f\n", amps, SI_MAX_BA, amps / SI_MAX_BA);
-	}
-}
-
-int main(void) {
-	int i;
-	memset(&ba,0,sizeof(ba));
-	baidx = bafull = 0;
-	srand(time(0));
-	for(i=0; i < 1000; i++) doit((float)rand()/(float)(RAND_MAX/50.0));
+	printf("l: %d\n", _getlong(d));
 }

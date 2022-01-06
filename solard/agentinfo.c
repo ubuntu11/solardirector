@@ -10,6 +10,7 @@ LICENSE file in the root directory of this source tree.
 #include "solard.h"
 #include "uuid.h"
 
+#if 0
 #define INFO_TAB(SN) \
 	{ SN, "agent_name", 0, DATA_TYPE_STRING,&info->agent,sizeof(info->agent), 0 }, \
 	{ SN, "agent_path", 0, DATA_TYPE_STRING,&info->path,sizeof(info->path), 0 }, \
@@ -20,8 +21,10 @@ LICENSE file in the root directory of this source tree.
 	{ SN, "topts", 0, DATA_TYPE_STRING,&info->topts,sizeof(info->topts), 0 }, \
 	{ SN, "managed", 0, DATA_TYPE_LOGICAL,&info->managed,sizeof(info->managed),"true" }, \
 	CFG_PROCTAB_END
+#endif
 
 void agentinfo_dump(solard_agentinfo_t *info) {
+#if 0
 	cfg_proctab_t info_tab[] = { INFO_TAB(0) }, *t;
 	char temp[128];
 
@@ -29,8 +32,10 @@ void agentinfo_dump(solard_agentinfo_t *info) {
 		conv_type(DATA_TYPE_STRING,&temp,sizeof(temp)-1,t->type,t->dest,t->dlen);
 		dprintf(1,"%s: %s\n", t->keyword, temp);
 	}
+#endif
 }
 
+#if 0
 json_value_t *agentinfo_to_json(solard_agentinfo_t *info) {
 	cfg_proctab_t cfg_tab[] = { INFO_TAB(0) };
 
@@ -87,8 +92,10 @@ void agentinfo_setcfg(cfg_info_t *cfg, char *section_name, solard_agentinfo_t *i
 	cfg_set_tab(cfg,info_tab,0);
 	if (debug) cfg_disp_tab(info_tab,"info",0);
 }
+#endif
 
 int agentinfo_set(solard_agentinfo_t *info, char *key, char *value) {
+#if 0
 	cfg_proctab_t info_tab[] = { INFO_TAB(0) }, *t;
 	int r;
 
@@ -105,6 +112,8 @@ int agentinfo_set(solard_agentinfo_t *info, char *key, char *value) {
 	}
 	dprintf(5,"returning: %d\n", r);
 	return r;
+#endif
+	return 1;
 }
 
 solard_agentinfo_t *agentinfo_add(solard_config_t *conf, solard_agentinfo_t *info) {
@@ -182,6 +191,7 @@ solard_agentinfo_t *agentinfo_add(solard_config_t *conf, solard_agentinfo_t *inf
 }
 
 int agentinfo_get(solard_config_t *conf, char *entry) {
+#if 0
 	solard_agentinfo_t newinfo,*info = &newinfo;
 	cfg_proctab_t info_tab[] = { INFO_TAB(0) }, *t;
 	char key[64],*str, *p;
@@ -211,6 +221,8 @@ int agentinfo_get(solard_config_t *conf, char *entry) {
 	}
 	agentinfo_add(conf,info);
 	return 0;
+#endif
+	return 1;
 }
 
 void agentinfo_newid(solard_agentinfo_t *info) {

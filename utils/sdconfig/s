@@ -1,0 +1,8 @@
+./sdconfig si get_info
+./sdconfig si set debug 5
+./sdconfig -n si set script_dir "." readonly 1 min_voltage 39.2 max_voltage 58.1
+#./sdconfig -n si set readonly 1
+#./sdconfig -n si set can_transport rdev can_target 192.168.1.7 can_topts can0
+#./sdconfig -n si init_can
+./sdconfig -n si set smanet_transport rdev smanet_target 192.168.1.7 smanet_topts serial0
+./sdconfig -n si init_smanet

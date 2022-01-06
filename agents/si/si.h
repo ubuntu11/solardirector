@@ -14,81 +14,85 @@ LICENSE file in the root directory of this source tree.
 #include "smanet.h"
 #include <pthread.h>
 
-struct si_power {
-	float l1;
-	float l2;
-	float l3;
-};
-typedef struct si_power si_power_t;
-
-struct si_info {
-	struct {
-		si_power_t grid;
-		si_power_t si;
-	} active;
-	struct {
-		si_power_t grid;
-		si_power_t si;
-	} reactive;
-	si_power_t volt;
-	float voltage;
-	float frequency;
+struct si_data {
+	float active_grid_l1;
+	float active_grid_l2;
+	float active_grid_l3;
+	float active_si_l1;
+	float active_si_l2;
+	float active_si_l3;
+	float reactive_grid_l1;
+	float reactive_grid_l2;
+	float reactive_grid_l3;
+	float reactive_si_l1;
+	float reactive_si_l2;
+	float reactive_si_l3;
+	float ac1_voltage_l1;
+	float ac1_voltage_l2;
+	float ac1_voltage_l3;
+	float ac1_voltage;
+	float ac1_frequency;
 	float ac1_current;
+	float ac1_power;
 	float battery_voltage;
 	float battery_current;
+	float battery_power;
 	float battery_temp;
 	float battery_soc;
 	float battery_soh;
 	float battery_cvsp;
-	int relay1;
-	int relay2;
-	int s1_relay1;
-	int s1_relay2;
-	int s2_relay1;
-	int s2_relay2;
-	int s3_relay1;
-	int s3_relay2;
-	int GnRn;
-	int s1_GnRn;
-	int s2_GnRn;
-	int s3_GnRn;
-	int AutoGn;
-	int AutoLodExt;
-	int AutoLodSoc;
-	int Tm1;
-	int Tm2;
-	int ExtPwrDer;
-	int ExtVfOk;
-	int GdOn;
-	int GnOn;
-	int Error;
-	int Run;
-	int BatFan;
-	int AcdCir;
-	int MccBatFan;
-	int MccAutoLod;
-	int Chp;
-	int ChpAdd;
-	int SiComRemote;
-	int OverLoad;
-	int ExtSrcConn;
-	int Silent;
-	int Current;
-	int FeedSelfC;
-	int Esave;
+	bool relay1;
+	bool relay2;
+	bool s1_relay1;
+	bool s1_relay2;
+	bool s2_relay1;
+	bool s2_relay2;
+	bool s3_relay1;
+	bool s3_relay2;
+	bool GnRn;
+	bool s1_GnRn;
+	bool s2_GnRn;
+	bool s3_GnRn;
+	bool AutoGn;
+	bool AutoLodExt;
+	bool AutoLodSoc;
+	bool Tm1;
+	bool Tm2;
+	bool ExtPwrDer;
+	bool ExtVfOk;
+	bool GdOn;
+	bool GnOn;
+	bool Error;
+	bool Run;
+	bool BatFan;
+	bool AcdCir;
+	bool MccBatFan;
+	bool MccAutoLod;
+	bool Chp;
+	bool ChpAdd;
+	bool SiComRemote;
+	bool OverLoad;
+	bool ExtSrcConn;
+	bool Silent;
+	bool Current;
+	bool FeedSelfC;
+	bool Esave;
 	float TotLodPwr;
 	uint8_t charging_proc;
 	uint8_t state;
 	uint16_t errmsg;
-	si_power_t ac2_volt;
+	float ac2_voltage_l1;
+	float ac2_voltage_l2;
+	float ac2_voltage_l3;
 	float ac2_voltage;
 	float ac2_frequency;
 	float ac2_current;
+	float ac2_power;
 	float PVPwrAt;
 	float GdCsmpPwrAt;
 	float GdFeedPwr;
 };
-typedef struct si_info si_info_t;
+typedef struct si_data si_data_t;
 
 enum GRID_CONNECT_REASON {
 	GRID_CONNECT_REASON_SOC = 501,		/* Grid request due to SOC (insufficient value) */
@@ -103,6 +107,19 @@ enum GEN_CONNECT_REASON {
 	GEN_CONNECT_REASON_CUR = 407,		/* Current-regulated generator operation initiated? */
 };
 
+/* Can frames */
+#ifdef SI_ALL_FRAMES
+/* 0x000 to 0x7FF */
+#define SI_NFRAMES 2048
+#define SI_NBITMAPS (SI_NFRAMES/32)
+#define SI_FRAME_START 0x000
+#else
+/* 0x300 to 0x30F */
+#define SI_NFRAMES 16
+#define SI_NBITMAPS 1
+#define SI_FRAME_START 0x300
+#endif
+
 /* history of battery amps */
 #define SI_MAX_BA 6
 
@@ -115,18 +132,20 @@ struct si_session {
 	int can_fallback;
 	solard_driver_t *can;
 	void *can_handle;
+	bool can_connected;
 	pthread_t th;
-	/* 0x300 to 0x30F */
-	struct can_frame frames[16];
-	uint32_t bitmap;
+	struct can_frame frames[SI_NFRAMES];
+	uint32_t bitmaps[SI_NBITMAPS];
 	int (*can_read)(struct si_session *, int id, uint8_t *data, int len);
-	si_info_t info;			/* CAN info will be read into this struct */
+	si_data_t data;			/* CAN info will be read into this struct */
 	/* SMANET */
 	char smanet_transport[SOLARD_TRANSPORT_LEN];
 	char smanet_target[SOLARD_TARGET_LEN];
 	char smanet_topts[SOLARD_TOPTS_LEN];
 	char smanet_channels_path[1024];
+	bool smanet_data;
 	smanet_session_t *smanet;
+	bool smanet_connected;
 	char ExtSrc[16]; 		/* PvOnly, Gen, Grid, GenGrid */
 	list desc;
 	uint16_t state;
@@ -159,13 +178,13 @@ struct si_session {
 	float start_temp;
 
 	/* Grid */
-	int have_grid;
+	bool have_grid;
 	/* EC start */
-	int grid_started;		/* Grid started via GdManStr */
+	bool grid_started;		/* Grid started via GdManStr */
 //	time_t grid_op_time;
 //	int grid_stop_timeout;		/* How long to wait until Grid stopped */
 	/* EC end */
-	int grid_connected;		/* info.GdOn */
+	bool grid_connected;		/* info.GdOn */
 	enum GRID_CONNECT_REASON grid_connect_reason;	/* E501-E508 */
 	/* Charge from grid parms */
 	int grid_start_timeout;		/* How long to wait until Grid started */
@@ -187,7 +206,7 @@ struct si_session {
 	time_t gen_op_time;		/* Time of last gen op */
 	char gen_save[32];		/* Saved value of GnManStr */
 	/* EC end */
-	int gen_connected;		/* info.GnOn */
+	bool gen_connected;		/* info.GnOn */
 	enum GEN_CONNECT_REASON gen_connect_reason;	/* E501-E508 */
 	float gen_charge_amps;		/* Charge amps to use when gen connected */
 	float gen_soc_stop;		/* When the gen will auto shutoff (GnSocTm1Stp) */
@@ -199,8 +218,8 @@ struct si_session {
 	float user_soc;
 	float soh;
 	/* Uhh */
-	json_proctab_t idata;
-	void *pdata;
+//	json_proctab_t idata;
+//	void *pdata;
 	/* SIM */
 	int sim;
 	float tvolt;
@@ -221,7 +240,29 @@ struct si_session {
 	int have_battery_temp;
 	char errmsg[128];
 	int force_charge;
+
+	/* INTERNAL ONLY */
+	int smanet_added;
+#ifdef JS
 	JSPropertySpec *props;
+	JSFunctionSpec *funcs;
+	JSPropertySpec *data_props;
+#endif
+
+	char input_current_source[128];
+	int input_current_type;
+	union {
+		int input_current_canid;
+		int input_current_can_offset;
+		char input_current_smanet_name[16];
+	};
+	char output_current_source[128];
+	int output_current_type;
+	union {
+		int output_current_canid;
+		int output_current_can_offset;
+		char output_current_smanet_name[16];
+	};
 };
 typedef struct si_session si_session_t;
 
@@ -230,27 +271,44 @@ typedef struct si_session si_session_t;
 #define SI_STATE_CHARGING	0x04
 #define SI_STATE_OPEN		0x10
 
+enum CURRENT_SOURCE {
+	CURRENT_SOURCE_CALCULATED,
+	CURRENT_SOURCE_CAN,
+	CURRENT_SOURCE_SMANET,
+};
+
+/* driver */
+extern solard_driver_t si_driver;
+
+/* can */
 int si_can_init(si_session_t *s);
-int si_smanet_init(si_session_t *s);
-
-void *si_recv_thread(void *handle);
-int si_get_local_can_data(si_session_t *s, int id, uint8_t *data, int len);
-int si_get_remote_can_data(si_session_t *s, int id, uint8_t *data, int len);
-int si_read(si_session_t *,void *,int);
-int si_get_bits(si_session_t *);
+int si_can_set_reader(si_session_t *s);
+int si_can_read_relays(si_session_t *s);
+int si_can_read_data(si_session_t *s);
 int si_can_write(si_session_t *s, int id, uint8_t *data, int data_len);
-int si_write_va(si_session_t *);
-int si_write(si_session_t *,void *,int);
-int si_control(void *handle,char *op, char *id, json_value_t *actions);
-int si_config(void *,int,...);
-json_value_t *si_info(void *);
-int si_config_add_info(si_session_t *s, json_value_t *j);
-int si_check_params(si_session_t *s);
+int si_can_write_va(si_session_t *s);
+int si_can_write_data(si_session_t *s);
 
-/* Config */
+/* smanet */
+int si_smanet_init(si_session_t *s);
+int si_smanet_setup(si_session_t *s);
+int si_smanet_read_data(si_session_t *s);
+
+/* read */
+int si_read_data(si_session_t *s);
+
+/* config */
+int si_agent_init(int argc, char **argv, opt_proctab_t *si_opts, si_session_t *s);
 int si_read_config(si_session_t *s);
 int si_write_config(si_session_t *s);
 int si_set_config(si_session_t *s, char *, char *, char *);
+int si_config_add_info(si_session_t *s, json_object_t *j);
+int si_control(void *handle,char *op, char *id, json_value_t *actions);
+int si_config(void *,int,...);
+int si_check_params(si_session_t *s);
+
+/* info */
+json_value_t *si_get_info(void *);
 
 /* Charging */
 int si_check_config(si_session_t *s);
@@ -263,17 +321,11 @@ void charge_start_cv(si_session_t *s, int rep);
 void charge_check(si_session_t *s);
 int charge_control(si_session_t *s, int, int);
 
-/* SMANET funcs */
-int si_start_grid(si_session_t *, int);
-
 #define SI_VOLTAGE_MIN	36.0
 #define SI_VOLTAGE_MAX	64.0
 
 #define si_isvrange(v) ((v >= SI_VOLTAGE_MIN) && (v  <= SI_VOLTAGE_MAX))
 
-extern solard_driver_t *si_transports[];
-extern solard_driver_t si_driver;
-//void si_notify(si_session_t *s,char *,...);
 #define si_notify(session,format,args...) solard_notify(session->notify_path,format,## args)
 
 #ifdef JS

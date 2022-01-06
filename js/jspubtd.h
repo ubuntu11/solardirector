@@ -137,6 +137,7 @@ typedef struct JSIdArray         JSIdArray;
 typedef struct JSProperty        JSProperty;
 typedef struct JSPropertySpec    JSPropertySpec;
 typedef struct JSConstantSpec    JSConstantSpec;
+typedef struct JSAliasSpec       JSAliasSpec;
 typedef struct JSObject          JSObject;
 typedef struct JSObjectMap       JSObjectMap;
 typedef struct JSObjectOps       JSObjectOps;

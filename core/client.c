@@ -11,7 +11,7 @@ LICENSE file in the root directory of this source tree.
 #include "client.h"
 #include "uuid.h"
 
-#define DEBUG_STARTUP 0
+#define DEBUG_STARTUP 1
 
 #if DEBUG_STARTUP
 #define _ST_DEBUG LOG_DEBUG

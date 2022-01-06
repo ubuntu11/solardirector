@@ -44,7 +44,7 @@ static void *http_new(void *conf, void *target, void *topts) {
 		curl_init = 1;
 	}
 
-	s = calloc(1,sizeof(*s));
+	s = calloc(sizeof(*s),1);
 	if (!s) {
 		perror("http_new: malloc");
 		return 0;
@@ -161,11 +161,19 @@ static int http_config(void *h, int func, ...) {
 	return r;
 }
 
+static int http_destroy(void *handle) {
+	http_session_t *s = handle;
+
+        http_close(s);
+        free(s);
+        return 0;
+}
+
 solard_driver_t http_driver = {
 	SOLARD_DRIVER_TRANSPORT,
 	"ip",
 	http_new,
-	0,
+	http_destroy,
 	http_open,
 	http_close,
 	http_read,

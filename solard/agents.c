@@ -33,7 +33,7 @@ int agent_start(solard_config_t *conf, solard_agentinfo_t *info) {
 	char logfile[256],*args[64],dval[16];
 	int i;
 
-	if (!conf->ap->cfg && solard_write_config(conf)) return 1;
+//	if (!conf->ap->cfg && solard_write_config(conf)) return 1;
 
 	log_info("Starting agent: %s/%s\n", info->role, info->name);
 
@@ -57,9 +57,10 @@ int agent_start(solard_config_t *conf, solard_agentinfo_t *info) {
 		sprintf(dval,"%d",debug);
 		args[i++] = dval;
 	}
-	if (conf->ap->cfg->filename) {
+//	if (conf->ap->cfg->filename) {
+	if (0) {
 		args[i++] = "-c";
-		args[i++] = conf->ap->cfg->filename;
+//		args[i++] = conf->ap->cfg->filename;
 		args[i++] = "-s";
 		args[i++] = info->id;
 	} else {
@@ -220,7 +221,7 @@ int agent_get_role(solard_config_t *conf, solard_agentinfo_t *info) {
 	int i,r,status;
 	struct STATFUNC sb;
 	FILE *fp;
-	cfg_section_t *section;
+//	cfg_section_t *section;
 
 	/* 1st get the path to the agent if we dont have one */
 	dprintf(1,"path: %s\n", info->path);
@@ -238,9 +239,9 @@ int agent_get_role(solard_config_t *conf, solard_agentinfo_t *info) {
 		log_write(LOG_SYSERR,"agent_get_role: cfg_create(%s)",configfile);
 		return 1;
 	}
-	agentinfo_setcfg(cfg,info->name,info);
-	dprintf(1,"writing config...\n");
-	cfg_write(cfg);
+//	agentinfo_setcfg(cfg,info->name,info);
+//	dprintf(1,"writing config...\n");
+//	cfg_write(cfg);
 
 	/* Use a temp logfile */
 	sprintf(logfile,"%s/%s.log",temp,info->id);
@@ -318,7 +319,8 @@ int agent_get_role(solard_config_t *conf, solard_agentinfo_t *info) {
 		log_write(LOG_ERROR,"agent_get_role: invalid json data");
 		goto agent_get_role_error;
 	}
-	p = json_get_string(v, "agent_role");
+	p = 0;
+	if (json_value_get_type(v) == JSON_TYPE_OBJECT) p = json_object_get_string(json_value_get_object(v), "agent_role");
 	if (!p) {
 		log_write(LOG_ERROR,"agent_get_role: agent_role not found in json data");
 		goto agent_get_role_error;
@@ -328,8 +330,8 @@ int agent_get_role(solard_config_t *conf, solard_agentinfo_t *info) {
 	strncat(info->role,p,sizeof(info->role)-1);
 
 	/* If we have this in our conf already, update it */
-	section = cfg_get_section(conf->ap->cfg,info->id);
-	if (section) agentinfo_setcfg(conf->ap->cfg,info->id,info);
+//	section = cfg_get_section(conf->ap->cfg,info->id);
+//	if (section) agentinfo_setcfg(conf->ap->cfg,info->id,info);
 
 	r = 0;
 agent_get_role_error:

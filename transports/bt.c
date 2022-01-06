@@ -34,7 +34,7 @@ typedef struct bt_session bt_session_t;
 static void *bt_new(void *conf, void *target, void *topts) {
 	bt_session_t *s;
 
-	s = calloc(1,sizeof(*s));
+	s = calloc(sizeof(*s),1);
 	if (!s) {
 		perror("bt_new: malloc");
 		return 0;
@@ -210,11 +210,19 @@ static int bt_config(void *h, int func, ...) {
 	return r;
 }
 
+static int bt_destroy(void *handle) {
+	bt_session_t *s = handle;
+
+	if (s->c) bt_close(s);
+	free(s);
+	return 0;
+}
+
 solard_driver_t bt_driver = {
 	SOLARD_DRIVER_TRANSPORT,
 	"bt",
 	bt_new,
-	0,
+	bt_destroy,
 	bt_open,
 	bt_close,
 	bt_read,

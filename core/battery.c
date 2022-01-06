@@ -18,30 +18,31 @@ LICENSE file in the root directory of this source tree.
 static void _get_arr(char *name,void *dest, int len,json_value_t *v) {
 	solard_battery_t *bp = dest;
 	json_array_t *a;
-	int i;
+	int i,type;
 
-	dprintf(6,"type: %d(%s)\n", v->type, json_typestr(v->type));
-	if (v->type != JSONArray) return;
+	type = json_value_get_type(v);
+	dprintf(6,"type: %d(%s)\n", type, json_typestr(type));
+	if (type != JSON_TYPE_ARRAY) return;
  
-	a = v->value.array;
+	a = json_value_get_array(v);
 	if (!a->count) return;
 	/* must be numbers */
-	if (a->items[0]->type != JSONNumber) return;
+	if (json_value_get_type(a->items[0]) != JSON_TYPE_NUMBER) return;
 	if (strcmp(name,"temps")==0) {
-		for(i=0; i < a->count; i++) bp->temps[i] = a->items[i]->value.number;
+		for(i=0; i < a->count; i++) bp->temps[i] = json_value_get_number(a->items[i]);
 		bp->ntemps = a->count;
 	} else if (strcmp(name,"cellvolt")==0) {
-		for(i=0; i < a->count; i++) bp->cells[i].voltage = a->items[i]->value.number;
+		for(i=0; i < a->count; i++) bp->cells[i].voltage = json_value_get_number(a->items[i]);
 		bp->ncells = a->count;
 	} else if (strcmp(name,"cellres")==0) {
-		for(i=0; i < a->count; i++) bp->cells[i].resistance = a->items[i]->value.number;
+		for(i=0; i < a->count; i++) bp->cells[i].resistance = json_value_get_number(a->items[i]);
 	}
 	return;
 }
 
 static void _set_arr(char *name,void *dest, int len,json_value_t *v) {
 	solard_battery_t *bp = dest;
-	json_value_t *a;
+	json_array_t *a;
 	int i;
 
 	a = json_create_array();
@@ -54,30 +55,32 @@ static void _set_arr(char *name,void *dest, int len,json_value_t *v) {
 	} else if (strcmp(name,"cellres")==0) {
 		for(i=0; i < len; i++) json_array_add_number(a,bp->cells[i].resistance);
 	}
-	json_add_value(v,name,a);
+	json_object_set_array(json_value_get_object(v),name,a);
 	return;
 }
 
 static void _flat_arr(char *name,void *dest, int len,json_value_t *v) {
 	solard_battery_t *bp = dest;
+	json_object_t *o;
 	char label[32];
 	int i;
 
+	o = json_value_get_object(v);
 	dprintf(1,"len: %d\n", len);
 	if (strcmp(name,"temps")==0) {
 		for(i=0; i < len; i++) {
 			sprintf(label,"temp_%02d",i);
-			json_add_number(v,label,bp->temps[i]);
+			json_object_set_number(o,label,bp->temps[i]);
 		}
 	} else if (strcmp(name,"cellvolt")==0) {
 		for(i=0; i < len; i++) {
 			sprintf(label,"cell_%02d",i);
-			json_add_number(v,label,bp->cells[i].voltage);
+			json_object_set_number(o,label,bp->cells[i].voltage);
 		}
 	} else if (strcmp(name,"cellres")==0) {
 		for(i=0; i < len; i++) {
 			sprintf(label,"res_%02d",i);
-			json_add_number(v,label,bp->cells[i].resistance);
+			json_object_set_number(o,label,bp->cells[i].resistance);
 		}
 	}
 	return;
@@ -98,8 +101,9 @@ static void _get_state(char *name, void *dest, int len, json_value_t *v) {
 	char *p;
 	int i;
 
-	dprintf(4,"value: %s\n", v->value.string.chars);
-	conv_type(DATA_TYPE_LIST,&lp,0,DATA_TYPE_STRING,v->value.string.chars,v->value.string.length);
+	p = json_value_get_string(v);
+	dprintf(4,"value: %s\n", p);
+	conv_type(DATA_TYPE_STRING_LIST,&lp,0,DATA_TYPE_STRING,p,strlen(p));
 
 	bp->state = 0;
 	list_reset(lp);
@@ -134,7 +138,7 @@ static void _set_state(char *name, void *dest, int len, json_value_t *v) {
 		}
 	}
 	dprintf(1,"temp: %s\n", temp);
-	json_add_string(v, name, temp);
+	json_object_set_string(json_value_get_object(v), name, temp);
 }
 
 #define BATTERY_TAB(NTEMP,NBAT,ACTION,STATE) \
@@ -241,7 +245,7 @@ int battery_from_json(solard_battery_t *bp, char *str) {
 	memset(bp,0,sizeof(*bp));
 	json_to_tab(battery_tab,v);
 //	battery_dump(bp,3);
-	json_destroy(v);
+	json_destroy_value(v);
 	return 0;
 };
 
@@ -288,6 +292,7 @@ static JSBool battery_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rva
 		switch(prop_id) {
 		case BATTERY_PROPERTY_ID_NAME:
 			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,bp->name));
+			*rval = type_to_jsval(cx, DATA_TYPE_STRING, bp->name, strlen(bp->name));
 			break;
 		case BATTERY_PROPERTY_ID_CAPACITY:
 			JS_NewDoubleValue(cx, bp->capacity, rval);
@@ -326,10 +331,8 @@ static JSBool battery_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rva
 				JSObject *rows;
 				jsval val;
 
-//				dprintf(4,"ncells: %d\n", bp->ncells);
 				rows = JS_NewArrayObject(cx, bp->ncells, NULL);
 				for(i=0; i < bp->ncells; i++) {
-//					dprintf(4,"cellvolt[%d]: %f\n", i, bp->cells[i].voltage);
 					JS_NewDoubleValue(cx, bp->cells[i].voltage, &val);
 					JS_SetElement(cx, rows, i, &val);
 				}
@@ -341,10 +344,8 @@ static JSBool battery_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rva
 				JSObject *rows;
 				jsval val;
 
-//				dprintf(1,"ncells: %d\n", bp->ncells);
 				rows = JS_NewArrayObject(cx, bp->ncells, NULL);
 				for(i=0; i < bp->ncells; i++) {
-//					dprintf(1,"cellres[%d]: %f\n", i, bp->cells[i].resistance);
 					JS_NewDoubleValue(cx, bp->cells[i].resistance, &val);
 					JS_SetElement(cx, rows, i, &val);
 				}

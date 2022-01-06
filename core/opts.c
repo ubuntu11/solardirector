@@ -8,25 +8,20 @@ LICENSE file in the root directory of this source tree.
 */
 
 #define DEBUG_OPTS 0
-#define dlevel 4
-#define HAVE_CONV 1
-
-#include <string.h>
-#include <stdlib.h>
-#include "opts.h"
-#include "utils.h"
 
 #ifdef DEBUG
 #undef DEBUG
 #endif
-#if DEBUG_OPTS
-#define DEBUG 1
-#endif
-#include "debug.h"
+#define DEBUG DEBUG_OPTS
+
+#define dlevel 7
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
+#include "opts.h"
+#include "utils.h"
+#include "debug.h"
 
 #if defined(__WIN64) || defined(__arm__)
 extern int opterr;
@@ -44,30 +39,39 @@ char *optarg;		/* argument associated with option */
 #define	BADARG	(int)':'
 #define	EMSG	""
 
+#define HAVE_CONV 1
+
 #if !HAVE_CONV
 #include <ctype.h>
 char *typenames[] = { "Unknown","char","string","byte","short","int","long","quad","float","double","logical","date","list" };
-void conv_type(int dtype,void *dest,int dlen,int stype,void *src,int slen) {
+int conv_type(int dtype,void *dest,int dlen,int stype,void *src,int slen) {
 	char temp[1024];
 	int *iptr;
 	float *fptr;
 	double *dptr;
 	char *sptr;
-	int len;
+	int len,r;
 
 	dprintf(1,"stype: %d, src: %p, slen: %d, dtype: %d, dest: %p, dlen: %d",
 		stype,src,slen,dtype,dest,dlen);
 
+	r = 0;
 	dprintf(1,"stype: %s, dtype: %s\n", typenames[stype],typenames[dtype]);
 	switch(dtype) {
 	case DATA_TYPE_INT:
 		iptr = dest;
 		*iptr = atoi(src);
+		r = sizeof(int);
 		break;
 	case DATA_TYPE_FLOAT:
-	case DATA_TYPE_DOUBLE:
 		fptr = dest;
 		*fptr = atof(src);
+		r = sizeof(float);
+		break;
+	case DATA_TYPE_DOUBLE:
+		dptr = dest;
+		*dptr = strtod(src,0);
+		r = sizeof(double);
 		break;
 	case DATA_TYPE_LOGICAL:
 		/* yes/no/true/false */
@@ -83,6 +87,7 @@ void conv_type(int dtype,void *dest,int dlen,int stype,void *src,int slen) {
 				*iptr = 1;
 			else
 				*iptr = 0;
+			r = sizeof(int);
 		}
 	case DATA_TYPE_STRING:
 		switch(stype) {
@@ -114,6 +119,7 @@ void conv_type(int dtype,void *dest,int dlen,int stype,void *src,int slen) {
 		}
 		dprintf(dlevel,"temp: %s\n",temp);
 		strcpy((char *)dest,temp);
+		r = strlen(temp);
 		break;
 	default:
 		dprintf(dlevel,"conv_type: unknown dest type: %d\n", dtype);
@@ -124,29 +130,48 @@ void conv_type(int dtype,void *dest,int dlen,int stype,void *src,int slen) {
 
 static void opt_addopt(list lp, opt_proctab_t *newopt) {
 	opt_proctab_t *opt;
-	char k1,k2;
+//	char k1,k2;
+	char *p, kw1[32],kw2[32];
 
+	p = strele(0,"|",newopt->keyword);
+	if (p) strncpy(kw1,p,sizeof(kw1)-1);
+	else strncpy(kw1,newopt->keyword,sizeof(kw1)-1);
+	list_reset(lp);
+	while((opt = list_get_next(lp)) != 0) {
+		p = strele(0,"|",opt->keyword);
+		if (p) strncpy(kw2,p,sizeof(kw2)-1);
+		else strncpy(kw2,opt->keyword,sizeof(kw2)-1);
+		dprintf(dlevel,"kw1: %s, kw2: %s\n", kw1, kw2);
+		if (strncmp(kw1,kw2,2) == 0) {
+			dprintf(dlevel,"found!\n");
+			list_delete(lp,opt);
+		}
+	}
+#if 0
+	printf("k1 keyword: %s\n", newopt->keyword);
 	if (newopt->keyword[0] == '-')
 		k1 = newopt->keyword[1];
 	else
 		k1 = newopt->keyword[0];
 
-	DDLOG("k1: %c\n", k1);
+	dprintf(dlevel,"k1: %c\n", k1);
 	list_reset(lp);
 	while((opt = list_get_next(lp)) != 0) {
 		if (opt->keyword[0] == '-')
 			k2 = opt->keyword[1];
 		else
 			k2 = opt->keyword[0];
-		DDLOG("k2: %c\n", k2);
+	printf("k2 keyword: %s\n", opt->keyword);
+		dprintf(dlevel,"k2: %c\n", k2);
 		if (k1 == k2) {
-			DDLOG("found!\n");
+			dprintf(dlevel,"found!\n");
 			list_delete(lp,opt);
 		}
 	}
-	DDLOG("newopt->type: %d\n", newopt->type);
+#endif
+	dprintf(dlevel,"newopt->type: %d\n", newopt->type);
 	if (!newopt->type) return;
-	DDLOG("adding\n");
+	dprintf(dlevel,"adding\n");
 	list_add(lp,newopt,sizeof(*newopt));
 }
 
@@ -166,29 +191,31 @@ opt_proctab_t *opt_addopts(opt_proctab_t *std_opts,opt_proctab_t *add_opts) {
 	lp = list_create();
 	for(i=0; std_opts[i].keyword; i++) opt_addopt(lp,&std_opts[i]);
 	for(i=0; add_opts[i].keyword; i++) opt_addopt(lp,&add_opts[i]);
+//	for(i=0; std_opts[i].keyword; i++) list_add(lp, &std_opts[i], sizeof(opt_proctab_t));
+//	for(i=0; add_opts[i].keyword; i++) list_add(lp, &add_opts[i], sizeof(opt_proctab_t));
 
 	opts = mem_alloc(sizeof(*opt)*(list_count(lp)+1),1);
 	if (!opts) {
 		log_write(LOG_SYSERR,"opt_addopts: malloc");
 		return 0;
 	}
-	DDLOG("end list:\n");
+	dprintf(dlevel,"end list:\n");
 	i = 0;
 	list_reset(lp);
 	while((opt = list_get_next(lp)) != 0) {
-		DDLOG("opt: keyword: %s\n", opt->keyword);
+		dprintf(dlevel,"opt: keyword: %s\n", opt->keyword);
 		opts[i++] = *opt;
 	}
 	list_destroy(lp);
 
-	DDLOG("returning: %p\n", opts);
+	dprintf(dlevel,"returning: %p\n", opts);
 	return opts;
 #if 0
 
 	scount = acount = 0;
 	for(x=0; std_opts[x].keyword; x++) scount++;
 	for(x=0; add_opts[x].keyword; x++) acount++;
-	DLOG(LOG_DEBUG,"scount: %d, acount: %d", scount,acount);
+	dprintf(dlevel,"scount: %d, acount: %d", scount,acount);
 	opts = mem_alloc((scount + acount + 1) * sizeof(opt_proctab_t),1);
 	if (!opts) {
 		log_write(LOG_SYSERR,"opt_addopts: mem_alloc");
@@ -199,14 +226,14 @@ opt_proctab_t *opt_addopts(opt_proctab_t *std_opts,opt_proctab_t *add_opts) {
 	/* !reqd */
 	for(x=0; std_opts[x].keyword; x++) {
 		if (std_opts[x].reqd) continue;
-		DLOG(LOG_DEBUG,"kw: %s, reqd: %d",
+		dprintf(dlevel,"kw: %s, reqd: %d",
 			std_opts[x].keyword,std_opts[x].reqd);
 		memcpy(&opts[y++],&std_opts[x],sizeof(opt_proctab_t));
 	}
 
 	for(x=0; add_opts[x].keyword; x++) {
 		if (add_opts[x].reqd) continue;
-		DLOG(LOG_DEBUG,"kw: %s, reqd: %d",
+		dprintf(dlevel,"kw: %s, reqd: %d",
 			add_opts[x].keyword,add_opts[x].reqd);
 		memcpy(&opts[y++],&add_opts[x],sizeof(opt_proctab_t));
 	}
@@ -214,14 +241,14 @@ opt_proctab_t *opt_addopts(opt_proctab_t *std_opts,opt_proctab_t *add_opts) {
 	/* reqd */
 	for(x=0; std_opts[x].keyword; x++) {
 		if (!std_opts[x].reqd) continue;
-		DLOG(LOG_DEBUG,"kw: %s, reqd: %d",
+		dprintf(dlevel,"kw: %s, reqd: %d",
 			std_opts[x].keyword,std_opts[x].reqd);
 		memcpy(&opts[y++],&std_opts[x],sizeof(opt_proctab_t));
 	}
 
 	for(x=0; add_opts[x].keyword; x++) {
 		if (!add_opts[x].reqd) continue;
-		DLOG(LOG_DEBUG,"kw: %s, reqd: %d",
+		dprintf(dlevel,"kw: %s, reqd: %d",
 			add_opts[x].keyword,add_opts[x].reqd);
 		memcpy(&opts[y++],&add_opts[x],sizeof(opt_proctab_t));
 	}
@@ -238,7 +265,7 @@ int opt_getopt(int argc, char **argv, char *optstr) {
 	static char *place = EMSG;		/* option letter processing */
 	char *oli;				/* option letter list index */
 
-	DLOG(LOG_DEBUG,"opt_getopt: optstr: %s", optstr);
+	dprintf(dlevel,"optstr: %s", optstr);
 	if (!*place) {				/* update scanning pointer */
 		if (optind >= argc || *(place = argv[optind]) != '-') {
 			place = EMSG;
@@ -279,7 +306,7 @@ int opt_getopt(int argc, char **argv, char *optstr) {
 			return (BADCH);
 		} else {
 			optarg = argv[optind];
-			DDLOG("argv[%d]: %s\n", optind, optarg);
+			dprintf(dlevel,"argv[%d]: %s\n", optind, optarg);
 		}
 		place = EMSG;
 		++optind;
@@ -324,7 +351,7 @@ int opt_process(int argc,char **argv,opt_proctab_t *opts) {
 	if (argv && argv[0]) strncat(name,argv[0],sizeof(name)-1);
 
 	/* Create the getopt string */
-	DLOG(LOG_DEBUG,"opt_process: creating getopt string...");
+	dprintf(dlevel,"opt_process: creating getopt string...");
 
 	getoptstr[0] = ':';
 	i = 1;
@@ -348,21 +375,21 @@ int opt_process(int argc,char **argv,opt_proctab_t *opts) {
 			opt_usage(name,opts);
 			return 1;
 		}
-		DLOG(LOG_DEBUG,"opt_process: i: %c\n",i);
+		dprintf(dlevel,"opt_process: i: %c\n",i);
 		for(opt = opts; opt->keyword; opt++) {
 			if (opt->keyword[0] == '-' && opt->keyword[1] == i) {
-				DLOG(LOG_DEBUG,"opt_process: have keyword: %s",opt->keyword);
+				dprintf(dlevel,"opt_process: have keyword: %s",opt->keyword);
 				opt_setopt(opt,optarg);
 			}
 		}
 	}
 
 	/* Now get the other arguments */
-	DLOG(LOG_DEBUG,"opt_process: getting other arguments...");
+	dprintf(dlevel,"opt_process: getting other arguments...");
 	argc--;
 	for(opt = opts; opt->keyword; opt++) {
 		if (opt->keyword[0] != '-') {
-			DLOG(LOG_DEBUG,"opt_process: " "op: %c, argc: %d, optind: %d", opt->keyword[0],argc,optind);
+			dprintf(dlevel,"opt_process: " "op: %c, argc: %d, optind: %d", opt->keyword[0],argc,optind);
 			/* If we don't have an arg & one's reqd, error */
 			if (argc < optind) {
 				if (opt->reqd) {
@@ -377,17 +404,17 @@ int opt_process(int argc,char **argv,opt_proctab_t *opts) {
 	}
 
 	/* Check to make sure we have all the reqd args */
-	DLOG(LOG_DEBUG,"opt_process: checking for reqd args...");
+	dprintf(dlevel,"opt_process: checking for reqd args...");
 	for(opt = opts; opt->keyword; opt++) {
 		if (!opt->reqd) continue;
-		DLOG(LOG_DEBUG,"opt_process: " "keyword: %s, reqd: %d, have: %d", opt->keyword,opt->reqd,opt->have);
+		dprintf(dlevel,"opt_process: " "keyword: %s, reqd: %d, have: %d", opt->keyword,opt->reqd,opt->have);
 		if (!opt->have) {
 			fprintf(stderr,"error: insufficient arguments.\n");
 			opt_usage(name,opts);
 			return 1;
 		}
 	}
-	DLOG(LOG_DEBUG,"opt_process: done!\n");
+	dprintf(dlevel,"opt_process: done!\n");
 	return 0;
 }
 
@@ -395,7 +422,7 @@ int opt_process(int argc,char **argv,opt_proctab_t *opts) {
 
 void opt_setopt(opt_proctab_t *opt,char *arg) {
 	
-	DDLOG("opt: key: %s, type: %d(%s), len: %d, req: %d, arg: %s\n", opt->keyword, opt->type, typestr(opt->type), opt->len, opt->reqd, arg);
+	dprintf(dlevel,"opt: key: %s, type: %d(%s), len: %d, req: %d, arg: %s\n", opt->keyword, opt->type, typestr(opt->type), opt->len, opt->reqd, arg);
 
 	if (!arg) {
 		if (opt->keyword[0] == '-' && opt->type == DATA_TYPE_LOGICAL)
@@ -403,7 +430,7 @@ void opt_setopt(opt_proctab_t *opt,char *arg) {
 		else
 			arg = "False";
 	}
-	DLOG(LOG_DEBUG,"opt_setopt: keyword: %s, arg: %s", opt->keyword, arg);
+	dprintf(dlevel,"opt_setopt: keyword: %s, arg: %s", opt->keyword, arg);
 	conv_type(opt->type,opt->dest,opt->len, DATA_TYPE_STRING,arg,strlen(arg));
 	opt->have = 1;
 	return;

@@ -23,16 +23,12 @@ int outfmt = 0;
 FILE *outfp;
 char sepch = ',';
 char *sepstr = ",";
+json_object_t *root_object;
+extern float batcurmin,batcurmax;
+
+char *si_agent_version_string = "0.0";
 
 int si_config(void *h, int req, ...) {
-//        si_session_t *s = h;
-//        va_list va;
-//        void **vp;
-//        int r;
-
-//        r = 1;
-//        va_start(va,req);
-        dprintf(1,"req: %d\n", req);
 	return 1;
 }
 
@@ -66,26 +62,17 @@ int si_startstop(si_session_t *s, int op) {
 	return (retries < 0 ? 1 : 0);
 }
 
-void usage(char *myname) {
-	printf("usage: %s [-alps] -n chan | ChanName [value]\n",myname);
-        printf("  -j            JSON output\n");
-        printf("  -J            JSON output pretty print\n");
-        printf("  -s            Start SI\n");
-        printf("  -S            Stop SI\n");
-        printf("  -h            this output\n");
-	return;
-}
-
 enum ACTIONS {
 	ACTION_NONE=0,
 	ACTION_LIST,
 	ACTION_INFO,
+	ACTION_SMANET,
 	ACTION_GET,
 	ACTION_SET,
 	ACTION_FILE
 };
 
-static solard_driver_t *transports[] = { &can_driver, &serial_driver, &rdev_driver, 0 };
+//static solard_driver_t *transports[] = { &can_driver, &serial_driver, &rdev_driver, 0 };
 
 int double_equals(double a, double b) {
 	double r;
@@ -98,16 +85,21 @@ int double_equals(double a, double b) {
 
 int main(int argc, char **argv) {
 	si_session_t *s;
-	int param,list,all;
-	char configfile[256],cantpinfo[256],smatpinfo[256],chanpath[256],filename[256];
-	int start_flag,stop_flag,ver_flag,quiet_flag,force_flag,mon_flag,mon_interval;
+	char configfile[256],cantpinfo[256],smatpinfo[256],chanpath[256],filename[256],list_type[16];
+	char outfile[256];
+	int list_flag,start_flag,stop_flag,ver_flag,quiet_flag,force_flag,mon_flag,mon_interval,smanet_flag;
+	int json_flag, pretty_flag, comma_flag;
 //	int clear_flag;
 	opt_proctab_t opts[] = {
                 /* Spec, dest, type len, reqd, default val, have */
 		{ "-b",0,0,0,0,0 },
-		{ "-l|list",&list,DATA_TYPE_BOOL,0,0,"N" },
-		{ "-p|list params",&param,DATA_TYPE_BOOL,0,0,"N" },
-		{ "-a|list all",&all,DATA_TYPE_BOOL,0,0,"N" },
+		{ "-l|list SMANET channels",&list_flag,DATA_TYPE_BOOL,0,0,"N" },
+		{ "-a|display all SMANET values",&smanet_flag,DATA_TYPE_BOOL,0,0,"N" },
+		{ "-x::|specify SMANET channel type (para,spot,mean,test,all)",&list_type,DATA_TYPE_STRING,sizeof(list_type)-1,0,"all" },
+		{ "-j|json output",&json_flag,DATA_TYPE_BOOL,0,0,"N" },
+		{ "-J|json output pretty print",&pretty_flag,DATA_TYPE_BOOL,0,0,"N" },
+		{ "-C|comma delimited output",&comma_flag,DATA_TYPE_BOOL,0,0,"N" },
+		{ "-o::|output file",&outfile,DATA_TYPE_STRING,sizeof(outfile)-1,0,"" },
 		{ "-f:%|get/set vals in file",&filename,DATA_TYPE_STRING,sizeof(filename)-1,0,"" },
 		{ "-v|verify settings in file",&ver_flag,DATA_TYPE_BOOL,0,0,"N" },
 		{ "-w|write anyway (force)",&force_flag,DATA_TYPE_BOOL,0,0,"N" },
@@ -115,7 +107,7 @@ int main(int argc, char **argv) {
 		{ "-R|Start Sunny Island",&start_flag,DATA_TYPE_BOOL,0,0,"N" },
 		{ "-S|Stop Sunny Island",&stop_flag,DATA_TYPE_BOOL,0,0,"N" },
 		{ "-t::|CAN <transport,target,topts>",&cantpinfo,DATA_TYPE_STRING,sizeof(cantpinfo)-1,0,"" },
-		{ "-s::|SMANET <transport,target,topts>",&smatpinfo,DATA_TYPE_STRING,sizeof(smatpinfo)-1,0,"" },
+		{ "-u::|SMANET <transport,target,topts>",&smatpinfo,DATA_TYPE_STRING,sizeof(smatpinfo)-1,0,"" },
 		{ "-c::|configfile",&configfile,DATA_TYPE_STRING,sizeof(configfile)-1,0,"" },
 		{ "-p::|channels path",&chanpath,DATA_TYPE_STRING,sizeof(chanpath)-1,0,"" },
 #if 0
@@ -126,18 +118,18 @@ int main(int argc, char **argv) {
 		{ "-n:d|monitor interval (default: 3s)",&mon_interval,DATA_TYPE_INT,0,0,"1" },
 		OPTS_END
 	};
-	char can_transport[SOLARD_TRANSPORT_LEN],can_target[SOLARD_TARGET_LEN],can_topts[SOLARD_TOPTS_LEN];
-	char sma_transport[SOLARD_TRANSPORT_LEN],sma_target[SOLARD_TARGET_LEN],sma_topts[SOLARD_TOPTS_LEN];
+//	char can_transport[SOLARD_TRANSPORT_LEN],can_target[SOLARD_TARGET_LEN],can_topts[SOLARD_TOPTS_LEN];
+//	char sma_transport[SOLARD_TRANSPORT_LEN],sma_target[SOLARD_TARGET_LEN],sma_topts[SOLARD_TOPTS_LEN];
 	int logopts = LOG_INFO|LOG_WARNING|LOG_ERROR|LOG_SYSERR|_ST_DEBUG;
-	int type,i,action,source;
+	int action,source,list_mask;
 	cfg_info_t *cfg;
 	smanet_channel_t *c;
-	solard_driver_t *tp;
-	void *tp_handle;
+//	solard_driver_t *tp;
+//	void *tp_handle;
 
 	log_open("siutil",0,logopts);
 
-	all = list = param = 0;
+//	all = list = param = spot = type = 0;
 	*configfile = *cantpinfo = *smatpinfo = 0;
 	if (solard_common_init(argc,argv,opts,logopts)) return 1;
 	if (debug) logopts |= LOG_DEBUG|LOG_DEBUG2;
@@ -146,22 +138,14 @@ int main(int argc, char **argv) {
 	argc -= optind;
 	argv += optind;
 
-	for(i=0; i < argc; i++) dprintf(1,"arg[%d]: %s\n",i,argv[i]);
-
-	dprintf(1,"all: %d, list: %d, param: %d\n", all, list, param);
-	if (all && !list) printf("info: all flag (-a) only applies to list (-l), ignored.\n");
+	{ int i; for(i=0; i < argc; i++) dprintf(1,"arg[%d]: %s\n",i,argv[i]); }
 
 	dprintf(1,"argc: %d\n", argc);
 	source = 1;
-	if (list) {
+	if (list_flag) {
 		action = ACTION_LIST;
-		if (all) {
-			type = 3;
-		} else if (param) {
-			type = 1;
-		} else {
-			type = 0;
-		}
+	} else if (smanet_flag) {
+		action = ACTION_SMANET;
 	} else if (argc == 0) {
 		if (strlen(filename))
 			action = ACTION_FILE;
@@ -178,7 +162,23 @@ int main(int argc, char **argv) {
 		action = ACTION_GET;
 	}
 	if (start_flag || stop_flag) source = 2;
-	dprintf(1,"source: %d, action: %d, list: %d, all: %d, type: %d\n", source, action, list, all, type);
+	dprintf(1,"source: %d, action: %d\n", source, action);
+
+	if (strcmp(list_type,"all") == 0) list_mask = CH_PARA | CH_SPOT | CH_MEAN | CH_TEST;
+	else if (strcmp(list_type,"para") == 0) list_mask = CH_PARA;
+	else if (strcmp(list_type,"spot") == 0) list_mask = CH_SPOT;
+	else if (strcmp(list_type,"mean") == 0) list_mask = CH_MEAN;
+	else if (strcmp(list_type,"test") == 0) list_mask = CH_TEST;
+	else {
+		printf("invalid list type: %s (must be one of para,spot,mean,test,all)\n",list_type);
+		return 1;
+	}
+
+	s = si_driver.new(0,0,0);
+	if (!s) {
+		log_syserror("si_driver.new");
+		return 1;
+	}
 
 	/* Read config */
 	cfg = 0;
@@ -195,91 +195,88 @@ int main(int argc, char **argv) {
 
 	/* -t takes precedence over config */
 	dprintf(1,"cantpinfo: %s\n", cantpinfo);
-	*can_transport = *can_target = *can_topts = 0;
 	if (strlen(cantpinfo)) {
-		strncat(can_transport,strele(0,",",cantpinfo),sizeof(can_transport)-1);
-		strncat(can_target,strele(1,",",cantpinfo),sizeof(can_target)-1);
-		strncat(can_topts,strele(2,",",cantpinfo),sizeof(can_topts)-1);
+		strncat(s->can_transport,strele(0,",",cantpinfo),sizeof(s->can_transport)-1);
+		strncat(s->can_target,strele(1,",",cantpinfo),sizeof(s->can_target)-1);
+		strncat(s->can_topts,strele(2,",",cantpinfo),sizeof(s->can_topts)-1);
 	} else if (cfg) {
 		cfg_proctab_t tab[] = {
-			{ "siutil","can_transport","CAN transport",DATA_TYPE_STRING,can_transport,SOLARD_TRANSPORT_LEN-1, "" },
-			{ "siutil","can_target","CAN target",DATA_TYPE_STRING,can_target,SOLARD_TARGET_LEN-1, "" },
-			{ "siutil","can_topts","CAN transport options",DATA_TYPE_STRING,can_topts,SOLARD_TOPTS_LEN-1, "" },
+			{ "siutil","can_transport","CAN transport",DATA_TYPE_STRING,s->can_transport,SOLARD_TRANSPORT_LEN-1, "" },
+			{ "siutil","can_target","CAN target",DATA_TYPE_STRING,s->can_target,SOLARD_TARGET_LEN-1, "" },
+			{ "siutil","can_topts","CAN transport options",DATA_TYPE_STRING,s->can_topts,SOLARD_TOPTS_LEN-1, "" },
 			CFG_PROCTAB_END
 		};
 		cfg_get_tab(cfg,tab);
 		if (debug) cfg_disp_tab(tab,"can",0);
 	}
-        if (!strlen(can_transport) || !strlen(can_target)) {
-#if defined(__WIN32) || defined(__WIN64)
-                strcpy(can_transport,"serial");
-                strcpy(can_target,"COM1");
-                strcpy(can_topts,"9600");
+        if (!strlen(s->can_transport) || !strlen(s->can_target)) {
+#if defined(WINDOWS)
+                strcpy(s->can_transport,"serial");
+                strcpy(s->can_target,"COM1");
+                strcpy(s->can_topts,"9600");
 #else
-		strcpy(can_transport,"can");
-		strcpy(can_target,"can0");
-		strcpy(can_topts,"500000");
+		strcpy(s->can_transport,"can");
+		strcpy(s->can_target,"can0");
+		strcpy(s->can_topts,"500000");
 #endif
 	}
 
-	tp = tp_handle = 0;
 	if (source == 2) {
 		/* Load the can driver */
-		dprintf(1,"can_transport: %s, can_target: %s, can_topts: %s\n", can_transport, can_target, can_topts);
-		tp = find_driver(transports,can_transport);
-		dprintf(1,"tp: %p\n", tp);
-		if (!tp) return 1;
-		tp_handle = tp->new(0,can_target,can_topts);
-		dprintf(1,"tp_handle: %p\n", tp_handle);
-		if (!tp_handle) return 1;
+		dprintf(1,"s->can_transport: %s, s->can_target: %s, s->can_topts: %s\n", s->can_transport, s->can_target, s->can_topts);
+		if (si_can_init(s)) {
+			log_error(s->errmsg);
+			return 1;
+		}
 	}
 
 	/* Init the SI driver */
-	s = si_driver.new(0,tp,tp_handle);
 	/* Only an error if we need can */
 	if (!s && source == 2) return 1;
 
-	*sma_transport = *sma_target = *sma_topts = 0;
+	*s->smanet_transport = *s->smanet_target = *s->smanet_topts = 0;
 	dprintf(1,"cmatpinfo: %s\n", smatpinfo);
 	if (strlen(smatpinfo)) {
-		strncat(sma_transport,strele(0,",",smatpinfo),sizeof(sma_transport)-1);
-		strncat(sma_target,strele(1,",",smatpinfo),sizeof(sma_target)-1);
-		strncat(sma_topts,strele(2,",",smatpinfo),sizeof(sma_topts)-1);
+		strncat(s->smanet_transport,strele(0,",",smatpinfo),sizeof(s->smanet_transport)-1);
+		strncat(s->smanet_target,strele(1,",",smatpinfo),sizeof(s->smanet_target)-1);
+		strncat(s->smanet_topts,strele(2,",",smatpinfo),sizeof(s->smanet_topts)-1);
 	} else if (cfg) {
 		cfg_proctab_t tab[] = {
-			{ "siutil","smanet_transport","SMANET transport",DATA_TYPE_STRING,sma_transport,SOLARD_TRANSPORT_LEN-1, "" },
-			{ "siutil","smanet_target","SMANET target",DATA_TYPE_STRING,sma_target,SOLARD_TARGET_LEN-1, "" },
-			{ "siutil","smanet_topts","SMANET transport options",DATA_TYPE_STRING,sma_topts,SOLARD_TOPTS_LEN-1, "" },
+			{ "siutil","smanet_transport","SMANET transport",DATA_TYPE_STRING,s->smanet_transport,SOLARD_TRANSPORT_LEN-1, "" },
+			{ "siutil","smanet_target","SMANET target",DATA_TYPE_STRING,s->smanet_target,SOLARD_TARGET_LEN-1, "" },
+			{ "siutil","smanet_topts","SMANET transport options",DATA_TYPE_STRING,s->smanet_topts,SOLARD_TOPTS_LEN-1, "" },
+			{ "siutil","smanet_channels_path","SMANET transport options",DATA_TYPE_STRING,s->smanet_channels_path,sizeof(s->smanet_channels_path)-1, "" },
 			CFG_PROCTAB_END
 		};
 		cfg_get_tab(cfg,tab);
 		if (debug) cfg_disp_tab(tab,"smanet",0);
 	}
-        if (!strlen(sma_transport) || !strlen(sma_target)) {
-#if defined(__WIN32) || defined(__WIN64)
-                strcpy(sma_transport,"serial");
-                strcpy(sma_target,"COM2");
-                strcpy(sma_topts,"9600");
+        if (!strlen(s->smanet_transport) || !strlen(s->smanet_target)) {
+#if defined(WINDOWS)
+                strcpy(s->smanet_transport,"serial");
+                strcpy(s->smanet_target,"COM2");
+                strcpy(s->smanet_topts,"9600");
 #else
-		strcpy(sma_transport,"serial");
-		strcpy(sma_target,"/dev/ttyS0");
-		strcpy(sma_topts,"19200");
+		strcpy(s->smanet_transport,"serial");
+		strcpy(s->smanet_target,"/dev/ttyS0");
+		strcpy(s->smanet_topts,"19200");
 #endif
         }
 
-	tp = tp_handle = 0;
 	if (source == 1) {
-		/* Load the smanet driver */
-		dprintf(1,"sma_transport: %s, sma_target: %s, sma_topts: %s\n", sma_transport, sma_target, sma_topts);
-		tp = find_driver(transports,sma_transport);
-		dprintf(1,"tp: %p\n", tp);
-		if (!tp) return 1;
-		tp_handle = tp->new(0,sma_target,sma_topts);
-		dprintf(1,"tp_handle: %p\n", tp_handle);
-		if (!tp_handle) return 1;
+		int r;
 
-		s->smanet = smanet_init(tp, tp_handle);
-		if (!s->smanet) return 1;
+		/* Load the smanet driver */
+		dprintf(1,"s->smanet_transport: %s, s->smanet_target: %s, s->smanet_topts: %s\n",
+			s->smanet_transport, s->smanet_target, s->smanet_topts);
+		r = si_smanet_init(s);
+		dprintf(1,"r: %d\n", r);
+		if (r) {
+			log_error(s->errmsg);
+			return 1;
+		}
+		if (!s->smanet_connected) return 1;
+//		si_smanet_setup(s);
 	}
 
 	dprintf(1,"source: %d\n", source);
@@ -290,20 +287,24 @@ int main(int argc, char **argv) {
 	}
 
 	if (s->smanet) {
-		if (strlen(chanpath)) smanet_set_chanpath(s->smanet,chanpath);
-		if (smanet_load_channels(s->smanet) != 0) {
+//		if (strlen(chanpath)) smanet_set_chanpath(s->smanet,chanpath);
+		dprintf(1,"chanpath: %s, smanet_channels_path: %s\n", chanpath, s->smanet_channels_path);
+		if (!strlen(chanpath) && strlen(s->smanet_channels_path))
+			strncpy(chanpath,s->smanet_channels_path,sizeof(chanpath)-1);
+		else
+			sprintf(chanpath,"%s/%s.dat",SOLARD_LIBDIR,s->smanet->type);
+		dprintf(1,"chanpath: %s\n", chanpath);
+		if (smanet_load_channels(s->smanet,chanpath) != 0) {
 			dprintf(1,"count: %d\n", list_count(s->smanet->channels));
 			if (!list_count(s->smanet->channels)) {
 				log_write(LOG_INFO,"Downloading channels...\n");
-				smanet_read_channels(s->smanet);
-				smanet_save_channels(s->smanet);
+				smanet_read_channels(s->smanet,chanpath);
+				smanet_save_channels(s->smanet,chanpath);
 			}
 		}
 	}
-#if 0
 
-	outfile = 0;
-	if (outfile) {
+	if (*outfile) {
 		dprintf(1,"outfile: %s\n", outfile);
 		outfp = fopen(outfile,"w+");
 		if (!outfp) {
@@ -311,19 +312,18 @@ int main(int argc, char **argv) {
 			return 1;
 		}
 	} else {
-#endif
 		outfp = fdopen(1,"w");
-#if 0
 	}
 	dprintf(1,"outfp: %p\n", outfp);
-#endif
 
-#if 0
-	if (outfmt == 2) {
-		root_value = json_value_init_object();
-		root_object = json_value_get_object(root_value);
+	if (pretty_flag) json_flag = 1;
+	if (json_flag) {
+		outfmt = 2;
+		root_object = json_create_object();
 	}
-#endif
+	else if (comma_flag) outfmt = 1;
+	else outfmt = 0;
+
 
 	dprintf(1,"action: %d\n", action);
 	switch(action) {
@@ -387,14 +387,18 @@ int main(int argc, char **argv) {
 		/* XXX Important */
 		s->readonly = 1;
 		dprintf(1,"mon_flag: %d\n", mon_flag);
+		batcurmin = 1000; batcurmax = -1000;
 		if (mon_flag) {
 			monitor(s,mon_interval);
 		} else {
-			if (si_read(s,(void *)0xDEADBEEF,0)) {
+#if 0
+			if (si_driver.read(s,(void *)0xDEADBEEF,0)) {
 				log_error("unable to read data");
 				return 1;
 			}
-			display_info(s);
+#endif
+			if (si_can_read_data(s)) return 1;
+			display_data(s,0);
 		}
 		break;
 	case ACTION_LIST:
@@ -419,7 +423,31 @@ int main(int argc, char **argv) {
 		} else {
 			dprintf(1,"channel_count: %d\n", list_count(s->smanet->channels));
 			list_reset(s->smanet->channels);
-			while((c = list_get_next(s->smanet->channels)) != 0) printf("%s\n",c->name);
+			while((c = list_get_next(s->smanet->channels)) != 0) {
+				if ((c->mask & list_mask) == 0) continue;
+				printf("%s\n",c->name);
+			}
+		}
+		break;
+	case ACTION_SMANET:
+		{
+			double d;
+			char *text;
+
+			list_reset(s->smanet->channels);
+			while((c = list_get_next(s->smanet->channels)) != 0) {
+				dprintf(5,"c->mask: %04x, list_mask: %04x\n", c->mask, list_mask);
+				if ((c->mask & list_mask) == 0) continue;
+				list_save_next(s->smanet->channels);
+				if (smanet_get_chanvalue(s->smanet,c,&d,&text)) {
+					log_write(LOG_ERROR,"%s: error getting value\n",c->name);
+					return 1;
+				}
+				list_restore_next(s->smanet->channels);
+				if (text) dstr(c->name,"%s",text);
+				else if ((int)d == d) dint(c->name,"%d",(int)d);
+				else dfloat(c->name,"%f",d);
+			}
 		}
 		break;
 	case ACTION_GET:
@@ -440,15 +468,22 @@ int main(int argc, char **argv) {
 					log_write(LOG_ERROR,"%s: error getting value\n",argv[0]);
 					return 1;
 				}
-				if (text) printf("%s\n",text);
-				else if ((int)d == d) printf("%d\n",(int)d);
-				else printf("%f\n",d);
+				if (text) dstr(argv[0],"%s",text);
+				else if ((int)d == d) dint(argv[0],"%d",(int)d);
+				else dfloat(argv[0],"%f",d);
 //			}
 		}
 		break;
 	case ACTION_SET:
 		smanet_set_value(s->smanet,argv[0],atof(argv[1]),argv[1]);
 		break;
+	}
+
+	if (outfmt == 2) {
+		char text[32768];
+
+		json_tostring(json_object_get_value(root_object),text,sizeof(text)-1,pretty_flag);
+		fprintf(outfp,"%s",text);
 	}
 
 	dprintf(1,"done!\n");

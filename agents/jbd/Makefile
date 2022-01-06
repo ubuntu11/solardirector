@@ -1,6 +1,6 @@
 
 PROGNAME=jbd
-SRCS=main.c jbd.c config.c info.c
+SRCS=main.c jbd.c config.c info.c jsfuncs.c
 
 #BLUETOOTH=yes
 

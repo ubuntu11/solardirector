@@ -1,4 +1,5 @@
 
+#if 0
 /*
 Copyright (c) 2021, Stephen P. Shoecraft
 All rights reserved.
@@ -363,4 +364,5 @@ JSObject *JSInverter(JSContext *cx, solard_inverter_t *bp) {
 	dprintf(5,"done!\n");
 	return obj;
 }
+#endif
 #endif

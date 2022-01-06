@@ -44,6 +44,7 @@ struct _llist {
 	list_item first;		/* First item in list */
 	list_item last;			/* Last item in list */
 	list_item next;			/* Next item in list */
+	list_item saved_next;		/* Saved next item */
 #if THREAD_SAFE
 	pthread_mutex_t mutex;
 #endif
@@ -252,6 +253,7 @@ int list_delete(list lp,void *item) {
 int list_destroy(list lp) {
 	list_item ip,next;
 
+#if 0
 	if (!lp) return -1;
 
 	ip = lp->first;                         /* Start at beginning */
@@ -262,6 +264,7 @@ int list_destroy(list lp) {
 		ip = next;                      /* Set current item to next */
 	}
 	free(lp);				/* Free list */
+#endif
 	return 0;
 }
 
@@ -393,4 +396,26 @@ int list_sort(list lp, list_compare compare, int order) {
 	pthread_mutex_unlock(&lp->mutex);
 #endif
 	return 0;
+}
+
+void list_save_next(list lp) {
+	if (!lp) return;
+#if THREAD_SAFE
+	pthread_mutex_lock(&lp->mutex);
+#endif
+	lp->saved_next = lp->next;
+#if THREAD_SAFE
+	pthread_mutex_unlock(&lp->mutex);
+#endif
+}
+
+void list_restore_next(list lp) {
+	if (!lp) return;
+#if THREAD_SAFE
+	pthread_mutex_lock(&lp->mutex);
+#endif
+	lp->next = lp->saved_next;
+#if THREAD_SAFE
+	pthread_mutex_unlock(&lp->mutex);
+#endif
 }

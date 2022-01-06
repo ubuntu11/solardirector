@@ -215,15 +215,31 @@ int jbd_set_mosfet(jbd_session_t *s, int val) {
 	return (r < 0 ? 1 : 0);
 }
 
-/*
-Copyright (c) 2021, Stephen P. Shoecraft
-All rights reserved.
+int jbd_reset(void *h, int nargs, char **args, char *errmsg) {
+	jbd_session_t *s = h;
+	uint8_t payload[2];
+	int opened,r;
 
-This source code is licensed under the BSD-style license found in the
-LICENSE file in the root directory of this source tree.
-*/
-
-#include "jbd.h"
+	dprintf(1,"locking...\n");
+//	pthread_mutex_lock(&s->lock);
+	if (!solard_check_state(s,JBD_STATE_OPEN)) {
+		if (jbd_open(s)) {
+//			pthread_mutex_unlock(&s->lock);
+			return 1;
+		}
+		opened = 1;
+	}
+	jbd_putshort(payload,0x4321);
+	r = jbd_rw(s, JBD_CMD_WRITE, JBD_REG_RESET, payload, sizeof(payload));
+	if (!r) {
+		jbd_putshort(payload,0x1881);
+		r = jbd_rw(s, JBD_CMD_WRITE, JBD_REG_FRESET, payload, sizeof(payload));
+	}
+	if (opened) jbd_close(s);
+	dprintf(1,"unlocking...\n");
+//	pthread_mutex_unlock(&s->lock);
+        return r;
+}
 
 void jbd_get_protect(struct jbd_protect *p, unsigned short bits) {
 #ifdef DEBUG
@@ -455,6 +471,7 @@ int jbd_get_fetstate(jbd_session_t *s) {
 int jbd_read(void *handle, void *buf, int buflen) {
 	jbd_session_t *s = handle;
 
+	dprintf(1,"reader: %p\n", s->reader);
 	if (!s->reader) {
 		if (!s->tp) {
 			log_error("jbd_read: tp is null!\n");
@@ -545,16 +562,16 @@ _can_init_error:
 	return 1;
 }
 
-void *jbd_new(void *ap, void *transport, void *transport_handle) {
+void *jbd_new(void *ctx, void *transport, void *transport_handle) {
 	jbd_session_t *s;
 
 	s = calloc(1,sizeof(*s));
 	if (!s) {
-		perror("jbd_new: calloc");
+		log_syserr("jbd_new: calloc");
 		return 0;
 	}
-	s->ap = ap;
-	pthread_mutex_init(&s->lock,0);
+	s->ap = ctx;
+//	pthread_mutex_init(&s->lock,0);
 	if (transport && transport_handle) {
 		s->tp = transport;
 		s->tp_handle = transport_handle;
@@ -563,9 +580,6 @@ void *jbd_new(void *ap, void *transport, void *transport_handle) {
 			return 0;
 		}
 	}
-
-	/* Save a copy of the name */
-//	if (ap) strcpy(s->name,s->ap->instance_name);
 
 	return s;
 }

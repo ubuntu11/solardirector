@@ -40,7 +40,7 @@ static void *rdev_new(void *conf, void *target, void *topts) {
 	char temp[128];
 	char *p;
 
-	s = calloc(1,sizeof(*s));
+	s = calloc(sizeof(*s),1);
 	if (!s) {
 		log_syserror("rdev_new: malloc");
 		return 0;

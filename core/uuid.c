@@ -40,7 +40,7 @@ struct uuid_s {
 typedef struct uuid_s uuid_t;
 typedef unsigned char u8;
 typedef unsigned char __u8;
-typedef unsigned char bool;
+//typedef unsigned char bool;
 #define false 0
 #define true 1
 //const guid_t guid_null;
@@ -129,7 +129,7 @@ void uuid_gen(uuid_t *bu)
  *
  * Return: true if input is valid UUID string.
  */
-bool uuid_is_valid(const char *uuid)
+int uuid_is_valid(const char *uuid)
 {
 	unsigned int i;
 	for (i = 0; i < UUID_STRING_LEN; i++) {
