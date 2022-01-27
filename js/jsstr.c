@@ -2597,7 +2597,12 @@ js_PurgeDeflatedStringCache(JSRuntime *rt, JSString *str)
 #ifdef DEBUG
         rt->deflatedStringCacheBytes -= JSSTRING_LENGTH(str);
 #endif
-        free(he->value);
+#if 0
+        if (he->value) {
+		free(he->value);
+		he->value = 0;
+	}
+#endif
         JS_HashTableRawRemove(rt->deflatedStringCache, hep, he);
     }
     JS_RELEASE_LOCK(rt->deflatedStringCacheLock);

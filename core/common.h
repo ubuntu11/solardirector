@@ -19,16 +19,6 @@ LICENSE file in the root directory of this source tree.
 #include <errno.h>
 #include <time.h>
 
-#ifdef __WIN32
-struct __attribute__((packed, aligned(1))) can_frame {
-	long can_id;
-	unsigned char can_dlc;
-        unsigned char data[8];
-};
-#else
-#include <linux/can.h>
-#endif
-
 #define SOLARD_PATH_MAX		256
 
 #define SOLARD_ID_LEN		38
@@ -40,22 +30,27 @@ struct __attribute__((packed, aligned(1))) can_frame {
 #define SOLARD_TOPIC_SIZE	256	/* Max topic length */
 #define SOLARD_ERRMSG_LEN	128
 
-/* TOPIC / ROLE / NAME / FUNC */
+/* TOPIC / TYPE / NAME / FUNC */
 #define SOLARD_TOPIC_ROOT	"SolarD"
+#define SOLARD_TOPIC_AGENTS	"Agents"
+#define SOLARD_TOPIC_CLIENTS	"Clients"
+
+enum SOLARD_MESSAGE_TYPE {
+	SOLARD_MESSAGE_TYPE_NONE,
+	SOLARD_MESSAGE_TYPE_AGENT,
+	SOLARD_MESSAGE_TYPE_CLIENT
+};
 
 #define SOLARD_ROLE_CONTROLLER	"Controller"
 #define SOLARD_ROLE_STORAGE	"Storage"
 #define SOLARD_ROLE_BATTERY	"Battery"
 #define SOLARD_ROLE_INVERTER	"Inverter"
-#define SOLARD_ROLE_PRODUCER	"Producer"
-#define SOLARD_ROLE_CONSUMER	"Consumer"
 #define SOLARD_ROLE_LEN		16
 
 #define SOLARD_FUNC_STATUS	"Status"
 #define SOLARD_FUNC_INFO	"Info"
-#define SOLARD_FUNC_DATA	"Data"
 #define SOLARD_FUNC_CONFIG	"Config"
-#define SOLARD_FUNC_CONTROL	"Control"
+#define SOLARD_FUNC_DATA	"Data"
 #define SOLARD_FUNC_LEN		16
 
 #define SOLARD_ACTION_GET	"Get"
@@ -92,7 +87,9 @@ extern char SOLARD_BINDIR[SOLARD_PATH_MAX], SOLARD_ETCDIR[SOLARD_PATH_MAX], SOLA
 #define DLLCALL __cdecl
 #endif
 
-//typedef unsigned int bool;
+#define STRINGIFY2(x) #x
+#define STRINGIFY(x) STRINGIFY2(x)
+#define STR(s) STRINGIFY2(x)
 
 #include "types.h"
 #include "opts.h"
@@ -104,6 +101,7 @@ extern char SOLARD_BINDIR[SOLARD_PATH_MAX], SOLARD_ETCDIR[SOLARD_PATH_MAX], SOLA
 #include "debug.h"
 #include "state.h"
 #include "mqtt.h"
+#include "influx.h"
 
 #define Black "\033[0;30m"
 #define Red "\033[0;31m"

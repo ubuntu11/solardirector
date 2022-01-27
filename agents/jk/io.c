@@ -8,6 +8,7 @@ LICENSE file in the root directory of this source tree.
 */
 
 #include "jk.h"
+#include "can.h"
 
 #define MIN_CMD_LEN 7
 

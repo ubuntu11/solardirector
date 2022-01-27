@@ -15,8 +15,10 @@
  * from the use of this software.
  */
 
-#define _WIN32_WINNT 0x0600
 #define WIN32_LEAN_AND_MEAN
+#include "common.h"
+
+//#define _WIN32_WINNT 0x0600
 #include <windows.h>
 #include <winnt.h>
 #include <ntdef.h>
@@ -67,8 +69,7 @@ typedef NTSTATUS (*RtlCloneUserProcess_f)(ULONG ProcessFlags,
 	HANDLE DebugPort /* optional */,
 	PRTL_USER_PROCESS_INFORMATION ProcessInformation);
 
-pid_t fork(void)
-{
+int fork(void) {
 	HMODULE mod;
 	RtlCloneUserProcess_f clone_p;
 	RTL_USER_PROCESS_INFORMATION process_info;
@@ -96,12 +97,14 @@ pid_t fork(void)
 		CloseHandle(process_info.Process);
 		CloseHandle(process_info.Thread);
 
+		dprintf(1,"returning: %d...\n",child_pid);
 		return child_pid;
 	}
 	else if (result == RTL_CLONE_CHILD)
 	{
 		/* fix stdio */
 		AllocConsole();
+		dprintf(1,"returning 0...\n");
 		return 0;
 	}
 	else

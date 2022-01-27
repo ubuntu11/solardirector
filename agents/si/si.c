@@ -18,7 +18,6 @@ static void *si_new(void *uu, void *driver, void *driver_handle) {
 		perror("si_new: calloc");
 		return 0;
 	}
-	s->desc = list_create();
 	if (driver) {
 		s->can = driver;
 		s->can_handle = driver_handle;
@@ -83,7 +82,8 @@ static int si_read(void *handle, void *buf, int buflen) {
 static int si_write(void *handle, void *buffer, int len) {
 	si_session_t *s = handle;
 
-	return(s->can_connected ? si_can_write_data(s) : 0);
+	dprintf(1,"can_connected: %d, bms_mode: %d\n", s->can_connected, s->bms_mode);
+	return(s->can_connected && s->bms_mode ? si_can_write_data(s) : 0);
 }
 
 solard_driver_t si_driver = {

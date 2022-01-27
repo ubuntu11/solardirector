@@ -27,6 +27,7 @@ for(var i=0; i < count; i++) {
 }
 var conf = {};
 var agent_config = JSON.stringify(sections,[ "name", "type", "size", "scope", "values", "labels", "units", "scale", "precision" ],4);
+printf("agent_config: %s\n", agent_config);
 conf.agent = JSON.parse(agent_config);
 info.configuration.push(conf);
 

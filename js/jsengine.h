@@ -48,5 +48,6 @@ int JS_EngineExecFunc(JSEngine *e, char *filename, char *funcname, int argc, jsv
 typedef JSObject *(jsobjinit_t)(JSContext *cx, void *priv);
 int JS_EngineAddObject(JSEngine *e, jsobjinit_t *func, void *priv);
 char *JS_EngineGetErrmsg(JSEngine *e);
+void JS_EngineCleanup(JSEngine *e);
 
 #endif

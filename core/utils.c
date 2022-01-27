@@ -23,6 +23,7 @@ LICENSE file in the root directory of this source tree.
 #ifdef __WIN32
 #include <windows.h>
 #endif
+#include <math.h>
 
 #define dlevel 4
 
@@ -65,7 +66,7 @@ void _bindump(long offset,void *bptr,int len) {
 }
 
 void bindump(char *label,void *bptr,int len) {
-	dprintf(dlevel,"%s(%d):\n",label,len);
+	printf("%s(%d):\n",label,len);
 	_bindump(0,bptr,len);
 }
 
@@ -211,15 +212,17 @@ int is_ip(char *string) {
 	for(ptr=string; *ptr; ptr++) {
 		if (*ptr == '.') {
 			if (!digits) goto is_ip_error;
-			if (++dots > 4) goto is_ip_error;
+			if (++dots > 3) goto is_ip_error;
 			digits = 0;
 		} else if (isdigit((int)*ptr)) {
 			if (++digits > 3) goto is_ip_error;
+		} else {
+			goto is_ip_error;
 		}
 	}
 	dprintf(7,"dots: %d\n", dots);
 
-	return (dots == 4 ? 1 : 0);
+	return (dots == 3 ? 1 : 0);
 is_ip_error:
 	return 0;
 }
@@ -277,3 +280,47 @@ int os_setenv(const char *name, const char *value, int overwrite) {
 	return setenv(name,value,overwrite);
 #endif
 }
+
+
+bool fequal(float a, float b) {
+	return fabs(a-b) < 0.00001f;
+}
+
+int double_equals(double a, double b) {
+	double r;
+	int v;
+
+	printf("a: %lf, b: %lf\n", a, b);
+	if (a > b) r = a - b;
+	else r = b - a;
+	printf("a: %f, b: %f, r: %f\n", a, b, r);
+	v= (r < 0.0000001f);
+	printf("v: %d\n", v);
+	return v;
+}
+
+#if 0
+int double_equals(double a, double b) {
+        double r;
+
+        if (a > b) r = a - b;
+        else r = b - a;
+        dprintf(1,"a: %f, b: %f, r: %f\n", a, b, r);
+        return (r > 0.00001);
+}
+#endif
+
+int float_equals(float f1, float f2) {
+	float precision = 0.00001;
+	return (((f1 - precision) < f2) && (f1 + precision) > f2) ? 1 : 0;
+}
+#if 0
+int float_equals(float a, float b) {
+	float r;
+
+	if (a > b) r = a - b;
+	else r = b - a;
+	dprintf(1,"a: %f, b: %f, r: %f\n", a, b, r);
+	return (r > 0.00001f);
+}
+#endif

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libedit_static.a CMakeFiles/edit_static.dir/editline.c.o CMakeFiles/edit_static.dir/fn_complete.c.o CMakeFiles/edit_static.dir/history.c.o
+/usr/bin/ranlib libedit_static.a

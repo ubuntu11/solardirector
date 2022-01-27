@@ -1424,7 +1424,7 @@ struct JSConstDoubleSpec {
  */
 struct JSPropertySpec {
     const char      *name;
-    int8            tinyid;
+    int             tinyid;
     uint8           flags;
     JSPropertyOp    getter;
     JSPropertyOp    setter;
@@ -1619,7 +1619,7 @@ JS_SetPropertyAttributes(JSContext *cx, JSObject *obj, const char *name,
 
 extern JS_PUBLIC_API(JSBool)
 JS_DefinePropertyWithTinyId(JSContext *cx, JSObject *obj, const char *name,
-                            int8 tinyid, jsval value,
+                            int tinyid, jsval value,
                             JSPropertyOp getter, JSPropertyOp setter,
                             uintN attrs);
 
@@ -1709,7 +1709,7 @@ JS_SetUCPropertyAttributes(JSContext *cx, JSObject *obj,
 extern JS_PUBLIC_API(JSBool)
 JS_DefineUCPropertyWithTinyId(JSContext *cx, JSObject *obj,
                               const jschar *name, size_t namelen,
-                              int8 tinyid, jsval value,
+                              int tinyid, jsval value,
                               JSPropertyOp getter, JSPropertyOp setter,
                               uintN attrs);
 
@@ -2679,7 +2679,7 @@ JSObject *js_InitSocketClass(JSContext *cx, JSObject *);
 JSObject *js_InitCANClass(JSContext *cx, JSObject *);
 JSObject *js_InitSerialClass(JSContext *cx, JSObject *);
 JSObject *js_InitBluetoothClass(JSContext *cx, JSObject *);
-JSObject *jscan_new(JSContext *cx, void *tp, void *handle, char *transport, char *target, char *topts);
+JSObject *jscan_new(JSContext *cx, void *tp, void *handle, char *transport, char *target, char *topts, int *conn);
 
 static inline jsval js_number_to_jsval(JSContext *cx, double n) {
 	jsval v;

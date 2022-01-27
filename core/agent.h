@@ -31,6 +31,8 @@ struct solard_agent {
 	json_value_t *driver_info;
 	mqtt_session_t *m;		/* MQTT Session handle */
 	mqtt_config_t mqtt_config;
+	influx_session_t *i;		/* InfluxDB session handle */
+	influx_config_t influx_config;
 	int read_interval;
 	int write_interval;
 	list mq;			/* incoming message queue */

@@ -31,6 +31,7 @@ static JSClass si_data_class = {
 
 JSObject *JSSIData(JSContext *cx, si_session_t *s) {
 	JSAliasSpec si_data_aliases[] = {
+		{ "battery_soc", "battery_level" },
 		{ "ac1_voltage", "output_voltage" },
 		{ "ac1_frequency", "output_frequency" },
 		{ "ac1_current", "output_current" },
@@ -39,6 +40,7 @@ JSObject *JSSIData(JSContext *cx, si_session_t *s) {
 		{ "ac2_frequency", "input_frequency" },
 		{ "ac2_current", "input_current" },
 		{ "ac2_power", "input_power" },
+		{ "TotLodPwr", "load" },
 		{ 0 }
 	};
 	JSObject *obj;
@@ -70,7 +72,8 @@ JSObject *JSSIData(JSContext *cx, si_session_t *s) {
 
 /*************************************************************************/
 
-#define	SI_PROPERTY_ID_DATA 127
+#define	SI_PROPERTY_ID_DATA 1024
+#define	SI_PROPERTY_ID_BA 1025
 
 static JSBool si_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 	int prop_id;
@@ -85,11 +88,14 @@ static JSBool si_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 		case SI_PROPERTY_ID_DATA:
 			*rval = OBJECT_TO_JSVAL(JSSIData(cx,s));
 			break;
+		case SI_PROPERTY_ID_BA:
+			*rval = type_to_jsval(cx,DATA_TYPE_FLOAT_ARRAY,s->ba,SI_MAX_BA);
+			break;
 		default:
 			p = CONFIG_GETMAP(s->ap->cp,prop_id);
 			if (!p) p = config_get_propbyid(s->ap->cp,prop_id);
 			if (!p) {
-				JS_ReportError(cx, "property not found");
+				JS_ReportError(cx, "property %d not found", prop_id);
 				return JS_FALSE;
 			}
 //			dprintf(dlevel,"p: type: %d(%s), name: %s\n", p->type, typestr(p->type), p->name);
@@ -123,20 +129,6 @@ static JSClass si_class = {
 	JS_FinalizeStub,	/* finalize */
 	JSCLASS_NO_OPTIONAL_MEMBERS
 };
-
-#if 0
-static JSBool jsstart_grid(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
-	si_session_t *s;
-	int wait;
-
-	s = JS_GetPrivate(cx, obj);
-	dprintf(dlevel,"argc: %d\n", argc);
-	jsval_to_type(DATA_TYPE_INT,&wait,0,cx,argv[0]);
-	dprintf(dlevel,"wait: %d\n", wait);
-	si_start_grid(s,wait);
-	return JS_TRUE;
-}
-#endif
 
 //static JSBool jsget_relays(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
 static JSBool jsget_relays(JSContext *cx, uintN argc, jsval *vp) {
@@ -235,7 +227,7 @@ static JSBool jsinit_can(JSContext *cx, uintN argc, jsval *vp) {
 	obj = JS_THIS_OBJECT(cx, vp);
 	if (!obj) return JS_FALSE;
 	s = JS_GetPrivate(cx, obj);
-	if (si_can_init(s)) return JS_FALSE;
+	*vp = BOOLEAN_TO_JSVAL(si_can_init(s));
 	return JS_TRUE;
 }
 
@@ -246,7 +238,7 @@ static JSBool jsinit_smanet(JSContext *cx, uintN argc, jsval *vp) {
 	obj = JS_THIS_OBJECT(cx, vp);
 	if (!obj) return JS_FALSE;
 	s = JS_GetPrivate(cx, obj);
-	if (si_smanet_init(s)) return JS_FALSE;
+	*vp = BOOLEAN_TO_JSVAL(si_smanet_init(s));
 	return JS_TRUE;
 }
 
@@ -254,23 +246,8 @@ JSObject *js_init_candev(JSContext *cx, void *priv) {
 	si_session_t *s = priv;
 	JSObject *newobj;
 	jsval can;
-#if 0
-	char *name;
 
-	if (strncmp(s->can_target,"can",3) == 0)
-		name = s->can_target;
-	else if (strncmp(s->can_topts,"can",3) == 0) 
-		name = s->can_topts;
-	else
-		return 0;
-	dprintf(1,"name: %s\n", name);
-
-	newobj = jscan_new(cx,s->can,s->can_handle,s->can_transport,s->can_target,s->can_topts);
-	can = OBJECT_TO_JSVAL(newobj);
-
-	JS_DefineProperty(cx, JS_GetGlobalObject(cx), name, can, 0, 0, 0);
-#endif
-	newobj = jscan_new(cx,s->can,s->can_handle,s->can_transport,s->can_target,s->can_topts);
+	newobj = jscan_new(cx,s->can,s->can_handle,s->can_transport,s->can_target,s->can_topts,&s->can_connected);
 	can = OBJECT_TO_JSVAL(newobj);
 	JS_DefineProperty(cx, JS_GetGlobalObject(cx), "can", can, 0, 0, 0);
 	return newobj;
@@ -281,6 +258,7 @@ JSObject *js_init_smanetdev(JSContext *cx, void *priv) {
 	JSObject *newobj;
 	jsval val;
 
+	dprintf(dlevel,"s: %p, smanet: %p\n", s, (s ? s->smanet : 0));
 	newobj = jssmanet_new(cx,s->smanet,s->smanet_transport,s->smanet_target,s->smanet_topts);
 	val = OBJECT_TO_JSVAL(newobj);
 	JS_DefineProperty(cx, JS_GetGlobalObject(cx), "smanet", val, 0, 0, 0);
@@ -290,29 +268,37 @@ JSObject *js_init_smanetdev(JSContext *cx, void *priv) {
 JSObject *JSSunnyIsland(JSContext *cx, void *priv) {
 	JSPropertySpec si_props[] = {
 		{ "data", SI_PROPERTY_ID_DATA, JSPROP_ENUMERATE | JSPROP_READONLY },
+		{ "ba", SI_PROPERTY_ID_BA, JSPROP_ENUMERATE | JSPROP_READONLY },
 		{ 0 }
 	};
 	JSFunctionSpec si_funcs[] = {
-#if 0
-		{ "start_grid",jsstart_grid,1,1 },
-//		{ "start_gen",jsstart_gen,1,1 },
-#endif
 		JS_FN("get_relays",jsget_relays,0,0,0),
 		JS_FN("can_read",jscan_read,1,1,0),
 		JS_FN("can_write",jscan_write,2,2,0),
 		JS_FN("smanet_get",jscan_read,1,1,0),
 		JS_FN("smanet_set",jscan_read,1,1,0),
-		JS_FN("init_can",jsinit_can,0,0,0),
-		JS_FN("init_smanet",jsinit_smanet,0,0,0),
+		JS_FN("can_init",jsinit_can,0,0,0),
+		JS_FN("smanet_init",jsinit_smanet,0,0,0),
 		{ 0 }
 	};
 	JSAliasSpec si_aliases[] = {
-		{ "soc", "charge_level" },
+		{ "charge_amps", "charge_current" },
 		{ 0 }
 	};
 	JSConstantSpec si_constants[] = {
+		JS_NUMCONST(SI_STATE_RUNNING),
 		JS_NUMCONST(SI_VOLTAGE_MIN),
 		JS_NUMCONST(SI_VOLTAGE_MAX),
+		JS_NUMCONST(SI_CONFIG_FLAG_SMANET),
+		JS_NUMCONST(CV_METHOD_TIME),
+		JS_NUMCONST(CV_METHOD_AMPS),
+		JS_NUMCONST(CURRENT_SOURCE_NONE),
+		JS_NUMCONST(CURRENT_SOURCE_CALCULATED),
+		JS_NUMCONST(CURRENT_SOURCE_CAN),
+		JS_NUMCONST(CURRENT_SOURCE_SMANET),
+		JS_NUMCONST(CURRENT_TYPE_AMPS),
+		JS_NUMCONST(CURRENT_TYPE_WATTS),
+		JS_NUMCONST(SI_MAX_BA),
 		{ 0 }
 	};
 	JSObject *obj;
@@ -320,6 +306,7 @@ JSObject *JSSunnyIsland(JSContext *cx, void *priv) {
 
 	dprintf(dlevel,"s->props: %p, cp: %p\n",s->props,s->ap->cp);
 	if (!s->props) {
+
 		s->props = config_to_props(s->ap->cp, "si", si_props);
 		dprintf(dlevel,"s->props: %p\n",s->props);
 		if (!s->props) {

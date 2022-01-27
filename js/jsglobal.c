@@ -1,7 +1,12 @@
 
 #include <string.h>
 #include <stdlib.h>
+#ifdef WINDOWS
+#include <winsock2.h>
+#include <windows.h>
+#else
 #include <unistd.h>
+#endif
 
 #include "jsapi.h"
 #include "jsengine.h"
@@ -130,6 +135,7 @@ static JSBool Load(JSContext *cx, uintN argc, jsval *vp) {
 	JSString *str;
 	int i;
 	char *filename;
+	char fixedname[256];
 
 	obj = JS_THIS_OBJECT(cx, vp);
 	if (!obj) return JS_FALSE;
@@ -139,9 +145,11 @@ static JSBool Load(JSContext *cx, uintN argc, jsval *vp) {
 		if (!str) return JS_FALSE;
 		argv[i] = STRING_TO_JSVAL(str);
 		filename = JS_GetStringBytes(str);
-		printf("********************************* LOADING ***************************\n");
-		if (_JS_EngineExec(e, filename, cx)) {
-			JS_ReportError(cx, "Load(%s) failed\n",filename);
+		strncpy(fixedname,filename,sizeof(fixedname)-1);
+		JS_free(cx,filename);
+		fixpath(fixedname,sizeof(fixedname)-1);
+		if (_JS_EngineExec(e, fixedname, cx)) {
+			JS_ReportError(cx, "Load(%s) failed\n",fixedname);
 			return JS_FALSE;
 		}
 	}
@@ -169,14 +177,22 @@ static JSBool js_abort(JSContext *cx, uintN argc, jsval *vp) {
 
 }
 
-static JSBool Sleep(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
-	int s;
+#if 0
+static JSBool js_quit(JSContext *cx, uintN argc, jsval *vp) {
+	exit(0);
+}
+#endif
+
+static JSBool js_sleep(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
+	int r,n;
 
 	dprintf(dlevel,"argc: %d\n", argc);
 	if (!argc) return JS_TRUE;
-	s = JSVAL_TO_INT(argv[0]);
-	dprintf(dlevel,"s: %d\n", s);
-	sleep(s);
+	n = JSVAL_TO_INT(argv[0]);
+	dprintf(dlevel,"n: %d\n", n);
+
+	r = (sleep(n) != 0);
+	*rval = BOOLEAN_TO_JSVAL(r);
 	return JS_TRUE;
 }
 
@@ -305,9 +321,10 @@ JSObject *JS_CreateGlobalObject(JSContext *cx, void *priv) {
 		JS_FS("error",Error,0,0,0),
 		JS_FN("load",Load,1,1,0),
 		JS_FN("include",Load,1,1,0),
-		JS_FS("sleep",Sleep,1,0,0),
+		JS_FS("sleep",js_sleep,1,0,0),
 		JS_FS("exit",js_exit,1,1,0),
 		JS_FN("abort",js_abort,1,1,0),
+		JS_FN("quit",js_abort,0,0,0),
 		JS_FN("readline",ReadLine,0,0,0),
 		JS_FN("log_info",js_log_info,0,0,0),
 		JS_FN("log_warning",js_log_warning,0,0,0),

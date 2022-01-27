@@ -15,7 +15,7 @@ LICENSE file in the root directory of this source tree.
 #include "utils.h"
 #include "config.h"
 
-#define DEBUG_MQTT 0
+#define DEBUG_MQTT 1
 #define dlevel 5
 
 #ifdef DEBUG
@@ -287,7 +287,7 @@ int mqtt_pub(mqtt_session_t *s, char *topic, char *message, int wait, int retain
 //	options.WriteTimeout
 	int rc,rt,retry;
 
-	dprintf(dlevel,"topic: %s, message: %s\n", topic, message);
+	dprintf(dlevel,"topic: %s, msglen: %d, retain: %d\n", topic, message ? strlen(message) : 0, retain);
 
 	if (message) {
 		pubmsg.payload = message;

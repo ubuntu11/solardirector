@@ -1,0 +1,26 @@
+#!/usr/bin/python
+
+import json;
+
+with open('sma_objects.json') as f:
+	data = json.loads(f.read());
+#	print("data: ",data);
+	line = "{ ";
+	for k in data.keys():
+		s = "	{ \"" + k + "\", "
+		for j in data[k]:
+			if j == "TagId":
+				s += str(data[k][j])
+				break
+
+		s += ", "
+		for j in data[k]:
+			if j == "TagHier":
+				s += "{ "
+    				for i in data[k][j]: 
+					s += str(i) + ","
+				s += " }"
+
+		s += "  },"
+		print(s)
+	f.close();

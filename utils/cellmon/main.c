@@ -43,7 +43,7 @@ int sort_packs(void *i1, void *i2) {
 void getpack(cellmon_config_t *conf, char *name, char *data) {
 	solard_battery_t bat,*pp = &bat;
 
-	dprintf(1,"getting pack: name: %s, data: %s\n", name, data);
+//	dprintf(1,"getting pack: name: %s, data: %s\n", name, data);
 	battery_from_json(&bat,data);
 //	battery_dump(&bat,3);
 	solard_set_state((&bat),BATTERY_STATE_UPDATED);
@@ -65,28 +65,33 @@ void getpack(cellmon_config_t *conf, char *name, char *data) {
 
 
 int main(int argc,char **argv) {
-//	char *args[] = { "t2", "-d", "2", "-c", "cellmon.conf" };
-//	#define nargs (sizeof(args)/sizeof(char *))
 	cellmon_config_t *conf;
+	client_agentinfo_t *ap;
 	solard_message_t *msg;
-	char configfile[256],topic[SOLARD_TOPIC_SIZE],*p;
+	char configfile[256],topic[SOLARD_TOPIC_SIZE];
+	char target[SOLARD_ROLE_LEN+SOLARD_NAME_LEN+2];
+	char role[SOLARD_ROLE_LEN];
+	char name[SOLARD_NAME_LEN];
 	long start;
 //	int web_flag;
-//		{ "-w|web output",&web_flag,DATA_TYPE_BOOL,0,0,"false" },
 	opt_proctab_t opts[] = {
 		/* Spec, dest, type len, reqd, default val, have */
 		{ "-t::|topic",&topic,DATA_TYPE_STRING,sizeof(topic)-1,0,"" },
+//		{ "-w|web output",&web_flag,DATA_TYPE_BOOL,0,0,"false" },
 		OPTS_END
 	};
-//	time_t last_read,cur,diff;
+	register char *p;
+#if TESTING
+	char *args[] = { "t2", "-d", "2", "-c", "cellmon.conf" };
+	#define nargs (sizeof(args)/sizeof(char *))
+#endif
 
 	find_config_file("cellmon.conf",configfile,sizeof(configfile)-1);
 	dprintf(1,"configfile: %s\n", configfile);
 
 	conf = calloc(1,sizeof(*conf));
 	if (!conf) return 1;
-//	conf->c = client_init(nargs,args,opts,"cellmon");
-	conf->c = client_init(argc,argv,opts,"cellmon");
+	conf->c = client_init(argc,argv,opts,"cellmon",0,0);
 	if (!conf->c) return 1;
 	conf->packs = list_create();
 
@@ -104,6 +109,31 @@ int main(int argc,char **argv) {
 		dprintf(1,"count: %d\n", list_count(conf->c->mq));
 		list_reset(conf->c->mq);
 		while((msg = list_get_next(conf->c->mq)) != 0) {
+//			printf("msg: topic: %s, id: %s, len: %d, replyto: %s\n", msg->topic, msg->id, (int)strlen(msg->data), msg->replyto);
+			*role = 0;
+			p = strchr(msg->id,'/');
+			if (p) {
+				strncpy(target,msg->id,sizeof(target)-1);
+				p = strchr(target,'/');
+				if (p) {
+					*p = 0;
+					strncpy(role,target,sizeof(role)-1);
+					strncpy(name,p+1,sizeof(name)-1);
+				}
+			}
+			if (!*role) {
+				strncpy(name,msg->id,sizeof(name)-1);
+				ap = 0;
+				if (strlen(msg->replyto)) ap = client_getagentbyid(conf->c,msg->replyto);
+//				printf("ap: %p\n", ap);
+				if (!ap) ap = client_getagentbyname(conf->c,msg->id);
+//				printf("ap: %p\n", ap);
+				if (!ap) continue;
+				strncpy(role,ap->role,sizeof(role)-1);
+			}
+//			printf("name: %s, role: %s\n", name, role);
+			if (strcmp(role,SOLARD_ROLE_BATTERY) != 0) continue;
+//			printf("getting pack...\n");
 			getpack(conf,msg->name,msg->data);
 			list_delete(conf->c->mq,msg);
 		}

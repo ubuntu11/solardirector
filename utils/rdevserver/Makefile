@@ -1,6 +1,6 @@
 
 PROGNAME=$(shell basename $(shell pwd))
-SRCS=main.c server.c
+SRCS=main.c server.c devserver.c
 
 BLUETOOTH=no
 

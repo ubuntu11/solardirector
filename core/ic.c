@@ -20,20 +20,7 @@
     Compile: cc ic.c -g -O3 -o ic
  */
 
-#include <sys/types.h>
-#ifdef __WIN32
-#include <winsock2.h>
-#include <windows.h>
-#include <ws2tcpip.h>
-#else
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#endif
-#include <fcntl.h>
-#include <ctype.h>
-#include "transports.h"
+#include "socket.h"
 
 #define DEFAULT_PORT 23
 
@@ -46,22 +33,6 @@ typedef int socket_t;
 #define INVALID_SOCKET -1
 #endif
 
-
-#if 0
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <ctype.h>
-#include <math.h>
-#include <string.h>
-#ifndef WINDOWS
-#include <sys/errno.h>
-#endif
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#endif
 
 #define MEGABYTE ( 1024 * 1024 ) /* USed as the default buffer sizes */
 

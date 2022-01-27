@@ -917,10 +917,9 @@ int jbd_get(void *h, char *name, char *value, char *errmsg) {
 	return 1;
 }
 
-int jbd_getset(void *h, char *name, char *value, char *errmsg) {
+int jbd_getset(void *h, list args, char *errmsg) {
 //	jbd_session_t *s = h;
 
-	dprintf(1,"name: %s, value: %s\n", name, value);
 	return 1;
 }
 

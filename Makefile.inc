@@ -31,7 +31,6 @@ ifeq ($(TARGET),pi3)
 	RANLIB=$(CBINDIR)/$(CVERS)-ranlib
 	STRIP=$(CBINDIR)/$(CVERS)-strip
 #	CFLAGS+=-DNULLDEV=\"/dev/null\" -D__USE_FILE_OFFSET64
-#	CFLAGS+=-DXP_UNIX
 	DEST_BASE=/usr/$(CVERS)
 	DEST_PREFIX=$(DEST_BASE)/$(CVERS)/sysroot
 	DEST_BINDIR=$(DEST_PREFIX)/bin
@@ -48,8 +47,7 @@ else ifeq ($(TARGET),win64)
 	AR=$(CBINDIR)/$(CVERS)-ar
 	RANLIB=$(CBINDIR)/$(CVERS)-ranlib
 	STRIP=$(CBINDIR)/$(CVERS)-strip
-#	CFLAGS+=-DWIN32 -DWIN64 -DNULLDEV=\"NUL\"
-	CFLAGS+=-DWINDOWS -DXP_WIN
+	CFLAGS+=-DWINDOWS -DWIN32 -DWIN64
 	DEST_BASE=/usr/$(CVERS)
 	DEST_PREFIX=$(DEST_BASE)/sys-root/mingw
 	DEST_BINDIR=$(DEST_PREFIX)/bin
@@ -68,9 +66,7 @@ else ifeq ($(TARGET),win32)
 	RANLIB=$(CBINDIR)/$(CVERS)-ranlib
 	STRIP=$(CBINDIR)/$(CVERS)-gcc
 	STRIP=$(BASE)/bin/$(VERS)-strip
-#	CFLAGS+=-DWIN32 -DNULLDEV=\"NUL\" 
-#	CFLAGS+=-DWIN32 -DNULLDEV=\"NUL\" -D_FILE_OFFSET_BITS=64
-#	CFLAGS+=-DWINDOWS -DXP_WIN
+	CFLAGS+=-DWINDOWS -DWIN32 -D_FILE_OFFSET_BITS=64
 	DEST_BASE=/usr/$(CVERS)
 	DEST_PREFIX=$(DEST_BASE)/sys-root/mingw
 	DEST_BINDIR=$(DEST_PREFIX)/bin
@@ -300,7 +296,7 @@ _all: $(LIB)
 $(LIB): $(OBJS)
 ifeq ($(SHARED),yes)
 	echo $(CC)
-	$(CC) $(LDADD) -shared -o $(LIB) $(OBJS) $(LIBS)
+	$(CC) $(LDADD) -shared -o $(LIB) $(OBJS) $(LIBS) $(ENDLIBS)
 else
 	$(AR) cr $(LIB) $(OBJS)
 	$(RANLIB) $(LIB)
@@ -316,7 +312,7 @@ ifneq ($(PROGNAME),)
 PROG=$(PROGNAME)$(EXE)
 _all: $(PROG)
 $(PROG): $(OBJS) $(DEPS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $(PROG) $(OBJS) $(LIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $(PROG) $(OBJS) $(LIBS) $(ENDLIBS)
 
 debug: $(PROG)
 	gdb ./$(PROG)
@@ -360,11 +356,16 @@ DEPDIR := .deps
 CLEANFILES+=.deps
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
 
-COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
+FULLCC = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH)
+FULLCPP = $(CPP) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH)
 
 %.o : %.c
 %.o : %.c $(DEPDIR)/%.d | $(DEPDIR)
-	$(COMPILE.c) $(OUTPUT_OPTION) $<
+	$(FULLCC) -c $(OUTPUT_OPTION) $<
+
+%.o : %.cpp
+%.o : %.cpp $(DEPDIR)/%.d | $(DEPDIR)
+	$(FULLCPP) -c $(OUTPUT_OPTION) $<
 
 $(DEPDIR): ; @mkdir -p $@
 

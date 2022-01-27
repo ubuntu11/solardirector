@@ -78,6 +78,12 @@
 
 #endif
 
+#ifdef WINDOWS
+#undef HAVE_LOCALTIME_R
+#else
+#define HAVE_LOCALTIME_R 1
+#endif
+
 #if defined(XP_UNIX) || defined(XP_BEOS)
 
 #ifdef _SVID_GETTOD   /* Defined only on Solaris, see Solaris <sys/types.h> */

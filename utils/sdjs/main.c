@@ -5,43 +5,47 @@
 #include "common.h"
 #include "agent.h"
 #include "jsengine.h"
-#include "editline.h"
 #include "smanet.h"
 #include "transports.h"
+
+#ifdef WINDOWS
+#include "wineditline/editline.c"
+#include "wineditline/history.c"
+#include "wineditline/fn_complete.c"
+#else
+#include <readline/readline.h>
+#include <readline/history.h>
+#endif
 
 #define TESTING 0
 int gQuitting = 0;
 
 static JSBool
 GetLine(JSContext *cx, char *bufp, FILE *file, const char *prompt) {
-#ifdef EDITLINE
     /*
      * Use readline only if file is stdin, because there's no way to specify
      * another handle.  Are other filehandles interactive?
      */
+#ifndef WINDOWS
     if (file == stdin) {
         char *linep = readline(prompt);
-        if (!linep)
-            return JS_FALSE;
-        if (linep[0] != '\0')
-            add_history(linep);
+        if (!linep) return JS_FALSE;
+        if (linep[0] != '\0') add_history(linep);
         strcpy(bufp, linep);
         JS_free(cx, linep);
         bufp += strlen(bufp);
         *bufp++ = '\n';
         *bufp = '\0';
-    } else
+   } else
 #endif
-    {
+   {
         char line[256];
-	printf("printing prompt...\n");
         printf(prompt);
         fflush(stdout);
-        if (!fgets(line, sizeof line, file))
-            return JS_FALSE;
+        if (!fgets(line, sizeof line, file)) return JS_FALSE;
         strcpy(bufp, line);
-    }
-    return JS_TRUE;
+   }
+   return JS_TRUE;
 }
 
 int shell(JSContext *cx) {
@@ -76,6 +80,8 @@ int shell(JSContext *cx) {
             bufp += strlen(bufp);
             lineno++;
         } while (!JS_BufferIsCompilableUnit(cx, JS_GetGlobalObject(cx), buffer, strlen(buffer)));
+	dprintf(1,"buffer: %s\n", buffer);
+	if (strncmp(buffer,"quit",4)==0) break;
 
         /* Clear any pending exception from previous failed compiles.  */
         JS_ClearPendingException(cx);
@@ -95,11 +101,29 @@ int shell(JSContext *cx) {
 	return 0;
 }
 
+int sdjs_config(void *h, int req, ...) {
+	solard_agent_t *ap;
+	va_list va;
+	int r;
+
+	r = 1;
+	va_start(va,req);
+	dprintf(1,"req: %d\n", req);
+	switch(req) {
+	case SOLARD_CONFIG_INIT:
+		dprintf(1,"**** CONFIG INIT *******\n");
+		/* 1st arg is AP */
+		ap = va_arg(va,solard_agent_t *);
+		smanet_jsinit(ap->js);
+		r = 0;
+		break;
+	}
+	return r;
+}
+
 int main(int argc, char **argv) {
-//	JSEngine *e;
-	char line[1024],script[256];
+	char script[256];
 	opt_proctab_t opts[] = {
-		{ "-e::|execute",&line,DATA_TYPE_STRING,sizeof(line)-1,0,"" },
 		{ "%|script",&script,DATA_TYPE_STRING,sizeof(script)-1,0,"" },
 		{ 0 }
 	};
@@ -109,21 +133,17 @@ int main(int argc, char **argv) {
 	argv = args;
 #endif
 	solard_agent_t *ap;
-	config_property_t props[] = {
-                { "debug", DATA_TYPE_INT, &debug, 0, 0, 0,
-                        "range", 3, (int []){ 0, 99, 1 }, 1, (char *[]) { "debug level" }, 0, 1, 0 },
-	};
 	solard_driver_t driver = null_driver;
 
 	driver.name = "sdjs";
+	driver.config = sdjs_config;
 
-	ap = agent_init(argc,argv,opts,&driver,0,props,0);
+	ap = agent_init(argc,argv,opts,&driver,0,0,0);
 	if (!ap) return 1;
 
         smanet_jsinit(ap->js);
-	if (*line) {
-		JS_EngineExecString(ap->js,line);
-	} else if (*script) {
+	dprintf(1,"script: %s\n", script);
+	if (*script) {
 		if (access(script,0) < 0) {
 			printf("%s: %s\n",script,strerror(errno));
 		} else {

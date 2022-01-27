@@ -17,28 +17,28 @@ LICENSE file in the root directory of this source tree.
 	Role (Controller/Inverter/Battery)
 	Agent (pack_01/si/etc)
 	Func (Config/Data/etc)
-	Action  (Get/Set/Add/Del/etc)
 */
 
-/* 64k atm */
-//#define SOLARD_MAX_PAYLOAD_SIZE 65536
-#define SOLARD_MAX_PAYLOAD_SIZE 1048576
+#define SOLARD_MAX_PAYLOAD_SIZE 262144
 
 struct solard_message {
+	char topic[SOLARD_TOPIC_SIZE];			/* orig topic */
+	int type;					/* 0 = agent, 1 = client */
 	union {
-		char id[SOLARD_ID_LEN];
-		char name[SOLARD_NAME_LEN];
+		char name[SOLARD_NAME_LEN];		/* if agent, name */
+		char id[SOLARD_ID_LEN];			/* if client, id */
 	};
-	char func[SOLARD_FUNC_LEN];
-	char replyto[SOLARD_ID_LEN];
-	char data[SOLARD_MAX_PAYLOAD_SIZE];
-//	char *data;
+	char func[SOLARD_FUNC_LEN];			/* agent func, if any */
+	char replyto[SOLARD_ID_LEN];			/* MQTT5 replyto addr */
+	char data[SOLARD_MAX_PAYLOAD_SIZE];		/* message data */
+	int size;					/* message size (strlen(data) */
 };
 typedef struct solard_message solard_message_t;
 
-solard_message_t *solard_getmsg(char *, char *, int, char *);
+int solard_getmsg(solard_message_t *, char *, char *, int, char *);
 void solard_message_dump(solard_message_t *,int);
 int solard_message_wait(list, int);
+int solard_message_delete(list, solard_message_t *);
 
 typedef int (solard_msghandler_t)(void *,solard_message_t *);
 

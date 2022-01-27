@@ -1,7 +1,11 @@
+
+#include "jsapi.h"
+
+#if JS_HAS_SOCKET_OBJECT
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <jsapi.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/tcp.h>
@@ -384,3 +388,4 @@ static JSBool Socket_getProperty(JSContext *cx, JSObject *obj, jsval id, jsval *
     }
     return JS_TRUE;
 }
+#endif

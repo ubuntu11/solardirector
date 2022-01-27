@@ -30,7 +30,8 @@ static int sb_agent_init(int argc, char **argv, opt_proctab_t *sb_opts, sb_sessi
 	return 0;
 }
 
-static solard_driver_t *transports[] = { &http_driver, 0 };
+#if 0
+static solard_driver_t *transports[] = { 0 };
 
 /* Function cannot return error */
 int sb_tp_init(sb_session_t *s) {
@@ -120,13 +121,14 @@ int sb_tp_init(sb_session_t *s) {
 	}
 	return 0;
 }
+#endif
 
 int main(int argc, char **argv) {
 	sb_session_t *s;
-	char tpinfo[128];
+//	char tpinfo[128];
 	opt_proctab_t opts[] = {
 		/* Spec, dest, type len, reqd, default val, have */
-		{ "-t::|transport,target,opts",&tpinfo,DATA_TYPE_STRING,sizeof(tpinfo)-1,0,"" },
+//		{ "-t::|transport,target,opts",&tpinfo,DATA_TYPE_STRING,sizeof(tpinfo)-1,0,"" },
 		OPTS_END
 	};
 #if TESTING
@@ -142,6 +144,7 @@ int main(int argc, char **argv) {
 	/* Agent init */
 	if (sb_agent_init(argc,argv,opts,s)) return 1;
 
+#if 0
 	/* -t takes precedence over config */
 	dprintf(1,"tpinfo: %s\n", tpinfo);
 	if (strlen(tpinfo)) {
@@ -155,9 +158,15 @@ int main(int argc, char **argv) {
 		log_error(s->errmsg);
 		return 1;
 	}
+#endif
+
+//	strcpy(s->endpoint,"192.168.1.153");
+	strcpy(s->endpoint,"192.168.1.175");
+	strcpy(s->password,"Bgt56yhn!");
 
 	/* Main loop */
 	log_write(LOG_INFO,"Running...\n");
 	agent_run(s->ap);
+	sb_driver.close(s);
 	return 0;
 }

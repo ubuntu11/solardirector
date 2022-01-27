@@ -76,6 +76,7 @@ jsval type_to_jsval(JSContext *cx, int type, void *dest, int len) {
 			fa = (float *)dest;
 			arr = JS_NewArrayObject(cx, len, NULL);
 			for(i=0; i < len; i++) {
+//				dprintf(0,"adding[%d]: %f\n", i, fa[i]);
 				JS_NewDoubleValue(cx, fa[i], &element);
 				JS_SetElement(cx, arr, i, &element);
 			}

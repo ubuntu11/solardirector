@@ -66,6 +66,13 @@
 */
 #include "editline.h"
 
+#ifdef __WIN32
+void
+rl_ttyset(Reset)
+    int				Reset;
+{
+}
+#else
 #if	defined(HAVE_TCGETATTR)
 #include <termios.h>
 
@@ -171,6 +178,7 @@ rl_ttyset(Reset)
 }
 #endif	/* defined(HAVE_TERMIO) */
 #endif	/* defined(HAVE_TCGETATTR) */
+#endif  /* defined(__WIN32) */
 
 void
 rl_add_slash(path, p)

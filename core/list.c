@@ -7,7 +7,7 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#define THREAD_SAFE 0
+#define THREAD_SAFE 1
 #define DEBUG_LIST 0
 #define dlevel 4
 
@@ -253,7 +253,6 @@ int list_delete(list lp,void *item) {
 int list_destroy(list lp) {
 	list_item ip,next;
 
-#if 0
 	if (!lp) return -1;
 
 	ip = lp->first;                         /* Start at beginning */
@@ -264,7 +263,6 @@ int list_destroy(list lp) {
 		ip = next;                      /* Set current item to next */
 	}
 	free(lp);				/* Free list */
-#endif
 	return 0;
 }
 

@@ -178,13 +178,11 @@ int main(int argc, char **argv) {
 
 	/* Get hwinfo */
 //	if (jbd_get_hwinfo(s)) return 1;
-	jbd_get_hwinfo(s);
+//	jbd_get_hwinfo(s);
 
-#ifdef JS
 	/* Send info */
-	sprintf(tpinfo,"%s/info.js", SOLARD_LIBDIR);
-	agent_start_script(s->ap, tpinfo);
-#endif
+//	sprintf(tpinfo,"%s/info.js", s->ap->script_dir);
+//	agent_start_script(s->ap, tpinfo);
 
 	/* Main loop */
 	log_write(LOG_INFO,"Running...\n");

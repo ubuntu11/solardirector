@@ -26,10 +26,13 @@ static int si_cb(void *ctx) {
 
 	/* Get the relay/func bits */
 	if (s->can_connected && si_can_read_relays(s) == 0) {
-		if (s->data.GdOn != s->grid_connected)
+		dprintf(1,"GdOn: %d, GnOn: %d\n", s->data.GdOn, s->data.GnOn);
+		if (s->data.GdOn != s->grid_connected) {
 			log_info("Grid %s\n",(s->data.GdOn ? "connected" : "disconnected"));
-		if (s->data.GnOn != s->gen_connected)
+		}
+		if (s->data.GnOn != s->gen_connected) {
 			log_info("Generator %s\n",(s->data.GnOn ? "connected" : "disconnected"));
+		}
 		if ((s->data.GdOn != s->grid_connected) || (s->data.GnOn != s->gen_connected)) si_can_write_va(s);
 		s->grid_connected = s->data.GdOn;
 		s->gen_connected = s->data.GnOn;
@@ -95,10 +98,12 @@ int main(int argc, char **argv) {
 		strncat(s->smanet_target,strele(1,",",smatpinfo),sizeof(s->smanet_target)-1);
 		strncat(s->smanet_topts,strele(2,",",smatpinfo),sizeof(s->smanet_topts)-1);
         }
-	s->smanet = smanet_init(0,0,0);
 
 	/* Set callback */
 	agent_set_callback(s->ap,si_cb,s);
+
+	sprintf(cantpinfo,"%s/%s",SOLARD_TOPIC_ROOT,s->ap->mqtt_config.clientid);
+	mqtt_sub(s->ap->m, cantpinfo);
 
 	time(&end);
 	diff = end - start;

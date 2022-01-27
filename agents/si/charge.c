@@ -17,10 +17,36 @@ LICENSE file in the root directory of this source tree.
 int si_check_config(si_session_t *s) {
 	int r;
 	char *msg;
+	float spread;
 
-	r = 1;
-	/* min and max must be set */
 	dprintf(1,"min_voltage: %.1f, max_voltage: %.1f\n", s->min_voltage, s->max_voltage);
+	if (!si_isvrange(s->min_voltage) && !fequal(s->min_voltage,0.0)) {
+		log_warning("min_voltage (%.1f) out of range(%.1f to %.1f)\n",
+			s->min_voltage, SI_VOLTAGE_MIN, SI_VOLTAGE_MAX);
+		s->min_voltage = 0.0;
+	} else if (s->min_voltage >= s->max_voltage) {
+		log_warning("min_voltage >= max_voltage\n");
+		s->min_voltage = 0.0;
+	}
+	if (!si_isvrange(s->max_voltage) && !fequal(s->max_voltage,0.0)) {
+		log_warning("max_voltage (%.1f) out of range(%.1f to %.1f)\n",
+			s->max_voltage, SI_VOLTAGE_MIN, SI_VOLTAGE_MAX);
+		s->max_voltage = 0.0;
+	} else if (s->max_voltage <= s->min_voltage) {
+		log_warning("min_voltage >= max_voltage\n");
+		s->max_voltage = 0.0;
+	}
+	if (fequal(s->min_voltage,0.0)) {
+		log_warning("setting min_voltage to %.1f\n", 41.0);
+		s->min_voltage = 41.0;
+	}
+	if (fequal(s->max_voltage,0.0)) {
+		log_warning("setting max_voltage to %.1f\n", 58.1);
+		s->max_voltage = 58.1;
+	}
+
+#if 0
+	/* min and max must be set */
 	if (!si_isvrange(s->min_voltage)) {
 		msg = "min_voltage not set or out of range\n";
 		goto si_check_config_error;
@@ -39,7 +65,59 @@ int si_check_config(si_session_t *s) {
 		msg = "min_voltage > max_voltage\n";
 		goto si_check_config_error;
 	}
-	if (!s->readonly) {
+#endif
+
+#if 0
+	if (fequal(s->charge_start_soc,0.0)) {
+		log_warning("setting charge_start_soc to 25\n");
+		s->charge_start_soc = 85.0;
+	}
+#endif
+
+	spread = s->max_voltage - s->min_voltage;
+	if (!fequal(s->charge_start_voltage,0.0)) {
+		if (!si_isvrange(s->charge_start_voltage)) {
+			log_warning("charge_start_voltage (%.1f) out of range(%.1f to %.1f)\n",
+				s->charge_start_voltage, SI_VOLTAGE_MIN, SI_VOLTAGE_MAX);
+			s->charge_start_voltage = 0.0;
+		} else if (s->charge_start_voltage >= s->charge_end_voltage) {
+			log_warning("charge_start_voltage >= charge_end_voltage");
+			s->charge_start_voltage = 0.0;
+		} else if (s->charge_start_voltage < s->min_voltage) {
+			log_warning("charge_start_voltage < min_voltage");
+			s->charge_start_voltage = 0.0;
+		} else if (s->charge_start_voltage > s->max_voltage) {
+			log_warning("charge_start_voltage > max_voltage");
+			s->charge_start_voltage = 0.0;
+		}
+	}
+	if (fequal(s->charge_start_voltage,0.0)) {
+		s->charge_start_voltage = s->min_voltage + (spread * 0.25);
+		log_warning("setting charge_start_voltage to %.1f\n", s->charge_start_voltage);
+	}
+	if (!fequal(s->charge_end_voltage,0.0)) {
+		if (!si_isvrange(s->charge_end_voltage)) {
+			log_warning("charge_end_voltage (%.1f) out of range(%.1f to %.1f)\n",
+				s->charge_end_voltage, SI_VOLTAGE_MIN, SI_VOLTAGE_MAX);
+			s->charge_end_voltage = 0.0;
+		} else if (s->charge_end_voltage <= s->charge_start_voltage) {
+			log_warning("charge_end_voltage <= charge_start_voltage");
+			s->charge_end_voltage = 0.0;
+		} else if (s->charge_end_voltage < s->min_voltage) {
+			log_warning("charge_end_voltage < min_voltage");
+			s->charge_end_voltage = 0.0;
+		} else if (s->charge_end_voltage > s->max_voltage) {
+			log_warning("charge_end_voltage > max_voltage");
+			s->charge_end_voltage = 0.0;
+		}
+	}
+	if (fequal(s->charge_end_voltage,0.0)) {
+		s->charge_end_voltage = s->min_voltage + (spread * 0.85);
+		log_warning("setting charge_end_voltage to %.1f\n", s->charge_end_voltage);
+	}
+
+#if 0
+//	if (!s->readonly) {
 		/* charge_start_voltage must be >= min */
 		dprintf(1,"charge_start_voltage: %.1f, charge_end_voltage: %.1f\n",
 			s->charge_start_voltage, s->charge_end_voltage);
@@ -67,13 +145,16 @@ int si_check_config(si_session_t *s) {
 			msg = "charge_start_voltage > charge_end_voltage";
 			goto si_check_config_error;
 		}
-	}
+//	}
+
 	r = 0;
 	msg = "";
 
-si_check_config_error:
+/si_check_config_error:
 	strcpy(s->errmsg,msg);
 	return r;
+#endif
+	return 0;
 }
 
 void charge_init(si_session_t *s) {
@@ -89,8 +170,8 @@ void charge_init(si_session_t *s) {
 	solard_clear_state(s,SI_STATE_CHARGING);
 	s->charge_mode = 0;
 	s->force_charge = 0;
-	if ((int)s->grid_charge_amps <= 0) s->grid_charge_amps = s->std_charge_amps;
-	if ((int)s->gen_charge_amps <= 0) s->gen_charge_amps = s->std_charge_amps;
+	if ((int)s->grid_charge_amps <= 0) s->grid_charge_amps = s->charge_max_amps;
+	if ((int)s->gen_charge_amps <= 0) s->gen_charge_amps = s->charge_max_amps;
 }
 
 void charge_max_start(si_session_t *s) {
@@ -101,7 +182,7 @@ void charge_max_start(si_session_t *s) {
 	}
 	log_write(LOG_INFO,"*** CHARGING AT MAX ***\n");
 	s->charge_voltage = s->max_voltage;
-	s->charge_amps = s->std_charge_amps;
+	s->charge_amps = s->charge_max_amps;
 	s->charge_at_max = 1;
 }
 
@@ -113,7 +194,7 @@ void charge_max_stop(si_session_t *s) {
 	}
 	log_write(LOG_INFO,"*** CHARGING AT END ***\n");
 	s->charge_voltage = s->charge_end_voltage;
-	s->charge_amps = s->std_charge_amps;
+	s->charge_amps = s->charge_max_amps;
 	s->charge_at_max = 0;
 }
 
@@ -156,7 +237,7 @@ void charge_start(si_session_t *s, int rep) {
 	if (s->charge_at_max) charge_max_start(s);
 	else s->charge_voltage = s->charge_end_voltage;
 
-	s->charge_amps = s->std_charge_amps;
+	s->charge_amps = s->charge_max_amps;
 	dprintf(1,"charge_voltage: %.1f, charge_amps: %.1f\n", s->charge_voltage, s->charge_amps);
 
 	if (rep) log_write(LOG_INFO,"*** STARTING CC CHARGE ***\n");
@@ -199,7 +280,7 @@ void charge_start_cv(si_session_t *s, int rep) {
 	solard_set_state(s,SI_STATE_CHARGING);
 	s->charge_mode = 2;
 	s->charge_voltage = s->charge_end_voltage;
-	s->charge_amps = s->std_charge_amps;
+	s->charge_amps = s->charge_max_amps;
 	time(&s->cv_start_time);
 	s->start_temp = s->data.battery_temp;
 	s->baidx = s->bafull = 0;
@@ -445,9 +526,11 @@ ec_again:
 	}
 #endif
 
+	if (s->data.battery_voltage < s->min_voltage) return;
+
 	dprintf(1,"battery_voltage: %.1f, charge_start_voltage: %.1f, charge_end_voltage: %.1f\n",
 		s->data.battery_voltage, s->charge_start_voltage, s->charge_end_voltage);
-	if ((s->data.battery_voltage-0.0001) <= s->charge_start_voltage) {
+	if (s->data.battery_voltage >= s->min_voltage && ((s->data.battery_voltage-0.0001) <= s->charge_start_voltage)) {
 		/* Start charging */
 		s->force_charge = 1;
 		charge_start(s,1);
@@ -490,7 +573,7 @@ ec_again:
 
 		/* CV */
 		} else if (s->charge_mode == 2) {
-			if (s->cv_method == 0) {
+			if (s->cv_method == CV_METHOD_TIME) {
 				time_t current_time,end_time;
 
 				time(&current_time);
@@ -499,7 +582,7 @@ ec_again:
  				end_time = s->cv_start_time + MINUTES(s->cv_time);
 				cvremain(current_time,end_time);
 				if (current_time >= end_time) charge_stop(s,1);
-			} else if (s->cv_method == 1) {
+			} else if (s->cv_method == CV_METHOD_AMPS) {
 				float amps,avg;
 				int i;
 

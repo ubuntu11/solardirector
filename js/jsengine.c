@@ -34,7 +34,6 @@ LICENSE file in the root directory of this source tree.
 
 struct _scriptinfo {
 	JSEngine *e;
-//	int newcx;
 	char filename[256];
 	int modtime;
 	JSScript *script;
@@ -366,6 +365,7 @@ int JS_EngineExec(JSEngine *e, char *filename, int newcx) {
 	}
 	r = 1;
 	strncpy(local_filename,filename,sizeof(local_filename)-1);
+	fixpath(local_filename,sizeof(local_filename)-1);
 	if (newcx) cx = JS_EngineNewContext(e);
 	else cx = _getcx(e);
 	dprintf(dlevel,"cx: %p\n", cx);
@@ -374,12 +374,10 @@ int JS_EngineExec(JSEngine *e, char *filename, int newcx) {
 
 JS_EngineExec_error:
 	dprintf(dlevel,"cx: %p, newcx: %d\n", cx, newcx);
-	if (cx) {
-		if (newcx) {
-			dprintf(dlevel,"destroying CX!!\n");
-			JS_DestroyContext(cx);
-		} else _relcx(e);
-	}
+	if (newcx && cx) {
+		dprintf(dlevel,"destroying CX!!\n");
+		JS_DestroyContext(cx);
+	} else _relcx(e);
 	return r;
 }
 
@@ -399,4 +397,14 @@ int JS_EngineExecString(JSEngine *e, char *string) {
 char *JS_EngineGetErrmsg(JSEngine *e) {
 	if (!e) return "";
 	return e->errmsg;
+}
+
+void JS_EngineCleanup(JSEngine *e) {
+	JSContext *cx;
+
+	cx = _getcx(e);
+	if (!cx) return;
+	JS_GC(cx);
+	_relcx(e);
+	return;
 }

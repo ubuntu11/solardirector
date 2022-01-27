@@ -1,7 +1,7 @@
 
 This is a version of Mozilla's Spidermonkey 1.8-RC1 library (before they went to C++)
 
-Additions:
+Additions(p=partial,x=done):
 
 x printf, sprintf, dprintf (debug), printf_exception (within JS)
 x include, run, load, exec
@@ -11,8 +11,12 @@ p console object
 window object
 x JSON object
 x Socket object
-CAN oject (Linux only - SocketCAN)
+x CAN oject (Linux only - SocketCAN)
+x SMANET object
+Influx object
+Config object
 Serial object
+Bluetooth object (linux only)
 MQTT object (via paho.mqtt.c lib)
 HTTP object
 SMTP object

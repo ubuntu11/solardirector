@@ -13,6 +13,7 @@ LICENSE file in the root directory of this source tree.
 #include <pthread.h>
 #include "agent.h"
 #include "jbd_regs.h"
+#include "can.h"
 
 #define JBD_NAME_LEN 32
 #define JBD_MAX_TEMPS 8
@@ -155,7 +156,6 @@ int jbd_get_hwinfo(jbd_session_t *s);
 int jbd_config_init(jbd_session_t *s);
 int jbd_config_add_params(json_value_t *j);
 int jbd_get(void *h, char *name, char *value, char *errmsg);
-int jbd_getset(void *h, char *name, char *value, char *errmsg);
 int jbd_config(void *h, int req, ...);
 
 /* jsfuncs.c */

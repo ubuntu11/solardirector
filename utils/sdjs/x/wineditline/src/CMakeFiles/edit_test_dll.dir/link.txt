@@ -1,0 +1,1 @@
+/usr/bin/cc -rdynamic CMakeFiles/edit_test_dll.dir/libedit_test_dll.c.o -o edit_test_dll 

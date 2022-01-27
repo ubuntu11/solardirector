@@ -12,11 +12,29 @@ LICENSE file in the root directory of this source tree.
 
 #include "common.h"
 #include "driver.h"
-#include "devserver.h"
-#ifndef __WIN32
-#include <linux/can.h>
-#endif
+#include "rdev.h"
 #include <pthread.h>
+#include "can.h"
+
+struct devserver_io {
+	char name[RDEV_NAME_LEN];
+	char type[RDEV_TYPE_LEN];
+	void *handle;
+	int (*open)(void *handle);
+	int (*read)(void *handle, void *buf, int buflen);
+	int (*write)(void *handle, void *buf, int buflen);
+	int (*close)(void *handle);
+};
+typedef struct devserver_io devserver_io_t;
+
+#define DEVSERVER_MAX_UNITS 8
+
+struct devserver_config {
+	pthread_mutex_t lock;
+	devserver_io_t units[DEVSERVER_MAX_UNITS];
+	int count;
+};
+typedef struct devserver_config devserver_config_t;
 
 #define NFRAMES 2048
 #define NBITMAPS (NFRAMES/32)
@@ -37,6 +55,8 @@ typedef struct rdev_config rdev_config_t;
 #define RDEV_STATE_RUNNING 0x01
 #define RDEV_STATE_OPEN 0x10
 
+int devserver_add_unit(devserver_config_t *, devserver_io_t *);
+int devserver(devserver_config_t *,int);
 int server(rdev_config_t *,int);
 
 #endif

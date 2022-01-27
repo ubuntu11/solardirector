@@ -10,6 +10,9 @@ LICENSE file in the root directory of this source tree.
 #ifndef __SMANET_INTERNAL_H
 #define __SMANET_INTERNAL_H
 
+/* SMANET data is in little endian format */
+#define TARGET_ENDIAN LITTLE_ENDIAN
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -90,29 +93,6 @@ int smanet_get_net_start(smanet_session_t *s, long *sn, char *type, int len);
 int smanet_cfg_net_adr(smanet_session_t *s, int);
 int smanet_syn_online(smanet_session_t *s);
 
-#define smanet_dlevel 6
-
-#if 0
-#define _gets8(v) (char)( ((char)(v)[0]) )
-#define _gets16(v) (short)( ((short)(v)[1]) << 8 | ((short)(v)[0]) )
-#define _gets32(v) (long)( ((long)(v)[3]) << 24 | ((long)(v)[2]) << 16 | ((long)(v)[1]) << 8 | ((long)(v)[0]) )
-#define _gets64(v) (long long)( ((long long)(v)[7]) << 56 | ((long long)(v)[6]) << 48 | ((long long)(v)[5]) << 40 | ((long long)(v)[4]) << 32 | ((long long)(v)[3]) << 24 | ((long long)(v)[2]) << 16 | ((long long)(v)[1]) << 8 | ((long long)(v)[0]) )
-
-#define _getu8(v) (unsigned char)( ((unsigned char)(v)[0]) )
-#define _getu16(v) (unsigned short)( ((unsigned short)(v)[1]) << 8 | ((unsigned short)(v)[0]) )
-#define _getu32(v) (unsigned long)( ((unsigned long)(v)[3]) << 24 | ((unsigned long)(v)[2]) << 16 | ((unsigned long)(v)[1]) << 8 | ((unsigned long)(v)[0]) )
-#define _getu64(v) (unsigned long long)( ((unsigned long long)(v)[7]) << 56 | ((unsigned long long)(v)[6]) << 48 | ((unsigned long long)(v)[5]) << 40 | ((unsigned long long)(v)[4]) << 32 | ((unsigned long long)(v)[3]) << 24 | ((unsigned long long)(v)[2]) << 16 | ((unsigned long long)(v)[1]) << 8 | ((unsigned long long)(v)[0]) )
-
-//#define _getf32(v) (float)( ((long)(v)[3]) << 24 | ((long)(v)[2]) << 16 | ((long)(v)[1]) << 8 | ((long)(v)[0]) )
-//#define _getf32(v) (float)( ((int)(v)[3]) << 24 | ((int)(v)[2]) << 16 | ((int)(v)[1]) << 8 | ((int)(v)[0]) )
-static inline float _getf32(unsigned char *v) {
-	long val = ( ((long)v[3]) << 24 | ((long)v[2]) << 16 | ((long)v[1]) << 8 | ((long)v[0]) );
-	return *(float *)&val;
-}
-static inline float _getf64(unsigned char *v) {
-	long long val = ( ((long long)(v)[7]) << 56 | ((long long)(v)[6]) << 48 | ((long long)(v)[5]) << 40 | ((long long)(v)[4]) << 32 | ((long long)(v)[3]) << 24 | ((long long)(v)[2]) << 16 | ((long long)(v)[1]) << 8 | ((long long)(v)[0]) );
-	return *(double *)&val;
-}
-#endif
+#define smanet_dlevel 1
 
 #endif

@@ -13,8 +13,7 @@ extern char *si_agent_version_string;
 
 extern solard_driver_t *si_transports[];
 
-json_value_t *si_get_info(void *handle) {
-	si_session_t *s = handle;
+json_value_t *si_get_info(si_session_t *s) {
 	json_object_t *o;
 	char temp[256], *p;
 	int i;
@@ -25,7 +24,9 @@ json_value_t *si_get_info(void *handle) {
 	if (!o) return 0;
 	json_object_set_string(o,"agent_id",s->ap->mqtt_config.clientid);
 	json_object_set_string(o,"agent_name","si");
-	json_object_set_string(o,"agent_class","Inverter");
+	json_object_set_string(o,"agent_role","Inverter");
+//	agent_mktopic(temp,sizeof(temp)-1,s->ap,s->ap->instance_name,0);
+//	json_object_set_string(o,"agent_topic",temp);
 	json_object_set_string(o,"agent_description","SMA Sunny Island Agent");
 	json_object_set_string(o,"agent_version",si_agent_version_string);
 	json_object_set_string(o,"agent_author","Stephen P. Shoecraft");
@@ -44,7 +45,6 @@ json_value_t *si_get_info(void *handle) {
 		sprintf(temp,"%ld",s->smanet->serial);
 		json_object_set_string(o,"device_serial",temp);
 	}
-//	si_config_add_info(s,o);
 	config_add_info(s->ap->cp, o);
 
 	return json_object_get_value(o);

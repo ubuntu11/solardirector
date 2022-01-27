@@ -1,8 +1,9 @@
 
 #TARGET=pi3
+#TARGET=win64
 
 DEBUG?=yes
-DEBUG_MEM?=yes
+DEBUG_MEM?=no
 PTHREADS?=yes
 SHARED?=no
 STATIC?=no
@@ -36,18 +37,6 @@ ifeq ($(SMANET),yes)
 	DEPS+=$(SRC_ROOT)/smanet/libsmanet$(SUFFIX)$(LIBEXT)
 endif
 
-# Uses libjs? must be included before sdcore as it refs
-ifeq ($(JS),yes)
-	CFLAGS+=-I$(SRC_ROOT)/js -DJS
-	ifeq ($(ISWIN),yes)
-		CFLAGS+=-DXP_WIN
-	else
-		CFLAGS+=-DXP_UNIX
-	endif
-	LIBS+=-L$(SRC_ROOT)/js -ljs$(SUFFIX) -lm
-	DEPS+=$(SRC_ROOT)/js/libjs$(SUFFIX)$(LIBEXT)
-endif
-
 #ifneq ($(LIBNAME),roles)
 #	CFLAGS+=-I$(SRC_ROOT)/roles
 #	LIBS+=-L$(SRC_ROOT)/roles -lroles$(SUFFIX)
@@ -67,8 +56,19 @@ ifneq ($(LIBNAME),transports)
 endif
 
 ifeq ($(JS),yes)
-	LIBS+=-L$(SRC_ROOT)/js -ljs$(SUFFIX) -lm
+	CFLAGS+=-I$(SRC_ROOT)/js -DJS
+	ifeq ($(ISWIN),yes)
+		CFLAGS+=-DXP_WIN
+	else
+		CFLAGS+=-DXP_UNIX
+	endif
+	LIBS+=-L$(SRC_ROOT)/js -ljs$(SUFFIX) -lm 
+	DEPS+=$(SRC_ROOT)/js/libjs$(SUFFIX)$(LIBEXT)
 endif
+
+#ifeq ($(JS),yes)
+#	LIBS+=-L$(SRC_ROOT)/js -ljs$(SUFFIX) -lm
+#endif
 
 ifneq ($(LIBNAME),transports)
 	LIBS+=-L$(SRC_ROOT)/transports -ltransports$(SUFFIX)

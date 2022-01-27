@@ -74,15 +74,6 @@ enum ACTIONS {
 
 //static solard_driver_t *transports[] = { &can_driver, &serial_driver, &rdev_driver, 0 };
 
-int double_equals(double a, double b) {
-	double r;
-
-	if (a > b) r = a - b;
-	else r = b - a;
-	dprintf(1,"a: %f, b: %f, r: %f\n", a, b, r);
-	return (r > 0.00001);
-}
-
 int main(int argc, char **argv) {
 	si_session_t *s;
 	char configfile[256],cantpinfo[256],smatpinfo[256],chanpath[256],filename[256],list_type[16];
@@ -126,6 +117,7 @@ int main(int argc, char **argv) {
 	smanet_channel_t *c;
 //	solard_driver_t *tp;
 //	void *tp_handle;
+	json_array_t *a;
 
 	log_open("siutil",0,logopts);
 
@@ -287,18 +279,20 @@ int main(int argc, char **argv) {
 	}
 
 	if (s->smanet) {
-//		if (strlen(chanpath)) smanet_set_chanpath(s->smanet,chanpath);
 		dprintf(1,"chanpath: %s, smanet_channels_path: %s\n", chanpath, s->smanet_channels_path);
-		if (!strlen(chanpath) && strlen(s->smanet_channels_path))
-			strncpy(chanpath,s->smanet_channels_path,sizeof(chanpath)-1);
-		else
-			sprintf(chanpath,"%s/%s.dat",SOLARD_LIBDIR,s->smanet->type);
+		if (!strlen(chanpath)) {
+			if (strlen(s->smanet_channels_path))
+				strncpy(chanpath,s->smanet_channels_path,sizeof(chanpath)-1);
+			else
+				sprintf(chanpath,"%s/%s.dat",SOLARD_LIBDIR,s->smanet->type);
+		}
+		fixpath(chanpath,sizeof(chanpath)-1);
 		dprintf(1,"chanpath: %s\n", chanpath);
 		if (smanet_load_channels(s->smanet,chanpath) != 0) {
-			dprintf(1,"count: %d\n", list_count(s->smanet->channels));
-			if (!list_count(s->smanet->channels)) {
+			dprintf(1,"count: %d\n", s->smanet->chancount);
+			if (!s->smanet->chancount) {
 				log_write(LOG_INFO,"Downloading channels...\n");
-				smanet_read_channels(s->smanet,chanpath);
+				smanet_read_channels(s->smanet);
 				smanet_save_channels(s->smanet,chanpath);
 			}
 		}
@@ -319,7 +313,11 @@ int main(int argc, char **argv) {
 	if (pretty_flag) json_flag = 1;
 	if (json_flag) {
 		outfmt = 2;
-		root_object = json_create_object();
+		if (action == ACTION_LIST) {
+			a = json_create_array();
+		} else {
+			root_object = json_create_object();
+		}
 	}
 	else if (comma_flag) outfmt = 1;
 	else outfmt = 0;
@@ -397,13 +395,14 @@ int main(int argc, char **argv) {
 				return 1;
 			}
 #endif
-			if (si_can_read_data(s)) return 1;
+			if (si_can_read_data(s,1)) return 1;
 			display_data(s,0);
 		}
 		break;
 	case ACTION_LIST:
 		if (argc > 0) {
 			char *p;
+			register int i;
 
 			dprintf(1,"argv[0]: %s\n", argv[0]);
 			c = smanet_get_channel(s->smanet,argv[0]);
@@ -415,35 +414,64 @@ int main(int argc, char **argv) {
 				log_error("%s: channel has no options\n",argv[0]);
 				return 1;
 			}
+			i=0;
 			list_reset(c->strings);
 			while((p = list_get_next(c->strings)) != 0) {
 				if (strcmp(p,"---")==0) continue;
-				printf("%s\n", p);
+				switch(outfmt) {
+				case 2:
+					json_array_add_string(a,p);
+					break;
+				case 1:
+					if (i) fprintf(outfp,",");
+					fprintf(outfp,"%s",p);
+					break;
+				default:
+					fprintf(outfp,"%s\n",p);
+					break;
+				}
+				i++;
 			}
+			if (outfmt == 1) fprintf(outfp,"\n");
 		} else {
-			dprintf(1,"channel_count: %d\n", list_count(s->smanet->channels));
-			list_reset(s->smanet->channels);
-			while((c = list_get_next(s->smanet->channels)) != 0) {
-				if ((c->mask & list_mask) == 0) continue;
-				printf("%s\n",c->name);
+			char *p;
+			register int i;
+
+			dprintf(1,"channel_count: %d\n", s->smanet->chancount);
+			for(i=0; i < s->smanet->chancount; i++) {
+				if ((s->smanet->chans[i].mask & list_mask) == 0) continue;
+				p = s->smanet->chans[i].name;
+				switch(outfmt) {
+				case 2:
+					json_array_add_string(a,p);
+					break;
+				case 1:
+					if (i) fprintf(outfp,",");
+					fprintf(outfp,"%s",p);
+					break;
+				default:
+					fprintf(outfp,"%s\n",p);
+					break;
+				}
 			}
+			if (outfmt == 1) fprintf(outfp,"\n");
 		}
 		break;
 	case ACTION_SMANET:
 		{
 			double d;
 			char *text;
+			smanet_channel_t *c;
+			register int i;
 
-			list_reset(s->smanet->channels);
-			while((c = list_get_next(s->smanet->channels)) != 0) {
+			for(i=0; i < s->smanet->chancount; i++) {
+				c = &s->smanet->chans[i];
 				dprintf(5,"c->mask: %04x, list_mask: %04x\n", c->mask, list_mask);
 				if ((c->mask & list_mask) == 0) continue;
-				list_save_next(s->smanet->channels);
 				if (smanet_get_chanvalue(s->smanet,c,&d,&text)) {
 					log_write(LOG_ERROR,"%s: error getting value\n",c->name);
 					return 1;
 				}
-				list_restore_next(s->smanet->channels);
 				if (text) dstr(c->name,"%s",text);
 				else if ((int)d == d) dint(c->name,"%d",(int)d);
 				else dfloat(c->name,"%f",d);
@@ -480,10 +508,15 @@ int main(int argc, char **argv) {
 	}
 
 	if (outfmt == 2) {
-		char text[32768];
+		json_value_t *v;
+		char *p;
 
-		json_tostring(json_object_get_value(root_object),text,sizeof(text)-1,pretty_flag);
-		fprintf(outfp,"%s",text);
+		v = (action == ACTION_LIST ? json_array_get_value(a) : json_object_get_value(root_object));
+		p = json_dumps(v,pretty_flag);
+		if (p) {
+			fprintf(outfp,"%s",p);
+			free(p);
+		}
 	}
 
 	dprintf(1,"done!\n");

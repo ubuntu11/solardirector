@@ -6,7 +6,7 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#define DEBUG_CFG 0
+#define DEBUG_CFG 1
 
 #include <stdio.h>
 #include <string.h>
@@ -548,8 +548,13 @@ int cfg_get_tab(CFG_INFO *info, struct cfg_proctab *tab) {
 		if (!p) {
 			if (ent->def)
 				p = ent->def;
-			else 
+			else {
+				/* XXX Because conv would have created the list */
+				/* XXX Need to fix conv so that it doesnt? */
+				if (ent->type == DATA_TYPE_STRING_LIST)
+					*((list *)ent->dest) = list_create();
 				continue;
+			}
 		}
 		dprintf(DLEVEL,"value: %s", p);
 		conv_type(ent->type,ent->dest,ent->dlen,DATA_TYPE_STRING,p,strlen(p));

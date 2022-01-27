@@ -258,7 +258,7 @@ int solard_exec(char *prog, char *args[], char *log, int wait) {
 		CloseHandle(hLog);		// safe to get rid off log handle now
 		if (wait) {
 			DWORD ExitCode;
-https://github.com/eclipse/paho.mqtt.c.git
+
 			/* Wait for it to complete */
 			WaitForSingleObject( pi.hProcess, INFINITE );
 

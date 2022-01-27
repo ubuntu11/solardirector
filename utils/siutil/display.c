@@ -247,20 +247,28 @@ void display_data(si_session_t *s,int mon_flag) {
 }
 
 int monitor(si_session_t *s, int interval) {
+    struct tm *tm;
+    time_t t;
+
+
 	while(1) {
+		t = time(NULL);
+		tm = localtime(&t);
 //		if (si_driver.read(s,(void *)0xDEADBEEF,0)) {
-		if (si_can_read_data(s)) {
+		if (si_can_read_data(s,1)) {
 			log_error("unable to read data");
 			return 1;
 		}
 #ifdef __WIN32
 		system("cls");
-		system("time /t");
+//		system("time /t");
 #else
-		system("clear; echo \"**** $(date) ****\"; echo \"\"");
+//		system("clear; echo \"**** $(date) ****\"; echo \"\"");
+		system("clear");
 #endif
-
+		fprintf(outfp,"%s\n", asctime(tm));
 		display_data(s,1);
+		fflush(outfp);
 		if (interval <= 0) usleep(35000);
 		else sleep(interval);
 	}

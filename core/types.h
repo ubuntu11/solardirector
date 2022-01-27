@@ -97,8 +97,10 @@ int typesize(int);
 #endif
 
 #if TARGET_ENDIAN == LITTLE_ENDIAN
-//#if BYTE_ORDER == LITTLE_ENDIAN
-#if BYTE_ORDER == BIG_ENDIAN
+
+#if BYTE_ORDER == LITTLE_ENDIAN
+
+/* TARGET_ENDIAN = LITTLE_ENDIAN & MY ENDIAN = LITTLE_ENDIAN */
 #define _gets8(v) (int8_t) *((int8_t *)(v))
 #define _gets16(v) (int16_t) *((int16_t *)(v))
 #define _gets32(v) (int32_t) *((int32_t *)(v))
@@ -119,7 +121,10 @@ int typesize(int);
 #define _putu64(p,v)  *(u(int64_t *)(p)) = (v)
 #define _putf32(p,v) *((float *)(p)) = (v)
 #define _putf64(p,v) *((double *)(p)) = (v)
-#else
+
+#else 
+
+/* TARGET_ENDIAN = LITTLE_ENDIAN & MY ENDIAN = BIG_ENDIAN */
 #define _gets8(v) (char)( ((char)(v)[0]) )
 #define _gets16(v) (short)( ((short)(v)[1]) << 8 | ((short)(v)[0]) )
 #define _gets32(v) (long)( ((long)(v)[3]) << 24 | ((long)(v)[2]) << 16 | ((long)(v)[1]) << 8 | ((long)(v)[0]) )
@@ -137,7 +142,6 @@ static inline float _getf64(unsigned char *v) {
 	return *(double *)&val;
 }
 //#define si_putlong(p,v) { *((p+3)) = ((int)(v) >> 24); *((p)+2) = ((int)(v) >> 16); *((p+1)) = ((int)(v) >> 8); *((p)) = ((int)(v) & 0x0F); }
-
 #define _puts8(p,v) *((int8_t *)(p)) = (v)
 #define _puts16(p,v) { float t; *((p+1)) = ((short)(t = v) >> 8); *((p)) = (short)(t = v); }
 #define _puts32(p,v) { float t; *((p+1)) = ((long)(t = v) >> 24); *((p+1)) = ((long)(t = v) >> 16); *((p+1)) = ((long)(t = v) >> 8); *((p)) = (long)(t = v); }
@@ -148,11 +152,7 @@ static inline float _getf64(unsigned char *v) {
 #define _putu64(p,v) { double t; *((p+1)) = ((unsigned long long)(t = v) >> 56); *((p+1)) = ((unsigned long long)(t = v) >> 48); *((p+1)) = ((unsigned long long)(t = v) >> 40); *((p+1)) = ((unsigned long long)(t = v) >> 32); *((p+1)) = ((unsigned long long)(t = v) >> 24); *((p+1)) = ((unsigned long long)(t = v) >> 16); *((p+1)) = ((unsigned long long)(t = v) >> 8); *((p)) = (unsigned long long)(t = v); }
 #define _putf32(p,v) _putu32(p,v)
 #define _putf64(p,v) _putu64(p,v)
-#endif
-#endif
-
 #if 0
-
 static inline float _getf32(unsigned char *v) {
 	long val = ( ((long)v[3]) << 24 | ((long)v[2]) << 16 | ((long)v[1]) << 8 | ((long)v[0]) );
 	return *(float *)&val;
@@ -164,3 +164,77 @@ static inline float _getf64(unsigned char *v) {
 #endif
 
 #endif
+
+#else
+#if BYTE_ORDER == LITTLE_ENDIAN
+/* TARGET_ENDIAN = BIG_ENDIAN & MY ENDIAN = LITTLE_ENDIAN */
+#define _gets8(v) (char)( ((char)(v)[0]) )
+#define _gets16(v) (short)( ((short)(v)[1]) << 8 | ((short)(v)[0]) )
+#define _gets32(v) (long)( ((long)(v)[3]) << 24 | ((long)(v)[2]) << 16 | ((long)(v)[1]) << 8 | ((long)(v)[0]) )
+#define _gets64(v) (long long)( ((long long)(v)[7]) << 56 | ((long long)(v)[6]) << 48 | ((long long)(v)[5]) << 40 | ((long long)(v)[4]) << 32 | ((long long)(v)[3]) << 24 | ((long long)(v)[2]) << 16 | ((long long)(v)[1]) << 8 | ((long long)(v)[0]) )
+#define _getu8(v) (unsigned char)( ((unsigned char)(v)[0]) )
+#define _getu16(v) (unsigned short)( ((unsigned short)(v)[1]) << 8 | ((unsigned short)(v)[0]) )
+#define _getu32(v) (unsigned long)( ((unsigned long)(v)[3]) << 24 | ((unsigned long)(v)[2]) << 16 | ((unsigned long)(v)[1]) << 8 | ((unsigned long)(v)[0]) )
+#define _getu64(v) (unsigned long long)( ((unsigned long long)(v)[7]) << 56 | ((unsigned long long)(v)[6]) << 48 | ((unsigned long long)(v)[5]) << 40 | ((unsigned long long)(v)[4]) << 32 | ((unsigned long long)(v)[3]) << 24 | ((unsigned long long)(v)[2]) << 16 | ((unsigned long long)(v)[1]) << 8 | ((unsigned long long)(v)[0]) )
+static inline float _getf32(unsigned char *v) {
+	long val = ( ((long)v[3]) << 24 | ((long)v[2]) << 16 | ((long)v[1]) << 8 | ((long)v[0]) );
+	return *(float *)&val;
+}
+static inline float _getf64(unsigned char *v) {
+	long long val = ( ((long long)(v)[7]) << 56 | ((long long)(v)[6]) << 48 | ((long long)(v)[5]) << 40 | ((long long)(v)[4]) << 32 | ((long long)(v)[3]) << 24 | ((long long)(v)[2]) << 16 | ((long long)(v)[1]) << 8 | ((long long)(v)[0]) );
+	return *(double *)&val;
+}
+//#define si_putlong(p,v) { *((p+3)) = ((int)(v) >> 24); *((p)+2) = ((int)(v) >> 16); *((p+1)) = ((int)(v) >> 8); *((p)) = ((int)(v) & 0x0F); }
+#define _puts8(p,v) *((int8_t *)(p)) = (v)
+#define _puts16(p,v) { float t; *((p+1)) = ((short)(t = v) >> 8); *((p)) = (short)(t = v); }
+#define _puts32(p,v) { float t; *((p+1)) = ((long)(t = v) >> 24); *((p+1)) = ((long)(t = v) >> 16); *((p+1)) = ((long)(t = v) >> 8); *((p)) = (long)(t = v); }
+#define _puts64(p,v) { double t; *((p+1)) = ((long long)(t = v) >> 56); *((p+1)) = ((long long)(t = v) >> 48); *((p+1)) = ((long long)(t = v) >> 40); *((p+1)) = ((long long)(t = v) >> 32); *((p+1)) = ((long long)(t = v) >> 24); *((p+1)) = ((long long)(t = v) >> 16); *((p+1)) = ((long long)(t = v) >> 8); *((p)) = (long long)(t = v); }
+#define _putu8(p,v) *((uint8_t *)(p)) = (v)
+#define _putu16(p,v) { float t; *((p+1)) = ((unsigned short)(t = v) >> 8); *((p)) = (unsigned short)(t = v); }
+#define _putu32(p,v) { float t; *((p+1)) = ((unsigned long)(t = v) >> 24); *((p+1)) = ((unsigned long)(t = v) >> 16); *((p+1)) = ((unsigned long)(t = v) >> 8); *((p)) = (unsigned long)(t = v); }
+#define _putu64(p,v) { double t; *((p+1)) = ((unsigned long long)(t = v) >> 56); *((p+1)) = ((unsigned long long)(t = v) >> 48); *((p+1)) = ((unsigned long long)(t = v) >> 40); *((p+1)) = ((unsigned long long)(t = v) >> 32); *((p+1)) = ((unsigned long long)(t = v) >> 24); *((p+1)) = ((unsigned long long)(t = v) >> 16); *((p+1)) = ((unsigned long long)(t = v) >> 8); *((p)) = (unsigned long long)(t = v); }
+#define _putf32(p,v) _putu32(p,v)
+#define _putf64(p,v) _putu64(p,v)
+#if 0
+static inline float _getf32(unsigned char *v) {
+	long val = ( ((long)v[3]) << 24 | ((long)v[2]) << 16 | ((long)v[1]) << 8 | ((long)v[0]) );
+	return *(float *)&val;
+}
+static inline float _getf64(unsigned char *v) {
+	long long val = ( ((long long)(v)[7]) << 56 | ((long long)(v)[6]) << 48 | ((long long)(v)[5]) << 40 | ((long long)(v)[4]) << 32 | ((long long)(v)[3]) << 24 | ((long long)(v)[2]) << 16 | ((long long)(v)[1]) << 8 | ((long long)(v)[0]) );
+	return *(double *)&val;
+}
+#endif
+#else
+/* TARGET_ENDIAN = BIG_ENDIAN & MY ENDIAN = BIG_ENDIAN */
+#define _gets8(v) (int8_t) *((int8_t *)(v))
+#define _gets16(v) (int16_t) *((int16_t *)(v))
+#define _gets32(v) (int32_t) *((int32_t *)(v))
+#define _gets64(v) (int64_t) *((int64_t *)(v))
+#define _getu8(v) (uint8_t) *((uint8_t *)(v))
+#define _getu16(v) (uint16_t) *((uint16_t *)(v))
+#define _getu32(v) (uint32_t) *((uint32_t *)(v))
+#define _getu64(v) (uint64_t) *((uint64_t *)(v))
+#define _getf32(v) (float) *((float *)(v))
+#define _getf64(v) (double) *( (double *)(v) )
+#define _puts8(p,v) *((int8_t *)(p)) = (v)
+#define _puts16(p,v) *((int16_t *)(p)) = (v)
+#define _puts32(p,v) *((int32_t *)(p)) = (v)
+#define _puts64(p,v)  *((int64_t *)(p)) = (v)
+#define _putu8(p,v) *((uint8_t *)(p)) = (v)
+#define _putu16(p,v) *((uint16_t *)(p)) = (v)
+#define _putu32(p,v) *((uint32_t *)(p)) = (v)
+#define _putu64(p,v)  *(u(int64_t *)(p)) = (v)
+#define _putf32(p,v) *((float *)(p)) = (v)
+#define _putf64(p,v) *((double *)(p)) = (v)
+#endif
+#endif
+
+#define _getshort(x) _gets16(x)
+#define _getlong(x) _gets32(x)
+#define _getfloat(x) _getf32(x)
+#define _putshort(p,v) _puts16(p,v)
+#define _putlong(p,v) _puts32(p,v)
+#define _putfloat(p,v) _putf32(p,v)
+
+#endif /* __SD_TYPES_H */

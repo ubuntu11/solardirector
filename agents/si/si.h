@@ -13,6 +13,7 @@ LICENSE file in the root directory of this source tree.
 #include "agent.h"
 #include "smanet.h"
 #include <pthread.h>
+#include "can.h"
 
 struct si_data {
 	float active_grid_l1;
@@ -123,8 +124,38 @@ enum GEN_CONNECT_REASON {
 /* history of battery amps */
 #define SI_MAX_BA 6
 
+enum CURRENT_SOURCE {
+	CURRENT_SOURCE_NONE,
+	CURRENT_SOURCE_CAN,
+	CURRENT_SOURCE_SMANET,
+	CURRENT_SOURCE_CALCULATED
+};
+
+enum CURRENT_TYPE {
+	CURRENT_TYPE_AMPS,
+	CURRENT_TYPE_WATTS
+};
+
+struct si_current_source {
+	char text[128];
+	enum CURRENT_SOURCE source;
+	enum CURRENT_TYPE type;
+	union {
+		struct {
+			uint16_t id;
+			uint8_t offset;
+			uint8_t size;
+		} can;
+		char name[16];
+	};
+	float mult;
+};
+typedef struct si_current_source si_current_source_t;
+
 struct si_session {
 	solard_agent_t *ap;
+	bool bms_mode;			/* BMS Mode (can connected/10s interval) */
+
 	/* CAN */
 	char can_transport[SOLARD_TRANSPORT_LEN];
 	char can_target[SOLARD_TARGET_LEN];
@@ -143,11 +174,8 @@ struct si_session {
 	char smanet_target[SOLARD_TARGET_LEN];
 	char smanet_topts[SOLARD_TOPTS_LEN];
 	char smanet_channels_path[1024];
-	bool smanet_data;
 	smanet_session_t *smanet;
 	bool smanet_connected;
-	char ExtSrc[16]; 		/* PvOnly, Gen, Grid, GenGrid */
-	list desc;
 	uint16_t state;
 	int interval;
 	int readonly;
@@ -165,13 +193,14 @@ struct si_session {
 	float charge_amps_temp_modifier; /* RO|NOSAVE, charge_amps temperature modifier */
 	float charge_amps_soc_modifier;	/* RO|NOSAVE, charge_amps SoC modifier */
 	float charge_min_amps;		/* Set charge_amps to this value when not charging */
-	float std_charge_amps;
+	float charge_max_amps;
 	int charge_mode;
 	int charge_method;
 	time_t cv_start_time;
 	int cv_method;
 	int cv_time;
 	float cv_cutoff;		/* When average of last X amps reach below this, stop charging */
+	bool cv_timeout;		/* Timeout for amp based cv */
 	float ba[SI_MAX_BA];		/* Table of last X amps during CV */
 	int baidx;
 	int bafull;
@@ -179,16 +208,9 @@ struct si_session {
 
 	/* Grid */
 	bool have_grid;
-	/* EC start */
-	bool grid_started;		/* Grid started via GdManStr */
-//	time_t grid_op_time;
-//	int grid_stop_timeout;		/* How long to wait until Grid stopped */
-	/* EC end */
 	bool grid_connected;		/* info.GdOn */
-	enum GRID_CONNECT_REASON grid_connect_reason;	/* E501-E508 */
+//	enum GRID_CONNECT_REASON grid_connect_reason;	/* E501-E508 */
 	/* Charge from grid parms */
-	int grid_start_timeout;		/* How long to wait until Grid started */
-	char grid_save[32];		/* Saved contents of GdManStr */
 	int charge_from_grid;		/* Always charge when grid is connected? */
 	float grid_charge_amps;		/* Charge amps to use when grid is connected */
 	float grid_charge_start_voltage; /* Voltage to start charging when grid connected */
@@ -207,7 +229,7 @@ struct si_session {
 	char gen_save[32];		/* Saved value of GnManStr */
 	/* EC end */
 	bool gen_connected;		/* info.GnOn */
-	enum GEN_CONNECT_REASON gen_connect_reason;	/* E501-E508 */
+//	enum GEN_CONNECT_REASON gen_connect_reason;	/* E501-E508 */
 	float gen_charge_amps;		/* Charge amps to use when gen connected */
 	float gen_soc_stop;		/* When the gen will auto shutoff (GnSocTm1Stp) */
 //	int gen_start_timeout;
@@ -249,20 +271,8 @@ struct si_session {
 	JSPropertySpec *data_props;
 #endif
 
-	char input_current_source[128];
-	int input_current_type;
-	union {
-		int input_current_canid;
-		int input_current_can_offset;
-		char input_current_smanet_name[16];
-	};
-	char output_current_source[128];
-	int output_current_type;
-	union {
-		int output_current_canid;
-		int output_current_can_offset;
-		char output_current_smanet_name[16];
-	};
+	si_current_source_t input;
+	si_current_source_t output;
 };
 typedef struct si_session si_session_t;
 
@@ -271,20 +281,28 @@ typedef struct si_session si_session_t;
 #define SI_STATE_CHARGING	0x04
 #define SI_STATE_OPEN		0x10
 
-enum CURRENT_SOURCE {
-	CURRENT_SOURCE_CALCULATED,
-	CURRENT_SOURCE_CAN,
-	CURRENT_SOURCE_SMANET,
-};
+#define SI_VOLTAGE_MIN	36.0
+#define SI_VOLTAGE_MAX	64.0
+
+#define SI_CONFIG_FLAG_SMANET	0x0100
+
+#define CV_METHOD_TIME 0
+#define CV_METHOD_AMPS 1
+
+#define SI_STATUS_CAN		0x01
+#define SI_STATUS_SMANET	0x02
+#define SI_STATUS_BMS		0x04
+#define SI_STATUS_CHARGING	0x08
 
 /* driver */
 extern solard_driver_t si_driver;
 
 /* can */
+int si_can_connect(si_session_t *s);
 int si_can_init(si_session_t *s);
 int si_can_set_reader(si_session_t *s);
 int si_can_read_relays(si_session_t *s);
-int si_can_read_data(si_session_t *s);
+int si_can_read_data(si_session_t *s, int all);
 int si_can_write(si_session_t *s, int id, uint8_t *data, int data_len);
 int si_can_write_va(si_session_t *s);
 int si_can_write_data(si_session_t *s);
@@ -308,7 +326,7 @@ int si_config(void *,int,...);
 int si_check_params(si_session_t *s);
 
 /* info */
-json_value_t *si_get_info(void *);
+json_value_t *si_get_info(si_session_t *s);
 
 /* Charging */
 int si_check_config(si_session_t *s);
@@ -320,9 +338,6 @@ void charge_start(si_session_t *s, int rep);
 void charge_start_cv(si_session_t *s, int rep);
 void charge_check(si_session_t *s);
 int charge_control(si_session_t *s, int, int);
-
-#define SI_VOLTAGE_MIN	36.0
-#define SI_VOLTAGE_MAX	64.0
 
 #define si_isvrange(v) ((v >= SI_VOLTAGE_MIN) && (v  <= SI_VOLTAGE_MAX))
 

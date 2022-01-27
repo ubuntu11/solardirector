@@ -8,6 +8,9 @@ LICENSE file in the root directory of this source tree.
 */
 
 #include "smanet_internal.h"
+#include <assert.h>
+
+#define dlevel 2
 
 /*
 Spot value
@@ -33,23 +36,26 @@ Params
 #define CH_DOUBLE	0x05
 #define CH_ARRAY	0x08
 
+#if 0
 void smanet_clear_values(smanet_session_t *s) {
 	smanet_channel_t *c;
+	register int i;
 
-	if (!s->values) return;
-	list_reset(s->channels);
-	while((c = list_get_next(s->channels)) != 0) memset(&s->values[c->id],0,sizeof(smanet_value_t));
+	memset(
+	if (!s->chans || !s->values) return;
+	for(i=0; i < s->chancount; i++) memset(&s->values[s->chans[i].id],0,sizeof(smanet_value_t));
 }
+#endif
 
 static int _read_values(smanet_session_t *s, smanet_channel_t *cx) {
 	smanet_packet_t *p;
 	register uint8_t *sptr,*eptr;
-	uint8_t data[3], index, m1, m2;
-	uint16_t mask,count;
+	uint8_t req[3], index;
+	uint16_t mask,count,m1,m2;
 	time_t timestamp;
 	long time_base;
-	int r;
-	smanet_channel_t *vc;
+	int i,r,rcount,dsize,retries;
+//	smanet_channel_t *vc;
 	smanet_value_t *v;
 
 	dprintf(smanet_dlevel,"id: %d, c->id, c->mask: %04x, index: %02x\n", cx->id, cx->mask, cx->index);
@@ -77,91 +83,132 @@ static int _read_values(smanet_session_t *s, smanet_channel_t *cx) {
 
 //	smanet_syn_online(s);
 
-	*((uint16_t *)&data[0]) = cx->mask | 0x0f;
+	/* Go through each channel and determine how many results we should get (and how large) */
+	dsize = 5;
+	for(rcount=i=0; i < s->chancount; i++) {
+		m1 = (s->chans[i].mask | 0x0f);
+		m2 = (cx->mask | 0x0f);
+		dprintf(dlevel,"chan mask: %04x, req mask: %04x\n", m1, m2);
+		if (m1 == m2) {
+			smanet_channel_t *c = &s->chans[i];
+//			dprintf(dlevel,"adding: chan: id: %d, name: %s, index: %02x, mask: %04x, format: %04x, level: %d, type: %d(%s), count: %d\n", c->id, c->name, c->index, c->mask, c->format, c->level, c->type, typestr(c->type), c->count);
+			switch(c->type) {
+			case DATA_TYPE_BYTE:
+				dsize += 1;
+				break;
+			case DATA_TYPE_SHORT:
+				dsize += 2;
+				break;
+			case DATA_TYPE_LONG:
+				dsize += 4;
+				break;
+			case DATA_TYPE_FLOAT:
+				dsize += 4;
+				break;
+			case DATA_TYPE_DOUBLE:
+				dsize += 8;
+				break;
+			default:
+				log_error("_read_values: unhandled type: %d(%s)\n", cx->type, typestr(cx->type));
+				continue;
+			}
+			rcount++;
+		}
+	}
+	if (cx->mask & CH_SPOT) dsize += 8;
+	dprintf(dlevel,"dsize: %d\n", dsize);
+	dprintf(dlevel,"rcount: %d\n", rcount);
+
+	_putu16(&req[0],(cx->mask | 0x0f));
 	/* My SI6048 wont return a single value - only for a group (index 0) wtf  */
-	*((uint8_t *)&data[2]) = 0;
-	r = smanet_command(s,CMD_GET_DATA,p,data,sizeof(data));
-	if (r) return r;
-//	if (debug >= dlevel+1) bindump("values",p->data,p->dataidx);
+	req[2] = 0;
+	for(retries=3; retries >= 0; retries--) {
+		r = smanet_command(s,CMD_GET_DATA,p,req,3);
+		dprintf(smanet_dlevel,"smanet_command r: %d\n", r);
+		if (r) return r;
+		if (debug >= smanet_dlevel+1) bindump("values",p->data,p->dataidx);
+		if (p->dataidx == dsize) break;
+		else dprintf(0,"dataidx: %d, dsize: %d\n", p->dataidx, dsize);
+		p->dataidx = 0;
+	}
+	dprintf(1,"retries: %d\n", retries);
+	if (retries < 0) {
+		log_error("error reading values");
+		return 1;
+	}
 
 	sptr = p->data;
 	eptr = p->data + p->dataidx;
-//	mask = (uint16_t) *(uint16_t *) sptr;
 	mask = _getu16(sptr);
 	sptr += 2;
-	index = (uint8_t) *(uint8_t *) sptr++;
-//	count = (uint16_t) *(uint16_t *) sptr;
+//	index = (uint8_t) *(uint8_t *) sptr++;
+	index = _getu8(sptr++);
 	count = _getu16(sptr);
 	sptr += 2;
 	dprintf(smanet_dlevel,"mask: %04x, index: %02x, count: %d\n",mask,index,count);
 	if (mask & CH_SPOT) {
-//		bindump("spot",sptr,8);
 		timestamp = _getu32(sptr);
 		sptr += 4;
 		time_base = _getu32(sptr);
 		sptr += 4;
 		dprintf(smanet_dlevel,"ts: %ld, time_base: %ld\n", timestamp, time_base);
 	}
-	list_reset(s->channels);
-	r = 0;
-	while(sptr < eptr) {
-//		vc = list_get_next(cl);
-		vc = list_get_next(s->channels);
-		if (!vc) break;
-		dprintf(smanet_dlevel,"vc: name: %s, type: %s, id: %d\n", vc->name, typestr(vc->type), vc->id);
-		m1 = mask >> 8;
-		m2 = vc->mask >> 8;
-//		dprintf(smanet_dlevel,"m1: %02x, m2: %02x, and: %02x\n", m1, m2, m1 & m2);
-		if ((m1 & m2) == 0) continue;
-		v = (smanet_value_t *) &s->values[vc->id];
+	for(rcount=i=0; i < s->chancount; i++) {
+		smanet_channel_t *c = &s->chans[i];
+		m1 = (c->mask | 0x0f);
+		m2 = (cx->mask | 0x0f);
+		dprintf(dlevel,"chan mask: %04x, req mask: %04x\n", m1, m2);
+		if (m1 != m2) continue;
 		dprintf(smanet_dlevel,"offset: %04x\n", sptr - p->data);
-		switch(vc->type) {
+		dprintf(dlevel,"sptr: %p, eptr: %p\n", sptr, eptr);
+		if (sptr >= eptr) {
+			log_info("internal error: _read_values: sptr >= eptr");
+			smanet_free_packet(p);
+			return 1;
+		}
+		v = (smanet_value_t *) &s->values[c->id];
+		switch(c->type) {
 		case DATA_TYPE_BYTE:
-			v->bval = *(uint8_t *) sptr;
+			v->bval = _getu8(sptr);
 			dprintf(smanet_dlevel,"bval: %d (%02X)\n", v->bval, v->bval);
 			sptr += 1;
 			break;
 		case DATA_TYPE_SHORT:
-//			v->wval = (uint16_t) *(uint16_t *) sptr;
 			v->wval = _getu16(sptr);
-			dprintf(smanet_dlevel,"wval: %d (%04x)\n", (short) v->wval, (unsigned short)v->wval);
+//			dprintf(dlevel,"%s: offset: %04x, wval: %d (%04x)\n", c->name, sptr - p->data, (short) v->wval, (unsigned short)v->wval);
 			sptr += 2;
 			break;
 		case DATA_TYPE_LONG:
-//			v->lval = (uint32_t) *(uint32_t *) sptr;
 			v->lval = _getu32(sptr);
 			dprintf(smanet_dlevel,"lval: %ld (%08lx)\n", v->lval, v->lval);
 			sptr += 4;
 			break;
 		case DATA_TYPE_FLOAT:
-//			v->fval = *(float *) sptr;
 			v->fval = _getf32(sptr);
 			dprintf(smanet_dlevel,"fval: %f\n", v->fval);
 			sptr += 4;
 			break;
 		case DATA_TYPE_DOUBLE:
-//			v->dval = *(double *) sptr;
 			v->dval = _getf64(sptr);
 			dprintf(smanet_dlevel,"dval: %lf\n", v->dval);
 			sptr += 8;
 			break;
 		default:
-			log_error("SMANET: _read_values: unhandled type: %d(%s)\n", vc->type, typestr(vc->type));
-			sprintf(s->errmsg,"_read_values: unhandled type: %d(%s)\n", vc->type, typestr(vc->type));
-			r = 1;
+			log_error("SMANET: _read_values: unhandled type: %d(%s)\n", c->type, typestr(c->type));
+			sprintf(s->errmsg,"_read_values: unhandled type: %d(%s)\n", c->type, typestr(c->type));
+			return 1;
 			break;
 		}
-		v->type = vc->type;
+		v->type = c->type;
 		time(&v->timestamp);
 	}
-//	list_destroy(cl);
 	smanet_free_packet(p);
-	return r;
+	return 0;
 }
 
 static int _get_value(smanet_session_t *s, smanet_channel_t *c, smanet_value_t *v) {
-	if (s->values) dprintf(smanet_dlevel,"channel: %s, mask: %04x, timestamp: %d\n",
-		c->name, c->mask, s->values[c->id].timestamp);
+	dprintf(dlevel,"chan: id: %d, name: %s, index: %02x, mask: %04x, format: %04x, level: %d, type: %d(%s), count: %d\n",
+                        c->id, c->name, c->index, c->mask, c->format, c->level, c->type, typestr(c->type), c->count);
 	if ((!s->values || s->values[c->id].timestamp == 0) && _read_values(s,c)) return 1;
 	if (v) *v = s->values[c->id];
 	return 0;
@@ -202,7 +249,6 @@ int smanet_get_chanvalue(smanet_session_t *s, smanet_channel_t *c, double *dest,
 
 	if (_get_value(s, c, &v)) return 1;
 	d = _getdval(&v);
-	dprintf(smanet_dlevel,"d: %f\n", d);
 	dprintf(smanet_dlevel,"c->mask & CH_PARA: %d\n", c->mask & CH_PARA);
 	if ((c->mask & CH_PARA) == 0) {
 		dprintf(smanet_dlevel,"c->mask & CH_COUNTER: %d\n", c->mask & CH_COUNTER);
@@ -217,6 +263,7 @@ int smanet_get_chanvalue(smanet_session_t *s, smanet_channel_t *c, double *dest,
 		}
 	}
 	dprintf(smanet_dlevel,"d: %f\n", d);
+	dprintf(dlevel,"%s: %f\n", c->name, d);
 	if (dest) *dest = d;
 
 	/* Get the text value, if any */
@@ -244,14 +291,12 @@ int smanet_get_value(smanet_session_t *s, char *name, double *dest, char **text)
 	smanet_channel_t *c;
 	int r;
 
-	dprintf(1,"getting channel: %s\n", name);
-	list_save_next(s->channels);
+	dprintf(dlevel,"getting channel: %s\n", name);
 	if ((c = smanet_get_channel(s, name)) == 0) {
-		dprintf(1,"error getting channel!\n", name);
+		dprintf(dlevel,"error getting channel!\n", name);
 		return 1;
 	}
 	r = smanet_get_chanvalue(s,c,dest,text);
-	list_restore_next(s->channels);
 	return r;
 }
 
@@ -269,10 +314,10 @@ int smanet_get_multvalues(smanet_session_t *s, smanet_multreq_t *mr, int count) 
 	}
 	for(i=0; i < count; i++) {
 		c = smanet_get_channel(s, mr[i].name);
-		dprintf(1,"getting value for: %s\n", mr[i].name);
+		dprintf(dlevel,"getting value for: %s\n", mr[i].name);
 		if (smanet_get_chanvalue(s,c,&mr[i].value,&mr[i].text)) return 1;
 	}
-	dprintf(1,"done!\n");
+	dprintf(dlevel,"done!\n");
 	return 0;
 }
 

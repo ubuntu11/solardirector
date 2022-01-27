@@ -215,7 +215,7 @@ int main(int argc,char **argv) {
 	list devices;
 	cfg_proctab_t tab[] = {
 		{ "rdev", "port", "Network port", DATA_TYPE_INT,&port, 0, "3900" },
-		{ "rdev","devices","Device list",DATA_TYPE_STRING_LIST,&devices,0, 0 },
+		{ "rdev","devices","Device list",DATA_TYPE_STRING_LIST,&devices,0,0 },
 		CFG_PROCTAB_END
 	};
 	devserver_io_t dummy_dev = { "dummy", "dummy", 0, 0, 0, 0 };

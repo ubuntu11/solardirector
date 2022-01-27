@@ -69,7 +69,7 @@
 #include "jslock.h"
 #include "jsmath.h"
 #include "jsnum.h"
-#include "json.h"
+#include "jsjson.h"
 #include "jsobj.h"
 #include "jsopcode.h"
 #include "jsparse.h"
@@ -1339,7 +1339,9 @@ JS_InitStandardClasses(JSContext *cx, JSObject *obj)
 		FUNC(js_InitJSONClass),
 #endif
 		FUNC(js_InitConsoleClass),
+#if JS_HAS_SOCKET_OBJECT
 		FUNC(js_InitSocketClass),
+#endif
 		FUNC(js_InitCANClass),
 #if 0
 		FUNC(js_InitSerialClass),
@@ -3271,7 +3273,7 @@ JS_DefineProperty(JSContext *cx, JSObject *obj, const char *name, jsval value,
 
 JS_PUBLIC_API(JSBool)
 JS_DefinePropertyWithTinyId(JSContext *cx, JSObject *obj, const char *name,
-                            int8 tinyid, jsval value,
+                            int tinyid, jsval value,
                             JSPropertyOp getter, JSPropertyOp setter,
                             uintN attrs)
 {
@@ -3720,7 +3722,7 @@ JS_SetUCPropertyAttributes(JSContext *cx, JSObject *obj,
 JS_PUBLIC_API(JSBool)
 JS_DefineUCPropertyWithTinyId(JSContext *cx, JSObject *obj,
                               const jschar *name, size_t namelen,
-                              int8 tinyid, jsval value,
+                              int tinyid, jsval value,
                               JSPropertyOp getter, JSPropertyOp setter,
                               uintN attrs)
 {
@@ -4718,6 +4720,11 @@ JS_CompileFile(JSContext *cx, JSObject *obj, const char *filename)
                                  filename, "No such file or directory");
             return NULL;
         }
+	{
+		char line[128];
+		fgets(line,sizeof(line)-1,fp);
+		if (strncmp(line,"#!",2) != 0) rewind(fp);
+	}
     }
 
     tcflags = JS_HAS_COMPILE_N_GO_OPTION(cx) ? TCF_COMPILE_N_GO : 0;

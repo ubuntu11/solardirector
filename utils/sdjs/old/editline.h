@@ -57,6 +57,10 @@
  * 4. This notice may not be removed or altered.
  */
 
+#define EDITLINE 1
+#define HAVE_STDLIB 1
+#define SYS_UNIX 1
+
 /*
 **  Internal header file for editline library.
 */
@@ -76,7 +80,7 @@
 #define SIZE_T	unsigned int
 #endif	/* !defined(SIZE_T) */
 
-typedef unsigned char	CHAR;
+typedef unsigned char	ECHAR;
 
 #if	defined(HIDE)
 #define STATIC	static
@@ -120,9 +124,9 @@ extern void	rl_add_slash();
 
 #if	!defined(HAVE_STDLIB)
 extern char	*getenv();
-extern char	*malloc();
-extern char	*realloc();
-extern char	*memcpy();
+//extern char	*malloc();
+//extern char	*realloc();
+//extern char	*memcpy();
 extern char	*strcat();
 extern char	*strchr();
 extern char	*strrchr();
@@ -132,4 +136,8 @@ extern int	strcmp();
 extern int	strlen();
 extern int	strncmp();
 #endif	/* !defined(HAVE_STDLIB) */
+
+char * readline(CONST char  *prompt);
+void add_history(char        *p);
+
 

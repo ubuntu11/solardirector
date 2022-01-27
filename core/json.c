@@ -70,7 +70,9 @@ json_object_t *json_object_dotget_object(json_object_t *o,char *n) {
 json_array_t *json_object_dotget_array(json_object_t *o,char *n) {
 	return (json_array_t *)parson_object_dotget_array(OBJ(o), n);
 }
-json_value_t *json_object_dotget_value(json_object_t *, char *);
+json_value_t *json_object_dotget_value(json_object_t *o, char *n) {
+	return (json_value_t *)parson_object_dotget_value(OBJ(o), n);
+}
 int json_object_delete_value(json_object_t *o, char *name) {
 	return parson_object_remove_internal(OBJ(o), name, 1);
 }
@@ -81,7 +83,6 @@ int json_object_set_object(json_object_t *o,char *name,json_object_t *no) {
 	return parson_object_set_value(OBJ(o),name,OBJV(no));
 }
 int json_object_add_array(json_object_t *o,char *n,json_array_t *a) {
-	printf("===> adding array...\n");
 	return parson_object_add(OBJ(o),n,ARRV(a));
 }
 int json_object_add_value(json_object_t *o,char *n,json_value_t *v) {
@@ -102,7 +103,9 @@ int json_array_add_strings(json_array_t *,char *);
 int json_array_add_boolean(json_array_t *,int);
 int json_array_add_number(json_array_t *,double);
 int json_array_add_object(json_array_t *,json_object_t *);
-int json_array_add_array(json_array_t *,json_array_t *);
+int json_array_add_array(json_array_t *a,json_array_t *aa) {
+	return parson_array_add(ARR(a),ARRV(aa));
+}
 int json_array_add_value(json_array_t *,json_value_t *);
 int json_destroy_array(json_array_t *);
 
@@ -117,6 +120,12 @@ json_object_t *json_create_object(void) {
 }
 
 json_array_t *json_create_array(void) {
+#if defined(DEBUG_MEM) && !defined(__WIN64)
+	if (!_init) {
+		parson_set_allocation_functions(mem_malloc,mem_free);
+		_init = 1;
+	}
+#endif
 	return (json_array_t *)parson_array(parson_value_init_array());
 }
 

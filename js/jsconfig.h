@@ -73,6 +73,11 @@
 #define JS_HAS_EXPR_CLOSURES    1       /* has function (formals) listexpr */
 #define JS_HAS_JSON_OBJECT	1	/* has json object */
 #define JS_HAS_FILE_OBJECT	0	/* has file object */
+#ifdef WINDOWS
+#define JS_HAS_SOCKET_OBJECT	0	/* has socket object */
+#else
+#define JS_HAS_SOCKET_OBJECT	1	/* has socket object */
+#endif
 
 #define JS_HAS_RESERVED_JAVA_KEYWORDS   1
 #define JS_HAS_RESERVED_ECMA_KEYWORDS   1

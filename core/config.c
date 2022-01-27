@@ -64,6 +64,26 @@ config_property_t *config_section_get_property(config_section_t *s, char *name) 
 	return 0;
 }
 
+config_property_t *config_get_property(config_t *cp, char *sname, char *name) {
+	config_section_t *s;
+	config_property_t *p;
+
+	dprintf(dlevel,"sname: %s, name: %s\n", sname, name);
+
+	s = config_get_section(cp, sname);
+	if (!s) return 0;
+
+	list_reset(s->items);
+	while((p = list_get_next(s->items)) != 0) {
+		if (strcasecmp(p->name,name) == 0) {
+			dprintf(dlevel,"found\n");
+			return p;
+		}
+	}
+	dprintf(dlevel,"NOT found\n");
+	return 0;
+}
+
 static void *_getstr(int count, void *values) {
 	char **s, **newstr;
 	int i;
@@ -94,8 +114,11 @@ config_property_t * config_section_add_property(config_t *cp, config_section_t *
 			free(pp->name);
 			free(pp->dest);
 		}
+		log_warning("duplicate property: %s\n", pp->name);
 		list_delete(s->items,pp);
 	}
+	/* XXX pre-create lists */
+	if (p->type & DATA_TYPE_MLIST) *((list *)p->dest) = list_create();
 	dprintf(dlevel,"nvalues: %d, values: %p\n", p->nvalues, p->values);
 	if (p->nvalues && p->values) {
 		if (DATA_TYPE_ISNUMBER(p->type) || DATA_TYPE_ISARRAY(p->type)) {
@@ -236,22 +259,6 @@ void config_dump(config_t *cp) {
 			dprintf(dlevel,"  prop: name: %s, id: %d, type: %d(%s), value: %s\n", p->name, p->id, p->type, typestr(p->type), value);
 		}
 	}
-}
-
-config_property_t *config_get_property(config_section_t *section, char *name) {
-	config_property_t *p;
-
-	dprintf(dlevel,"name: %s\n", name);
-
-	list_reset(section->items);
-	while((p = list_get_next(section->items)) != 0) {
-		if (strcasecmp(p->name,name) == 0) {
-			dprintf(dlevel,"found\n");
-			return p;
-		}
-	}
-	dprintf(dlevel,"NOT found\n");
-	return 0;
 }
 
 #if 0
@@ -601,6 +608,7 @@ json_value_t *config_to_json(config_t *cp) {
 		list_reset(s->items);
 		while((p = list_get_next(s->items)) != 0) {
 			if (p->flags & CONFIG_FLAG_NOSAVE) continue;
+			if (!p->dest) continue;
 			v = json_from_type(p->type,p->dest,p->len);
 			if (!v) continue;
 			json_object_set_value(so,p->name,v);
@@ -721,6 +729,21 @@ config_property_t *config_find_property(config_t *cp, char *name) {
 	config_property_t *p;
 
 	dprintf(dlevel,"name: %s\n", name);
+	if (strchr(name,'.')) {
+		char sname[CONFIG_SECTION_NAME_SIZE];
+		char pname[64];
+		config_section_t *sec;
+
+		strncpy(sname,strele(0,".",name),sizeof(sname)-1);
+		strncpy(pname,strele(1,".",name),sizeof(pname)-1);
+		dprintf(dlevel,"sname: %s, pname: %s\n", sname, pname);
+		sec = config_get_section(cp,sname);
+		dprintf(dlevel,"sec: %p\n", sec);
+		if (sec) {
+			p = config_section_get_property(sec, pname);
+			if (p) return p;
+		}
+	}
 	list_reset(cp->sections);
 	while((s = list_get_next(cp->sections)) != 0) {
 		list_reset(s->items);
@@ -1044,7 +1067,7 @@ int config_process(config_t *cp, char *request) {
 	json_value_t *v,*vv,*vvv;
 	json_object_t *o;
 	json_array_t *a;
-	int type,i,j,k,status;
+	int type,i,j,status;
         config_function_t *f;
 	char *args[32];
 	int nargs;
@@ -1060,8 +1083,10 @@ int config_process(config_t *cp, char *request) {
 
 	/* nargs = 1: Object with function name and array of arguments */
 	/* { "func": [ "arg", "argn", ... ] } */
+#if 0
 	/* nargs = 2: Object with function name and array of objects with key:value pairs */
 	/* { "func": [ { "key": "value" }, { "keyn": "valuen" }, ... ] } */
+#endif
 	/* nargs > 1: Object with function name and array of argument arrays */
 	/* { "func": [ [ "arg", "argn", ... ], [ "arg", "argn" ], ... ] } */
 	type = json_value_get_type(v);
@@ -1093,7 +1118,7 @@ int config_process(config_t *cp, char *request) {
 		a = json_value_get_array(vv);
 		dprintf(dlevel,"array count: %d\n", a->count);
 		if (f->nargs != 0 && a->count == 0) {
-			strcpy(cp->errmsg,"invalid request (no parameters)");
+			sprintf(cp->errmsg,"error: function %s requires %d parameters",f->name,f->nargs);
 			goto _process_error;
 		}
 		for(j=0; j < a->count; j++) {
@@ -1112,8 +1137,10 @@ int config_process(config_t *cp, char *request) {
 				}
 				str = json_value_get_string(vvv);
 				list_add(fargs,str,strlen(str)+1);
+#if 0
 			} else if (f->nargs == 2) {
 				json_object_t *oo;
+				int k;
 
 				/* Objects */
 				if (type != JSON_TYPE_OBJECT) {
@@ -1129,13 +1156,15 @@ int config_process(config_t *cp, char *request) {
 				args[nargs] = 0;
 				list_add(fargs,args,sizeof(args));
 			} else if (f->nargs > 2) {
+#endif
+			} else if (f->nargs > 1) {
 				json_array_t *aa;
 				int k;
 				char *str;
 
 				/* Arrays */
 				if (type != JSON_TYPE_ARRAY) {
-					strcpy(cp->errmsg,"must be array of arrays for nargs > 2");
+					strcpy(cp->errmsg,"internal error: must be array of arrays for nargs > 1");
 					goto _process_error;
 				}
 				aa = json_value_get_array(vvv);
@@ -1660,7 +1689,7 @@ JSObject *JSConfig(JSContext *cx, void *priv) {
 		JS_NUMCONST(CONFIG_FLAG_NOSAVE),
 		JS_NUMCONST(CONFIG_FLAG_NOID),
 		JS_NUMCONST(CONFIG_FLAG_FILEONLY),
-		JS_NUMCONST(CONFIG_FLAG_VOLATILE),
+		JS_NUMCONST(CONFIG_FLAG_ALLOC),
 		JS_NUMCONST(CONFIG_FILE_FORMAT_INI),
 		JS_NUMCONST(CONFIG_FILE_FORMAT_JSON),
 		JS_NUMCONST(CONFIG_FILE_FORMAT_CUSTOM),

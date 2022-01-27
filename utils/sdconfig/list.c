@@ -152,16 +152,14 @@ static int do_list_section(char *target, json_object_t *o) {
 	return 0;
 }
 
-void do_list(client_agent_info_t *ap) {
+void do_list(client_agentinfo_t *ap) {
 	json_object_t *o,*o2;
 	json_array_t *a,*a2;
-//	char target[SOLARD_ROLE_LEN+SOLARD_NAME_LEN];
 	int i,j,k,sec,type;
 
 	if (!ap->info) return;
 	o = json_value_get_object(ap->info);
 	if (!o) return ;
-//	a = json_object_get_array(json_object(ap->info),"configuration");
 	for(i=0; i < o->count; i++) {
 		dprintf(dlevel,"label[%d]: %s\n",i,o->names[i]);
 		if (strcmp(o->names[i],"configuration")!=0) continue;

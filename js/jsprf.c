@@ -52,6 +52,11 @@
 #include "jspubtd.h"
 #include "jsstr.h"
 
+#ifndef WINDOWS
+#define HAVE_VA_COPY 1
+#define VA_COPY va_copy
+#endif
+
 /*
 ** Note: on some platforms va_list is defined as an array,
 ** and requires array notation.

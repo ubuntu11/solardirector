@@ -22,10 +22,10 @@ typedef struct {
 } uuid_t;
 #endif
 
-void uuid_generate_random(uuid_t);
-int uuid_parse(const char *uuid, uuid_t *u);
-void my_uuid_unparse(uuid_t uu, char *out);
-void uuid_unparse_upper(uuid_t uu, char *out);
-void uuid_unparse_lower(uuid_t uu, char *out);
+void uuid_generate_random(uint8_t *);
+int uuid_parse(const char *uuid, uint8_t *u);
+void my_uuid_unparse(uint8_t *uu, char *out);
+//void uuid_unparse_upper(uuid_t uu, char *out);
+//void uuid_unparse_lower(uuid_t uu, char *out);
 
 #endif

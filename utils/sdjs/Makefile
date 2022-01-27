@@ -2,6 +2,15 @@
 SMANET=yes
 
 PROGNAME=$(shell basename $(shell pwd))
-SRCS=main.c editline.c sysunix.c
+SRCS=main.c
+
+#all: 
+#	echo $(SRCS)
+#	echo $(OBJS)
 
 include ../../Makefile.sd
+
+ifneq ($(OS),Windows)
+LIBS+=-lreadline
+endif
+

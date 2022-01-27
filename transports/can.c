@@ -31,7 +31,7 @@ struct can_session {
 };
 typedef struct can_session can_session_t;
 
-#define _getshort(p) ((short) ((*((p)) << 8) | *((p)+1) ))
+//#define _getshort(p) ((short) ((*((p)) << 8) | *((p)+1) ))
 
 static void *can_new(void *conf, void *target, void *topts) {
 	can_session_t *s;

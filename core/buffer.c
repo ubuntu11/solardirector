@@ -36,7 +36,9 @@ int buffer_get(buffer_t *b, uint8_t *data, int datasz) {
 		dprintf(8,"i: %d, index: %d, bytes: %d\n", i, b->index, b->bytes);
 		if (b->index >= b->bytes) {
 			b->bytes = b->read(b->ctx, b->buffer, b->size);
-			if (b->bytes < 1) break;
+			dprintf(8,"bytes: %d\n", b->bytes);
+			if (b->bytes < 0) return -1;
+			else if (b->bytes == 0) break;
 			b->index = 0;
 		}
 		data[i] = b->buffer[b->index++];

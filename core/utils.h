@@ -82,8 +82,13 @@ void tmpdir(char *, int);
 int gethomedir(char *dest, int dest_len);
 char *os_getenv(const char *name);
 int os_setenv(const char *name, const char *value, int overwrite);
-#ifdef __WIN32
+#ifdef WINDOWS
 int fork(void);
 #endif
+int os_gethostbyname(char *dest, int destsize, char *name);
+
+int double_equals(double a, double b);
+int float_equals(float a, float b);
+bool fequal(float a, float b);
 
 #endif

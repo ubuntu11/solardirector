@@ -78,7 +78,8 @@ static void _getpath(cfg_info_t *cfg, char *section_name, char *home, char *dest
 	if (!ow) return;
 
 #ifdef __WIN32
-	strcpy(dest,"%ProgramFiles%\\SolarDirector");
+//	strcpy(dest,"%ProgramFiles%\\SolarDirector");
+	strcpy(dest,"c:\\sd");
 	return;
 #else
 	/* Am I root? */
@@ -388,14 +389,10 @@ JSObject *JSCommon(JSContext *cx, void *priv) {
 		JS_STRCONST(SOLARD_ROLE_STORAGE),
 		JS_STRCONST(SOLARD_ROLE_BATTERY),
 		JS_STRCONST(SOLARD_ROLE_INVERTER),
-		JS_STRCONST(SOLARD_ROLE_PRODUCER),
-		JS_STRCONST(SOLARD_ROLE_CONSUMER),
 		JS_STRCONST(SOLARD_FUNC_STATUS),
 		JS_STRCONST(SOLARD_FUNC_INFO),
-		JS_STRCONST(SOLARD_FUNC_DATA),
 		JS_STRCONST(SOLARD_FUNC_CONFIG),
-		JS_STRCONST(SOLARD_FUNC_CONTROL),
-		JS_STRCONST(SOLARD_FUNC_CONTROL),
+		JS_STRCONST(SOLARD_FUNC_DATA),
 		{0}
 	};
 	JSObject *obj = JS_GetGlobalObject(cx);

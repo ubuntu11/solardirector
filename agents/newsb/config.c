@@ -10,7 +10,7 @@ LICENSE file in the root directory of this source tree.
 #include "sb.h"
 
 int sb_config(void *h, int req, ...) {
-	sb_session_t *s = h;
+//	sb_session_t *s = h;
 	va_list va;
 	int r;
 

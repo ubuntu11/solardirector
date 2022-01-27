@@ -96,6 +96,8 @@ do
 	elif test "$t" = "struct"; then
 		continue
 	else
+		c=$(echo $t | awk '{ print substr($0,1,1) }')
+		test "$c" = "" -o "$c" = "/" && continue
 		echo "//unhandled: $t $v"
 		continue
 	fi

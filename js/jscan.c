@@ -10,7 +10,19 @@ LICENSE file in the root directory of this source tree.
 #include "jsapi.h"
 #include "jsobj.h"
 #include "transports.h"
+#ifdef WINDOWS
+//#include <winsock2.h>
+//#include <windows.h>
+struct __attribute__((packed, aligned(1))) can_frame {
+	long can_id;
+	unsigned char can_dlc;
+        unsigned char data[8];
+};
+#else
 #include <linux/can.h>
+#endif
+
+#define dlevel 6
 
 JSObject *JSCAN(JSContext *cx, void *priv);
 
@@ -25,7 +37,8 @@ struct can_private {
 #endif
 	solard_driver_t *tp;
 	void *tp_handle;
-	bool connected;
+	bool *connected;
+	bool internal_connected;
 };
 typedef struct can_private can_private_t;
 
@@ -49,7 +62,7 @@ static JSBool can_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 		dprintf(4,"prop_id: %d\n", prop_id);
 		switch(prop_id) {
                 case CAN_PROPERTY_ID_CONNECTED:
-                        *rval = BOOLEAN_TO_JSVAL(p->connected);
+                        *rval = BOOLEAN_TO_JSVAL(*p->connected);
                         break;
 #if 0
                 case CAN_PROPERTY_ID_AUTOCONNECT:
@@ -188,12 +201,11 @@ static JSBool jscan_read(JSContext *cx, uintN argc, jsval *vp) {
 
 	if (!jsval_to_type(DATA_TYPE_INT,&id,0,cx,argv[0])) return JS_FALSE;
 	if (!jsval_to_type(DATA_TYPE_INT,&len,0,cx,argv[1])) return JS_FALSE;
-	dprintf(0,"id: %03x, len: %d\n", id, len);
+	dprintf(dlevel,"id: %03x, len: %d\n", id, len);
 	if (len > 8) len = 8;
-//	r = p->tp->can_read(s,id,data,len);
-//	memcpy(&frame.data,data,len);
 	r = p->tp->read(p->tp_handle,&frame,id);
-	printf("r: %d\n", r);
+	dprintf(0,"r: %d\n", r);
+	if (r != 16) *p->connected = false;
 	*vp = type_to_jsval(cx,DATA_TYPE_U8_ARRAY,frame.data,frame.can_dlc);
 	return JS_TRUE;
 }
@@ -216,7 +228,6 @@ static JSBool jscan_write(JSContext *cx, uintN argc, jsval *vp) {
 		return JS_FALSE;
 	}
 
-	printf("isobj: %d\n", JSVAL_IS_OBJECT(argv[1]));
 	if (!JSVAL_IS_OBJECT(argv[1])) {
 		JS_ReportError(cx, "can_write: 2nd argument must be array\n");
 		return JS_FALSE;
@@ -227,26 +238,26 @@ static JSBool jscan_write(JSContext *cx, uintN argc, jsval *vp) {
 		JS_ReportError(cx, "can_write: 2nd argument must be array\n");
 		return JS_FALSE;
 	}
-	printf("class: %s\n", classp->name);
+	dprintf(dlevel,"class: %s\n", classp->name);
 	if (classp && strcmp(classp->name,"Array")) {
 		JS_ReportError(cx, "can_write: 2nd argument must be array\n");
 		return JS_FALSE;
 	}
 
-	dprintf(1,"id: %d, array: %p\n", id, array);
+	dprintf(dlevel,"id: %d, array: %p\n", id, array);
 
 	if (!jsval_to_type(DATA_TYPE_INT,&id,0,cx,argv[0])) return JS_FALSE;
 	len = jsval_to_type(DATA_TYPE_U8_ARRAY,data,8,cx,argv[1]);
-	dprintf(0,"id: %03x, len: %d\n", len);
-	bindump("data",data,len);
+	dprintf(dlevel,"id: %03x, len: %d\n", len);
 
         memset(&frame,0,sizeof(frame));
         frame.can_id = id;
         frame.can_dlc = len;
         memcpy(&frame.data,data,len);
         bytes = p->tp->write(p->tp_handle,&frame,sizeof(frame));
-        dprintf(0,"bytes: %d\n", bytes);
-	*vp = INT_TO_JSVAL(bytes);
+        dprintf(dlevel,"bytes: %d\n", bytes);
+	if (bytes != 16) *p->connected = false;
+	*vp = BOOLEAN_TO_JSVAL(bytes != 16);
 	return JS_TRUE;
 }
 
@@ -266,12 +277,12 @@ static int do_connect(JSContext *cx, can_private_t *p) {
 	}
 
 	/* Open the transport */
-	dprintf(0,"opening...\n");
+	dprintf(dlevel,"opening...\n");
 	if (!p->tp->open) {
 		JS_ReportError(cx, "internal error: transport has no open function");
 		return JS_FALSE;
 	}
-	if (p->tp->open(p->tp_handle) == 0) p->connected = 1;
+	if (p->tp->open(p->tp_handle) == 0) *p->connected = true;
 
 	return JS_TRUE;
 }
@@ -289,7 +300,7 @@ static JSBool jscan_connect(JSContext *cx, uintN argc, jsval *vp) {
 		if (!JS_ConvertArguments(cx, argc, JS_ARGV(cx,vp), "s s s", &p->transport, &p->target, &p->topts))
 			return JS_FALSE;
 	}
-	dprintf(0,"transport: %s, target: %s, topts:%s\n", p->transport, p->target, p->topts);
+	dprintf(dlevel,"transport: %s, target: %s, topts:%s\n", p->transport, p->target, p->topts);
 
 	if (!p->transport) {
 		JS_ReportError(cx, "can_connect: transport not set");
@@ -309,6 +320,7 @@ static JSBool can_ctor(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, js
 		JS_ReportError(cx,"error allocating memory");
 		return JS_FALSE;
 	}
+	p->connected = &p->internal_connected;
 	if (argc == 3) {
 		if (!JS_ConvertArguments(cx, argc, argv, "s s s", &p->transport, &p->target, &p->topts))
 			return JS_FALSE;
@@ -317,7 +329,7 @@ static JSBool can_ctor(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, js
 		return JS_FALSE;
 	}
 
-	dprintf(0,"transport: %s, target: %s, topts:%s\n", p->transport, p->target, p->topts);
+	dprintf(dlevel,"transport: %s, target: %s, topts:%s\n", p->transport, p->target, p->topts);
 
 	r = do_connect(cx,p);
 
@@ -328,7 +340,7 @@ static JSBool can_ctor(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, js
 	return r;
 }
 
-JSObject *jscan_new(JSContext *cx, void *tp, void *handle, char *transport, char *target, char *topts) {
+JSObject *jscan_new(JSContext *cx, void *tp, void *handle, char *transport, char *target, char *topts, int *con) {
 	can_private_t *p;
 	JSObject *newobj;
 
@@ -342,6 +354,7 @@ JSObject *jscan_new(JSContext *cx, void *tp, void *handle, char *transport, char
 	p->transport = transport;
 	p->target = target;
 	p->topts = topts;
+	p->connected = con;
 
 	newobj = js_InitCANClass(cx,JS_GetGlobalObject(cx));
 	JS_SetPrivate(cx,newobj,p);

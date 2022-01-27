@@ -37,14 +37,14 @@ static int win32_getseed(void);
 struct uuid_s {
 	unsigned char b[37];
 };
-typedef struct uuid_s uuid_t;
+typedef struct uuid_s myuuid_t;
 typedef unsigned char u8;
 typedef unsigned char __u8;
 //typedef unsigned char bool;
 #define false 0
 #define true 1
 //const guid_t guid_null;
-const uuid_t uuid_null;
+const myuuid_t uuid_null;
 //const u8 guid_index[16] = {3,2,1,0,5,4,7,6,8,9,10,11,12,13,14,15};
 const u8 uuid_index[16] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
 int hex_to_bin(char ch) {
@@ -111,7 +111,7 @@ void guid_gen(guid_t *lu)
 #endif
 
 //EXPORT_SYMBOL_GPL(guid_gen);
-void uuid_gen(uuid_t *bu)
+void uuid_gen(myuuid_t *bu)
 {
 	__uuid_gen_common(bu->b);
 	/* version 4 : random generation */
@@ -162,7 +162,7 @@ int guid_parse(const char *uuid, guid_t *u)
 	return __uuid_parse(uuid, u->b, guid_index);
 }
 #endif
-int uuid_parse(const char *uuid, uuid_t *u)
+int uuid_parse(const char *uuid, myuuid_t *u)
 {
 	return __uuid_parse(uuid, u->b, uuid_index);
 }
@@ -226,7 +226,7 @@ static const char *fmt_upper =
 #define FMT_DEFAULT fmt_lower
 #endif
 
-void uuid_unpack(const uuid_t *in, struct uuid *uu)
+void uuid_unpack(const myuuid_t *in, struct uuid *uu)
 {
 	const uint8_t	*ptr = (uint8_t *) in;
 	uint32_t		tmp;
@@ -252,7 +252,7 @@ void uuid_unpack(const uuid_t *in, struct uuid *uu)
 	memcpy(uu->node, ptr, 6);
 }
 
-static void uuid_unparse_x(const uuid_t *uu, char *out, const char *fmt) {
+static void uuid_unparse_x(const myuuid_t *uu, char *out, const char *fmt) {
 	struct uuid uuid;
 
 	uuid_unpack(uu, &uuid);
@@ -263,17 +263,17 @@ static void uuid_unparse_x(const uuid_t *uu, char *out, const char *fmt) {
 		uuid.node[3], uuid.node[4], uuid.node[5]);
 }
 
-void uuid_unparse_lower(const uuid_t *uu, char *out)
+void uuid_unparse_lower(const myuuid_t *uu, char *out)
 {
 	uuid_unparse_x(uu, out,	fmt_lower);
 }
 
-void uuid_unparse_upper(const uuid_t *uu, char *out)
+void uuid_unparse_upper(const myuuid_t *uu, char *out)
 {
 	uuid_unparse_x(uu, out,	fmt_upper);
 }
 
-void my_uuid_unparse(const uuid_t *uu, char *out)
+void my_uuid_unparse(const myuuid_t *uu, char *out)
 {
 	uuid_unparse_x(uu, out, FMT_DEFAULT);
 }

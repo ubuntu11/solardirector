@@ -20,20 +20,135 @@ LICENSE file in the root directory of this source tree.
 #endif
 #include <fcntl.h>
 #include <ctype.h>
-#include "devserver.h"
 #include "transports.h"
+#include "rdev.h"
 
 #define DEFAULT_PORT 3930
+#define dlevel 7
+
+#define RDEV_TARGET_LEN 128
 
 struct rdev_session {
 	int fd;
-	char target[SOLARD_TARGET_LEN];
+	char target[RDEV_TARGET_LEN];
 	int port;
-	char name[DEVSERVER_NAME_LEN];
-	char type[DEVSERVER_TYPE_LEN];
+	char name[RDEV_NAME_LEN];
+	char type[RDEV_TYPE_LEN];
 	uint8_t unit;
 };
 typedef struct rdev_session rdev_session_t;
+
+/*************************************** Global funcs ***************************************/
+
+int rdev_send(socket_t fd, uint8_t opcode, uint8_t unit, uint16_t control, void *data, uint16_t data_len) {
+	uint8_t header[8],*hptr;
+	int bytes,sent;
+
+	dprintf(dlevel,"fd: %d, opcode: %d, unit: %d, control: %d, data: %p, datasz: %d\n",
+		fd, opcode, unit, control, data, data_len);
+	if (fd < 0) return -1;
+
+	sent = 0;
+
+	/* Send the header */
+	hptr = header;
+	*hptr++ = opcode;
+	*hptr++ = unit;
+	*(uint16_t *)hptr = control;
+	hptr += 2;
+	*(uint16_t *)hptr = data_len;
+	hptr += 2;
+	if (debug >= dlevel+1) bindump("SENDING",header,hptr - header);
+	bytes = send(fd,(char *)header,hptr - header, 0);
+	dprintf(dlevel,"bytes: %d\n", bytes);
+	if (bytes < 0) return -1;
+	sent += bytes;
+
+	/* Send the data */
+	if (data_len) {
+		if (debug >= dlevel+1) bindump("SENDING",data,data_len);
+		bytes = send(fd,data,data_len,0);
+		dprintf(dlevel,"bytes: %d\n", bytes);
+		if (bytes < 0) return -1;
+		sent += bytes;
+	}
+
+	dprintf(dlevel,"returning: %d\n", sent);
+	return sent;
+}
+
+int rdev_recv(socket_t fd, uint8_t *opcode, uint8_t *unit, uint16_t *control, void *data, int datasz, int timeout) {
+	int bytes,len,bytes_left;
+	uint8_t ch;
+	rdev_header_t h;
+	register int i;
+
+	dprintf(dlevel,"opcode: %d, unit: %d, control: %d, data: %p, datasz: %d, timeout: %d\n",
+		*opcode, *unit, *control, data, datasz, timeout);
+
+	if (timeout > 0) {
+		struct timeval tv;
+		fd_set fds;
+		int num;
+
+		FD_ZERO(&fds);
+		FD_SET(fd,&fds);
+		tv.tv_usec = 0;
+		tv.tv_sec = 5;
+		dprintf(dlevel,"waiting...\n");
+		num = select(fd+1,&fds,0,0,&tv);
+		dprintf(dlevel,"num: %d\n", num);
+		if (num < 1) return -1;
+	}
+
+	/* Read the header */
+	bytes = recv(fd, (char *)&h, sizeof(h), 0);
+	dprintf(dlevel,"bytes: %d\n", bytes);
+	if (bytes < 0) return -1;
+	dprintf(dlevel,"header: opcode: %02x, unit: %d, control: %04x, len: %d\n", h.opcode, h.unit, h.control, h.len);
+	if (debug >= dlevel+1) bindump("RECEIVED",&h,sizeof(h));
+
+	/* Read the data */
+	len = h.len;
+	if (len > datasz) len = datasz;
+	dprintf(dlevel,"len: %d\n",len);
+	bytes_left = h.len - len;
+	dprintf(dlevel,"bytes_left: %d\n", bytes_left);
+	if (data && len) {
+		bytes = recv(fd, data, len, 0);
+		dprintf(dlevel,"bytes: %d\n", bytes);
+		if (bytes < 0) return -1;
+		if (debug >= dlevel+1) bindump("RECEIVED",data,bytes);
+		/* XXX */
+		if (bytes != len) return 0;
+	}
+	for(i=0; i < bytes_left; i++) recv(fd, (char *)&ch, 1, 0);
+	*opcode = h.opcode;
+	*unit = h.unit;
+	*control = h.control;
+	dprintf(dlevel,"returning: %d\n", bytes);
+	return bytes;
+}
+
+int rdev_request(socket_t fd, uint8_t opcode, uint8_t unit, uint16_t control, void *data, int len) {
+	uint8_t status,runit;
+	int bytes;
+
+	/* Send the req */
+	dprintf(dlevel,"sending req\n");
+	bytes = rdev_send(fd,opcode,unit,control,0,0);
+	dprintf(dlevel,"bytes: %d\n", bytes);
+	if (bytes < 0) return -1;
+
+	/* Read the response */
+	bytes = rdev_recv(fd,&status,&runit,&control,data,len,10);
+	dprintf(dlevel,"bytes: %d, status: %d, runit: %d, control: %d\n", bytes, status, runit, control);
+	if (bytes < 0) return -1;
+	if (status != 0) return 0;
+	return bytes;
+}
+
+/*************************************** Driver funcs ***************************************/
 
 static void *rdev_new(void *conf, void *target, void *topts) {
 	rdev_session_t *s;
@@ -48,11 +163,11 @@ static void *rdev_new(void *conf, void *target, void *topts) {
 	s->fd = -1;
 
 	/* Format is addr:port,name */
-	dprintf(1,"target: %s\n", target);
+	dprintf(dlevel,"target: %s\n", target);
 	temp[0] = 0;
 	strncat(temp,strele(0,",",(char *)target),sizeof(temp)-1);
 	strncat(s->target,strele(0,":",temp),sizeof(s->target)-1);
-	dprintf(1,"s->target: %s\n", s->target);
+	dprintf(dlevel,"s->target: %s\n", s->target);
 	p = strele(1,":",temp);
 	if (strlen(p)) s->port = atoi(p);
 	if (!s->port) s->port = DEFAULT_PORT;
@@ -67,10 +182,11 @@ static void *rdev_new(void *conf, void *target, void *topts) {
 		return 0;
 	}
 
-	dprintf(1,"target: %s, port: %d, name: %s\n", s->target, s->port, s->name);
+	dprintf(dlevel,"target: %s, port: %d, name: %s\n", s->target, s->port, s->name);
 	return s;
 }
 
+#if 0
 static int rdev_getip(char *ip, char *name) {
 	int rc, err;
 	void *tmp;
@@ -80,7 +196,7 @@ static int rdev_getip(char *ip, char *name) {
 	unsigned char *ptr;
 	int len;
 
-	dprintf(1,"name: %s\n", name);
+	dprintf(dlevel,"name: %s\n", name);
 
 	len = 1024;
 	buf = malloc(len);
@@ -104,13 +220,14 @@ static int rdev_getip(char *ip, char *name) {
 	}
 
 	/* not found */
-	dprintf(1,"result->h_addr: %p\n", result->h_addr);
+	dprintf(dlevel,"result->h_addr: %p\n", result->h_addr);
 	if (!result->h_addr) return 1;
 
 	ptr = (unsigned char *) result->h_addr;
 	sprintf(ip,"%d.%d.%d.%d",ptr[0],ptr[1],ptr[2],ptr[3]);
 	return 0;
 }
+#endif
 
 static int rdev_open(void *handle) {
 	rdev_session_t *s = handle;
@@ -125,54 +242,42 @@ static int rdev_open(void *handle) {
 
 	if (s->fd >= 0) return 0;
 
-	dprintf(1,"Creating socket...\n");
+	dprintf(dlevel,"Creating socket...\n");
 	s->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (s->fd < 0) {
-		log_syserror("rdev_open: socket");
+		dprintf(dlevel,"rdev_open: socket");
 		return 1;
 	}
 
 	/* Try to resolve the target */
-	dprintf(1,"checking..\n");
-//	he = (struct hostent *) 0;
+	dprintf(dlevel,"target: %s\n",s->target);
 	*temp = 0;
-	if (!is_ip(s->target)) {
-		rdev_getip(temp,s->target);
-#if 0
-//		he = gethostbyname(s->target);
-		dprintf(1,"he: %p\n", he);
-		if (he) {
-			ptr = (unsigned char *) he->h_addr;
-			sprintf(temp,"%d.%d.%d.%d",ptr[0],ptr[1],ptr[2],ptr[3]);
-		}
-#endif
-	}
-//	if (!he) strcpy(temp,s->target);
+	if (os_gethostbyname(temp,sizeof(temp),s->target)) strcpy(temp,s->target);
 	if (!*temp) strcpy(temp,s->target);
-	dprintf(1,"temp: %s\n",temp);
+	dprintf(dlevel,"temp: %s\n",temp);
 
-	dprintf(1,"Connecting to: %s\n",temp);
+	dprintf(dlevel,"Connecting to: %s\n",temp);
 	memset(&addr,0,sizeof(addr));
 	sin_size = sizeof(addr);
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = inet_addr(temp);
 	addr.sin_port = htons(s->port);
 	if (connect(s->fd,(struct sockaddr *)&addr,sin_size) < 0) {
-		log_syserror("rdev_open: connect");
+		dprintf(dlevel,"rdev_open: connect");
 		close(s->fd);
 		s->fd = -1;
 		return 1;
 	}
 
-	dprintf(1,"sending open\n");
-	bytes = devserver_send(s->fd,DEVSERVER_OPEN,0,0,s->name,strlen(s->name)+1);
-	dprintf(1,"bytes: %d\n", bytes);
+	dprintf(dlevel,"sending open\n");
+	bytes = rdev_send(s->fd,RDEV_OPCODE_OPEN,0,0,s->name,strlen(s->name)+1);
+	dprintf(dlevel,"sent bytes: %d\n", bytes);
 
 	/* Read the reply */
-	bytes = devserver_recv(s->fd,&status,&s->unit,&control,s->type,sizeof(s->type)-1,0);
+	bytes = rdev_recv(s->fd,&status,&s->unit,&control,s->type,sizeof(s->type)-1,10);
 	if (bytes < 0) return -1;
-	dprintf(1,"bytes: %d, status: %d, unit: %d, control: %d\n", bytes, status, s->unit, control);
-	dprintf(1,"type: %s\n", s->type);
+	dprintf(dlevel,"recvd bytes: %d, status: %d, unit: %d, control: %d\n", bytes, status, s->unit, control);
+	dprintf(dlevel,"type: %s\n", s->type);
 	if (status != 0) {
 		close(s->fd);
 		s->fd = -1;
@@ -188,19 +293,20 @@ static int rdev_read(void *handle, void *buf, int buflen) {
 	uint16_t control;
 	int bytes;
 
-	dprintf(5,"buf: %p, buflen: %d\n", buf, buflen);
+	dprintf(dlevel,"buf: %p, buflen: %d\n", buf, buflen);
 
-	bytes = devserver_send(s->fd,DEVSERVER_READ,s->unit,buflen,0,0);
-	dprintf(5,"bytes: %d\n", bytes);
+	bytes = rdev_send(s->fd,RDEV_OPCODE_READ,s->unit,buflen,0,0);
+	dprintf(dlevel,"bytes sent: %d\n", bytes);
 	if (bytes < 0) return -1;
 
 	/* Read the response */
 	status = runit = control = 0;
-	bytes = devserver_recv(s->fd,&status,&runit,&control,buf,buflen,0);
-	dprintf(5,"bytes: %d, status: %d, runit: %d, control: %d\n", bytes, status, runit, control);
+	bytes = rdev_recv(s->fd,&status,&runit,&control,buf,buflen,10);
+	dprintf(dlevel,"bytes recvd: %d, status: %d, runit: %d, control: %d\n", bytes, status, runit, control);
+	if (bytes < 0) return -1;
 	/* control has bytes read */
 	if (bytes > 0 && debug >= 7) bindump("FROM SERVER",buf,control);
-	dprintf(5,"returning: %d\n", control);
+	dprintf(dlevel,"returning: %d\n", control);
 	return control;
 }
 
@@ -210,19 +316,20 @@ static int rdev_write(void *handle, void *buf, int buflen) {
 	uint16_t control;
 	int bytes;
 
-	dprintf(5,"buf: %p, buflen: %d\n", buf, buflen);
+	dprintf(dlevel,"buf: %p, buflen: %d\n", buf, buflen);
 
 	if (debug >= 7) bindump("TO SERVER",buf,buflen);
-	bytes = devserver_send(s->fd,DEVSERVER_WRITE,s->unit,buflen,buf,buflen);
-	dprintf(5,"bytes: %d\n", bytes);
+	bytes = rdev_send(s->fd,RDEV_OPCODE_WRITE,s->unit,buflen,buf,buflen);
+	dprintf(dlevel,"bytes: %d\n", bytes);
 	if (bytes < 0) return -1;
 
 	/* Read the response */
 	status = runit = control = 0;
-	bytes = devserver_recv(s->fd,&status,&runit,&control,0,0,0);
+	bytes = rdev_recv(s->fd,&status,&runit,&control,0,0,10);
+	dprintf(dlevel,"bytes recvd: %d, status: %d, runit: %d\n", bytes, status, runit);
+	if (bytes < 0) return -1;
 	/* control has bytes written */
-	dprintf(5,"bytes: %d, status: %d, runit: %d\n", bytes, status, runit);
-	dprintf(5,"returning: %d\n", control);
+	dprintf(dlevel,"returning: %d\n", control);
 	return control;
 }
 
@@ -231,7 +338,7 @@ static int rdev_close(void *handle) {
 	rdev_session_t *s = handle;
 
 	if (s->fd >= 0) {
-		devserver_request(s->fd,DEVSERVER_CLOSE,s->unit,0,0,0);
+		rdev_request(s->fd,RDEV_OPCODE_CLOSE,s->unit,0,0,0);
 		close(s->fd);
 		s->fd = -1;
 	}
@@ -254,7 +361,7 @@ static int rdev_config(void *h, int func, ...) {
 	va_start(ap,func);
 	switch(func) {
 	default:
-		dprintf(1,"error: unhandled func: %d\n", func);
+		dprintf(dlevel,"error: unhandled func: %d\n", func);
 		break;
 	}
 	return r;

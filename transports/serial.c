@@ -9,9 +9,7 @@ LICENSE file in the root directory of this source tree.
 
 #include <fcntl.h> 
 #include <time.h>
-#ifdef __WIN32
-#include <windows.h>
-#else
+#ifndef WINDOWS
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
@@ -396,11 +394,11 @@ static int serial_read(void *handle, void *buf, int buflen) {
 	count = 0;
 	FD_ZERO(&rfds);
 	FD_SET(s->fd,&rfds);
-//	dprintf(8,"waiting...\n");
-	tv.tv_usec = 500000;
-	tv.tv_sec = 0;
+	dprintf(8,"waiting...\n");
+//	tv.tv_usec = 500000;
+	tv.tv_sec = 1;
 	num = select(s->fd+1,&rfds,0,0,&tv);
-//	dprintf(8,"num: %d\n", num);
+	dprintf(8,"num: %d\n", num);
 	if (num < 1) goto serial_read_done;
 
 	/* Read */
@@ -409,6 +407,7 @@ static int serial_read(void *handle, void *buf, int buflen) {
 		log_write(LOG_SYSERR|LOG_DEBUG,"serial_read: read");
 		return -1;
 	}
+	dprintf(8,"bytes read: %d\n", bytes);
 	count = bytes;
 #endif
 #endif

@@ -66,7 +66,7 @@ int smanet_recv_packet(smanet_session_t *s, uint8_t rcount, int rcmd, smanet_pac
 		dprintf(smanet_dlevel,"timeout!\n");
 		return 2;
 	}
-//	if (debug >= dlevel) bindump("recv packet",data,len);
+	if (debug >= smanet_dlevel+1) bindump("recv packet",data,len);
 
 #if 0
 	/* This method works on little endian */
@@ -83,6 +83,7 @@ int smanet_recv_packet(smanet_session_t *s, uint8_t rcount, int rcmd, smanet_pac
 	packet->count = h->count;
 	packet->command = h->command;
 #endif
+	/* This method should work on any arch */
 	src = _getu16(&data[0]);
 	dest = _getu16(&data[2]);
 	control = data[4];
