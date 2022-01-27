@@ -1,1 +1,0 @@
-/usr/bin/cc -fPIC -shared -Wl,-soname,edit.so -o edit.so CMakeFiles/edit.dir/editline.c.o CMakeFiles/edit.dir/fn_complete.c.o CMakeFiles/edit.dir/history.c.o 

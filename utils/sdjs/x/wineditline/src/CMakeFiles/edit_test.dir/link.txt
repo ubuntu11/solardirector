@@ -1,1 +1,0 @@
-/usr/bin/cc -rdynamic CMakeFiles/edit_test.dir/libedit_test.c.o -o edit_test  -Wl,-rpath,/usr/src/sd/utils/sdjs/x/wineditline/src: edit.so 
