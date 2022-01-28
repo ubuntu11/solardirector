@@ -7,17 +7,15 @@ LICENSE file in the root directory of this source tree.
 */
 
 #include "sb.h"
-#include "sma_strings.h"
-#include "sma_objects.h"
 
-#define TESTING 0
-
-#define URL_LOGIN "dyn/login.json"
-#define URL_LOGOUT "dyn/logout.json"
-#define URL_VALUES "dyn/getValues.json"
-#define URL_LOGGER "dyn/getLogger.json"
-#define URL_SESCHK "dyn/sessionCheck.json"
-#define URL_ALLVAL "dyn/getAllOnlValues.json"
+#define SB_LOGIN "dyn/login.json"
+#define SB_LOGOUT "dyn/logout.json"
+#define SB_GETVAL "dyn/getValues.json"
+#define SB_GETPAR "dyn/getParamValues.json"
+#define SB_LOGGER "dyn/getLogger.json"
+#define SB_ALLVAL "dyn/getAllOnlValues.json"
+#define SB_ALLPAR "dyn/getAllParamValues.json"
+#define SB_SETPAR "dyn/setParamValues.json"
 
 #if 0
 # login: '/login.json',
@@ -40,50 +38,10 @@ LICENSE file in the root directory of this source tree.
 # SslCertUpdate: 'input_file_ssl.htm'
 #endif
 
-static char *getsmastring(int tag) {
-	sma_string_t *s;
-//	char tagstr[16];
-
-	dprintf(1,"tag: %d\n", tag);
-//	sprintf(tagstr,"%d",tag);
-//	dprintf(1,"tagstr: %s\n", tagstr);
-
-	for(s=sma_strings; s->tag; s++) {
-//		if (strcmp(s->tag,tag) == 0) {
-		if (s->tag == tag) {
-			dprintf(1,"found\n");
-			return s->string;
-		}
-	}
-	printf("TAG NOT FOUND: %d\n", tag);
-	dprintf(1,"NOT found\n");
-	return 0;
-}
-
-
-static sma_object_t *getsmaobject(char *id) {
-	sma_object_t *o;
-
-	dprintf(1,"id: %s\n", id);
-
-	for(o=sma_objects; o->id; o++) {
-		if (strcmp(o->id,id) == 0) {
-			dprintf(1,"found\n");
-			return o;
-		}
-	}
-	printf("OBJECT NOT FOUND: %s\n", id);
-	dprintf(1,"NOT found\n");
-	return 0;
-}
-
-static int getsmaobjectpath(char *dest, int destsize, char *id) {
-	sma_object_t *o;
+static int getsmaobjectpath(char *dest, int destsize, sma_object_t *o) {
 	char path[256], *tagstr, *s, *p;
 	int i;
 
-	o = getsmaobject(id);
-	if (!o) return 1;
 	tagstr = getsmastring(o->tag);
 	if (!tagstr) return 1;
 	p = path;
@@ -94,89 +52,85 @@ static int getsmaobjectpath(char *dest, int destsize, char *id) {
 		p += sprintf(p,"(%d)%s->",o->taghier[i],s);
 	}
 	p += sprintf(p,"(%d)%s",o->tag,tagstr);
-	dprintf(1,"path: %s\n",path);
+	dprintf(5,"path: %s\n",path);
 	strncpy(dest,path,destsize);
 	return 0;
 }
 
-static void _getval(char *id, char *w, json_value_t *rv) {
-	struct sbval val;
+static void _getval(sb_session_t *s, sb_value_t *vp,  json_value_t *rv) {
 	json_value_t *v;
 	json_object_t *o;
 	json_array_t *a;
 	int type;
-	double dval;
-	char *p,*s;
-	char path[256],value[1024];
 	register int i;
+	register char *p;
 
-	dprintf(1,"id: %s\n", id);
-	if (getsmaobjectpath(path,sizeof(path)-1,id)) return;
-
-	memset(&val,0,sizeof(val));
-	val.values = list_create();
-	strncpy(val.id,id,sizeof(val.id)-1);
 	type = json_value_get_type(rv);
 	dprintf(1,"type: %d (%s)\n", type, json_typestr(type));
 	switch(type) {
 	case JSON_TYPE_NULL:
-		val.type = DATA_TYPE_NULL;
-		strcpy(value,"null");
+		vp->type = DATA_TYPE_NULL;
 		break;
 	case JSON_TYPE_NUMBER:
-		val.type = DATA_TYPE_DOUBLE;
-		dval = json_value_get_number(rv);
-		sprintf(value,"%f",dval);
+		vp->type = DATA_TYPE_DOUBLE;
+		vp->d = json_value_get_number(rv);
+		dprintf(1,"vp->d(1): %f, mult: %f\n", vp->d, vp->o->mult);
+		if (float_equals(vp->o->mult,0.0)) vp->o->mult = 1.0;
+		vp->d *= vp->o->mult;
+		dprintf(1,"vp->d(2): %f\n", vp->d);
 		break;
 	case JSON_TYPE_STRING:
-		val.type = DATA_TYPE_STRING;
+		vp->type = DATA_TYPE_STRING;
 		p = json_value_get_string(rv);
-		strncpy(value,p,sizeof(value)-1);
+		vp->s = malloc(strlen(p)+1);
+		if (!vp->s) {
+			log_syserror("_getval: malloc(%d)\n", strlen(p)+1);
+			return;
+		}
+		strcpy(vp->s,p);
 		break;
 	case JSON_TYPE_ARRAY:
+		vp->type = DATA_TYPE_STRING_LIST;
 		a = json_value_get_array(rv);
 		dprintf(1,"array count: %d\n", a->count);
-		s = value;
+		vp->l = list_create();
 		for(i=0; i < a->count; i++) {
 			if (json_value_get_type(a->items[i]) != JSON_TYPE_OBJECT) return;
 			o = json_value_get_object(a->items[i]);
-			dprintf(0,"object count: %d\n", o->count);
+			dprintf(1,"object count: %d\n", o->count);
 			if (o->count < 1) return;
 			/* The only option we support here is "tag" (number) */
 			v = json_object_dotget_value(o,"tag");
 			if (!v) return;
-			dval = json_value_get_number(v);
-			dprintf(1,"dval: %f\n", dval);
-			p = getsmastring((int)dval);
+			p = getsmastring((int)json_value_get_number(v));
 			if (!p) return;
-			printf("value[%d]: %s\n", i, p);
-			if (i) s += sprintf(s,",");
-			s += sprintf(s,"%s",p);
+			list_add(vp->l,p,strlen(p)+1);
 		}
 		break;
 	default:
-		dprintf(0,"unhandled type: %d(%s)\n", type, json_typestr(type));
+		log_error("_getval: unhandled type: %d(%s)\n", type, json_typestr(type));
 		return;
 		break;
 	}
-	printf("(%s)%s%s: %s\n", id, path, w, value);
 }
 
-static int getvals(json_object_t *o) {
+static int getvals(sb_session_t *s,json_object_t *o) {
+	sb_value_t newval;
 	json_value_t *v;
 	json_object_t *oo;
 	json_array_t *a;
 	int i,j,type;
-	char w[5];
 
-	dprintf(0,"count: %d\n", o->count);
+	dprintf(1,"count: %d\n", o->count);
 	for(i=0; i < o->count; i++) {
 		v = o->values[i];
 		type = json_value_get_type(v);
 		dprintf(1,"names[%d]: %s, type: %d (%s)\n", i, o->names[i], type, json_typestr(type));
 		if (type != JSON_TYPE_OBJECT) continue;
+
 		oo = json_value_get_object(v);
 		if (oo->count < 1) continue;
+
 		v = oo->values[0];
 		if (json_value_get_type(v) != JSON_TYPE_ARRAY) continue;
 		a = json_value_get_array(v);
@@ -186,22 +140,26 @@ static int getvals(json_object_t *o) {
 			v = json_object_dotget_value(json_value_get_object(a->items[j]),"val");
 			dprintf(1,"v: %p\n", v);
 			if (!v) continue;
-			if (a->count > 1) sprintf(w," [%c]",'A' + j);
-			else *w = 0;
-			_getval(o->names[i],w,v);
+			memset(&newval,0,sizeof(newval));
+			newval.o = getsmaobject(o->names[i]);
+			if (!newval.o) continue;
+			if (a->count > 1) sprintf(newval.w," [%c]",'A' + j);
+			else *newval.w = 0;
+			dprintf(1,"w: %s\n", newval.w);
+			_getval(s,&newval,v);
+			list_add(s->data,&newval,sizeof(newval));
 		}
 	}
 	return 0;
 }
 
 static size_t wrfunc(void *ptr, size_t size, size_t nmemb, void *ctx) {
+	sb_session_t *s = ctx;
 	json_value_t *v,*vv;
 	json_object_t *o,*oo;
-	char *p;
 	int i,j,type;
 	bool bval;
 
-	printf("ptr: %s\n", (char *)ptr);
 	v = json_parse(ptr);
 	if (!v) goto done;
 #if 0
@@ -209,11 +167,11 @@ static size_t wrfunc(void *ptr, size_t size, size_t nmemb, void *ctx) {
 	{"result":{"019D-xxxxxA37":{"6400_00260100":{"1":[{"val":1535047}]}}}}
 	{"result":{"isLogin":false}}
 #endif
-	printf("type: %s\n", json_typestr(json_value_get_type(v)));
+	dprintf(1,"type: %s\n", json_typestr(json_value_get_type(v)));
 	if (json_value_get_type(v) != JSON_TYPE_OBJECT) goto done;
 	o = json_value_get_object(v);
 	for(i=0; i < o->count; i++) {
-		printf("names[%d]: %s\n", i, o->names[i]);
+		dprintf(1,"names[%d]: %s\n", i, o->names[i]);
 		if (strcmp(o->names[i],"result") == 0) {
 			v = o->values[i];
 			dprintf(1,"values[%d] type: %s\n", i, json_typestr(json_value_get_type(v)));
@@ -225,31 +183,56 @@ static size_t wrfunc(void *ptr, size_t size, size_t nmemb, void *ctx) {
 				dprintf(1,"names[%d]: %s, type: %d(%s)\n", j, oo->names[j], type, json_typestr(type));
 				if (strcmp(oo->names[j],"sid") == 0) {
 					if (type != JSON_TYPE_STRING) continue;
-					p = json_value_get_string(vv);
-					if (p) printf("==> sid: %s\n", p);
+					strncpy(s->session_id,json_value_get_string(vv),sizeof(s->session_id)-1);
 				} else if (strcmp(oo->names[i],"isLogin") == 0) {
 					bval = json_value_get_boolean(oo->values[i]);
 					printf("isLogin: %d\n", bval);
 //					if (s->isLogin) s->isLogin = 0;
 //					*s->sid = 0;
 				} else if (type == JSON_TYPE_OBJECT) {
-					getvals(json_value_get_object(vv));
+					getvals(s,json_value_get_object(vv));
 				}
 			}
+		} else if (strcmp(o->names[i],"err") == 0) {
+			oo = json_value_get_object(v);
+			if (oo->count < 1) goto done;
+			if (json_value_get_type(oo->values[0]) == JSON_TYPE_NUMBER) {
+				s->errcode = json_value_get_number(oo->values[0]);
+				dprintf(1,"errcode: %d\n", s->errcode);
+			}
 		}
-	}
-	p = json_object_dotget_string(o,"result.sid");
-	if (p) {
-		strncpy((char *)ctx,p,63);
-		goto done;
 	}
 
 done:
 	return size*nmemb;
 }
 
+int sb_request(sb_session_t *s, char *func, char *fields) {
+	char url[128],*p;
+	CURLcode res;
+
+	dprintf(1,"func: %s, fields: %s\n", func, fields);
+
+	p = url;
+	if (strncmp(s->endpoint,"http",4) != 0) p += sprintf(p,"https://");
+	p += sprintf(p,"%s/%s",s->endpoint,func);
+	if (*s->session_id) p += sprintf(p,"?sid=%s",s->session_id);
+	dprintf(1,"url: %s\n", url);
+	curl_easy_setopt(s->curl, CURLOPT_URL, url);
+	if (fields) curl_easy_setopt(s->curl, CURLOPT_POSTFIELDS, fields);
+	else curl_easy_setopt(s->curl, CURLOPT_POSTFIELDS, "{}");
+	res = curl_easy_perform(s->curl);
+	if (res != CURLE_OK) {
+		log_error("sb_request failed: %s\n", curl_easy_strerror(res));
+		sb_driver.close(s);
+		return 1;
+	}
+	return 0;
+}
+
 void *sb_new(void *conf, void *driver, void *driver_handle) {
 	sb_session_t *s;
+	struct curl_slist *hs = curl_slist_append(0, "Content-Type: application/json");
 
 	s = calloc(1,sizeof(*s));
 	if (!s) {
@@ -263,124 +246,91 @@ void *sb_new(void *conf, void *driver, void *driver_handle) {
 		free(s);
 		return 0;
 	}
+//	curl_easy_setopt(s->curl, CURLOPT_VERBOSE, 1L);
+	curl_easy_setopt(s->curl, CURLOPT_SSL_VERIFYPEER, 0L);
+	curl_easy_setopt(s->curl, CURLOPT_HTTPHEADER, hs);
+	curl_easy_setopt(s->curl, CURLOPT_WRITEFUNCTION, wrfunc);
+	curl_easy_setopt(s->curl, CURLOPT_WRITEDATA, s);
 
 	return s;
 }
 
 int sb_open(void *handle) {
 	sb_session_t *s = handle;
-	int r;
 
-	dprintf(3,"s: %p\n", s);
 	if (!s) return 1;
-	dprintf(3,"open: %d\n", solard_check_state(s,SB_STATE_OPEN));
 
-	r = 0;
-	if (!solard_check_state(s,SB_STATE_OPEN)) {
-		struct curl_slist *hs = curl_slist_append(0, "Content-Type: application/json");
-		CURLcode res;
-		char url[128],*j;
+	dprintf(3,"open: %d\n", solard_check_state(s,SB_STATE_OPEN));
+	if (solard_check_state(s,SB_STATE_OPEN)) return 0;
+
+	/* Create the login info */
+	if (!s->login_fields) {
 		json_object_t *o;
 
-		curl_easy_setopt(s->curl, CURLOPT_VERBOSE, 1L);
-		curl_easy_setopt(s->curl, CURLOPT_SSL_VERIFYPEER, 0L);
-		curl_easy_setopt(s->curl, CURLOPT_HTTPHEADER, hs);
-		sprintf(url,"https://%s/%s",s->endpoint,URL_LOGIN);
-		printf("url: %s\n", url);
-		curl_easy_setopt(s->curl, CURLOPT_URL, url);
 		o = json_create_object();
 		json_object_set_string(o,"right","usr");
 		json_object_set_string(o,"pass",s->password);
-		j = json_dumps(json_object_get_value(o),0);
-		json_destroy_object(o);
-		printf("j: %s\n", j);
-		curl_easy_setopt(s->curl, CURLOPT_POSTFIELDS, j);
-		curl_easy_setopt(s->curl, CURLOPT_WRITEFUNCTION, wrfunc);
-		*s->session_id = 0;
-		curl_easy_setopt(s->curl, CURLOPT_WRITEDATA, s->session_id);
-		curl_easy_setopt(s->curl, CURLOPT_HTTPHEADER, hs);
-	 
-		/* Perform the request, res will get the return code */
-		res = curl_easy_perform(s->curl);
-		if(res != CURLE_OK) fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-		free(j);
-		if (!*s->session_id) {
-			log_error("sb_open: error getting session_id\n");
-			sprintf(s->errmsg,"error getting session_id\n");
-			r = 1;
-		} else {
-			dprintf(0,"session_id: %s\n", s->session_id);
-			solard_set_state(s,SB_STATE_OPEN);
+		s->login_fields = json_dumps(json_object_get_value(o),0);
+		if (!s->login_fields) {
+			log_syserror("sb_open: create login fields: %s\n", strerror(errno));
+			return 1;
 		}
+		json_destroy_object(o);
 	}
-	dprintf(3,"returning: %d\n", r);
-	return r;
+
+	*s->session_id = 0;
+	if (sb_request(s,SB_LOGIN,s->login_fields)) return 1;
+	if (!*s->session_id) {
+		log_error("sb_open: error getting session_id .. bad password?\n");
+		return 1;
+	}
+
+	dprintf(1,"session_id: %s\n", s->session_id);
+	solard_set_state(s,SB_STATE_OPEN);
+	return 0;
 }
 
 int sb_close(void *handle) {
 	sb_session_t *s = handle;
-	char url[128];
-	CURLcode res;
-	int r;
 
-	dprintf(3,"s: %p\n", s);
 	if (!s) return 1;
-	dprintf(3,"open: %d\n", solard_check_state(s,SB_STATE_OPEN));
+	dprintf(1,"open: %d\n", solard_check_state(s,SB_STATE_OPEN));
+	if (!solard_check_state(s,SB_STATE_OPEN)) return 0;
 
-	r = 0;
-	sprintf(url,"https://%s/%s?sid=%s",s->endpoint,URL_LOGOUT,s->session_id);
-	dprintf(1,"url: %s\n", url);
-	curl_easy_setopt(s->curl, CURLOPT_URL, url);
-	curl_easy_setopt(s->curl, CURLOPT_POSTFIELDS, "{}");
-	res = curl_easy_perform(s->curl);
-	if (res != CURLE_OK) {
-		log_error("sb_close: logout failed: %s\n", curl_easy_strerror(res));
-		r = 1;
-	}
+	sb_request(s,SB_LOGOUT,"{}");
 	curl_easy_cleanup(s->curl);
 	s->curl = 0;
-
-	dprintf(3,"returning: %d\n", r);
-	return r;
-}
-
-static int mkfields(sb_session_t *s) {
-	json_object_t *o;
-	json_array_t *a;
-
-	o = json_create_object();
-	a = json_create_array();
-	json_object_set_array(o,"destDev",a);
-	s->fields = json_dumps(json_object_get_value(o),0);
-	if (!s->fields) {
-		log_syserror("mkfields: json_dumps");
-		return 1;
-	}
-	dprintf(0,"fields: %s\n", s->fields);
 	return 0;
 }
 
 static int sb_read(void *handle, void *buf, int buflen) {
 	sb_session_t *s = handle;
-	char url[128];
-	CURLcode res;
 
 	/* Open if not already open */
         if (sb_driver.open(s)) return 1;
 
-	dprintf(1,"reading...\n");
-	sprintf(url,"https://%s/%s?sid=%s",s->endpoint,"dyn/getAllParamValues.json",s->session_id);
-	printf("url: %s\n", url);
-	curl_easy_setopt(s->curl, CURLOPT_URL, url);
-	if (!s->fields && mkfields(s)) return 1;
-	curl_easy_setopt(s->curl, CURLOPT_POSTFIELDS, s->fields);
-	res = curl_easy_perform(s->curl);
-	if (res != CURLE_OK) {
-		log_error("sb_read failed: %s\n", curl_easy_strerror(res));
-		sb_driver.close(s);
+	if (!s->read_fields) {
+		json_object_t *o;
+		json_array_t *a;
+
+		o = json_create_object();
+		a = json_create_array();
+		json_object_set_array(o,"destDev",a);
+		s->read_fields = json_dumps(json_object_get_value(o),0);
+		if (!s->read_fields) {
+			log_syserror("mkfields: json_dumps");
+			return 1;
+		}
+		dprintf(1,"fields: %s\n", s->read_fields);
+	}
+
+
+	s->data = list_create();
+	if (sb_request(s,SB_ALLVAL,s->read_fields)) {
+		list_destroy(s->data);
 		return 1;
 	}
-//	solard_clear_state(s->ap,SOLARD_AGENT_RUNNING);
+	list_destroy(s->data);
 	return 0;
 }
 

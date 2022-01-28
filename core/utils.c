@@ -17,7 +17,7 @@ LICENSE file in the root directory of this source tree.
 #ifdef DEBUG
 #undef DEBUG
 #endif
-//#define DEBUG 1
+#define DEBUG 1
 #include "utils.h"
 #include "debug.h"
 #ifdef __WIN32
@@ -286,20 +286,21 @@ bool fequal(float a, float b) {
 	return fabs(a-b) < 0.00001f;
 }
 
+#if 0
 int double_equals(double a, double b) {
 	double r;
 	int v;
 
-	printf("a: %lf, b: %lf\n", a, b);
+//	printf("a: %lf, b: %lf\n", a, b);
 	if (a > b) r = a - b;
 	else r = b - a;
-	printf("a: %f, b: %f, r: %f\n", a, b, r);
+//	printf("a: %f, b: %f, r: %f\n", a, b, r);
 	v= (r < 0.0000001f);
-	printf("v: %d\n", v);
+//	printf("v: %d\n", v);
 	return v;
 }
+#endif
 
-#if 0
 int double_equals(double a, double b) {
         double r;
 
@@ -308,19 +309,21 @@ int double_equals(double a, double b) {
         dprintf(1,"a: %f, b: %f, r: %f\n", a, b, r);
         return (r > 0.00001);
 }
-#endif
 
+#if 0
 int float_equals(float f1, float f2) {
 	float precision = 0.00001;
 	return (((f1 - precision) < f2) && (f1 + precision) > f2) ? 1 : 0;
 }
-#if 0
+#else
 int float_equals(float a, float b) {
 	float r;
 
+	if (a == b) return 1;
 	if (a > b) r = a - b;
 	else r = b - a;
-	dprintf(1,"a: %f, b: %f, r: %f\n", a, b, r);
+	dprintf(0,"a: %f, b: %f, r: %f\n", a, b, r);
+	dprintf(0,"returning: %d\n", r > 0.00001f);
 	return (r > 0.00001f);
 }
 #endif

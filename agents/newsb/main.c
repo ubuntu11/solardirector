@@ -160,8 +160,8 @@ int main(int argc, char **argv) {
 	}
 #endif
 
-//	strcpy(s->endpoint,"192.168.1.153");
-	strcpy(s->endpoint,"192.168.1.175");
+	strcpy(s->endpoint,"https://192.168.1.153");
+//	strcpy(s->endpoint,"https://192.168.1.175");
 	strcpy(s->password,"Bgt56yhn!");
 
 	/* Main loop */

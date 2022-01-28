@@ -20,8 +20,8 @@ struct sb_session {
 	list values;
 };
 
-char *ip = "192.168.1.153";
-//char *ip = "192.168.1.175";
+//char *ip = "192.168.1.153";
+char *ip = "192.168.1.175";
 //char *ip = "192.168.1.182";
 char *password = "Bgt56yhn!";
 
@@ -55,14 +55,11 @@ char *password = "Bgt56yhn!";
 
 static char *getsmastring(int tag) {
 	sma_string_t *s;
-	char tagstr[16];
 
 	dprintf(1,"tag: %d\n", tag);
-	sprintf(tagstr,"%d",tag);
-	dprintf(1,"tagstr: %s\n", tagstr);
 
 	for(s=sma_strings; s->tag; s++) {
-		if (strcmp(s->tag,tagstr) == 0) {
+		if (s->tag == tag) {
 			dprintf(1,"found\n");
 			return s->string;
 		}

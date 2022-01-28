@@ -309,6 +309,7 @@ static JSClass global_class = {
 JSObject *JS_CreateGlobalObject(JSContext *cx, void *priv) {
 	JSObject *obj;
 	JSPropertySpec global_props[] = {
+//		{ "debug",GLOBAL_PROPERTY_ID_DEBUG, JSPROP_ENUMERATE },
 		{ "script_name",GLOBAL_PROPERTY_ID_SCRIPT_NAME, JSPROP_ENUMERATE | JSPROP_READONLY },
 		{0}
 	};
