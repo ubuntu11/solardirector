@@ -3,7 +3,7 @@ IMPORTANT: INSTALL THE FOLLOWING DEPS FIRST
 paho.mqtt.c (https://github.com/eclipse/paho.mqtt.c.git)
 
 	mkdir -p build && cd build
-	cmake -DPAHO_BUILD_SHARED=TRUE -DPAHO_BUILD_STATIC=TRUE -DPAHO_ENABLE_TESTING=FALSE -DPAHO_BUILD_SAMPLES=TRUE ..
+	cmake -DPAHO_BUILD_SHARED=TRUE -DPAHO_BUILD_STATIC=TRUE -DPAHO_ENABLE_TESTING=FALSE -DPAHO_BUILD_SAMPLES=FALSE ..
 	make && make install
 	
 gattlib (https://github.com/labapart/gattlib.git)
