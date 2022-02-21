@@ -42,7 +42,7 @@ void display(cellmon_config_t *conf) {
 	float summ[NSUMM][BATTERY_MAX_PACKS];
 	float bsum[NBSUM][BATTERY_MAX_PACKS];
 	char lupd[BATTERY_MAX_PACKS][32];
-	float cell_total, cell_min, cell_max, cell_diff, cell_avg, cap, kwh;
+	float v, cell_total, cell_min, cell_max, cell_diff, cell_avg, cap, kwh;
 	int x,y,npacks,cells,max_temps,pack_reported;
 	char str[32];
 	char *slabels[NSUMM] = { "Min","Max","Avg","Diff" };
@@ -82,11 +82,19 @@ void display(cellmon_config_t *conf) {
 			cell_max = 0.0;
 			cell_total = 0;
 			for(y=0; y < pp->ncells; y++) {
+#if 0
+				v = pp->cells[y].voltage;
 				if (pp->cells[y].voltage < cell_min) cell_min = pp->cells[y].voltage;
 				if (pp->cells[y].voltage > cell_max) cell_max = pp->cells[y].voltage;
 				values[y][x] = pp->cells[y].voltage;
-//				dprintf(1,"values[%d][%d]: %.3f\n", y, x, values[y][x]);
 				cell_total += pp->cells[y].voltage;
+#endif
+				v = pp->cellvolt[y];
+				if (v < cell_min) cell_min = v;
+				if (v > cell_max) cell_max = v;
+				cell_total += v;
+				values[y][x] = v;
+//				dprintf(1,"values[%d][%d]: %.3f\n", y, x, values[y][x]);
 			}
 			cap += pp->capacity;
 			pack_reported++;
