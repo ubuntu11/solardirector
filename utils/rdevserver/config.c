@@ -43,12 +43,14 @@ int rdev_add_device(rdev_config_t *conf, char *name) {
 	dprintf(dlevel,"mp: %p\n", mp);
 	if (!mp) goto add_device_error;
 
+#if 0
 	/* Test the driver */
 	mp_handle = mp->new(target,topts);
 	if (!mp_handle) goto add_device_error;
 	if (mp->open(mp_handle)) goto add_device_error;
 	mp->close(mp_handle);
 	mp->destroy(mp_handle);
+#endif
 
 	memset(&dev,0,sizeof(dev));
 	strncpy(dev.name,name,sizeof(dev.name)-1);
