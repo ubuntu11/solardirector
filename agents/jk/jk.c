@@ -550,6 +550,8 @@ static int jk_read(void *handle, uint32_t *control, void *buf, int buflen) {
 		r = jk_bt_read(s);
 	else
 		r = jk_std_read(s);
+	dprintf(1,"r: %d\n", r);
+	if (r) return 1;
 
         /* min/max/avg/total */
         min = 9999999;
@@ -574,8 +576,7 @@ static int jk_read(void *handle, uint32_t *control, void *buf, int buflen) {
 	} else {
 		jk_pub(s);
 	}
-	dprintf(1,"returning: %d\n", r);
-	return r;
+	return 0;
 }
 
 solard_driver_t jk_driver = {
