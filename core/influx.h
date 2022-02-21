@@ -34,6 +34,7 @@ influx_session_t *influx_new(void);
 #ifdef JS
 #include "jsapi.h"
 #include "jsengine.h"
+void influx_add_props(config_t *, influx_config_t *, char *, influx_config_t *);
 int influx_jsinit(JSEngine *, influx_session_t *);
 #endif
 

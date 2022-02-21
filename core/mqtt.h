@@ -10,6 +10,8 @@ LICENSE file in the root directory of this source tree.
 #ifndef __SOLARD_MQTT_H
 #define __SOLARD_MQTT_H
 
+#include "config.h"
+
 /* We use the paho mqtt.c library */
 #include <MQTTClient.h>
 
@@ -35,10 +37,10 @@ typedef struct mqtt_config mqtt_config_t;
 
 typedef void (mqtt_callback_t)(void *, char *, char *, int, char *);
 
-int mqtt_add_config(mqtt_session_t *, void *);
-int mqtt_parse_config(mqtt_config_t *conf, char *str);
-int mqtt_get_config(void *,mqtt_config_t *);
 struct mqtt_session *mqtt_new(mqtt_callback_t *, void *);
+//int mqtt_add_config(mqtt_session_t *, void *);
+int mqtt_parse_config(mqtt_config_t *conf, char *str);
+int mqtt_init(mqtt_session_t *,mqtt_config_t *);
 int mqtt_newclient(mqtt_session_t *, mqtt_config_t *);
 int mqtt_connect(mqtt_session_t *s, int interval);
 int mqtt_disconnect(mqtt_session_t *s, int timeout);
@@ -55,6 +57,7 @@ int mqtt_fullsend(char *address, char *clientid, char *message, char *topic, cha
 #ifdef JS
 #include "jsapi.h"
 #include "jsengine.h"
+void mqtt_add_props(config_t *, mqtt_config_t *, char *, mqtt_config_t *);
 int mqtt_jsinit(JSEngine *, mqtt_session_t *);
 #endif
 

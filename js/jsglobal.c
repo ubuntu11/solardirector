@@ -20,7 +20,7 @@
 #include "jsengine.h"
 #include "jsscan.h"
 
-#define DEBUG_GLOBAL 1
+#define DEBUG_GLOBAL 0
 #define dlevel 6
 
 #ifdef DEBUG
@@ -57,7 +57,7 @@ static const char *get_script_name(JSContext *cx) {
 static JSBool global_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 	int prop_id;
 
-	dprintf(dlevel,"is_int: %d\n", JSVAL_IS_INT(id));
+//	dprintf(dlevel,"is_int: %d\n", JSVAL_IS_INT(id));
 	if(JSVAL_IS_INT(id)) {
 		prop_id = JSVAL_TO_INT(id);
 		dprintf(dlevel,"prop_id: %d\n", prop_id);
@@ -148,6 +148,8 @@ static JSBool Load(JSContext *cx, uintN argc, jsval *vp) {
 		strncpy(fixedname,filename,sizeof(fixedname)-1);
 		JS_free(cx,filename);
 		fixpath(fixedname,sizeof(fixedname)-1);
+//		printf("fixedname: %s\n", fixedname);
+//		if (access(fixedname,0) != 0) perror("access");
 		if (_JS_EngineExec(e, fixedname, cx)) {
 			JS_ReportError(cx, "Load(%s) failed\n",fixedname);
 			return JS_FALSE;
@@ -276,6 +278,20 @@ ReadLine(JSContext *cx, uintN argc, jsval *vp)
     return JS_TRUE;
 }
 
+static JSBool js_timestamp(JSContext *cx, uintN argc, jsval *vp) {
+	char ts[32];
+	int local;
+
+	if (argc) {
+		if (!JS_ConvertArguments(cx, argc, JS_ARGV(cx,vp), "d", &local)) return JS_FALSE;
+	} else {
+		local = 1;
+	}
+	if (get_timestamp(ts,sizeof(ts),local)) return JS_FALSE;
+	*vp = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,ts));
+	return JS_TRUE;
+}
+
 static JSBool js_log_info(JSContext *cx, uintN argc, jsval *vp) {
 	return js_log_write(LOG_INFO,cx,argc,vp);
 }
@@ -327,6 +343,7 @@ JSObject *JS_CreateGlobalObject(JSContext *cx, void *priv) {
 		JS_FN("abort",js_abort,1,1,0),
 		JS_FN("quit",js_abort,0,0,0),
 		JS_FN("readline",ReadLine,0,0,0),
+		JS_FN("timestamp",js_timestamp,0,1,0),
 		JS_FN("log_info",js_log_info,0,0,0),
 		JS_FN("log_warning",js_log_warning,0,0,0),
 		JS_FN("log_error",js_log_error,0,0,0),

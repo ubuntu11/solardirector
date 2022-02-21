@@ -47,7 +47,7 @@ int si_startstop(si_session_t *s, int op) {
 		dprintf(1,"bytes: %d\n", bytes);
 		if (bytes < 0) return 1;
 		dprintf(1,"reading...\n");
-		if (s->can_read(s,0x307,data,8) == 0) {
+		if (si_can_read(s,0x307,data,8) == 0) {
 			if (debug >= 3) bindump("data",data,8);
 			dprintf(1,"*** data[3] & 2: %d\n", data[3] & 0x0002);
 			if (op) {
@@ -166,7 +166,7 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	s = si_driver.new(0,0,0);
+	s = si_driver.new(0,0);
 	if (!s) {
 		log_syserror("si_driver.new");
 		return 1;

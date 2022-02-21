@@ -7,47 +7,235 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#ifndef __WIN32
-#include <sys/types.h>
+#define DEBUG_CAN 1
+#define dlevel 4
+
+#ifdef DEBUG
+#undef DEBUG
+#endif
+#define DEBUG DEBUG_CAN
+#include "debug.h"
+
+#include "transports.h"
+#ifndef WINDOWS
+#include "can.h"
 #include <sys/ioctl.h>
-#include <sys/socket.h>
+#include <fcntl.h>
 #include <net/if.h>
+#include <sys/socket.h>
 #include <linux/if_link.h>
 #include <linux/rtnetlink.h>
 #include <linux/netlink.h>
-#include <linux/can.h>
 #include <linux/can/raw.h>
-#include <arpa/inet.h>
-#include "transports.h"
+#include <sys/time.h>
+#include <sys/signal.h>
 
 #define DEFAULT_BITRATE 250000
 #define CAN_INTERFACE_LEN 16
 
 struct can_session {
 	int fd;
+	char errmsg[128];
 	char interface[CAN_INTERFACE_LEN+1];
 	int bitrate;
-	struct can_filter *f;
+	struct can_filter *filters;
+	int filters_size;
+	canid_t min,max;
+	int (*read)(struct can_session *,uint32_t *control,void *,int);
+	pthread_t th;
+	struct can_frame *frames;
+	int frames_size;
+	canid_t start,end;
+	uint32_t *bitmaps;
+	int bitmaps_size;
 };
 typedef struct can_session can_session_t;
 
-//#define _getshort(p) ((short) ((*((p)) << 8) | *((p)+1) ))
+static int can_start_buffer(can_session_t *s, canid_t start, canid_t end);
+static int can_read_direct(can_session_t *s, uint32_t *control, void *buf, int bufsize);
+static int can_read_buffer(can_session_t *s, uint32_t *control, void *buf, int bufsize);
+static int can_stop_buffer(can_session_t *s);
 
-static void *can_new(void *conf, void *target, void *topts) {
+static int can_config_clear_filter(can_session_t *s) {
+	dprintf(dlevel,"s->filters: %p\n", s->filters);
+	if (s->filters) {
+		int r;
+
+		r = setsockopt(s->fd, SOL_CAN_RAW, CAN_RAW_FILTER, NULL, 0);
+		dprintf(dlevel,"r: %d\n", r);
+		free(s->filters);
+		s->filters = 0;
+	}
+	return 0;
+}
+
+static int can_config_set_filter(can_session_t *s, struct can_config_filter *fs) {
+	register int i;
+	canid_t id;
+
+	dprintf(dlevel,"fs: %p, s->filters: %p\n", fs, s->filters);
+	if (s->filters) {
+		sprintf(s->errmsg,"unable to set filters: filters already defined");
+		return 1;
+	}
+
+	if (!fs) {
+		can_config_clear_filter(s);
+		return 0;
+	}
+
+	dprintf(dlevel,"fs->count: %d\n",fs->count);
+	for(i=0; i < fs->count; i++) dprintf(dlevel,"id[%d]: %03x\n", i, fs->id[i]);
+
+	if (!fs->count) return 0;
+
+	s->filters_size = fs->count * sizeof(struct can_filter);
+	s->filters = malloc(s->filters_size);
+	if (!s->filters) {
+		log_syserror("can_config_set_filter: malloc(%d)", s->filters_size);
+		return 1;
+	}
+	s->min = 0xFFFFFFFF;
+	s->max = 0;
+	for(i=0; i < fs->count; i++) {
+		id = fs->id[i];
+//		s->filters[i].can_id = id | CAN_INV_FILTER;
+		s->filters[i].can_id = id;
+		s->filters[i].can_mask = CAN_SFF_MASK;
+		dprintf(dlevel,"can_id: %x, min: %x, max: %x\n", id, s->min, s->max);
+		if (id < s->min) s->min = id;
+		if (id > s->max) s->max = id;
+	}
+	if (s->min > s->max) s->min = s->max;
+	return 0;
+}
+
+static int can_config_set_range(can_session_t *s, canid_t start, canid_t end) {
+	struct can_config_filter fs;
+	int i,r,id;
+
+	dprintf(dlevel,"start: %03x, end: %03x\n", start, end);
+
+	fs.count = end - start;
+	dprintf(dlevel,"count: %d\n", fs.count);
+	fs.id = malloc(fs.count * sizeof(canid_t));
+	if (!fs.id) {
+		log_syserror("can_config_set_range: malloc(%d)", fs.count * sizeof(canid_t));
+		return 1;
+	}
+	id = start;
+	for(i=0; i < fs.count; i++) fs.id[i] = id++;
+	r = can_config_set_filter(s,&fs);
+	free(fs.id);
+
+	return r;
+}
+
+static void _add_range(list ids, int start, int end) {
+	canid_t id;
+
+	for(id=start; id <= end; id++) {
+		dprintf(dlevel,"adding: 0x%03x\n", id);
+		list_add(ids,&id,sizeof(id));
+	}
+}
+
+static void can_parse_filter(can_session_t *s, char *inspec) {
+	char spec[256], temp[256];
+	int have_start, have_plus;
+	struct can_config_filter fs;
+	canid_t id,start,end,*idp;
+	register char *p;
+	register int i;
+	list ids;
+
+	dprintf(dlevel,"inspec: %s\n", inspec);
+	strncpy(spec,stredit(inspec,"COLLAPSE,LOWERCASE,TRIM"),sizeof(spec)-1);
+	dprintf(dlevel,"spec: %s\n", spec);
+
+	have_start = have_plus = 0;
+	i = 0;
+	p = spec;
+	ids = list_create();
+	while(*p) {
+		dprintf(dlevel,"p: %c, i: %d, have_start: %d\n", *p, i, have_start, have_plus);
+		if (*p == '-') {
+			temp[i] = 0;
+			start = strtol(temp,0,0);
+			have_start = 1;
+			i = 0;
+		} else if (*p == '+') {
+			temp[i] = 0;
+			if (have_start) {
+				end = strtol(temp,0,0);
+				_add_range(ids,start,end);
+				have_start = 0;
+			} else {
+				id = strtol(temp,0,0);
+				dprintf(dlevel,"adding: 0x%03x\n", id);
+				list_add(ids,&id,sizeof(id));
+			}
+			i = 0;
+		} else {
+			temp[i++] = *p;
+		}
+		p++;
+	}
+	dprintf(dlevel,"i: %d\n", i);
+	if (i) {
+		temp[i] = 0;
+		if (have_start) {
+			end = strtol(temp,0,0);
+			_add_range(ids,start,end);
+		} else {
+			id = strtol(temp,0,0);
+			dprintf(dlevel,"adding: 0x%03x\n", id);
+			list_add(ids,&id,sizeof(id));
+		}
+	}
+	fs.count = list_count(ids);
+	dprintf(dlevel,"ids count: %d\n", fs.count);
+	fs.id = malloc(fs.count * sizeof(canid_t));
+	if (!fs.id) {
+		log_syserror("can_config_set_range: malloc(%d)",fs.count * sizeof(canid_t));
+		return;
+	}
+	i = 0;
+	dprintf(dlevel,"adding IDs...\n");
+	list_reset(ids);
+	while((idp = list_get_next(ids)) != 0) fs.id[i++] = *idp;
+	list_destroy(ids);
+	dprintf(dlevel,"setting filter...\n");
+	i = can_config_set_filter(s, &fs);
+	free(fs.id);
+}
+
+static void *can_new(void *target, void *topts) {
 	can_session_t *s;
+	char *p;
 
-	dprintf(1,"target: %s, topts: %s\n", target, topts);
+	dprintf(dlevel,"target: %s, topts: %s\n", target, topts);
 
 	s = calloc(sizeof(*s),1);
 	if (!s) {
-		perror("can_new: malloc");
+		log_syserror("can_new: malloc");
 		return 0;
 	}
 	s->fd = -1;
+	s->read = can_read_direct;
+
 	strncat(s->interface,strele(0,",",(char *)target),sizeof(s->interface)-1);
-	if (topts) s->bitrate = atoi(topts);
-	if (!s->bitrate) s->bitrate = DEFAULT_BITRATE;
-	dprintf(3,"interface: %s, bitrate: %d\n",s->interface,s->bitrate);
+	if (topts) {
+		p = strele(0,",",(char *)topts);
+		s->bitrate = strtol(p,0,0);
+		if (!s->bitrate) s->bitrate = DEFAULT_BITRATE;
+		p = strele(1,",",(char *)topts);
+		can_parse_filter(s,p);
+		p = strele(2,",",(char *)topts);
+		dprintf(dlevel,"p: %s, s->filters: %p\n", p, s->filters);
+		if (strcmp(p,"yes") == 0 && s->filters) can_start_buffer(s,s->min,s->max);
+	}
+	dprintf(dlevel,"interface: %s, bitrate: %d\n",s->interface,s->bitrate);
 
         return s;
 }
@@ -249,7 +437,7 @@ static int send_dump_request(int fd, const char *name, int family, int type)
 	} else {
 		req.i.ifi_index = if_nametoindex(name);
 		if (req.i.ifi_index == 0) {
-			fprintf(stderr, "Cannot find device \"%s\"\n", name);
+			log_error("Cannot find device \"%s\"\n", name);
 			return -1;
 		}
 	}
@@ -297,7 +485,7 @@ static int do_get_nl_link(int fd, __u8 acquire, const char *name, void *res) {
 	struct rtattr *can_attr[IFLA_CAN_MAX + 1];
 
 	if (send_dump_request(fd, name, AF_PACKET, RTM_GETLINK) < 0) {
-		perror("Cannot send dump request");
+		log_error("do_get_nl_link: cannot send dump request");
 		return ret;
 	}
 
@@ -306,7 +494,7 @@ static int do_get_nl_link(int fd, __u8 acquire, const char *name, void *res) {
 		/* Check to see if the buffers in msg get truncated */
 		if (msg.msg_namelen != sizeof(peer) ||
 		    (msg.msg_flags & (MSG_TRUNC | MSG_CTRUNC))) {
-			fprintf(stderr, "Uhoh... truncated message.\n");
+			log_error("Uhoh... truncated message.\n");
 			return -1;
 		}
 
@@ -338,7 +526,7 @@ static int do_get_nl_link(int fd, __u8 acquire, const char *name, void *res) {
 
 			if (acquire == GET_LINK_STATS) {
 				if (!tb[IFLA_STATS64]) {
-					fprintf(stderr, "no link statistics (64-bit) found\n");
+					log_error("no link statistics (64-bit) found\n");
 				} else {
 					memcpy(res, RTA_DATA(tb[IFLA_STATS64]), sizeof(struct rtnl_link_stats64));
 					ret = 0;
@@ -354,7 +542,7 @@ static int do_get_nl_link(int fd, __u8 acquire, const char *name, void *res) {
 
 			if (acquire == GET_XSTATS) {
 				if (!linkinfo[IFLA_INFO_XSTATS])
-					fprintf(stderr, "no can statistics found\n");
+					log_error("no can statistics found\n");
 				else {
 					memcpy(res, RTA_DATA(linkinfo[IFLA_INFO_XSTATS]),
 					       sizeof(struct can_device_stats));
@@ -365,7 +553,7 @@ static int do_get_nl_link(int fd, __u8 acquire, const char *name, void *res) {
 
 			if (!linkinfo[IFLA_INFO_DATA]) {
 #if 0
-				fprintf(stderr, "no link data found\n");
+				log_error("no link data found\n");
 #endif
 				return ret;
 			}
@@ -381,7 +569,7 @@ static int do_get_nl_link(int fd, __u8 acquire, const char *name, void *res) {
 					ret = 0;
 #if 0
 				} else {
-					fprintf(stderr, "no state data found\n");
+					log_error("no state data found\n");
 #endif
 				}
 
@@ -395,7 +583,7 @@ static int do_get_nl_link(int fd, __u8 acquire, const char *name, void *res) {
 				}
 #if 0
 				else
-					fprintf(stderr, "no restart_ms data found\n");
+					log_error("no restart_ms data found\n");
 #endif
 
 				break;
@@ -407,7 +595,7 @@ static int do_get_nl_link(int fd, __u8 acquire, const char *name, void *res) {
 					ret = 0;
 				}
 #if 0
-				else fprintf(stderr, "no bittiming data found\n");
+				else log_error("no bittiming data found\n");
 #endif
 
 				break;
@@ -419,7 +607,7 @@ static int do_get_nl_link(int fd, __u8 acquire, const char *name, void *res) {
 					ret = 0;
 				}
 #if 0
-				else fprintf(stderr, "no ctrlmode data found\n");
+				else log_error("no ctrlmode data found\n");
 #endif
 
 				break;
@@ -431,7 +619,7 @@ static int do_get_nl_link(int fd, __u8 acquire, const char *name, void *res) {
 					ret = 0;
 				}
 #if 0
-				else fprintf(stderr, "no clock parameter data found\n");
+				else log_error("no clock parameter data found\n");
 #endif
 
 				break;
@@ -443,7 +631,7 @@ static int do_get_nl_link(int fd, __u8 acquire, const char *name, void *res) {
 					ret = 0;
 				}
 #if 0
-				else fprintf(stderr, "no bittiming_const data found\n");
+				else log_error("no bittiming_const data found\n");
 #endif
 
 				break;
@@ -455,14 +643,14 @@ static int do_get_nl_link(int fd, __u8 acquire, const char *name, void *res) {
 					ret = 0;
 				}
 #if 0
-				else fprintf(stderr, "no berr_counter data found\n");
+				else log_error("no berr_counter data found\n");
 #endif
 
 				break;
 
 #if 0
 			default:
-				fprintf(stderr, "unknown acquire mode\n");
+				log_error("unknown acquire mode\n");
 #endif
 			}
 		}
@@ -481,7 +669,7 @@ static int open_nl_sock()
 
 	fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
 	if (fd < 0) {
-		perror("Cannot open netlink socket");
+		log_syserror("open_nl_sock: cannot open netlink socket");
 		return -1;
 	}
 
@@ -494,21 +682,21 @@ static int open_nl_sock()
 	local.nl_groups = 0;
 
 	if (bind(fd, (struct sockaddr *)&local, sizeof(local)) < 0) {
-		perror("Cannot bind netlink socket");
+		log_syserror("open_nl_sock: Cannot bind netlink socket");
 		return -1;
 	}
 
 	addr_len = sizeof(local);
 	if (getsockname(fd, (struct sockaddr *)&local, &addr_len) < 0) {
-		perror("Cannot getsockname");
+		log_syserror("open_nl_sock: Cannot getsockname");
 		return -1;
 	}
 	if (addr_len != sizeof(local)) {
-		fprintf(stderr, "Wrong address length %u\n", addr_len);
+		log_error("Wrong address length %u\n", addr_len);
 		return -1;
 	}
 	if (local.nl_family != AF_NETLINK) {
-		fprintf(stderr, "Wrong address family %d\n", local.nl_family);
+		log_error("Wrong address family %d\n", local.nl_family);
 		return -1;
 	}
 	return fd;
@@ -538,9 +726,7 @@ static int addattr32(struct nlmsghdr *n, size_t maxlen, int type, __u32 data)
 	struct rtattr *rta;
 
 	if (NLMSG_ALIGN(n->nlmsg_len) + len > maxlen) {
-		fprintf(stderr,
-			"addattr32: Error! max allowed bound %zu exceeded\n",
-			maxlen);
+		log_error("addattr32: Error! max allowed bound %zu exceeded\n", maxlen);
 		return -1;
 	}
 
@@ -560,9 +746,7 @@ static int addattr_l(struct nlmsghdr *n, size_t maxlen, int type,
 	struct rtattr *rta;
 
 	if (NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len) > maxlen) {
-		fprintf(stderr,
-			"addattr_l ERROR: message exceeded bound of %zu\n",
-			maxlen);
+		log_error("addattr_l ERROR: message exceeded bound of %zu\n", maxlen);
 		return -1;
 	}
 
@@ -605,7 +789,7 @@ static int send_mod_request(int fd, struct nlmsghdr *n)
 	status = sendmsg(fd, &msg, 0);
 
 	if (status < 0) {
-		perror("Cannot talk to rtnetlink");
+		log_syserror("send_mod_request: Cannot talk to rtnetlink");
 		return -1;
 	}
 
@@ -618,11 +802,10 @@ static int send_mod_request(int fd, struct nlmsghdr *n)
 			int l = len - sizeof(*h);
 			if (l < 0 || len > status) {
 				if (msg.msg_flags & MSG_TRUNC) {
-					fprintf(stderr, "Truncated message\n");
+					log_error("Truncated message\n");
 					return -1;
 				}
-				fprintf(stderr,
-					"!!!malformed message: len=%d\n", len);
+				log_error("!!!malformed message: len=%d\n", len);
 				return -1;
 			}
 
@@ -630,13 +813,13 @@ static int send_mod_request(int fd, struct nlmsghdr *n)
 				struct nlmsgerr *err =
 				    (struct nlmsgerr *)NLMSG_DATA(h);
 				if ((size_t) l < sizeof(struct nlmsgerr)) {
-					fprintf(stderr, "ERROR truncated\n");
+					log_error("ERROR truncated\n");
 				} else {
 					errno = -err->error;
 					if (errno == 0)
 						return 0;
 
-					perror("RTNETLINK answers");
+					log_syserror("send_mod_request: RTNETLINK answers");
 				}
 				return -1;
 			}
@@ -663,7 +846,7 @@ static int do_set_nl_link(int fd, __u8 if_state, const char *name, struct req_in
 
 	req.i.ifi_index = if_nametoindex(name);
 	if (req.i.ifi_index == 0) {
-		fprintf(stderr, "Cannot find device \"%s\"\n", name);
+		log_error("Cannot find device \"%s\"\n", name);
 		return -1;
 	}
 
@@ -678,7 +861,7 @@ static int do_set_nl_link(int fd, __u8 if_state, const char *name, struct req_in
 			req.i.ifi_flags |= IFF_UP;
 			break;
 		default:
-			fprintf(stderr, "unknown state\n");
+			log_error("unknown state\n");
 			return -1;
 		}
 	}
@@ -759,21 +942,21 @@ static int up_down_up(int fd, char *interface) {
 	/* Bring up the IF */
 	ifr.ifr_flags |= (IFF_UP | IFF_RUNNING | IFF_NOARP);
 	if (ioctl(fd, SIOCSIFFLAGS, &ifr) < 0) {
-//		perror("up_down_up: SIOCSIFFLAGS IFF_UP");
+		log_syserror("up_down_up: SIOCSIFFLAGS IFF_UP");
 		return 1;
 	}
 
 	/* Bring down the IF */
 	ifr.ifr_flags = 0;
 	if (ioctl(fd, SIOCSIFFLAGS, &ifr) < 0) {
-//		perror("up_down_up: SIOCSIFFLAGS IFF_DOWN");
+		log_syserror("up_down_up: SIOCSIFFLAGS IFF_DOWN");
 		return 1;
 	}
 
 	/* Bring up the IF */
 	ifr.ifr_flags |= (IFF_UP | IFF_RUNNING | IFF_NOARP);
 	if (ioctl(fd, SIOCSIFFLAGS, &ifr) < 0) {
-//		perror("up_down_up: SIOCSIFFLAGS IFF_UP");
+		log_syserror("up_down_up: SIOCSIFFLAGS IFF_UP");
 		return 1;
 	}
 	return 0;
@@ -787,54 +970,59 @@ static int can_open(void *handle) {
 	int if_up;
 
 	/* If already open, dont try again */
+	dprintf(dlevel,"fd: %d\n", s->fd);
 	if (s->fd >= 0) return 0;
 
 	/* Open socket */
-	dprintf(3,"opening socket...\n");
+	dprintf(dlevel,"opening socket...\n");
 	s->fd = socket(PF_CAN, SOCK_RAW, CAN_RAW);
 	if (s->fd < 0) {
-		perror("can_open: socket");
+		log_syserror("can_open: socket");
 		return 1;
 	}
-	dprintf(3,"fd: %d\n", s->fd);
+	dprintf(dlevel,"fd: %d\n", s->fd);
 
 	/* Get the state */
 	memset(&ifr,0,sizeof(ifr));
 	strcpy(ifr.ifr_name,s->interface);
 	if (ioctl(s->fd, SIOCGIFFLAGS, &ifr) < 0) {
-		perror("can_open: SIOCGIFFLAGS");
+		log_syserror("can_open: SIOCGIFFLAGS");
 		goto can_open_error;
 	}
 	if_up = ((ifr.ifr_flags & IFF_UP) != 0 ? 1 : 0);
 
-	dprintf(3,"if_up: %d\n",if_up);
+	dprintf(dlevel,"if_up: %d\n",if_up);
 	if (!if_up) {
 		/* Set the bitrate */
+		can_set_bitrate(s->interface, s->bitrate);
+#if 0
 		if (can_set_bitrate(s->interface, s->bitrate) < 0) {
 			printf("ERROR: unable to set bitrate on %s!\n", s->interface);
 			goto can_open_error;
 		}
+#endif
 		up_down_up(s->fd,s->interface);
 	} else {
 		/* Get the current timing */
 		if (can_get_bittiming(s->interface,&bt) < 0) {
-			perror("can_open: can_get_bittiming");
-			goto can_open_error;
+//			log_error("can_open: unable to get bittiming");
+//			goto can_open_error;
+			bt.bitrate = s->bitrate;
 		}
 
 		/* Check the bitrate */
-		dprintf(3,"current bitrate: %d, wanted bitrate: %d\n", bt.bitrate, s->bitrate);
+		dprintf(dlevel,"current bitrate: %d, wanted bitrate: %d\n", bt.bitrate, s->bitrate);
 		if (bt.bitrate != s->bitrate) {
 			/* Bring down the IF */
 			ifr.ifr_flags = 0;
-			dprintf(3,"can_open: SIOCSIFFLAGS clear\n");
+			dprintf(dlevel,"can_open: SIOCSIFFLAGS clear\n");
 			if (ioctl(s->fd, SIOCSIFFLAGS, &ifr) < 0) {
-				perror("can_open: SIOCSIFFLAGS IFF_DOWN");
+				log_syserror("can_open: SIOCSIFFLAGS IFF_DOWN");
 				goto can_open_error;
 			}
 
 			/* Set the bitrate */
-			dprintf(3,"setting bitrate...\n");
+			dprintf(dlevel,"setting bitrate...\n");
 			if (can_set_bitrate(s->interface, s->bitrate) < 0) {
 				printf("ERROR: unable to set bitrate on %s!\n", s->interface);
 				goto can_open_error;
@@ -847,7 +1035,7 @@ static int can_open(void *handle) {
 	/* Get IF index */
 	strcpy(ifr.ifr_name, s->interface);
 	if (ioctl(s->fd, SIOCGIFINDEX, &ifr) < 0) {
-		perror("can_open: SIOCGIFINDEX");
+		log_syserror("can_open: SIOCGIFINDEX");
 		goto can_open_error;
 	}
 
@@ -855,18 +1043,48 @@ static int can_open(void *handle) {
 	addr.can_family = AF_CAN;
 	addr.can_ifindex = ifr.ifr_ifindex;
 	if (bind(s->fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-		perror("can_open: bind");
+		log_syserror("can_open: bind");
 		goto can_open_error;
 	}
 
-	/* If caller added a filter, apply it */
-	if (s->f) {
-		if (setsockopt(s->fd, SOL_CAN_RAW, CAN_RAW_FILTER, s->f, sizeof(*s->f)) < 0) {
-			perror("can_open: setsockopt");
+	/* If a filter specified, set it */
+	if (s->filters) {
+#if 0
+		int join_filter = 1;
+
+		dprintf(dlevel,"setting join_filter = 1\n");
+		if (setsockopt(s->fd, SOL_CAN_RAW, CAN_RAW_JOIN_FILTERS, &join_filter, sizeof(join_filter)) < 0) {
+			log_error("setsockopt CAN_RAW_JOIN_FILTERS not supported by your Linux Kernel");
+		}
+#endif
+#if 0
+		{
+			int i,count;
+			count = s->filters_size / sizeof(struct can_filter);
+			dprintf(dlevel,"count: %d\n", count);
+			for(i=0; i < s->filters_size / sizeof(struct can_filter); i++) {
+				printf("filter[%d].can_id: %x, can_mask: %x\n", i, s->filters[i].can_id, s->filters[i].can_mask);
+			}
+#endif
+		dprintf(dlevel,"setting filters...\n");
+		if (setsockopt(s->fd, SOL_CAN_RAW, CAN_RAW_FILTER, s->filters, s->filters_size) < 0) {
+			log_syserror("setsockopt CAN_RAW_FILTER");
 			goto can_open_error;
 		}
 	}
-	dprintf(3,"done!\n");
+
+//	fcntl(s->fd, F_SETFL, O_NONBLOCK);
+
+#if 0
+	{
+		struct timeval tv;
+		tv.tv_sec = 0;
+		tv.tv_usec = 10000;
+		setsockopt(s->fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+	}
+#endif
+
+	dprintf(dlevel,"done!\n");
 	return 0;
 can_open_error:
 	close(s->fd);
@@ -874,27 +1092,131 @@ can_open_error:
 	return 1;
 }
 
-static int can_read(void *handle, void *buf, int buflen) {
+static int can_read(void *handle, uint32_t *control, void *buf, int buflen) {
 	can_session_t *s = handle;
-	struct can_frame *frame;
-	int id,bytes;
+	int bytes;
 
 	/* If not open, error */
 	if (s->fd < 0) return -1;
 
-	dprintf(8,"buf: %p, buflen: %d\n", buf, buflen);
+	/* buflen MUST be frame size */
+	dprintf(dlevel,"buf: %p, buflen: %d\n", buf, buflen);
+	if (buflen != sizeof(struct can_frame)) {
+//		sprintf(s->errmsg,"can_read: buflen < frame size");
+		return -1;
+	}
 
-	frame = buf;
-	/* buflen has the ID */
-	id = buflen;
+	dprintf(dlevel,"fd: %d\n", s->fd);
+	bytes = s->read(s, control, buf, buflen);
+	dprintf(dlevel,"bytes read: %d\n", bytes);
 
-	/* Buf is expected to be a can frame ... */
-	dprintf(8,"id: %03x, buf: %p, buflen: %d\n", id, buf, buflen);
+#ifdef DEBUG
+	if (bytes == sizeof(struct can_frame)) {
+		if (bytes > 0 && debug >= 8) bindump("FROM DEVICE",buf,bytes);
+	}
+#endif
+	dprintf(dlevel,"returning: %d\n", bytes);
+	return (bytes);
+}
+
+static int can_write(void *handle, uint32_t *control, void *buf, int buflen) {
+	can_session_t *s = handle;
+	int bytes;
+
+	if (s->fd < 0) return -1;
+
+	dprintf(dlevel,"buf: %p, buflen: %d\n", buf, buflen);
+	if (buflen != sizeof(struct can_frame)) {
+//		sprintf(s->errmsg,"can_read: buflen < frame size");
+		return -1;
+	}
+
+#ifdef DEBUG
+	if (debug >= 5) bindump("TO DEVICE",buf,buflen);
+#endif
+	dprintf(dlevel,"id: %03x\n", ((struct can_frame *)buf)->can_id);
+	bytes = write(s->fd, buf, buflen);
+	dprintf(dlevel,"fd: %d, returning: %d\n", s->fd, bytes);
+	return bytes;
+}
+
+static int can_close(void *handle) {
+	can_session_t *s = handle;
+
+	if (s->fd >= 0) {
+		dprintf(dlevel,"closing %d\n", s->fd);
+		close(s->fd);
+		s->fd = -1;
+	}
+	return 0;
+}
+
+static void *can_recv_thread(void *handle) {
+	can_session_t *s = handle;
+	struct can_frame frame;
+	int bytes,id,idx;
+	uint32_t mask;
+#ifndef __WIN32
+	sigset_t set;
+
+	/* Ignore SIGPIPE */
+	sigemptyset(&set);
+	sigaddset(&set, SIGPIPE);
+	sigprocmask(SIG_BLOCK, &set, NULL);
+#endif
+
+	/* Enable us to be cancelled immediately */
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS,0);
+
+	dprintf(dlevel,"thread started!\n");
+//	while(s->flags & CAN_FLAG_RUNNING)) {
+	while(1) {
+		/* If not open, clear the bitmaps and loop */
+		dprintf(8,"fd: %d\n", s->fd);
+		if (s->fd < 0) {
+			memset(s->bitmaps,0,s->bitmaps_size);
+			sleep(1);
+			continue;
+		}
+
+		/* Read a frame */
+		bytes = read(s->fd,&frame,sizeof(frame));
+		dprintf(8,"bytes: %d\n", bytes);
+		if (bytes < 1) continue;
+
+		/* In range? */
+		dprintf(8,"frame.can_id: %03x\n",frame.can_id);
+		if (frame.can_id < s->start || frame.can_id >= s->end) continue;
+//		bindump("frame",&frame,sizeof(frame));
+
+		/* Yes, store the frame and set the bitmap */
+		id = frame.can_id - s->start;
+		idx = id / 32;
+		mask = 1 << (id % 32);
+		dprintf(8,"id: %03x, idx: %d, mask: %08x\n", id, idx, mask);
+		memcpy(&s->frames[id],&frame,sizeof(frame));
+		s->bitmaps[idx] |= mask;
+	}
+	dprintf(dlevel,"returning!\n");
+	return 0;
+}
+
+static int can_read_direct(can_session_t *s, uint32_t *control, void *buf, int buflen) {
+	struct can_frame *frame = buf;
+	int bytes,id;
+
+	dprintf(dlevel,"fd: %d\n", s->fd);
+	if (s->fd < 0) return -1;
+
+	if (!control) return 0;
+	id = *control;
+	dprintf(dlevel,"id: %03x\n", id);
+
 	/* Keep reading until we get our ID */
 	do {
+		dprintf(8,"fd: %d\n", s->fd);
 		bytes = read(s->fd, frame, sizeof(*frame));
-		dprintf(8,"frame: id: %x\n", frame->can_id);
-		dprintf(8,"fd: %d, read bytes: %d\n", s->fd, bytes);
+		dprintf(8,"bytes: %d\n", bytes);
 		if (bytes < 0) {
 			if (errno != EAGAIN) bytes = -1;
 			break;
@@ -903,51 +1225,177 @@ static int can_read(void *handle, void *buf, int buflen) {
 			fprintf(stderr, "read: incomplete CAN frame\n");
 			continue;
 		}
-		dprintf(8,"bytes: %d, id: %x, frame->can_id: %x\n", bytes, id, frame->can_id);
+		dprintf(8,"id: %x, frame->can_id: %x\n", id, frame->can_id);
 	} while(id != 0xFFFF && frame->can_id != id);
 #ifdef DEBUG
 	if (bytes > 0 && debug >= 8) bindump("FROM DEVICE",buf,sizeof(struct can_frame));
 #endif
-	dprintf(8,"returning: %d\n", bytes);
+	dprintf(dlevel,"returning: %d\n", bytes);
 	return bytes;
 }
 
-static int can_write(void *handle, void *buf, int buflen) {
-	can_session_t *s = handle;
-	int bytes;
+static int can_read_buffer(can_session_t *s, uint32_t *control, void *data, int datasz) {
+	uint32_t mask;
+	canid_t can_id;
+	int id,idx,retries;
 
-	/* If not open, error */
-	if (s->fd < 0) return -1;
+	if (!control) return 0;
+	can_id = *control;
+	dprintf(dlevel,"id: %03x\n", can_id);
 
-	/* Buf is expected to be a can frame ... */
-#ifdef DEBUG
-	if (debug >= 5) bindump("TO DEVICE",buf,sizeof(struct can_frame));
-#endif
-	bytes = write(s->fd, buf, sizeof(struct can_frame));
-	dprintf(5,"fd: %d, returning: %d\n", s->fd, bytes);
-	return bytes;
-}
+	dprintf(dlevel,"id: %03x, start: %03x, end: %03x\n", can_id, s->min, s->max);
+	if (can_id < s->start || can_id >= s->end) return 0;
 
-static int can_close(void *handle) {
-	can_session_t *s = handle;
+	dprintf(dlevel,"datasz: %d\n", datasz);
+	if (datasz != sizeof(struct can_frame)) return -1;
 
-	if (s->fd >= 0) {
-		dprintf(1,"closing %d\n", s->fd);
-		close(s->fd);
-		s->fd = -1;
+	id = can_id - s->start;
+	idx = id / 32;
+	mask = 1 << (id % 32);
+	dprintf(dlevel,"id: %03x, mask: %08x, bitmaps[%d]: %08x\n", id, mask, idx, s->bitmaps[idx]);
+	retries=5;
+	while(retries--) {
+		if ((s->bitmaps[idx] & mask) == 0) {
+			dprintf(dlevel,"bit not set, sleeping...\n");
+			sleep(1);
+			continue;
+		}
+//		if (debug >= 5) bindump("FRAME",&s->frames[id],sizeof(struct can_frame));
+		dprintf(dlevel,"returning data!\n");
+		memcpy(data,&s->frames[id],datasz);
+		return sizeof(struct can_frame);
 	}
 	return 0;
 }
 
-static int can_config(void *h, int func, ...) {
-	va_list ap;
+static int can_start_buffer(can_session_t *s, canid_t start, canid_t end) {
+	pthread_attr_t attr;
+	int num;
+
+	dprintf(dlevel,"start: %03x, end: %03x\n", start, end);
+
+	/* if we already have buffer set, exit */
+	if (s->frames) {
+		sprintf(s->errmsg,"unable to start buffer: buffer already defined");
+		return 1;
+	}
+
+	/* Create the frame buffer and bitmaps */
+	num = end-start;
+	dprintf(dlevel,"num: %d\n", num);
+
+	/* Alloc frames */
+	s->frames_size = num * sizeof(struct can_frame);
+	dprintf(dlevel,"frames_size: %d\n", s->frames_size);
+	s->frames = calloc(s->frames_size,1);
+	if (!s->frames) {
+		log_syserror("can_start_buffer: malloc frames(%d)",s->frames_size);
+		return 1;
+	}
+
+	/* Alloc bitmaps */
+	s->bitmaps_size = num / 32;
+	if (!s->bitmaps_size) s->bitmaps_size = 1;
+	dprintf(dlevel,"bitmaps_size: %d\n", s->bitmaps_size);
+	s->bitmaps = calloc(s->bitmaps_size,1);
+	if (!s->bitmaps) {
+		log_syserror("can_start_buffer: malloc bitmaps(%d)",s->bitmaps_size);
+		return 1;
+	}
+
+	s->start = start;
+	s->end = end;
+
+	/* Create a detached thread */
+	dprintf(dlevel,"creating thread...\n");
+	if (pthread_attr_init(&attr)) {
+		sprintf(s->errmsg,"pthread_attr_init: %s",strerror(errno));
+		goto can_set_reader_error;
+	}
+	if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED)) {
+		sprintf(s->errmsg,"pthread_attr_setdetachstate: %s",strerror(errno));
+		goto can_set_reader_error;
+	}
+	if (pthread_create(&s->th,&attr,&can_recv_thread,s)) {
+		sprintf(s->errmsg,"pthread_create: %s",strerror(errno));
+		goto can_set_reader_error;
+	}
+	pthread_attr_destroy(&attr);
+
+	dprintf(dlevel,"setting func to buffer\n");
+	s->read = can_read_buffer;
+	return 0;
+
+can_set_reader_error:
+	s->read = can_read_direct;
+	return 1;
+}
+
+static int can_stop_buffer(can_session_t *s) {
+	dprintf(dlevel,"frames: %p\n", s->frames);
+	if (!s->frames) return 1;
+	s->read = can_read_direct;
+	pthread_cancel(s->th);
+	if (s->frames) {
+		free(s->frames);
+		s->frames = 0;
+	}
+	if (s->bitmaps) {
+		free(s->bitmaps);
+		s->bitmaps = 0;
+	}
+	return 0;
+}
+
+static int can_config(void *handle, int func, ...) {
+	can_session_t *s = handle;
+	va_list va;
 	int r;
 
 	r = 1;
-	va_start(ap,func);
+	va_start(va,func);
 	switch(func) {
+	case CAN_CONFIG_GET_FD:
+	    {
+		int *fdptr = va_arg(va,int *);
+
+		*fdptr = s->fd;
+	    }
+	    break;
+	case CAN_CONFIG_SET_RANGE:
+	    {
+		canid_t start, end;
+
+		start = va_arg(va,canid_t);
+		end = va_arg(va,canid_t);
+		r = can_config_set_range(s,start,end);
+	    }
+	    break;
+	case CAN_CONFIG_SET_FILTER:
+		r = can_config_set_filter(s,va_arg(va,struct can_config_filter *));
+		break;
+	case CAN_CONFIG_PARSE_FILTER:
+		can_parse_filter(s,va_arg(va,char *));
+		r = 0;
+		break;
+		r = can_config_set_filter(s,va_arg(va,struct can_config_filter *));
+	case CAN_CONFIG_CLEAR_FILTER:
+		r = can_config_clear_filter(s);
+		break;
+	case CAN_CONFIG_START_BUFFER:
+	    {
+		canid_t start, end;
+
+		start = va_arg(va,canid_t);
+		end = va_arg(va,canid_t);
+		r = can_start_buffer(s,start,end);
+	    }
+	    break;
+	case CAN_CONFIG_STOP_BUFFER:
+		r = can_stop_buffer(s);
+		break;
 	default:
-		dprintf(1,"error: unhandled func: %d\n", func);
+		dprintf(dlevel,"error: unhandled func: %d\n", func);
 		break;
 	}
 	return r;
@@ -956,13 +1404,14 @@ static int can_config(void *h, int func, ...) {
 static int can_destroy(void *handle) {
 	can_session_t *s = handle;
 
+	can_config_clear_filter(s);
+	can_stop_buffer(s);
         if (s->fd >= 0) can_close(s);
         free(s);
         return 0;
 }
 
 solard_driver_t can_driver = {
-	SOLARD_DRIVER_TRANSPORT,
 	"can",
 	can_new,
 	can_destroy,
@@ -973,6 +1422,5 @@ solard_driver_t can_driver = {
 	can_config
 };
 #else
-#include "transports.h"
-solard_driver_t can_driver;
+solard_driver_t can_driver = { "can" };
 #endif

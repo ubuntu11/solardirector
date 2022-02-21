@@ -7,6 +7,7 @@
 #include "jsengine.h"
 #include "smanet.h"
 #include "transports.h"
+#include "client.h"
 
 #ifdef WINDOWS
 #include "wineditline/editline.c"
@@ -115,6 +116,7 @@ int sdjs_config(void *h, int req, ...) {
 		/* 1st arg is AP */
 		ap = va_arg(va,solard_agent_t *);
 		smanet_jsinit(ap->js);
+		client_jsinit(ap->js,0);
 		r = 0;
 		break;
 	}

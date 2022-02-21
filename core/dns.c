@@ -336,6 +336,11 @@ int os_gethostbyname(char *addr, int addrsize, char *name) {
 	int len;
 
 	dprintf(dlevel,"name: %s\n", name);
+	if (strcmp(name,"localhost") == 0) {
+		strncpy(addr,"127.0.0.1",addrsize);
+		return 0;
+	}
+
 	if (is_ip(name)) {
 		strncpy(addr,name,addrsize);
 		return 0;

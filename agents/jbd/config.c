@@ -7,12 +7,19 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
+#define dlevel 1
+
 #include <string.h>
 #include "agent.h"
 #include "jbd.h"
 #include "jbd_regs.h"
 
-#if 0
+#define BC_STRING 1
+#define NTC_STRING 1
+
+#define JBD_CONFIG_FLAG_EEPROM 0x0100
+
+/* internal data types */
 enum JBD_PARM_DT {
 	JBD_PARM_DT_UNK,
 	JBD_PARM_DT_INT,		/* 16 bit number */
@@ -25,7 +32,7 @@ enum JBD_PARM_DT {
 	JBD_PARM_DT_NTC,		/* ntc bits */
 	JBD_PARM_DT_B0,			/* byte 0 */
 	JBD_PARM_DT_B1,			/* byte 1 */
-	JBD_PARM_DT_DOUBLE,		/* Double hard cofnig */
+	JBD_PARM_DT_DOUBLE,		/* Double hard config */
 	JBD_PARM_DT_SCVAL,
 	JBD_PARM_DT_SCDELAY,
 	JBD_PARM_DT_DSGOC2,
@@ -61,211 +68,7 @@ static char *parm_typestr(int dt) {
 	return parmtypes[dt];
 }
 
-/* Selection values */
-static int dsgoc2_vals[] = { 8,11,14,17,19,22,25,28,31,33,36,39,42,44,47,50 };
-#define ndsgoc2_vals (sizeof(dsgoc2_vals)/sizeof(int))
-static int dsgoc2delay_vals[] = { 8,20,40,80,160,320,640,1280 };
-#define ndsgoc2delay_vals (sizeof(dsgoc2delay_vals)/sizeof(int))
-static int sc_vals[] = { 22,33,44,56,67,78,89,100 };
-#define nsc_vals (sizeof(sc_vals)/sizeof(int))
-static int scdelay_vals[] = {  70,100,200,400 };
-#define nscdelay_vals (sizeof(scdelay_vals)/sizeof(int))
-static int hcovpdelay_vals[] = {  1,2,4,8 };
-#define nhcovpdelay_vals (sizeof(hcovpdelay_vals)/sizeof(int))
-static int hcuvpdelay_vals[] = {  1,4,8,16 };
-#define nhcuvpdelay_vals (sizeof(hcuvpdelay_vals)/sizeof(int))
-#endif
-
-static int jbd_config_getset(void *ctx, config_property_t *p) {
-	jbd_session_t *s = ctx;
-
-	dprintf(1,"s: %p, p: %p\n", s, p);
-	if (p) dprintf(1,"p->name: %s\n", p->name);
-	return 1;
-}
-
-int jbd_config_init(jbd_session_t *s) {
-config_property_t capacity_params[] = {
-	/* Name, Type, dest, len, def flags, scope, nvalues, nlabels, labels, units, scale, precision */
-	{ "DesignCapacity", DATA_TYPE_INT, jbd_config_getset, 0, s, 0,
-		"range", 3, (int []){ 0, 300, 1 }, 1, (char *[]) { "Design Capacity" }, "S", 1, 0 },
-
-#if 0
-	{ "DesignCapacity", DATA_TYPE_FLOAT, jbd_config_getset, 0, "0", 0,
-		"range", 3, (int []){ 0, 9999999, 1 }, 1, (char *[]) { "Design Capacity" }, "mAH", 100, 1 },
-	{ "DesignCapacity", DATA_TYPE_FLOAT, 0, 0, 0, 1, (char *[]){ "Design Cap" }, "mAH", 100, "%.1f" },
-	{ "CycleCapacity", DATA_TYPE_FLOAT, 0, 0, 0, 1, (char *[]){ "Cycle Cap" }, "mAH", 100, "%.1f" },
-	{ "FullChargeVol", DATA_TYPE_FLOAT, "range", 3, (int []){ 0, 10000, 1 }, 1, (char *[]){ "Full Chg Vol" }, "mV", 1000, "%.3f" },
-	{ "ChargeEndVol", DATA_TYPE_FLOAT, "range", 3, (int []){ 0, 10000, 1 }, 1, (char *[]){ "End of Dsg VOL" }, "mV", 1000, "%.3f" },
-	{ "DischargingRate", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 100, .1 }, 1, (char *[]){ "DischargingRate" }, "%", 10, "%.1f" },
-	{ "VoltageCap100", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Voltage at 100% Capacity" }, "mV", 1000, "%.3f" },
-	{ "VoltageCap90", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Voltage at 90% capacity" }, "mV", 1000, "%.3f" },
-	{ "VoltageCap80", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Voltage at 80% capacity" }, "mV", 1000, "%.3f" },
-	{ "VoltageCap70", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Voltage at 70% capacity" }, "mV", 1000, "%.3f" },
-	{ "VoltageCap60", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Voltage at 60% capacity" }, "mV", 1000, "%.3f" },
-	{ "VoltageCap50", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Voltage at 50% capacity" }, "mV", 1000, "%.3f" },
-	{ "VoltageCap40", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Voltage at 40% capacity" }, "mV", 1000, "%.3f" },
-	{ "VoltageCap30", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Voltage at 30% capacity" }, "mV", 1000, "%.3f" },
-	{ "VoltageCap20", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Voltage at 20% capacity" }, "mV", 1000, "%.3f" },
-	{ "VoltageCap10", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Voltage at 10% capacity" }, "mV", 1000, "%.3f" },
-	{ "fet_ctrl_time_set", DATA_TYPE_INT, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "Fet Control" }, "S", 0, 0 },
-	{ "led_disp_time_set", DATA_TYPE_INT, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "LED Timer" }, "S", 0, 0 },
-#endif
-	{0}
-};
-
-config_property_t func_params[] = {
-#if 0
-	{ "BatteryConfig", DATA_TYPE_INT, "mask", 8,
- 		(int []){ JBD_FUNC_SWITCH, JBD_FUNC_SCRL, JBD_FUNC_BALANCE_EN, JBD_FUNC_CHG_BALANCE, JBD_FUNC_LED_EN, JBD_FUNC_LED_NUM, JBD_FUNC_RTC, JBD_FUNC_EDV }, 8, (char *[]){ "Switch", "SCRL", "BALANCE_EN", "CHG_BALANCE", "LED_EN", "LED_NUM", "RTC", "EDV"  }, 0, 0 },
-#endif
-	{0}
-};
-
-config_property_t ntc_params[] = {
-#if 0
-	{ "NtcConfig", DATA_TYPE_INT, "mask",
-		8, (int []){ JBD_NTC1, JBD_NTC2, JBD_NTC3, JBD_NTC4, JBD_NTC5, JBD_NTC6, JBD_NTC7, JBD_NTC8 },
-		8, (char *[]){ "NTC1","NTC2","NTC3","NTC4","NTC5","NTC6","NTC7","NTC8" }, 0, 0 },
-#endif
-	{0}
-};
-
-config_property_t balance_params[] = {
-#if 0
-	{ "BalanceStartVoltage", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Start Voltage" }, "mV", 1000, "%.3f" },
-	{ "BalanceWindow", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "BalancPrecision" }, "mV", 1000, "%.3f" },
-#endif
-	{0}
-};
-
-config_property_t gps_params[] = {
-#if 0
-	{ "GPS_VOL", DATA_TYPE_INT, "range", 3, (int []){ 0, 10000, 1 }, 1, (char *[]){ "GPS Off" }, "mV", 1000, "%.3f" },
-	{ "GPS_TIME", DATA_TYPE_INT, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "GPS Time" }, "S", 0, 0 },
-#endif
-	{0}
-};
-
-config_property_t other_params[] = {
-#if 0
-	{ "SenseResistor", DATA_TYPE_FLOAT, 0, 0, 0, 1, (char *[]){ "Current Res" }, "mR", 10, "%.1f" },
-	{ "PackNum", DATA_TYPE_INT, "select",
-		28, (int []){ 3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 },
-		1, (char *[]){ "mR PackNum" }, 0, 0 },
-	{ "CycleCount", DATA_TYPE_INT, 0, 0, 0, 0, 0, 0, 0 },
-	{ "SerialNumber", DATA_TYPE_INT, 0, 0, 0, 0, 0, 0, 0 },
-	{ "ManufacturerName", DATA_TYPE_STRING, 0, 0, 0, 0, 0, 0, 0 },
-	{ "DeviceName", DATA_TYPE_STRING, 0, 0, 0, 0, 0, 0, 0 },
-	{ "ManufactureDate", DATA_TYPE_DATE, 0, 0, 0, 0, 0, 0, 0 },
-	{ "BarCode", DATA_TYPE_STRING, 0, 0, 0, 0, 0, 0, 0 },
-#endif
-	{0}
-};
-
-config_property_t basic_params[] = {
-#if 0
-	{ "CellOverVoltage", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "COVP" }, "mV", 1000, "%.3f" },
-	{ "CellOVRelease", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "COVP Release" }, "mV", 1000, "%.3f" },
-	{ "CellOVDelay", DATA_TYPE_INT, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "COVP Delay" }, "S", 0 },
-	{ "CellUnderVoltage", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "CUVP" }, "mV", 1000, "%.3f" },
-	{ "CellUVRelease", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "CUVP Release" }, "mV", 1000, "%.3f" },
-	{ "CellUVDelay", DATA_TYPE_INT, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "CUVP Delay" }, "S", 0 },
-	{ "PackOverVoltage", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 99999, 1 }, 1, (char *[]){ "POVP" }, "mV", 100, "%.1f" },
-	{ "PackOVRelease", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 99999, 1 }, 1, (char *[]){ "POVP Release" }, "mV", 100, "%.1f" },
-	{ "PackOVDelay", DATA_TYPE_INT, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "POVP Delay" }, "S", 0 },
-	{ "PackUnderVoltage", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 99999, 1 }, 1, (char *[]){ "PUVP" }, "mV", 100, "%.1f" },
-	{ "PackUVRelease", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 99999, 1 }, 1, (char *[]){ "PUVP Release" }, "mV", 100, "%.1f" },
-	{ "PackUVDelay", DATA_TYPE_INT, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "PUVP Delay" }, "S", 0 },
-	{ "ChgOverTemp", DATA_TYPE_INT, "range", 3, (int []){ -500, 500, 1 }, 1, (char *[]){ "CHGOT" }, "C", 0 },
-	{ "ChgOTRelease", DATA_TYPE_INT, "range", 3, (int []){ -500, 500, 1 }, 1, (char *[]){ "CHGOT Release" }, "C", 0 },
-	{ "ChgOTDelay", DATA_TYPE_INT, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "CHGOT Delay" }, "S", 0 },
-	{ "ChgLowTemp", DATA_TYPE_INT, "range", 3, (int []){ -500, 500, 1 }, 1, (char *[]){ "CHGUT" }, "C", 0 },
-	{ "ChgUTRelease", DATA_TYPE_INT, "range", 3, (int []){ -500, 500, 1 }, 1, (char *[]){ "CHGUT Release" }, "C", 0 },
-	{ "ChgUTDelay", DATA_TYPE_INT, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "CHGUT Delay" }, "S", 0 },
-	{ "DisOverTemp", DATA_TYPE_INT, "range", 3, (int []){ -500, 500, 1 }, 1, (char *[]){ "DSGOT" }, "C", 0 },
-	{ "DsgOTRelease", DATA_TYPE_INT, "range", 3, (int []){ -500, 500, 1 }, 1, (char *[]){ "DSGOT Release" }, "C", 0 },
-	{ "DsgOTDelay", DATA_TYPE_INT, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "DSGOT Delay" }, "S", 0 },
-	{ "DisLowTemp", DATA_TYPE_INT, "range", 3, (int []){ -500, 500, 1 }, 1, (char *[]){ "DSGUT" }, "C", 0 },
-	{ "DsgUTRelease", DATA_TYPE_INT, "range", 3, (int []){ -500, 500, 1 }, 1, (char *[]){ "DSGUT Release" }, "C", 0 },
-	{ "DsgUTDelay", DATA_TYPE_INT, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "DSGUT Delay" }, "S", 0 },
-	{ "OverChargeCurrent", DATA_TYPE_INT, "range", 3, (int []){ 0, 99999, 1 }, 1, (char *[]){ "CHGOC" }, "mA", .1 },
-	{ "ChgOCRDelay", DATA_TYPE_INT, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "CHGOC Release" }, "S", 0 },
-	{ "ChgOCDelay", DATA_TYPE_INT, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "CHGOC Delay" }, "S", 0 },
-	{ "OverDisCurrent", DATA_TYPE_INT, "range", 3, (int []){ 0, 99999, 1 }, 1, (char *[]){ "DSGOC" }, "mA", .1 },
-	{ "DsgOCRDelay", DATA_TYPE_INT, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "DSGOC Release" }, "S", 0 },
-	{ "DsgOCDelay", DATA_TYPE_INT, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "DSGOC Delay" }, "S", 0 },
-#endif
-	{0}
-};
-
-config_property_t hard_params[] = {
-#if 0
-	{ "DoubleOCSC", DATA_TYPE_BOOL, 0, 0, 0, 1, (char *[]){ "Doubled Overcurrent and short-circuit value" }, 0, 0 },
-	{ "DSGOC2", DATA_TYPE_INT, "select", ndsgoc2_vals, dsgoc2_vals, ndsgoc2_vals, 0, "mV", 0 },
-	{ "DSGOC2Delay", DATA_TYPE_INT, "select", ndsgoc2delay_vals, dsgoc2delay_vals, ndsgoc2delay_vals, 0, "mS", 0 },
-	{ "SCValue", DATA_TYPE_INT, "select", nsc_vals, sc_vals, nsc_vals, 0, "mV", 0 },
-	{ "SCDelay", DATA_TYPE_INT, "select", nscdelay_vals, scdelay_vals, nscdelay_vals, 0, "uS", 0 },
-	{ "HardCellOverVoltage", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "High COVP" }, "mV", 1000, "%.3f" },
-	{ "HCOVPDelay", DATA_TYPE_INT, "select", nhcovpdelay_vals, hcovpdelay_vals, nhcovpdelay_vals, 0, "S", 0 },
-	{ "HardCellUnderVoltage", DATA_TYPE_FLOAT, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "High COVP" }, "mV", 1000, "%.3f" },
-	{ "HCUVPDelay", DATA_TYPE_INT, "select", nhcuvpdelay_vals, hcuvpdelay_vals, nhcuvpdelay_vals, 0, "S", 0 },
-	{ "SCRelease", DATA_TYPE_INT, "range", 3, (int []){ 0, 199, 1 }, 1, (char *[]){ "SC Release Time" }, "S", 0 },
-#endif
-	{0}
-};
-
-config_property_t control_params[] = {
-#if 0
-	{ "charge", DATA_TYPE_BOOL, 0, 0, 0, 1, (char *[]){ "Charging" }, 0, 0 },
-	{ "discharge", DATA_TYPE_BOOL, 0, 0, 0, 1, (char *[]){ "Discharging" }, 0, 0 },
-	{ "balance", DATA_TYPE_INT, "select", 3, (int []){ 0, 1, 2 }, 3, (char *[]){ "Off","On","Only when charging" }, 0, 0 },
-#endif
-	{0}
-};
-
-	struct parmdir {
-		char *name;
-		config_property_t *parms;
-	} *pd, allparms[] = {
-		{ "Capacity Config", capacity_params },
-		{ "Function Configuration", func_params },
-		{ "NTC Configuration", ntc_params },
-		{ "Balance Configuration", balance_params },
-		{ "GPS Configuration", gps_params },
-		{ "Other Configuration", other_params },
-		{ "Basic Parameters", basic_params },
-		{ "Hard Parameters", hard_params },
-		{ "Controls", control_params },
-		{ 0 }
-	};
-
-	for(pd=allparms; pd->name; pd++)
-		config_add_props(s->ap->cp, pd->name, pd->parms, CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOID);
-
-	return 0;
-}
-
-#if 0
-
-config_property_t *_getd(char *label) {
-	config_property_t *dp;
-	register int i,j;
-
-	dprintf(1,"label: %s\n", label);
-
-	for(i=0; i < NALL; i++) {
-		dp = allparms[i].parms;
-		dprintf(1,"section: %s\n", allparms[i].name);
-		for(j=0; j < allparms[i].count; j++) {
-			dprintf(1,"dp->name: %s\n", dp[j].name);
-			if (strcmp(dp[j].name,label)==0)
-				return &dp[j];
-		}
-	}
-	return 0;
-}
-
+/* Registers, parms, internal data types */
 static struct jbd_params {
 	uint8_t reg;
 	char *label;
@@ -300,8 +103,16 @@ static struct jbd_params {
 	{ JBD_REG_BALVOL,"BalanceStartVoltage", JBD_PARM_DT_FLOAT },
 	{ JBD_REG_BALPREC,"BalanceWindow", JBD_PARM_DT_FLOAT },
 	{ JBD_REG_CURRES,"SenseResistor", JBD_PARM_DT_FLOAT },
+#if BC_STRING
 	{ JBD_REG_FUNCMASK,"BatteryConfig", JBD_PARM_DT_FUNC },
+#else
+	{ JBD_REG_FUNCMASK,"BatteryConfig", JBD_PARM_DT_INT },
+#endif
+#if NTC_STRING
 	{ JBD_REG_NTCMASK,"NtcConfig", JBD_PARM_DT_NTC },
+#else
+	{ JBD_REG_NTCMASK,"NtcConfig", JBD_PARM_DT_INT },
+#endif
 	{ JBD_REG_STRINGS,"PackNum", JBD_PARM_DT_INT },
 	{ JBD_REG_FETTIME,"fet_ctrl_time_set", JBD_PARM_DT_INT },
 	{ JBD_REG_LEDTIME,"led_disp_time_set", JBD_PARM_DT_INT },
@@ -342,9 +153,6 @@ static struct jbd_params {
 	{ JBD_REG_VOLCAP30,"VoltageCap30", JBD_PARM_DT_FLOAT },
 	{ JBD_REG_VOLCAP10,"VoltageCap10", JBD_PARM_DT_FLOAT },
 	{ JBD_REG_VOLCAP100,"VoltageCap100", JBD_PARM_DT_FLOAT },
-	{ 0,"charge", 0 },
-	{ 0,"discharge", 0 },
-	{ 0,"balance", 0 },
 	{ 0,0,0 }
 };
 typedef struct jbd_params jbd_params_t;
@@ -362,11 +170,19 @@ struct jbd_params *_getp(char *label) {
 	return 0;
 }
 
-#define _dint(l,v) sprintf(temp,"%d",v);
-#define _dbool(l,v) sprintf(temp,"%s",(v ? "true" : "false"));
-#define _dfloat(l,v) sprintf(temp,"%f",v);
-#define _dstr(l,v) strncat(temp,v,sizeof(temp)-1)
-#define CTEMP(v) ( (v - 2731) / 10 )
+/* Selection values */
+static int dsgoc2_vals[] = { 8,11,14,17,19,22,25,28,31,33,36,39,42,44,47,50 };
+#define ndsgoc2_vals (sizeof(dsgoc2_vals)/sizeof(int))
+static int dsgoc2delay_vals[] = { 8,20,40,80,160,320,640,1280 };
+#define ndsgoc2delay_vals (sizeof(dsgoc2delay_vals)/sizeof(int))
+static int sc_vals[] = { 22,33,44,56,67,78,89,100 };
+#define nsc_vals (sizeof(sc_vals)/sizeof(int))
+static int scdelay_vals[] = {  70,100,200,400 };
+#define nscdelay_vals (sizeof(scdelay_vals)/sizeof(int))
+static int hcovpdelay_vals[] = {  1,2,4,8 };
+#define nhcovpdelay_vals (sizeof(hcovpdelay_vals)/sizeof(int))
+static int hcuvpdelay_vals[] = {  1,4,8,16 };
+#define nhcuvpdelay_vals (sizeof(hcuvpdelay_vals)/sizeof(int))
 
 static inline void _addstr(char *str,char *newstr) {
 	dprintf(4,"str: %s, newstr: %s\n", str, newstr);
@@ -375,37 +191,53 @@ static inline void _addstr(char *str,char *newstr) {
 	dprintf(4,"str: %s\n", str);
 }
 
-struct jbd_config_ctx {
-	jbd_session_t *s;
-	char *action;
-	char errmsg[256];
-	int status;
-};
+#define CTEMP(v) ( (v - 2731) / 10 )
 
-static int jbd_get_config(jbd_session_t *s, struct jbd_params *pp, config_property_t *dp, uint8_t *data, int len) {
-	char topic[200];
-	char str[64],temp[72];
-	uint16_t val;
+static int _pcopy(config_property_t *p, int type, void *src, int size, char *errmsg) {
+	dprintf(1,"name: %s, type: %s, size: %d\n", p->name, typestr(type), size);
+	dprintf(1,"dest: %p, dsize: %d\n", p->dest, p->dsize);
+	if (p->dest && p->dsize != size) {
+		free(p->dest);
+		p->dest = 0;
+	}
+	if (!p->dest) {
+		p->dsize = size;
+		p->dest = malloc(p->dsize);
+		if (!p->dest) {
+			log_syserror("_pcopy: malloc(%d)",p->dsize);
+			strcpy(errmsg,"memory allocation error");
+			return 1;
+		}
+		solard_set_bit(p->flags,CONFIG_FLAG_ALLOC);
+	}
+	p->len = conv_type(p->type,p->dest,p->dsize,type,src,size);
+	return 0;
+}
+
+static int jbd_get_config(jbd_session_t *s, struct jbd_params *pp, config_property_t *p, uint8_t *data, int len, char *errmsg) {
+	char temp[72];
+	uint16_t val,sval;
+	uint8_t bval;
+	bool tval;
 	float fval;
 	int i,ival;
 
 	dprintf(1,"label: %s, dt: %d (%s)\n", pp->label, pp->dt, parm_typestr(pp->dt));
-	dprintf(1,"dp: name: %s, unit: %s, scale: %f\n", dp->name, dp->units, dp->scale);
+	dprintf(1,"p: %p, name: %s, %s, scale: %f\n", p, p->name, p->scale);
 
 	temp[0] = 0;
 	switch(pp->dt) {
 	case JBD_PARM_DT_INT:
 		ival = jbd_getshort(data);
 		dprintf(1,"ival: %d\n", ival);
-		dprintf(1,"scale: %f\n", dp->scale);
-		if (dp->scale != 0.0) ival /= dp->scale;
-		dprintf(1,"format: %s\n", dp->format);
-		if (dp->format) sprintf(temp,dp->format,ival);
-		else sprintf(temp,"%d",ival);
+		dprintf(1,"scale: %f\n", p->scale);
+		if (p->scale != 0.0) ival /= p->scale;
+		_pcopy(p,DATA_TYPE_INT,&ival,sizeof(ival),errmsg);
 		break;
 	case JBD_PARM_DT_TEMP:
 		val = jbd_getshort(data);
-		_dint(pp->label,CTEMP(val));
+		sval = CTEMP(val);
+		_pcopy(p,DATA_TYPE_U16,&sval,sizeof(sval),errmsg);
 		break;
 	case JBD_PARM_DT_DATE:
 		{
@@ -419,113 +251,197 @@ static int jbd_get_config(jbd_session_t *s, struct jbd_params *pp, config_proper
 			year = 2000 + (mfgdate >> 9);
 			dprintf(2,"year: %d, mon: %d, day: %d\n", year, mon, day);
 			sprintf(temp,"%04d%02d%02d",year,mon,day);
+			_pcopy(p,DATA_TYPE_STRING,temp,strlen(temp)+1,errmsg);
 		}
 		break;
 	case JBD_PARM_DT_B0:
 		val = jbd_getshort(data);
 		dprintf(1,"val: %04x\n", val);
 		dprintf(1,"data[0]: %02x, [1]: %02x\n", data[0], data[1]);
-		_dint(pp->label,data[0]);
+		bval = data[0];
+		_pcopy(p,DATA_TYPE_U8,&bval,sizeof(bval),errmsg);
 		break;
 	case JBD_PARM_DT_B1:
 		val = jbd_getshort(data);
 		dprintf(1,"val: %04x\n", val);
 		dprintf(1,"data[0]: %02x, [1]: %02x\n", data[0], data[1]);
-		_dint(pp->label,data[1]);
+		bval = data[1];
+		_pcopy(p,DATA_TYPE_U8,&bval,sizeof(bval),errmsg);
 		break;
 	case JBD_PARM_DT_FUNC:
-		val = jbd_getshort(data);
-		dprintf(1,"val: %04x\n", val);
-		str[0] = 0;
-		if (val & JBD_FUNC_SWITCH) _addstr(str,"Switch");
-		if (val & JBD_FUNC_SCRL)  _addstr(str,"SCRL");
-		if (val & JBD_FUNC_BALANCE_EN) _addstr(str,"BALANCE_EN");
-		if (val & JBD_FUNC_CHG_BALANCE) _addstr(str,"CHG_BALANCE");
-		if (val & JBD_FUNC_LED_EN) _addstr(str,"LED_EN");
-		if (val & JBD_FUNC_LED_NUM) _addstr(str,"LED_NUM");
-		if (val & JBD_FUNC_RTC) _addstr(str,"RTC");
-		if (val & JBD_FUNC_EDV) _addstr(str,"EDV");
-		_dstr(pp->label,str);
+		ival = jbd_getshort(data);
+		dprintf(1,"ival: %04x\n", ival);
+		*temp = 0;
+#if BC_STRING
+		if (ival & JBD_FUNC_SWITCH) _addstr(temp,"Switch");
+		if (ival & JBD_FUNC_SCRL)  _addstr(temp,"SCRL");
+		if (ival & JBD_FUNC_BALANCE_EN) _addstr(temp,"BALANCE_EN");
+		if (ival & JBD_FUNC_CHG_BALANCE) _addstr(temp,"CHG_BALANCE");
+		if (ival & JBD_FUNC_LED_EN) _addstr(temp,"LED_EN");
+		if (ival & JBD_FUNC_LED_NUM) _addstr(temp,"LED_NUM");
+		if (ival & JBD_FUNC_RTC) _addstr(temp,"RTC");
+		if (ival & JBD_FUNC_EDV) _addstr(temp,"EDV");
+		_pcopy(p,DATA_TYPE_STRING,temp,strlen(temp)+1,errmsg);
+#else
+		_pcopy(p,DATA_TYPE_INT,&ival,sizeof(ival),errmsg);
+#endif
 		break;
 	case JBD_PARM_DT_NTC:
-		val = jbd_getshort(data);
-		str[0] = 0;
-		if (val & JBD_NTC1) _addstr(str,"NTC1");
-		if (val & JBD_NTC2) _addstr(str,"NTC2");
-		if (val & JBD_NTC3) _addstr(str,"NTC3");
-		if (val & JBD_NTC4) _addstr(str,"NTC4");
-		if (val & JBD_NTC5) _addstr(str,"NTC5");
-		if (val & JBD_NTC6) _addstr(str,"NTC6");
-		if (val & JBD_NTC7) _addstr(str,"NTC7");
-		if (val & JBD_NTC8) _addstr(str,"NTC8");
-		_dstr(pp->label,str);
+		ival = jbd_getshort(data);
+		dprintf(1,"ival: %04x\n", ival);
+#if NTC_STRING
+		*temp = 0;
+		if (ival & JBD_NTC1) _addstr(temp,"NTC1");
+		if (ival & JBD_NTC2) _addstr(temp,"NTC2");
+		if (ival & JBD_NTC3) _addstr(temp,"NTC3");
+		if (ival & JBD_NTC4) _addstr(temp,"NTC4");
+		if (ival & JBD_NTC5) _addstr(temp,"NTC5");
+		if (ival & JBD_NTC6) _addstr(temp,"NTC6");
+		if (ival & JBD_NTC7) _addstr(temp,"NTC7");
+		if (ival & JBD_NTC8) _addstr(temp,"NTC8");
+		_pcopy(p,DATA_TYPE_STRING,temp,strlen(temp)+1,errmsg);
+#else
+		_pcopy(p,DATA_TYPE_INT,&ival,sizeof(ival),errmsg);
+#endif
 		break;
 	case JBD_PARM_DT_FLOAT:
 		fval = jbd_getshort(data);
-		dprintf(1,"scale: %f\n", dp->scale);
-		if (dp->scale != 0.0) fval /= dp->scale;
-		if (dp->format) sprintf(temp,dp->format,fval);
-		else sprintf(temp,"%f",fval);
+		dprintf(1,"fval(1): %f\n", fval);
+		dprintf(1,"scale: %f\n", p->scale);
+		if (p->scale != 0.0) fval /= p->scale;
+		dprintf(1,"fval(2): %f\n", fval);
+		_pcopy(p,DATA_TYPE_FLOAT,&fval,sizeof(fval),errmsg);
 		break;
 	case JBD_PARM_DT_STR:
 		data[len] = 0;
 		temp[0] = 0;
 		strncat(temp,(char *)data,sizeof(temp)-1);
 		trim(temp);
+		_pcopy(p,DATA_TYPE_STRING,temp,strlen(temp)+1,errmsg);
 		break;
 	case JBD_PARM_DT_DOUBLE:
-		_dbool(pp->label,((data[0] & 0x80) != 0));
+		tval = ((data[0] & 0x80) != 0);
+		_pcopy(p,DATA_TYPE_BOOLEAN,&tval,sizeof(tval),errmsg);
 		break;
 	case JBD_PARM_DT_DSGOC2:
 		i = data[1] & 0x0f;
 		dprintf(1,"data[1]: %02x\n", data[1]);
 		dprintf(1,"i: %d\n", i);
-		_dint(pp->label,dsgoc2_vals[i]);
+		ival = dsgoc2_vals[i];
+		_pcopy(p,DATA_TYPE_INT,&ival,sizeof(ival),errmsg);
 		break;
 	case JBD_PARM_DT_DSGOC2DELAY:
 		i = (data[1] >> 4) & 0x07;
 		dprintf(1,"data[1]: %02x\n", data[1]);
 		dprintf(1,"i: %d\n", i);
-		_dint(pp->label,dsgoc2delay_vals[i]);
+		ival = dsgoc2delay_vals[i];
+		_pcopy(p,DATA_TYPE_INT,&ival,sizeof(ival),errmsg);
 		break;
 	case JBD_PARM_DT_SCVAL:
 		i = data[0] & 0x07;
 		dprintf(1,"data[0]: %02x\n", data[0]);
 		dprintf(1,"i: %d\n", i);
-		_dint(pp->label,sc_vals[i]);
+		ival = sc_vals[i];
+		_pcopy(p,DATA_TYPE_INT,&ival,sizeof(ival),errmsg);
 		break;
 	case JBD_PARM_DT_SCDELAY:
 		i = (data[0] >> 3) & 0x03;
 		dprintf(1,"data[0]: %02x\n", data[0]);
-
 		dprintf(1,"i: %d\n", i);
-		_dint(pp->label,scdelay_vals[i]);
+		ival = scdelay_vals[i];
+		_pcopy(p,DATA_TYPE_INT,&ival,sizeof(ival),errmsg);
 		break;
 	case JBD_PARM_DT_HCOVPDELAY:
 		i = (data[0] >> 4) & 0x03;
 		dprintf(1,"data[0]: %02x\n", data[0]);
-
 		dprintf(1,"i: %d\n", i);
-		_dint(pp->label,hcovpdelay_vals[i]);
+		ival = hcovpdelay_vals[i];
+		_pcopy(p,DATA_TYPE_INT,&ival,sizeof(ival),errmsg);
 		break;
 	case JBD_PARM_DT_HCUVPDELAY:
 		i = (data[0] >> 6) & 0x03;
 		dprintf(1,"data[0]: %02x\n", data[0]);
-
 		dprintf(1,"i: %d\n", i);
-		_dint(pp->label,hcuvpdelay_vals[i]);
+		ival = hcuvpdelay_vals[i];
+		_pcopy(p,DATA_TYPE_INT,&ival,sizeof(ival),errmsg);
 		break;
 	default:
 		sprintf(temp,"unhandled switch for: %d",pp->dt);
 		break;
 	}
-	sprintf(topic,"%s/%s/%s/%s/%s",SOLARD_TOPIC_ROOT,SOLARD_ROLE_BATTERY,s->name,SOLARD_FUNC_CONFIG,pp->label);
-	dprintf(1,"topic: %s, temp: %s\n", topic, temp);
-	return mqtt_pub(s->ap->m,topic,temp,1,1);
+	return 0;
+}
+
+static int jbd_get_value(void *ctx, list args, char *errmsg) {
+	jbd_session_t *s = ctx;
+	char *name;
+	config_property_t *p;
+	int r,we_opened;
+
+	dprintf(dlevel,"args count: %d\n", list_count(args));
+	r = 0;
+	list_reset(args);
+	while((name = list_get_next(args)) != 0) {
+		dprintf(dlevel,"name: %s\n", name);
+		p = config_find_property(s->ap->cp, name);
+		dprintf(dlevel,"p: %p\n", p);
+		if (!p) {
+			sprintf(errmsg,"property %s not found",name);
+			return 1;
+		}
+		dprintf(dlevel,"flags: %04x\n", p->flags);
+		if (p->flags & JBD_CONFIG_FLAG_EEPROM) {
+			struct jbd_params *pp;
+			uint8_t data[256];
+			int bytes;
+
+			/* Get the internal parm info */
+			pp = _getp(p->name);
+			dprintf(1,"pp: %p\n", pp);
+			if (!pp) return 1;
+
+			/* Make sure we're open */
+			we_opened = 0;
+			if (!solard_check_state(s,JBD_STATE_OPEN)) {
+				if (jbd_driver.open(s)) {
+					strcpy(errmsg,"unable to open BMS");
+					return 1;
+				}
+				we_opened = 1;
+			}
+			r = 1;
+
+			/* Open the eeprom */
+			if (!solard_check_state(s,JBD_STATE_EEPROM)) {
+				if (jbd_eeprom_open(s) < 0) {
+					strcpy(errmsg,"unable to open eeprom");
+					goto jbd_get_value_error;
+				}
+			}
+
+			/* Read the register */
+			bytes = jbd_rw(s, JBD_CMD_READ, pp->reg, data, sizeof(data));
+			dprintf(3,"bytes: %d\n", bytes);
+			if (bytes < 0) {
+				sprintf(errmsg, "error reading register %d for param %s", pp->reg, p->name);
+				goto jbd_get_value_error;
+			}
+
+			/* process the info */
+			r = jbd_get_config(s, pp, p, data, bytes, errmsg);
+			if (r) break;
+		}
+	}
+	strcpy(errmsg,"success");
+
+jbd_get_value_error:
+	if (solard_check_state(s,JBD_STATE_EEPROM)) jbd_eeprom_close(s);
+	if (we_opened) jbd_driver.close(s);
+	return r;
 }
 
 /* TODO: check value for limits in desc */
-static int jbd_set_config(jbd_session_t *s, uint8_t *data, struct jbd_params *pp, config_property_t *dp, char *value) {
+static int jbd_set_config(jbd_session_t *s, uint8_t *data, struct jbd_params *pp, config_property_t *dp, char *value, char *errmsg) {
 	char *p;
 	int bytes,len,i,ival;
 	uint16_t val;
@@ -535,21 +451,6 @@ static int jbd_set_config(jbd_session_t *s, uint8_t *data, struct jbd_params *pp
 
 	/* Len = 2 (16 bit size) for most */
 	len = 2;
-
-	/* Controls */
-	if (strcmp(dp->name,"charge") == 0) {
-		conv_type(DATA_TYPE_BOOL,&ival,0,DATA_TYPE_STRING,value,0);
-		dprintf(1,"ival: %d\n", ival);
-		return (charge_control(s,ival) ? -1 : 1);
-	} else if (strcmp(dp->name,"discharge") == 0) {
-		conv_type(DATA_TYPE_BOOL,&ival,0,DATA_TYPE_STRING,value,0);
-		dprintf(1,"ival: %d\n", ival);
-		return (discharge_control(s,ival) ? -1 : 1);
-	} else if (strcmp(dp->name,"balance") == 0) {
-		conv_type(DATA_TYPE_INT,&ival,0,DATA_TYPE_STRING,value,0);
-		dprintf(1,"ival: %d\n", ival);
-		return (balance_control(s,ival) ? -1 : 1);
-	} 
 
 	dprintf(1,"pp->dt: %d, DATA_TYPE_STRING: %d\n", pp->dt, DATA_TYPE_STRING);
 	switch(pp->dt) {
@@ -564,7 +465,6 @@ static int jbd_set_config(jbd_session_t *s, uint8_t *data, struct jbd_params *pp
 	case JBD_PARM_DT_TEMP:
 		conv_type(DATA_TYPE_SHORT,&val,0,DATA_TYPE_STRING,value,0);
 		dprintf(1,"val: %d\n", val);
-//		( (v - 2731) / 10 )
 		val = ((val * 10) + 2731);
 		dprintf(1,"val: %d\n", val);
 		jbd_putshort(data,val);
@@ -775,152 +675,289 @@ static int jbd_set_config(jbd_session_t *s, uint8_t *data, struct jbd_params *pp
 		return 0;
 		break;
 	}
-	jbd_get_config(s,pp,dp,data,len);
+	jbd_get_config(s,pp,dp,data,len,errmsg);
 	return len;
 }
 
-static int jbd_doconfig(void *ctx, char *action, char *label, char *value, char *errmsg) {
+static int jbd_set_value(void *ctx, list args, char *errmsg) {
 	jbd_session_t *s = ctx;
-	struct jbd_params *pp;
-	config_property_t *dp;
-	uint8_t data[256];
-	int r,bytes;
+	char **argv, *name, *value;
+	config_property_t *p;
+	int r,we_opened;
 
-	r = 1;
-	dprintf(1,"label: %s, value: %s\n", label, value);
-	if (!label) {
-		strcpy(errmsg,"invalid request");
-		goto jbd_doconfig_error;
-	}
-	pp = _getp(label);
-	if (!pp) {
-		sprintf(errmsg,"%s: not found",label);
-		goto jbd_doconfig_error;
-	}
-	dp = _getd(label);
-	if (!dp) {
-		sprintf(errmsg,"%s: not found",label);
-		goto jbd_doconfig_error;
-	}
-
-
-	dprintf(1,"dp: name: %s, unit: %s, scale: %f\n", dp->name, dp->units, dp->scale);
-	dprintf(1,"action: %s\n", action);
-	if (strcmp(action,"Get")==0) {
-		bytes = jbd_rw(s, JBD_CMD_READ, pp->reg, data, sizeof(data));
-		if (bytes < 0) {
-			sprintf(errmsg,"read error");
-			goto jbd_doconfig_error;
+	dprintf(dlevel,"args: %p\n", args);
+	dprintf(dlevel,"args count: %d\n", list_count(args));
+	list_reset(args);
+	r = 0;
+	while((argv = list_get_next(args)) != 0) {
+		name = argv[0];
+		value = argv[1];
+		dprintf(dlevel,"name: %s, value: %s\n", name, value);
+		p = config_find_property(s->ap->cp, name);
+		dprintf(dlevel,"p: %p\n", p);
+		if (!p) {
+			sprintf(errmsg,"property %s not found",name);
+			return 1;
 		}
-		r = jbd_get_config(s,pp,dp,data,bytes);
-	} else if (strcmp(action,"Set")==0) {
-		int len;
+		if (p->flags & JBD_CONFIG_FLAG_EEPROM) {
+			struct jbd_params *pp;
+			uint8_t data[256];
+			int len,bytes;
 
-		if (!value) {
-			strcpy(errmsg,"invalid request");
-			goto jbd_doconfig_error;
+			/* Get the internal parm info */
+			pp = _getp(p->name);
+			dprintf(1,"pp: %p\n", pp);
+			if (!pp) return 1;
+
+			/* Make sure we're open */
+			we_opened = 0;
+			if (!solard_check_state(s,JBD_STATE_OPEN)) {
+				if (jbd_driver.open(s)) {
+					strcpy(errmsg,"unable to open BMS");
+					return 1;
+				}
+				we_opened = 1;
+			}
+			r = 1;
+
+			/* Open the eeprom */
+			if (!solard_check_state(s,JBD_STATE_EEPROM)) {
+				if (jbd_eeprom_open(s) < 0) {
+					strcpy(errmsg,"unable to open eeprom");
+					goto jbd_set_value_error;
+				}
+			}
+
+			/* Set the value */
+			len = jbd_set_config(s,data,pp,p,value,errmsg);
+			if (len < 0) {
+				sprintf(errmsg,"I/O error");
+				goto jbd_set_value_error;
+			} else if (len == 0) {
+				sprintf(errmsg,"bad data");
+				goto jbd_set_value_error;
+			}
+			bytes = jbd_rw(s, JBD_CMD_WRITE, pp->reg, data, len);
+			if (bytes < 0) {
+				sprintf(errmsg,"write error");
+				goto jbd_set_value_error;
+			}
+			r = 0;
+
+		} else {
+			p->len = conv_type(p->type,p->dest,p->dsize,DATA_TYPE_STRING,value,strlen(value));
+			p->dirty = 1;
+			config_write(s->ap->cp);
 		}
-		len = jbd_set_config(s,data,pp,dp,value);
-		if (len < 0) {
-			sprintf(errmsg,"I/O error");
-			goto jbd_doconfig_error;
-		} else if (len == 0) {
-			sprintf(errmsg,"bad data");
-			goto jbd_doconfig_error;
-		}
-		bytes = jbd_rw(s, JBD_CMD_WRITE, pp->reg, data, len);
-		if (bytes < 0) {
-			sprintf(errmsg,"write error");
-			goto jbd_doconfig_error;
-		}
-	} else {
-		strcpy(errmsg,"invalid request");
-		goto jbd_doconfig_error;
 	}
 
-jbd_doconfig_error:
-	dprintf(1,"returning: %d\n",r);
+	strcpy(errmsg,"success");
+
+jbd_set_value_error:
+	if (solard_check_state(s,JBD_STATE_EEPROM)) jbd_eeprom_close(s);
+	if (we_opened) jbd_driver.close(s);
 	return r;
 }
 
-static int jbd_config_getmsg(jbd_session_t *s, solard_message_t *msg) {
-        char errmsg[SOLARD_ERRMSG_LEN];
-        int status,isopen,isfw;
-        long start;
-
-        start = mem_used();
-
-	isopen = 0;
-	if (jbd_open(s) < 0) {
-		strncpy(errmsg,strerror(errno),sizeof(errmsg)-1);
-		goto jbd_config_error;
-	} else {
-		isopen = 1;
-	}
-
-	isfw = 0;
-	if (jbd_eeprom_start(s) < 0) {
-		strcpy(errmsg,"unable to open eeprom");
-		goto jbd_config_error;
-	} else {
-		isfw = 1;
-	}
-
-        status = agent_config_process(msg,jbd_doconfig,s,errmsg);
-        if (status) goto jbd_config_error;
-
-        status = 0;
-        strcpy(errmsg,"success");
-
-jbd_config_error:
-	if (isopen) jbd_close(s);
-	if (isfw) jbd_eeprom_end(s);
-        dprintf(1,"msg->replyto: %s", msg->replyto);
-        if (msg->replyto) agent_reply(s->ap, msg->replyto, status, errmsg);
-        dprintf(1,"used: %ld\n", mem_used() - start);
-        return status;
-}
-#endif
-
+int jbd_agent_init(jbd_session_t *s, int argc, char **argv) {
+	opt_proctab_t jbd_opts[] = {
+		/* Spec, dest, type len, reqd, default val, have */
+		{ "-t::|transport,target,opts",s->tpinfo,DATA_TYPE_STRING,sizeof(s->tpinfo)-1,0,"" },
+		OPTS_END
+	};
+	config_property_t jbd_props[] = {
+		{ "transport", DATA_TYPE_STRING, s->transport, sizeof(s->transport)-1, 0, 0 },
+		{ "target", DATA_TYPE_STRING, s->target, sizeof(s->target)-1, 0, 0 },
+		{ "topts", DATA_TYPE_STRING, s->topts, sizeof(s->topts)-1, 0, 0 },
+		{ "flatten", DATA_TYPE_BOOLEAN, &s->flatten, 0, 0, 0 },
+		{ "state", DATA_TYPE_INT, &s->state, 0, 0, CONFIG_FLAG_READONLY | CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOPUB },
+		{0}
+	};
+	config_function_t jbd_funcs[] = {
+		{ "get", jbd_get_value, s, 1 },
+		{ "set", jbd_set_value, s, 2 },
+//		{ "reset", cf_reset, s, 0 },
 #if 0
-int jbd_config_add_params(json_value_t *j) {
-	int x,y;
-	json_value_t *ca,*o,*a;
-	struct parmdir *dp;
+		{ "charge", jbd_set_charge, s, 1 },
+		{ "discharge", jbd_set_dcharge, s, 1 },
+		{ "balance", jbd_set_balance, s, 1 },
+#endif
+		{0}
+	};
 
-	/* Configuration array */
-	ca = json_create_array();
-
-	/* We use sections */
-	for(x=0; x < NALL; x++) {
-		o = json_create_object();
-		dp = &allparms[x];
-//		if (dp->count > 1) {
-			a = json_create_array();
-			for(y=0; y < dp->count; y++) json_array_add_descriptor(a,dp->parms[y]);
-			json_add_value(o,dp->name,a);
-//		} else if (dp->count == 1) {
-//			json_add_descriptor(o,dp->name,dp->parms[0]);
-//		}
-		json_array_add_value(ca,o);
-	}
-
-	json_add_value(j,"configuration",ca);
+	s->ap = agent_init(argc,argv,jbd_opts,&jbd_driver,s,jbd_props,jbd_funcs);
+	dprintf(1,"ap: %p\n",s->ap);
+	if (!s->ap) return 1;
 	return 0;
 }
-#endif
 
-int jbd_get(void *h, char *name, char *value, char *errmsg) {
-//	jbd_session_t *s = h;
+void jbd_config_add_jbd_data(jbd_session_t *s) {
+	/* Only used by JS funcs */
+	uint32_t flags = CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOPUB;
+	config_property_t jbd_data_props[] = {
+		{ "name", DATA_TYPE_STRING, s->ap->instance_name, sizeof(s->ap->instance_name), 0, CONFIG_FLAG_READONLY | flags },
+		{ "capacity", DATA_TYPE_FLOAT, &s->data.capacity, 0, 0, CONFIG_FLAG_READONLY | flags },
+		{ "voltage", DATA_TYPE_FLOAT, &s->data.voltage, 0, 0, CONFIG_FLAG_READONLY | flags },
+		{ "current", DATA_TYPE_FLOAT, &s->data.current, 0, 0, CONFIG_FLAG_READONLY | flags },
+		{ "ntemps", DATA_TYPE_INT, &s->data.ntemps, 0, 0, CONFIG_FLAG_READONLY | flags },
+		{ "temps", DATA_TYPE_FLOAT_ARRAY, &s->data.temps, JBD_MAX_TEMPS, 0, CONFIG_FLAG_READONLY | flags },
+		{ "ncells", DATA_TYPE_INT, &s->data.ncells, 0, 0, CONFIG_FLAG_READONLY | flags },
+		{ "cellvolt", DATA_TYPE_FLOAT_ARRAY, &s->data.cellvolt, JBD_MAX_CELLS, 0, CONFIG_FLAG_READONLY | flags },
+		{ "cell_min", DATA_TYPE_FLOAT, &s->data.cell_min, 0, 0, CONFIG_FLAG_READONLY | flags },
+		{ "cell_max", DATA_TYPE_FLOAT, &s->data.cell_max, 0, 0, CONFIG_FLAG_READONLY | flags },
+		{ "cell_diff", DATA_TYPE_FLOAT, &s->data.cell_diff, 0, 0, CONFIG_FLAG_READONLY | flags },
+		{ "cell_avg", DATA_TYPE_FLOAT, &s->data.cell_avg, 0, 0, CONFIG_FLAG_READONLY | flags },
+		{ "cell_total", DATA_TYPE_FLOAT, &s->data.cell_total, 0, 0, CONFIG_FLAG_READONLY | flags },
+		{ "balancebits", DATA_TYPE_INT, &s->data.balancebits, 0, 0, CONFIG_FLAG_READONLY | flags },
+		{0}
+	};
 
-	dprintf(1,"name: %s, value: %s\n", name, value);
-	return 1;
+	 /* Add info_props to config */
+	config_add_props(s->ap->cp, "jbd_data", jbd_data_props, flags);
 }
 
-int jbd_getset(void *h, list args, char *errmsg) {
-//	jbd_session_t *s = h;
+int jbd_config_add_parms(jbd_session_t *s) {
+	config_property_t capacity_params[] = {
+		/* Name, Type, dest, len, def, flags, scope, nvalues, nlabels, labels, units, scale, precision */
+		{ "DesignCapacity", DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Design Capacity" }, "mAH", 100, 3 },
+		{ "CycleCapacity",  DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Cycle Cap" }, "mAH", 100, 1 },
+		{ "FullChargeVol",  DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Full Chg Vol" }, "mV", 1000, 3 },
+		{ "ChargeEndVol",   DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "End of Dsg VOL" }, "mV", 1000, 3 },
+		{ "DischargingRate",DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 100, .1 }, 1, (char *[]){ "DischargingRate" }, "%", 10, 1 },
+		{ "VoltageCap100",  DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Voltage at 100% Capacity" }, "mV", 1000, 3 },
+		{ "VoltageCap90",   DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Voltage at 90% capacity" }, "mV", 1000, 3 },
+		{ "VoltageCap80",   DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Voltage at 80% capacity" }, "mV", 1000, 3 },
+		{ "VoltageCap70",   DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Voltage at 70% capacity" }, "mV", 1000, 3 },
+		{ "VoltageCap60",   DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Voltage at 60% capacity" }, "mV", 1000, 3 },
+		{ "VoltageCap50",   DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Voltage at 50% capacity" }, "mV", 1000, 3 },
+		{ "VoltageCap40",   DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Voltage at 40% capacity" }, "mV", 1000, 3 },
+		{ "VoltageCap30",   DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Voltage at 30% capacity" }, "mV", 1000, 3 },
+		{ "VoltageCap20",   DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Voltage at 20% capacity" }, "mV", 1000, 3 },
+		{ "VoltageCap10",   DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Voltage at 10% capacity" }, "mV", 1000, 3 },
+		{ "fet_ctrl_time_set", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "Fet Control" }, "S", 0, 0 },
+		{ "led_disp_time_set", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "LED Timer" }, "S", 0, 0 },
+		{0}
+	};
 
-	return 1;
+	config_property_t func_params[] = {
+#if BC_STRING
+		{ "BatteryConfig", DATA_TYPE_STRING, 0, 0, 0, 0, "mselect", 8,
+			(char *[]){ "Switch", "SCRL", "BALANCE_EN", "CHG_BALANCE", "LED_EN", "LED_NUM", "RTC", "EDV"  }, 0, 0, 0, 0 },
+#else
+		{ "BatteryConfig", DATA_TYPE_INT, 0, 0, 0, 0, "mask", 8,
+			(int []){ JBD_FUNC_SWITCH, JBD_FUNC_SCRL, JBD_FUNC_BALANCE_EN, JBD_FUNC_CHG_BALANCE, JBD_FUNC_LED_EN, JBD_FUNC_LED_NUM, JBD_FUNC_RTC, JBD_FUNC_EDV }, 8, (char *[]){ "Switch", "SCRL", "BALANCE_EN", "CHG_BALANCE", "LED_EN", "LED_NUM", "RTC", "EDV"  }, 0, 0 },
+#endif
+		{0}
+	};
+
+	config_property_t ntc_params[] = {
+#if NTC_STRING
+		{ "NtcConfig", DATA_TYPE_STRING, 0, 0, 0, 0, "mselect", 8, (char *[]){ "NTC1","NTC2","NTC3","NTC4","NTC5","NTC6","NTC7","NTC8" }, 0, 0, 0, 0 },
+#else
+		{ "NtcConfig", DATA_TYPE_INT, 0, 0, 0, 0, "mask",
+			8, (int []){ JBD_NTC1, JBD_NTC2, JBD_NTC3, JBD_NTC4, JBD_NTC5, JBD_NTC6, JBD_NTC7, JBD_NTC8 },
+			8, (char *[]){ "NTC1","NTC2","NTC3","NTC4","NTC5","NTC6","NTC7","NTC8" }, 0, 0 },
+#endif
+		{0}
+	};
+
+	config_property_t balance_params[] = {
+		{ "BalanceStartVoltage", DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "Start Voltage" }, "mV", 1000, 3 },
+		{ "BalanceWindow", DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "BalancPrecision" }, "mV", 1000, 3 },
+		{0}
+	};
+
+	config_property_t gps_params[] = {
+		{ "GPS_VOL", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ 0, 10000, 1 }, 1, (char *[]){ "GPS Off" }, "mV", 1000, 3 },
+		{ "GPS_TIME", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "GPS Time" }, "S", 0, 0 },
+		{0}
+	};
+
+	config_property_t other_params[] = {
+		{ "SenseResistor", DATA_TYPE_FLOAT, 0, 0, 0, 0, 0, 0, 0, 1, (char *[]){ "Current Res" }, "mR", 10, 1 },
+		{ "PackNum", DATA_TYPE_INT, 0, 0, 0, 0, "select",
+			28, (int []){ 3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 },
+			1, (char *[]){ "mR PackNum" }, 0, 0 },
+		{ "CycleCount", DATA_TYPE_INT, 0, 0, 0, 0, 0, 0, 0 },
+		{ "SerialNumber", DATA_TYPE_INT, 0, 0, 0, 0, 0, 0, 0 },
+		{ "ManufacturerName", DATA_TYPE_STRING, 0, 0, 0, 0, 0, 0, 0 },
+		{ "DeviceName", DATA_TYPE_STRING, 0, 0, 0, 0, 0, 0, 0 },
+		{ "ManufactureDate", DATA_TYPE_STRING, 0, 0, 0, 0, 0, 0, 0 },
+		{ "BarCode", DATA_TYPE_STRING, 0, 0, 0, 0, 0, 0, 0 },
+		{0}
+	};
+
+	config_property_t basic_params[] = {
+		{ "CellOverVoltage", DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "COVP" }, "mV", 1000, 3 },
+		{ "CellOVRelease", DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "COVP Release" }, "mV", 1000, 3 },
+		{ "CellOVDelay", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "COVP Delay" }, "S", 0 },
+		{ "CellUnderVoltage", DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "CUVP" }, "mV", 1000, 3 },
+		{ "CellUVRelease", DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "CUVP Release" }, "mV", 1000, 3 },
+		{ "CellUVDelay", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "CUVP Delay" }, "S", 0 },
+		{ "PackOverVoltage", DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 99999, 1 }, 1, (char *[]){ "POVP" }, "mV", 100, 1 },
+		{ "PackOVRelease", DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 99999, 1 }, 1, (char *[]){ "POVP Release" }, "mV", 100, 1 },
+		{ "PackOVDelay", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "POVP Delay" }, "S", 0 },
+		{ "PackUnderVoltage", DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 99999, 1 }, 1, (char *[]){ "PUVP" }, "mV", 100, 1 },
+		{ "PackUVRelease", DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 99999, 1 }, 1, (char *[]){ "PUVP Release" }, "mV", 100, 1 },
+		{ "PackUVDelay", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "PUVP Delay" }, "S", 0 },
+		{ "ChgOverTemp", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ -500, 500, 1 }, 1, (char *[]){ "CHGOT" }, "C", 0 },
+		{ "ChgOTRelease", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ -500, 500, 1 }, 1, (char *[]){ "CHGOT Release" }, "C", 0 },
+		{ "ChgOTDelay", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "CHGOT Delay" }, "S", 0 },
+		{ "ChgLowTemp", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ -500, 500, 1 }, 1, (char *[]){ "CHGUT" }, "C", 0 },
+		{ "ChgUTRelease", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ -500, 500, 1 }, 1, (char *[]){ "CHGUT Release" }, "C", 0 },
+		{ "ChgUTDelay", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "CHGUT Delay" }, "S", 0 },
+		{ "DisOverTemp", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ -500, 500, 1 }, 1, (char *[]){ "DSGOT" }, "C", 0 },
+		{ "DsgOTRelease", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ -500, 500, 1 }, 1, (char *[]){ "DSGOT Release" }, "C", 0 },
+		{ "DsgOTDelay", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "DSGOT Delay" }, "S", 0 },
+		{ "DisLowTemp", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ -500, 500, 1 }, 1, (char *[]){ "DSGUT" }, "C", 0 },
+		{ "DsgUTRelease", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ -500, 500, 1 }, 1, (char *[]){ "DSGUT Release" }, "C", 0 },
+		{ "DsgUTDelay", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "DSGUT Delay" }, "S", 0 },
+		{ "OverChargeCurrent", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ 0, 99999, 1 }, 1, (char *[]){ "CHGOC" }, "mA", .1 },
+		{ "ChgOCRDelay", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "CHGOC Release" }, "S", 0 },
+		{ "ChgOCDelay", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "CHGOC Delay" }, "S", 0 },
+		{ "OverDisCurrent", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ 0, 99999, 1 }, 1, (char *[]){ "DSGOC" }, "mA", .1 },
+		{ "DsgOCRDelay", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "DSGOC Release" }, "S", 0 },
+		{ "DsgOCDelay", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ 0, 999, 1 }, 1, (char *[]){ "DSGOC Delay" }, "S", 0 },
+		{0}
+	};
+
+	config_property_t hard_params[] = {
+		{ "DoubleOCSC", DATA_TYPE_BOOL, 0, 0, 0, 0, 0, 0, 0, 1, (char *[]){ "Doubled Overcurrent and short-circuit value" }, 0, 0 },
+		{ "DSGOC2", DATA_TYPE_INT, 0, 0, 0, 0, "select", ndsgoc2_vals, dsgoc2_vals, ndsgoc2_vals, 0, "mV", 0 },
+		{ "DSGOC2Delay", DATA_TYPE_INT, 0, 0, 0, 0, "select", ndsgoc2delay_vals, dsgoc2delay_vals, ndsgoc2delay_vals, 0, "mS", 0 },
+		{ "SCValue", DATA_TYPE_INT, 0, 0, 0, 0, "select", nsc_vals, sc_vals, nsc_vals, 0, "mV", 0 },
+		{ "SCDelay", DATA_TYPE_INT, 0, 0, 0, 0, "select", nscdelay_vals, scdelay_vals, nscdelay_vals, 0, "uS", 0 },
+		{ "HardCellOverVoltage", DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "High COVP" }, "mV", 1000, 3 },
+		{ "HCOVPDelay", DATA_TYPE_INT, 0, 0, 0, 0, "select", nhcovpdelay_vals, hcovpdelay_vals, nhcovpdelay_vals, 0, "S", 0 },
+		{ "HardCellUnderVoltage", DATA_TYPE_FLOAT, 0, 0, 0, 0, "range", 3, (float []){ 0, 10000, 1 }, 1, (char *[]){ "High COVP" }, "mV", 1000, 3 },
+		{ "HCUVPDelay", DATA_TYPE_INT, 0, 0, 0, 0, "select", nhcuvpdelay_vals, hcuvpdelay_vals, nhcuvpdelay_vals, 0, "S", 0 },
+		{ "SCRelease", DATA_TYPE_INT, 0, 0, 0, 0, "range", 3, (int []){ 0, 199, 1 }, 1, (char *[]){ "SC Release Time" }, "S", 0 },
+		{0}
+	};
+
+	struct parmdir {
+		char *name;
+		config_property_t *parms;
+	} *pd, allparms[] = {
+		{ "Capacity Config", capacity_params },
+		{ "Function Configuration", func_params },
+		{ "NTC Configuration", ntc_params },
+		{ "Balance Configuration", balance_params },
+		{ "GPS Configuration", gps_params },
+		{ "Other Configuration", other_params },
+		{ "Basic Parameters", basic_params },
+		{ "Hard Parameters", hard_params },
+		{ 0 }
+	};
+	config_property_t *p;
+
+	for(pd=allparms; pd->name; pd++) {
+		dprintf(1,"adding params: %s\n", pd->name);
+		for(p=pd->parms; p->name; p++) p->flags |= JBD_CONFIG_FLAG_EEPROM;
+		config_add_props(s->ap->cp, pd->name, pd->parms, CONFIG_FLAG_NOSAVE);
+	}
+
+	return 0;
 }
 
 int jbd_config(void *h, int req, ...) {
@@ -935,39 +972,43 @@ int jbd_config(void *h, int req, ...) {
 	switch(req) {
 	case SOLARD_CONFIG_INIT:
 	    {
-		config_function_t jbd_funcs[] = {
-			{ "get", jbd_getset, s, 1 },
-			{ "set", jbd_getset, s, 2 },
-//			{ "reset", jbd_reset, s, 0 },
-			{0}
-		};
-
 		dprintf(1,"**** CONFIG INIT *******\n");
 
 		/* 1st arg is AP */
 		s->ap = va_arg(va,solard_agent_t *);
 		dprintf(1,"ap: %p\n", s->ap);
 
-		config_add_funcs(s->ap->cp, jbd_funcs);
+		/* -t takes precedence over config */
+		dprintf(1,"tpinfo: %s\n", s->tpinfo);
+		if (strlen(s->tpinfo)) {
+			*s->transport = *s->target = *s->topts = 0;
+			strncat(s->transport,strele(0,",",s->tpinfo),sizeof(s->transport)-1);
+			strncat(s->target,strele(1,",",s->tpinfo),sizeof(s->target)-1);
+			strncat(s->topts,strele(2,",",s->tpinfo),sizeof(s->topts)-1);
+		}
+
+		/* Init our transport */
+		if (jbd_tp_init(s)) return 1;
+
+		/* Add our internal params to the config */
+		jbd_config_add_parms(s);
 
 #ifdef JS
 		/* Init JS */
+		jbd_config_add_jbd_data(s);
 		r = jbd_jsinit(s);
 #endif
 	    }
 	    break;
-#ifndef JS
 	case SOLARD_CONFIG_GET_INFO:
 		{
 			json_value_t **vpp = va_arg(va,json_value_t **);
 			dprintf(1,"vpp: %p\n", vpp);
 			if (vpp) {
-				r = jbd_get_info(s);
-				dprintf(1,"s->info: %p\n", s->info);
-				if (!r) *vpp = s->info;
+				*vpp = jbd_get_info(s);
+				if (*vpp) r = 0;
 			}
 		}
-#endif
 		break;
 	case SOLARD_CONFIG_GET_DRIVER:
 		dprintf(1,"GET_DRIVER called!\n");

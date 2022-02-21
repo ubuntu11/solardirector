@@ -1,61 +1,32 @@
 
 #include "solard.h"
 
-extern solard_driver_t sd_driver;
+#define dlevel 1
 
-#define AGENTINFO_PROPS \
-	{ "agent_name", DATA_TYPE_STRING, info->agent, sizeof(info->agent)-1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 }, \
-	{ "agent_path", DATA_TYPE_STRING, info->path, sizeof(info->path)-1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 }, \
-	{ "agent_role", DATA_TYPE_STRING, info->role, sizeof(info->role)-1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 }, \
-	{ "name", DATA_TYPE_STRING, info->name, sizeof(info->name)-1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 }, \
-	{ "transport", DATA_TYPE_STRING, info->transport, sizeof(info->transport)-1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 }, \
-	{ "target", DATA_TYPE_STRING, info->target, sizeof(info->target)-1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 }, \
-	{ "tops", DATA_TYPE_STRING, info->topts, sizeof(info->topts)-1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 }, \
-	{ "managed", DATA_TYPE_BOOL, &info->managed, 0, "1", 0, 0, 0, 0, 0, 0, 0, 1, 0 }
-
-static int get_agent_config(config_t *cp, char *sname, solard_agentinfo_t *info) {
-	config_property_t agent_props[] = {
-		AGENTINFO_PROPS,
-		{ 0 }
-	};
-	config_property_t *p, *pp;
-	config_section_t *s;
-
-	s = config_get_section(cp, sname);
-	if (!s) {
-		log_error("section not found: %s\n", sname);
-		return 1;
-	}
-	for(p = agent_props; p->name; p++) {
-		pp = config_section_get_property(s,p->name);
-		dprintf(1,"p->name: %s, pp: %p\n", p->name, pp);
-		if (!pp) continue;
-		conv_type(p->type,p->dest,p->len,pp->type,pp->dest,pp->len);
-		dprintf(1,"prop: name: %s, id: %d, type: %d, flags: %02x, def: %p\n",p->name, p->id, p->type,p->flags, p->def);
-	}
-	config_add_props(cp, sname, agent_props, CONFIG_FLAG_NOID);
-	config_dump(cp);
-	return 0;
-}
+#define AGENTINFO_PROPS(info) \
+	{ "agent_name", DATA_TYPE_STRING, (info)->agent, sizeof((info)->agent)-1, "", 0, 0, 0, 0, 0, 0, 0, 1, 0 }, \
+	{ "agent_path", DATA_TYPE_STRING, (info)->path, sizeof((info)->path)-1, "", 0, 0, 0, 0, 0, 0, 0, 1, 0 }, \
+	{ "agent_role", DATA_TYPE_STRING, (info)->role, sizeof((info)->role)-1, "", 0, 0, 0, 0, 0, 0, 0, 1, 0 }, \
+	{ "name", DATA_TYPE_STRING, (info)->name, sizeof((info)->name)-1, "", 0, 0, 0, 0, 0, 0, 0, 1, 0 }, \
+	{ "transport", DATA_TYPE_STRING, (info)->transport, sizeof((info)->transport)-1, "", 0, 0, 0, 0, 0, 0, 0, 1, 0 }, \
+	{ "target", DATA_TYPE_STRING, (info)->target, sizeof((info)->target)-1, "", 0, 0, 0, 0, 0, 0, 0, 1, 0 }, \
+	{ "topts", DATA_TYPE_STRING, (info)->topts, sizeof((info)->topts)-1, "", 0, 0, 0, 0, 0, 0, 0, 1, 0 }, \
+	{ "managed", DATA_TYPE_BOOL, &(info)->managed, 0, "yes", 0, 0, 0, 0, 0, 0, 0, 1, 0 }, \
+	{ 0 }
 
 static int set_agent_config(config_t *cp, char *sname, solard_agentinfo_t *info) {
-	config_property_t agent_props[] = {
-		AGENTINFO_PROPS,
-		{ 0 }
-	};
-	config_property_t *p, *pp;
-	config_section_t *s;
-
-	config_add_props(cp, sname, agent_props, 0 );
+//	solard_agentinfo_t newinfo;
+//	config_property_t props[] = { AGENTINFO_PROPS(&newinfo) };
 	return 0;
 }
 
 int solard_read_config(solard_config_t *conf) {
-	char index[16],temp[1024];
+	char index[16];
 	config_section_t *s,*as;
 	config_property_t *p;
 	int i,count;
-	solard_agentinfo_t newagent,*info;
+	solard_agentinfo_t newinfo;
+	config_property_t props[] = { AGENTINFO_PROPS(&newinfo) };
 
 	/* Get the agents section */
 	s = config_get_section(conf->ap->cp, "agents");
@@ -75,19 +46,17 @@ int solard_read_config(solard_config_t *conf) {
 			log_warning("agents entry for %s does not exist",index);
 			continue;
 		}
-		conv_type(DATA_TYPE_STRING,temp,sizeof(temp)-1,p->type,p->dest,p->len);
-		dprintf(1,"p->name: %s, value: %s\n", p->name, temp);
-		as = config_get_section(conf->ap->cp, temp);
+		dprintf(1,"dest: %s\n", p->dest);
+		as = config_get_section(conf->ap->cp, p->dest);
 		if (!as) {
-			log_warning("section %s does not exist for agents entry %s",temp,index);
+			log_warning("section %s does not exist for agents entry %s",p->dest,index);
 			continue;
 		}
 
-		memset(&newagent,0,sizeof(newagent));
-		info = list_add(conf->agents,&newagent,sizeof(newagent));
-		dprintf(1,"info: %p\n", info);
-		if (!info) continue;
-		get_agent_config(conf->ap->cp, temp, info);
+		memset(&newinfo,0,sizeof(newinfo));
+		config_section_get_properties(as, props);
+		agentinfo_newid(&newinfo);
+		agentinfo_add(conf,&newinfo);
 	}
 	return 0;
 }
@@ -159,44 +128,91 @@ int solard_agent_init(int argc, char **argv, opt_proctab_t *sd_opts, solard_conf
                         "range", 3, (int []){ 0, 1440, 1 }, 1, (char *[]) { "Agent check interval" }, "S", 1, 0 },
 		{ "notify", DATA_TYPE_STRING, &conf->notify_path, sizeof(conf->notify_path)-1, "", 0,
 			0, 0, 0, 0, 0, 0, 1, 0 },
-		{ "agents", DATA_TYPE_STRING_LIST, conf->agents, 0, 0, CONFIG_FLAG_NOID },
-		{ "batteries", DATA_TYPE_STRING_LIST, conf->batteries, 0, 0, CONFIG_FLAG_NOID | CONFIG_FLAG_NOSAVE },
+//		{ "agents", DATA_TYPE_STRING_LIST, conf->agents, 0, 0, CONFIG_FLAG_NOID },
+//		{ "batteries", DATA_TYPE_STRING_LIST, conf->batteries, 0, 0, CONFIG_FLAG_NOID | CONFIG_FLAG_NOSAVE },
 		{0}
 	};
 	config_function_t sd_funcs[] = {
-		{ "Add", (config_funccall_t *)solard_add_config, conf, 2 },
+		{ "add", (config_funccall_t *)solard_add_config, conf, 2 },
 		{0}
 	};
 
 	conf->ap = agent_init(argc,argv,sd_opts,&sd_driver,conf,sd_props,sd_funcs);
 	dprintf(1,"ap: %p\n",conf->ap);
-	if (!conf->ap) return 1;
+	return (conf->ap ? 0 : 1);
+}
+
+#if 0
+
+static int solard_cb(void *ctx) {
+	solard_config_t *conf = ctx;
+	list agents = conf->c->agents;
+	client_agentinfo_t *ap;
+	char *p;
+
+#if 0
+	time_t cur,diff;
+
+	/* Check agents */
+	time(&cur);
+	diff = cur - conf->last_check;
+	dprintf(3,"diff: %d, interval: %d\n", (int)diff, conf->interval);
+	if (diff >= conf->interval) {
+		check_agents(conf);
+		solard_monitor(conf);
+		agent_start_script(conf->ap,"monitor.js");
+		time(&conf->last_check);
+	}
+	dprintf(1,"mem used: %ld\n", mem_used() - conf->start);
+	return 0;
+#endif
+        /* Update the agents */
+	dprintf(0,"count: %d\n", list_count(agents));
+        list_reset(agents);
+        while((ap = list_get_next(agents)) != 0) {
+                p = client_getagentrole(ap);
+                if (!p) continue;
+		dprintf(0,"role: %s, name: %s, count: %d\n", p, ap->name, list_count(ap->mq));
+		if (strcmp(p,SOLARD_ROLE_BATTERY)) getpack(conf,ap);
+                else if (strcmp(p,SOLARD_ROLE_BATTERY)) getinv(conf,ap);
+                else list_purge(ap->mq);
+        }
 	return 0;
 }
+#endif
 
 int solard_config(void *h, int req, ...) {
 	solard_config_t *conf = h;
 	int r;
-	va_list ap;
+	va_list va;
 
 	r = 1;
 	dprintf(1,"req: %d\n", req);
-	va_start(ap,req);
+	va_start(va,req);
 	switch(req) {
 	case SOLARD_CONFIG_INIT:
-		conf->ap = va_arg(ap,solard_agent_t *);
+		conf->ap = va_arg(va,solard_agent_t *);
 		dprintf(1,"name: %s\n", conf->ap->instance_name);
 		dprintf(1,"conf->ap: %p\n", conf->ap);
 		r = solard_read_config(conf);
+
+		/* Set callback */
+//		agent_set_callback(conf->ap,solard_cb,conf);
+
 #ifdef JS
 		if (!r) r = solard_jsinit(conf);
 #endif
 		break;
-#if 0
-	case SOLARD_CONFIG_MESSAGE:
-		r = solard_config_getmsg(conf,va_arg(ap,solard_message_t *));
+	case SOLARD_CONFIG_GET_INFO:
+		{
+			json_value_t **vp = va_arg(va,json_value_t **);
+			dprintf(dlevel,"vp: %p\n", vp);
+			if (vp) {
+				*vp = sd_get_info(conf);
+				r = 0;
+			}
+		}
 		break;
-#endif
 	}
 	dprintf(1,"r: %d\n", r);
 	return r;

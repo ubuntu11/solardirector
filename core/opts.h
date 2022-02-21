@@ -10,6 +10,9 @@ LICENSE file in the root directory of this source tree.
 #ifndef __OPTS_H
 #define __OPTS_H
 
+struct opt_process_table;
+typedef void (opts_ptcallback_t)(struct opt_process_table *, char *);
+//char *,void *,int,json_value_t *);
 struct opt_process_table {
 	char *keyword;                  /* Keyword */
 	void *dest;                     /* Dest addr */
@@ -17,6 +20,7 @@ struct opt_process_table {
 	int len;                        /* Dest size */
 	int reqd;                       /* Required flag */
 	void *value;                    /* Default value */
+	opts_ptcallback_t *cb;		/* Callback */
 	int have;                       /* Internal flags */
 };
 typedef struct opt_process_table opt_proctab_t;

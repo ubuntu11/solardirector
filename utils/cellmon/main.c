@@ -9,6 +9,8 @@ LICENSE file in the root directory of this source tree.
 
 #include "cellmon.h"
 
+#define TESTING 0
+
 solard_battery_t *find_pack_by_name(cellmon_config_t *conf, char *name) {
 	solard_battery_t *pp;
 
@@ -43,9 +45,13 @@ int sort_packs(void *i1, void *i2) {
 void getpack(cellmon_config_t *conf, char *name, char *data) {
 	solard_battery_t bat,*pp = &bat;
 
-//	dprintf(1,"getting pack: name: %s, data: %s\n", name, data);
-	battery_from_json(&bat,data);
-//	battery_dump(&bat,3);
+	dprintf(1,"getting pack: name: %s, data: %s\n", name, data);
+	if (battery_from_json(&bat,data)) {
+		dprintf(0,"battery_from_json failed with %s\n", data);
+		return;
+	}
+	dprintf(1,"dumping...\n");
+	battery_dump(&bat,1);
 	solard_set_state((&bat),BATTERY_STATE_UPDATED);
 	time(&bat.last_update);
 	if (!strlen(bat.name)) return;
@@ -69,9 +75,9 @@ int main(int argc,char **argv) {
 	client_agentinfo_t *ap;
 	solard_message_t *msg;
 	char configfile[256],topic[SOLARD_TOPIC_SIZE];
-	char target[SOLARD_ROLE_LEN+SOLARD_NAME_LEN+2];
-	char role[SOLARD_ROLE_LEN];
-	char name[SOLARD_NAME_LEN];
+//	char target[SOLARD_ROLE_LEN+SOLARD_NAME_LEN+2];
+//	char role[SOLARD_ROLE_LEN];
+//	char name[SOLARD_NAME_LEN];
 	long start;
 //	int web_flag;
 	opt_proctab_t opts[] = {
@@ -81,9 +87,11 @@ int main(int argc,char **argv) {
 		OPTS_END
 	};
 	register char *p;
+	list agents;
 #if TESTING
-	char *args[] = { "t2", "-d", "2", "-c", "cellmon.conf" };
-	#define nargs (sizeof(args)/sizeof(char *))
+	char *args[] = { "cellmon", "-d", "2", "-c", "cellmon.conf" };
+	argc = (sizeof(args)/sizeof(char *));
+	argv = args;
 #endif
 
 	find_config_file("cellmon.conf",configfile,sizeof(configfile)-1);
@@ -95,14 +103,50 @@ int main(int argc,char **argv) {
 	if (!conf->c) return 1;
 	conf->packs = list_create();
 
+#if 0
 	if (!strlen(topic)) {
 		p = cfg_get_item(conf->c->cfg,"cellmon","topic");
 		if (p) strncat(topic,p,sizeof(topic)-1);
-		else strcpy(topic,"SolarD/Battery/+/Data");
+		else sprintf(topic,"%s/%s/+/%s",SOLARD_TOPIC_ROOT,SOLARD_TOPIC_AGENTS,SOLARD_FUNC_DATA);
 	}
+	printf("topic: %s\n", topic);
 
 	if (mqtt_sub(conf->c->m,topic)) return 1;
+#endif
 
+	agents = conf->c->agents;
+	sleep(1);
+        if (!list_count(agents)) {
+                sleep(1);
+                if (!list_count(agents)) {
+                        log_error("no agents responded, aborting\n");
+                        return 1;
+                }
+        }
+
+	/* main loop */
+	start = mem_used();
+	while(1) {
+		list_reset(agents);
+		while((ap = list_get_next(agents)) != 0) {
+			dprintf(1,"agent: %s\n", ap->name);
+			p = client_getagentrole(ap);
+			dprintf(1,"p: %s\n", p);
+			if (!p || strcmp(p,SOLARD_ROLE_BATTERY) != 0) continue;
+			dprintf(1,"count: %d\n", list_count(ap->mq));
+			while((msg = list_get_next(ap->mq)) != 0) {
+				dprintf(1,"getting pack...\n");
+				getpack(conf,msg->name,msg->data);
+				dprintf(1,"adding...\n");
+				list_delete(ap->mq,msg);
+			}
+		}
+		display(conf);
+		dprintf(1,"used: %ld\n", mem_used() - start);
+		sleep(1);
+	}
+
+#if 0
 	/* main loop */
 	start = mem_used();
 	while(1) {
@@ -123,12 +167,6 @@ int main(int argc,char **argv) {
 			}
 			if (!*role) {
 				strncpy(name,msg->id,sizeof(name)-1);
-				ap = 0;
-				if (strlen(msg->replyto)) ap = client_getagentbyid(conf->c,msg->replyto);
-//				printf("ap: %p\n", ap);
-				if (!ap) ap = client_getagentbyname(conf->c,msg->id);
-//				printf("ap: %p\n", ap);
-				if (!ap) continue;
 				strncpy(role,ap->role,sizeof(role)-1);
 			}
 //			printf("name: %s, role: %s\n", name, role);
@@ -141,5 +179,6 @@ int main(int argc,char **argv) {
 		dprintf(1,"used: %ld\n", mem_used() - start);
 		sleep(1);
 	}
+#endif
 	return 0;
 }

@@ -431,7 +431,8 @@ void opt_setopt(opt_proctab_t *opt,char *arg) {
 			arg = "False";
 	}
 	dprintf(dlevel,"opt_setopt: keyword: %s, arg: %s", opt->keyword, arg);
-	conv_type(opt->type,opt->dest,opt->len, DATA_TYPE_STRING,arg,strlen(arg));
+	if (opt->cb) opt->cb(opt,arg);
+	else conv_type(opt->type,opt->dest,opt->len,DATA_TYPE_STRING,arg,strlen(arg));
 	opt->have = 1;
 	return;
 }

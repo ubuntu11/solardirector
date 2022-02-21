@@ -12,5 +12,6 @@ extern solard_driver_t ip_driver;
 extern solard_driver_t rdev_driver;
 extern solard_driver_t serial_driver;
 extern solard_driver_t http_driver;
+extern solard_driver_t https_driver;
 
 #endif

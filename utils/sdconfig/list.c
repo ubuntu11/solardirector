@@ -54,7 +54,7 @@ static int do_list_item(char *target, int level, json_object_t *o, int hdr) {
 		if (scope) { 
 			dprintf(dlevel,"scope: %s\n", scope);
 			p += sprintf(p,SCOPE_FORMAT,scope);
-			if (strcmp(scope,"select")==0) {
+			if (strcmp(scope,"select")==0 || strcmp(scope,"mselect")==0) {
 				json_array_t *values;
 				float num;
 				int inum;

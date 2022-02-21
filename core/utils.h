@@ -29,6 +29,7 @@ void bindump(char *label,void *bptr,int len);
 void _bindump(long offset,void *bptr,int len);
 char *trim(char *);
 char *strele(int num,char *delimiter,char *string);
+char *stredit(char *string, char *list);
 int is_ip(char *);
 int get_timestamp(char *ts, int tslen, int local);
 int become_daemon(void);
@@ -86,6 +87,7 @@ int os_setenv(const char *name, const char *value, int overwrite);
 int fork(void);
 #endif
 int os_gethostbyname(char *dest, int destsize, char *name);
+int os_exists(char *path, char *name);
 
 int double_equals(double a, double b);
 int float_equals(float a, float b);

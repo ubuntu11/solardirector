@@ -42,7 +42,7 @@ struct ip_session {
 };
 typedef struct ip_session ip_session_t;
 
-static void *ip_new(void *conf, void *target, void *topts) {
+static void *ip_new(void *target, void *topts) {
 	ip_session_t *s;
 	char *p;
 
@@ -105,7 +105,7 @@ static int ip_open(void *handle) {
 	return 0;
 }
 
-static int ip_read(void *handle, void *buf, int buflen) {
+static int ip_read(void *handle, uint32_t *control, void *buf, int buflen) {
 	ip_session_t *s = handle;
 	int bytes, bidx, num;
 	struct timeval tv;
@@ -150,7 +150,7 @@ static int ip_read(void *handle, void *buf, int buflen) {
 	return bidx;
 }
 
-static int ip_write(void *handle, void *buf, int buflen) {
+static int ip_write(void *handle, uint32_t *control, void *buf, int buflen) {
 	ip_session_t *s = handle;
 	int bytes;
 
@@ -200,7 +200,6 @@ static int ip_destroy(void *handle) {
 }
 
 solard_driver_t ip_driver = {
-	SOLARD_DRIVER_TRANSPORT,
 	"ip",
 	ip_new,
 	ip_destroy,

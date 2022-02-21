@@ -1,7 +1,7 @@
 
 PROGNAME=jk
-SRCS=main.c jk.c io.c info.c read.c config.c
-TRANSPORTS=bluetooth,ip,can,serial,rdev
+SRCS=main.c jk.c io.c info.c config.c jsfuncs.c
+SCRIPTS=pub.js
 
 BLUETOOTH=yes
 

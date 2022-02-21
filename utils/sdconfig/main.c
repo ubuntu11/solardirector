@@ -10,6 +10,7 @@ LICENSE file in the root directory of this source tree.
 #include "sdconfig.h"
 
 #define TESTING 0
+#define dlevel 4
 
 int main(int argc,char **argv) {
 	char target[SOLARD_NAME_LEN];
@@ -44,7 +45,7 @@ int main(int argc,char **argv) {
 
 	if (ping_flag) strcpy(func,"ping");
 
-	dprintf(1,"target: %s, func: %s, %d\n", target, func);
+	dprintf(dlevel,"target: %s, func: %s, %d\n", target, func);
 	if (!strlen(func) && !list_flag && !func_flag) {
 		log_error("either list flag or func must be specified\n");
 		return 1;
@@ -63,9 +64,12 @@ int main(int argc,char **argv) {
 		}
 	}
 
-	if (list_flag) {
+	if (list_flag || strcmp(func,"-l") == 0) {
 		list_reset(c->agents);
-		while((ap = list_get_next(c->agents)) != 0) do_list(ap);
+		while((ap = list_get_next(c->agents)) != 0) {
+			if (!client_matchagent(ap,target)) continue;
+			do_list(ap);
+		}
 		return 0;
 	}
 
@@ -103,22 +107,20 @@ int main(int argc,char **argv) {
 	}
 	if (!called) return 0;
 
-	dprintf(0,"my id: %s\n", c->mqtt_config.clientid);
-
 	/* get the replies... */
 	time(&start);
 	while(1) {
 		have_all = 1;
 		list_reset(c->mq);
 		while((msg = list_get_next(c->mq)) != 0) {
-			solard_message_dump(msg,0);
-//			dprintf(0,"mdg->id: %s, clientid: %s\n", msg->id, c->mqtt_config.clientid);
-			if (strcmp(msg->id,c->mqtt_config.clientid) == 0) {
+			solard_message_dump(msg,6);
+//			dprintf(dlevel,"mdg->id: %s, clientid: %s\n", msg->id, c->mqtt_config.clientid);
+			if (strcmp(msg->id,c->mc.clientid) == 0) {
 				ap = 0;
 				if (strlen(msg->replyto)) ap = client_getagentbyid(c,msg->replyto);
 				if (!ap) ap = client_getagentbyname(c,msg->id);
 				if (ap) client_getagentstatus(ap,msg);
-				dprintf(0,"pub...\n");
+				dprintf(dlevel,"pub...\n");
 				mqtt_pub(c->m, msg->topic, 0, 1, 0);
 				sleep(1);
 			}
@@ -127,9 +129,9 @@ int main(int argc,char **argv) {
 		list_reset(c->agents);
 		while((ap = list_get_next(c->agents)) != 0) {
 			if (!client_matchagent(ap,target)) continue;
-			dprintf(0,"checking: %s...\n", ap->name);
+			dprintf(dlevel,"checking: %s...\n", ap->name);
 			if (solard_check_bit(ap->state,CLIENT_AGENTINFO_STATUS)) {
-				dprintf(0,"got reply: status: %d, errmsg: %s\n", ap->status, ap->errmsg);
+				dprintf(dlevel,"got reply: status: %d, errmsg: %s\n", ap->status, ap->errmsg);
 				printf("%s: %s\n", ap->name, ap->errmsg);
 			} else {
 				have_all = 0;
@@ -137,7 +139,7 @@ int main(int argc,char **argv) {
 		}
 		if (have_all) break;
 		time(&now);
-		if ((now - start) > 10)  {
+		if ((now - start) > timeout)  {
 			printf("timeout\n");
 			break;
 		}

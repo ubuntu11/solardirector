@@ -163,11 +163,14 @@ struct si_session {
 	int can_fallback;
 	solard_driver_t *can;
 	void *can_handle;
+	bool can_init;
 	bool can_connected;
 	pthread_t th;
+#if 0
 	struct can_frame frames[SI_NFRAMES];
 	uint32_t bitmaps[SI_NBITMAPS];
 	int (*can_read)(struct si_session *, int id, uint8_t *data, int len);
+#endif
 	si_data_t data;			/* CAN info will be read into this struct */
 	/* SMANET */
 	char smanet_transport[SOLARD_TRANSPORT_LEN];
@@ -276,10 +279,10 @@ struct si_session {
 };
 typedef struct si_session si_session_t;
 
-//#define SI_STATE_STARTUP	0x01
-#define SI_STATE_RUNNING	0x02
-#define SI_STATE_CHARGING	0x04
+#define SI_STATE_RUNNING	0x01
+#define SI_STATE_CHARGING	0x02
 #define SI_STATE_OPEN		0x10
+#define SI_STATE_CAN_INIT	0x20
 
 #define SI_VOLTAGE_MIN	36.0
 #define SI_VOLTAGE_MAX	64.0
@@ -303,6 +306,7 @@ int si_can_init(si_session_t *s);
 int si_can_set_reader(si_session_t *s);
 int si_can_read_relays(si_session_t *s);
 int si_can_read_data(si_session_t *s, int all);
+int si_can_read(si_session_t *s, int id, uint8_t *data, int rdlen);
 int si_can_write(si_session_t *s, int id, uint8_t *data, int data_len);
 int si_can_write_va(si_session_t *s);
 int si_can_write_data(si_session_t *s);

@@ -309,6 +309,7 @@ static void _addchans(si_session_t *s) {
 	/* Re-create info and publish it */
 	if (s->ap->driver_info) json_destroy_value(s->ap->driver_info);
 	s->ap->driver_info = si_get_info(s);
+	printf("publishing new info...\n");
 	agent_pubinfo(s->ap,0);
 
 	dprintf(1,"unlocking...\n");

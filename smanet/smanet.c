@@ -18,7 +18,7 @@ static int tp_get(void *handle, uint8_t *buffer, int buflen) {
 	smanet_session_t *s = handle;
 	int bytes;
 
-	bytes = s->tp->read(s->tp_handle,buffer,buflen);
+	bytes = s->tp->read(s->tp_handle,0,buffer,buflen);
 	dprintf(dlevel,"bytes: %d\n", bytes);
 	return bytes;
 }
@@ -37,7 +37,7 @@ int smanet_connect(smanet_session_t *s, char *transport, char *target, char *top
 	}
 
 	/* Create a new driver instance */
-	s->tp_handle = s->tp->new(s, target, topts ? topts : "");
+	s->tp_handle = s->tp->new(target, topts ? topts : "");
 	if (!s->tp_handle) {
 		sprintf(s->errmsg,"%s_new: %s", transport, strerror(errno));
 		goto smanet_connect_error;

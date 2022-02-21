@@ -162,6 +162,7 @@ solard_agentinfo_t *agentinfo_add(solard_config_t *conf, solard_agentinfo_t *inf
 	if (strcmp(info->role,SOLARD_ROLE_BATTERY)==0) {
 		solard_battery_t newbat;
 
+dprintf(1,"\n\n************************** ADDDING BAT\n\n");
 		memset(&newbat,0,sizeof(newbat));
 		strcpy(newbat.name,info->name);
 		time(&newbat.last_update);

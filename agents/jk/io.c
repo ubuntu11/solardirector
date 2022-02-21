@@ -115,7 +115,7 @@ unsigned short jk_can_crc(unsigned char *pchMsg) {
 	return wCRC;
 }
 
-int jk_can_get(jk_session_t *s, int id, unsigned char *data, int datalen, int chk) {
+int jk_can_get(jk_session_t *s, uint32_t id, unsigned char *data, int datalen, int chk) {
         unsigned short crc, mycrc;
 	int retries,bytes,len;
 	struct can_frame frame;
@@ -126,9 +126,9 @@ int jk_can_get(jk_session_t *s, int id, unsigned char *data, int datalen, int ch
 		/* First, write a 0 len frame to the ID */
 		frame.can_id = id;
 		frame.can_dlc = 0;
-		if (s->tp->write(s->tp_handle,&frame,sizeof(frame)) < 0) return 1;
+		if (s->tp->write(s->tp_handle,&id,&frame,sizeof(frame)) < 0) return 1;
 		/* Then read the response */
-		bytes = s->tp->read(s->tp_handle,&frame,sizeof(frame));
+		bytes = s->tp->read(s->tp_handle,&id,&frame,sizeof(frame));
 		dprintf(3,"bytes: %d\n", bytes);
 		if (bytes < 0) return 1;
 		memset(data,0,datalen);
@@ -148,7 +148,7 @@ int jk_can_get(jk_session_t *s, int id, unsigned char *data, int datalen, int ch
 	return (retries < 0);
 }
 
-int jk_can_get_crc(jk_session_t *s, int id, unsigned char *data, int len) {
+int jk_can_get_crc(jk_session_t *s, uint32_t id, unsigned char *data, int len) {
 	return jk_can_get(s,id,data,len,1);
 }
 
@@ -172,10 +172,10 @@ int jk_rw(jk_session_t *s, uint8_t action, uint8_t reg, uint8_t *data, int datas
 			return -1;
 		}
 		dprintf(5,"writing...\n");
-		bytes = s->tp->write(s->tp_handle,cmd,cmdlen);
+		bytes = s->tp->write(s->tp_handle,0,cmd,cmdlen);
 		dprintf(5,"bytes: %d\n", bytes);
 		memset(data,0,datasz);
-		bytes = s->tp->read(s->tp_handle,buf,sizeof(buf));
+		bytes = s->tp->read(s->tp_handle,0,buf,sizeof(buf));
 		dprintf(5,"bytes: %d\n", bytes);
 		if (bytes < 0) return -1;
 		if (!jk_verify(buf,bytes)) break;

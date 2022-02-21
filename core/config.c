@@ -1,6 +1,14 @@
 
+/*
+Copyright (c) 2021, Stephen P. Shoecraft
+All rights reserved.
+
+This source code is licensed under the BSD-style license found in the
+LICENSE file in the root directory of this source tree.
+*/
+
 #define DEBUG_CONFIG 1
-#define dlevel 4
+#define dlevel 1
 
 #ifdef DEBUG
 #undef DEBUG
@@ -41,7 +49,6 @@ config_property_t *config_section_dup_property(config_section_t *s, config_prope
 
 	newp = *p;
 	newp.name = newname;
-	newp.dirty =1 ;
 	return list_add(s->items,&newp,sizeof(newp));
 }
 
@@ -61,6 +68,25 @@ config_property_t *config_section_get_property(config_section_t *s, char *name) 
 		}
 	}
 	dprintf(dlevel,"NOT found\n");
+	return 0;
+}
+
+int config_section_get_properties(config_section_t *s, config_property_t *props) {
+	config_property_t *p,*pp;
+
+	if (!s) return 0;
+
+	dprintf(dlevel,"section: %s\n", s->name);
+
+	for(pp = props; pp->name; pp++) {
+//		printf(1,"pp->name: %s\n", pp->name);
+		p = config_section_get_property(s, pp->name);
+		if (!p) {
+			if (pp->def && pp->dest) pp->len = conv_type(pp->type, pp->dest, pp->dsize, DATA_TYPE_STRING, pp->def, strlen(pp->def));
+			continue;
+		}
+		pp->len = conv_type(pp->type, pp->dest, pp->dsize, p->type, p->dest, p->len);
+	}
 	return 0;
 }
 
@@ -133,7 +159,7 @@ config_property_t * config_section_add_property(config_t *cp, config_section_t *
 		} else if (p->type == DATA_TYPE_STRING) {
 			p->values = _getstr(p->nvalues, p->values);
 		} else {
-			dprintf(dlevel,"unhandled type: %d(%s)\n", p->type, typestr(p->type));
+			log_error("config_section_add_property: unhandled type: %d(%s)\n", p->type, typestr(p->type));
 		}
 	}
 	dprintf(dlevel,"nlabels: %d, labels: %p\n", p->nlabels, p->labels);
@@ -212,7 +238,9 @@ void config_add_props(config_t *cp, char *section_name, config_property_t *props
 	if (!cp || !props) return;
 
 	section = config_get_section(cp,section_name);
+	dprintf(dlevel,"section(1): %p\n", section);
 	if (!section) section = config_create_section(cp,section_name,flags);
+	dprintf(dlevel,"section(2): %p\n", section);
 	if (!section) return;
 	for(p = props; p->name; p++) config_section_add_property(cp, section, p, flags);
 }
@@ -347,7 +375,7 @@ int config_parse_json(config_t *cp, json_value_t *v) {
 				newprop.dest = malloc(strlen(item->value)+1);
 				strcpy(newprop.dest,item->value);
 				newprop.len = strlen(item->value)+1;
-				newprop.flags |= CONFIG_FLAG_FILEONLY;
+				newprop.flags |= CONFIG_FLAG_FILEONLY | CONFIG_FLAG_NOPUB;
 				dprintf(dlevel,"adding...\n");
 				list_add(sec->items,&newprop,sizeof(newprop));
 			}
@@ -402,7 +430,7 @@ cfg_proctab_t *config_cfgtab(config_t *cp) {
 			tp->type = p->type;
 			tp->dest = p->dest;
 			tp->dlen = p->len;
-			tp->def = 0;
+			tp->def = p->def;
 			tp++;
 		}
 	}
@@ -432,13 +460,14 @@ int config_read_ini(config_t *cp, char *filename) {
 	while((cfgsec = list_get_next(cfg->sections)) != 0) {
 		dprintf(dlevel,"cfgsec->name: %s\n", cfgsec->name);
 		sec = config_get_section(cp, cfgsec->name);
-		if (!sec) sec = config_create_section(cp, cfgsec->name,CONFIG_FLAG_FILEONLY);
+		if (!sec) sec = config_create_section(cp, cfgsec->name,CONFIG_FLAG_FILEONLY | CONFIG_FLAG_NOPUB);
 		list_reset(cfgsec->items);
 		while((item = list_get_next(cfgsec->items)) != 0) {
 			dprintf(dlevel,"item->keyword: %s\n", item->keyword);
 			p = config_section_get_property(sec,item->keyword);
 			if (p) {
 				p->len = conv_type(p->type,p->dest,p->dsize,DATA_TYPE_STRING,item->value,strlen(item->value));
+				p->flags |= CONFIG_FLAG_FILE;
 			} else {
 				memset(&newprop,0,sizeof(newprop));
 				newprop.name = malloc(strlen(item->keyword)+1);
@@ -448,7 +477,7 @@ int config_read_ini(config_t *cp, char *filename) {
 				strcpy(newprop.dest,item->value);
 				newprop.dsize = strlen(item->value)+1;
 				newprop.len = strlen(item->value);
-				newprop.flags |= CONFIG_FLAG_FILEONLY;
+				newprop.flags |= (CONFIG_FLAG_FILE | CONFIG_FLAG_FILEONLY | CONFIG_FLAG_NOPUB);
 				dprintf(dlevel,"adding...\n");
 				list_add(sec->items,&newprop,sizeof(newprop));
 			}
@@ -577,12 +606,16 @@ int config_write_ini(config_t *cp) {
 		if (s->flags & CONFIG_FLAG_NOSAVE) continue;
 		list_reset(s->items);
 		while((p = list_get_next(s->items)) != 0) {
-			dprintf(dlevel,"p->flags: %02x\n", p->flags);
-			if (p->flags & CONFIG_FLAG_NOSAVE) continue;
+			if (p->dest == (void *)0) continue;
+			dprintf(dlevel,"p->flags: %x, dirty: %d\n", p->flags, p->dirty);
+			if (solard_check_bit(p->flags,CONFIG_FLAG_NOSAVE)) continue;
+			if (!p->dirty && !solard_check_bit(p->flags,CONFIG_FLAG_FILE)) continue;
+			dprintf(0,"writing: %s\n", p->name);
 			conv_type(DATA_TYPE_STRING,value,sizeof(value)-1,p->type,p->dest,p->len);
 			if (!strlen(value)) continue;
 			dprintf(dlevel,"section: %s, item: %s, value(%d): %s\n", s->name, p->name, strlen(value), value);
 			cfg_set_item(cfg, s->name, p->name, 0, value);
+			p->dirty = 0;
 		}
 	}
 	if (cfg_write(cfg)) {
@@ -592,7 +625,7 @@ int config_write_ini(config_t *cp) {
 	return 0;
 }
 
-json_value_t *config_to_json(config_t *cp) {
+json_value_t *config_to_json(config_t *cp, int noflags) {
 	config_section_t *s;
 	config_property_t *p;
 	json_object_t *co,*so;
@@ -601,13 +634,13 @@ json_value_t *config_to_json(config_t *cp) {
 	co = json_create_object();
 	list_reset(cp->sections);
 	while((s = list_get_next(cp->sections)) != 0) {
-		if (s->flags & CONFIG_FLAG_NOSAVE) continue;
+		if (s->flags & noflags) continue;
 		dprintf(dlevel,"section: %s\n", s->name);
 		if (!list_count(s->items)) continue;
 		so = json_create_object();
 		list_reset(s->items);
 		while((p = list_get_next(s->items)) != 0) {
-			if (p->flags & CONFIG_FLAG_NOSAVE) continue;
+			if (p->flags & noflags) continue;
 			if (!p->dest) continue;
 			v = json_from_type(p->type,p->dest,p->len);
 			if (!v) continue;
@@ -822,75 +855,57 @@ static json_array_t *_get_json_section(json_array_t *a, char *name) {
 static void _add_scope(json_object_t *o, int type, char *scope, int nvalues, void *values) {
 //	int i,*ip;
 //	float *fp;
-	double *da;
 	int i;
 	json_array_t *a;
 
 	dprintf(dlevel,"type: %s, scope: %s, nvalues: %d\n", typestr(type), scope, nvalues);
 	json_object_set_string(o,"scope",scope);
-	da = malloc(nvalues * sizeof(double));
-	if (!da) {
-		log_error("config: _add_scope: malloc(%d)\n", nvalues * sizeof(double));
-		return;
-	}
-	conv_type(DATA_TYPE_F64_ARRAY,da,nvalues,type | DATA_TYPE_ARRAY,values,nvalues);
-	a = json_create_array();
-	if (strcmp(scope,"range")==0) {
-		if (nvalues) json_array_add_number(a,da[0]);
-		if (nvalues > 1) json_array_add_number(a,da[1]);
-		if (nvalues > 2) json_array_add_number(a,da[2]);
-	} else if (strcmp(scope,"select")==0 || strcmp(scope,"mask")==0) {
-		for(i=0; i < nvalues; i++) json_array_add_number(a,da[i]);
+
+	/* Values are a type array of the property type */
+        if (type == DATA_TYPE_BOOLEAN || DATA_TYPE_ISNUMBER(type)) {
+		double *da;
+
+		da = malloc(nvalues * sizeof(double));
+		if (!da) {
+			log_error("config: _add_scope: malloc(%d)\n", nvalues * sizeof(double));
+			return;
+		}
+		conv_type(DATA_TYPE_F64_ARRAY,da,nvalues,type | DATA_TYPE_ARRAY,values,nvalues);
+		a = json_create_array();
+		if (strcmp(scope,"range")==0 && nvalues == 3) {
+			if (nvalues) json_array_add_number(a,da[0]);
+			if (nvalues > 1) json_array_add_number(a,da[1]);
+			if (nvalues > 2) json_array_add_number(a,da[2]);
+		} else if (strcmp(scope,"select")==0 || strcmp(scope,"mask")==0 || strcmp(scope,"mselect")==0) {
+			for(i=0; i < nvalues; i++) json_array_add_number(a,da[i]);
+		} else {
+			log_error("config: _add_scope: unhandled scope: %s\n", scope);
+		}
+		free(da);
+	} else if (type == DATA_TYPE_STRING) {
+		char **sa;
+
+		sa = malloc(nvalues * sizeof(char *));
+		if (!sa) {
+			log_error("config: _add_scope: malloc(%d)\n", nvalues * sizeof(char *));
+			return;
+		}
+		conv_type(DATA_TYPE_STRING_ARRAY,sa,nvalues,type | DATA_TYPE_ARRAY,values,nvalues);
+		for(i=0; i < nvalues; i++) dprintf(1,"sa[%d]: %s\n", i, sa[i]);
+		a = json_create_array();
+		if (strcmp(scope,"range")==0 && nvalues == 3) {
+			if (nvalues) json_array_add_string(a,sa[0]);
+			if (nvalues > 1) json_array_add_string(a,sa[1]);
+			if (nvalues > 2) json_array_add_string(a,sa[2]);
+		} else if (strcmp(scope,"select")==0 || strcmp(scope,"mask")==0 || strcmp(scope,"mselect")==0) {
+			for(i=0; i < nvalues; i++) json_array_add_string(a,sa[i]);
+		} else {
+			log_error("config: _add_scope: unhandled scope: %s\n", scope);
+		}
+	} else {
+		log_error("config: _add_scope: unhandled type: %s\n", typestr(type));
 	}
 	json_object_set_array(o,"values",a);
-	free(da);
-#if 0
-	switch(type) {
-	case DATA_TYPE_FLOAT:
-		fp = (float *) values;
-
-		a = json_create_array();
-		if (strcmp(scope,"range")==0) {
-			if (nvalues) json_array_add_number(a,fp[0]);
-			if (nvalues > 1) json_array_add_number(a,fp[1]);
-			if (nvalues > 2) json_array_add_number(a,fp[2]);
-		} else if (strcmp(scope,"select")==0 || strcmp(scope,"mask")==0) {
-			for(i=0; i < nvalues; i++) json_array_add_number(a,fp[i]);
-		}
-		json_object_set_array(o,"values",a);
-		break;
-	case DATA_TYPE_S16:
-		ip = (uint16_t *) values;
-
-		a = json_create_array();
-		if (strcmp(scope,"range")==0) {
-			if (nvalues) json_array_add_number(a,ip[0]);
-			if (nvalues > 1) json_array_add_number(a,ip[1]);
-			if (nvalues > 2) json_array_add_number(a,ip[2]);
-		} else if (strcmp(scope,"select")==0 || strcmp(scope,"mask")==0) {
-			for(i=0; i < nvalues; i++) json_array_add_number(a,ip[i]);
-		}
-		json_object_set_array(o,"values",a);
-		break;
-	case DATA_TYPE_BOOL:
-	case DATA_TYPE_INT:
-		ip = (int *) values;
-
-		a = json_create_array();
-		if (strcmp(scope,"range")==0) {
-			if (nvalues) json_array_add_number(a,ip[0]);
-			if (nvalues > 1) json_array_add_number(a,ip[1]);
-			if (nvalues > 2) json_array_add_number(a,ip[2]);
-		} else if (strcmp(scope,"select")==0 || strcmp(scope,"mask")==0) {
-			for(i=0; i < nvalues; i++) json_array_add_number(a,ip[i]);
-		}
-		json_object_set_array(o,"values",a);
-		break;
-	default:
-		log_error("config: _add_scope: unhandled type: %d(%s)\n", type, typestr(type));
-		break;
-	}
-#endif
 }
 
 json_object_t *prop_to_json(config_property_t *p) {
@@ -958,6 +973,7 @@ static int config_set_value(void *ctx, list args, char *errmsg) {
 			return 1;
 		}
 		p->len = conv_type(p->type,p->dest,p->dsize,DATA_TYPE_STRING,argv[1],strlen(argv[1]));
+		p->dirty = 1;
 	}
 	return 0;
 }
@@ -1005,7 +1021,7 @@ int config_add_info(config_t *cp, json_object_t *o) {
 
 	list_reset(cp->sections);
 	while((s = list_get_next(cp->sections)) != 0) {
-		if (s->flags & (CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOID)) continue;
+		if (s->flags & (CONFIG_FLAG_NOPUB | CONFIG_FLAG_NOID)) continue;
 		/* it's an array of objects */
 		sa = _get_json_section(ca,s->name);
 		if (!sa) {
@@ -1025,7 +1041,7 @@ int config_add_info(config_t *cp, json_object_t *o) {
 		}
 		list_reset(s->items);
 		while((p = list_get_next(s->items)) != 0) {
-			if (p->flags & (CONFIG_FLAG_NOSAVE | CONFIG_FLAG_FILEONLY)) continue;
+			if (p->flags & (CONFIG_FLAG_NOPUB | CONFIG_FLAG_FILEONLY)) continue;
 			if (_get_json_prop(sa,p->name)) continue;
 			dprintf(dlevel,"adding prop: %s\n", p->name);
 			po = prop_to_json(p);
@@ -1053,6 +1069,7 @@ int config_add_info(config_t *cp, json_object_t *o) {
 	sa = json_create_array();
 	list_reset(cp->funcs);
 	while((f = list_get_next(cp->funcs)) != 0) {
+		if (!f->func) continue;
 		so = json_create_object();
 		json_object_set_string(so,"name",f->name);
 		json_object_set_number(so,"nargs",f->nargs);
@@ -1291,17 +1308,6 @@ JSFunctionSpec *config_to_funcs(config_t *cp, JSFunctionSpec *add) {
 	fp = funcs;
 	list_reset(cp->funcs);
 	while((f = list_get_next(cp->funcs)) != 0) {
-#if 0
-#define JS_FN(name,fastcall,minargs,nargs,flags)                              \
-    {name, (JSNative)(fastcall), nargs,                                       \
-     (flags) | JSFUN_FAST_NATIVE | JSFUN_STUB_GSOPS,                          \
-     (minargs) << 16}
-    const char      *name;
-    JSNative        call;
-    uint8           nargs;
-    uint8           flags;
-    uint16          extra;
-#endif
 		/* Allocate mem for the func */
 		fp->name = f->name;
 		fp->call = jscallfunc;
@@ -1354,6 +1360,7 @@ JSBool config_jssetprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp, confi
 			return JS_FALSE;
 		}
 		jsval_to_type(p->type,p->dest,p->dsize,cx,*vp);
+		p->dirty = 1;
 	}
 	return JS_TRUE;
 }
@@ -1690,6 +1697,7 @@ JSObject *JSConfig(JSContext *cx, void *priv) {
 		JS_NUMCONST(CONFIG_FLAG_NOID),
 		JS_NUMCONST(CONFIG_FLAG_FILEONLY),
 		JS_NUMCONST(CONFIG_FLAG_ALLOC),
+		JS_NUMCONST(CONFIG_FLAG_NOPUB),
 		JS_NUMCONST(CONFIG_FILE_FORMAT_INI),
 		JS_NUMCONST(CONFIG_FILE_FORMAT_JSON),
 		JS_NUMCONST(CONFIG_FILE_FORMAT_CUSTOM),

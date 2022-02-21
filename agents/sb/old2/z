@@ -1,0 +1,151 @@
+	/* Status -> Operation */
+	{ "6100_00416600", 350, { 830,309, }  },		/* Waiting time until feed-in */
+	{ "6180_08214800", 240, { 830,309, }  },		/* Condition */
+	{ "6180_08412800", 239, { 830,309 } },			/* General operating status */
+	{ "6180_08416400", 238, { 830,309, }  },		/* Grid relay status */
+	{ "6180_08416500", 277, { 830,309, }  },		/* Reason for derating */
+	/* Status -> Operation -> Device status */
+	{ "6100_00411E00", 307, { 830,309,241, }, 18 },		/* Ok */
+	{ "6100_00411F00", 455, { 830,309,241, }, 18  },	/* Warning */
+	{ "6100_00412000", 35, { 830,309,241, }, 18  },		/* Fault */
+	/* Status -> Operation -> Inverter */
+	{ "6180_08414C00", 240, { 830, 309, 267 } },		/* Condition */
+	/* Status -> Operation -> Current event */
+	{ "6100_00418000", 153, { 830,309,888, }  },		/* Event number manufacturer */
+	{ "6180_08414900", 297, { 830,309,888, }  },		/* Message */
+	{ "6180_08414A00", 335, { 830,309,888, }  },		/* Recommended action */
+	{ "6180_08414B00", 76, { 830,309,888, }  },		/* Fault correction measure */
+	/* Status -> Operation -> PV system control */
+	{ "6180_08413300", 50, { 830,309,1080, }  },		/* Status */
+	/* Status -> Operation -> Device control */
+	{ "6180_08413200", 50, { 830,309,1087, }  },		/* Status */
+
+	/* Status -> Update */
+	{ "6180_08412900", 50, { 830,704, }  },			/* Status */
+
+	/* Device -> Operation */
+	{ "6180_08436800", 1429, { 832,309 } },			/* Backup mode status */
+
+	/* DC Side -> DC measurements */
+	{ "6200_40451E00", 450, { 834,67, }, 18  },		/* Power */
+	{ "6380_40451F00", 441, { 834,67, }, 14, 0.01  },	/* Voltage */
+	{ "6380_40452100", 38, { 834,67, }, 3, 0.001  },	/* Current */
+	{ "6400_00453300", 4812, { 834,67, }, 19 },		/* Energy release by string */
+	/* DC Side -> SunSpec signal */
+	{ "6180_08452D00", 4816, { 834,4821 } },		/* SunSpec keepalive signal */
+
+	/* AC Side -> Grid measurements */
+	{ "6100_40263F00", 416, { 835,230, }, 18 },		/* Power */
+	{ "6100_00465700", 254, { 835,230, }, 7, 0.01 },	/* Grid frequency */
+	{ "6180_08465A00", 1402, { 835,230 } },			/* Excitation type of cos Phi */
+	/* AC Side -> Grid measurements -> Phase currents */
+	{ "6100_40465300", 325, { 835,230,20, }, 3, 0.001  },	/* Phase L1 */
+	{ "6100_40465400", 327, { 835,230,20, }, 3, 0.001  },	/* Phase L2 */
+	{ "6100_40465500", 329, { 835,230,20, }, 3, 0.001  },	/* Phase L3 */
+	/* AC Side -> Grid measurements -> Phase voltage */
+	{ "6100_00464800", 325, { 835,230,331, }, 14, 0.01  },	/* Phase L1 */
+	{ "6100_00464900", 327, { 835,230,331, }, 14, 0.01  },	/* Phase L2 */
+	{ "6100_00464A00", 329, { 835,230,331, }, 14, 0.01  },	/* Phase L3 */
+	{ "6100_00464B00", 1562, { 835,230,331, }, 14, 0.01  },	/* Phase L1 against L2 */
+	{ "6100_00464C00", 2097, { 835,230,331, }, 14, 0.01  },	/* Phase L2 against L3 */
+	{ "6100_00464D00", 2098, { 835,230,331, }, 14, 0.01  },	/* Phase L3 against L1 */
+	/* AC Side -> Grid measurements -> Power */
+	{ "6100_40571F00", 4697, { 835,230,416 }  },		/* Photovoltaics */
+	/* AC Side -> Grid measurements -> Active power */
+	{ "6100_40464000", 325, { 835,230,448, }, 18, 0.01  },	/* Phase L2 */
+	{ "6100_40464100", 327, { 835,230,448, }, 18, 0.01  },	/* Phase L2 */
+	{ "6100_40464200", 329, { 835,230,448, }, 18, 0.01  },	/* Phase L3 */
+	/* AC Side -> Measured values */
+	{ "6400_00260100", 418, { 835,290, }, 19  },		/* Total yield */
+	{ "6400_00262200", 563, { 835,290, }, 19  },		/* Daily yeild */
+	{ "6400_00462E00", 409, { 835,290, }, 13  },		/* Operating time */
+	{ "6400_00462F00", 411, { 835,290, }, 13  },		/* Feed-in time */
+	/* AC Side -> Measured values -> Grid measurements */
+	{ "6100_40463600", 1408, { 835,290,230, }  },		/* Supplied power */
+	{ "6100_40463700", 890, { 835,290,230, }  },		/* Power absorbed */
+	{ "6100_00464E00", 1401, { 835,290,230, } },		/* Displacement power factor */
+	{ "6100_00468100", 254, { 835,290,230, }, 7, 0.01 },	/* Grid frequency */
+	{ "6100_40468F00", 412, { 835,290,230, }, 7, 0.01 },	/* Apparent power */
+	{ "6100_40469900", 3497, { 835,290,230, }, 18, 0.01 },	/* EEI displacement power factor */
+	{ "6100_4046F100", 413, { 835,290,230, }  },		/* Reactive power */
+	{ "6400_00462400", 418, { 835,290,230, }  },		/* Total yield */
+	{ "6400_00462500", 417, { 835,290,230, }  },		/* Absorbed energy */
+	{ "6400_00469100", 25, { 835,290,230, } },		/* Total counter reading, feed-in counter */
+	{ "6400_00469200", 24, { 835,290,230, } },		/* Total energy absorbed from the grid by the device */
+	/* AC Side -> Measured values -> Grid measurements -> Phase currents */
+	{ "6100_40466500", 325, { 835,290,230,20 } },		/* Phase 1 */
+	{ "6100_40466600", 327, { 835,290,230,20 } },		/* Phase 2 */
+	{ "6100_40466B00", 329, { 835,290,230,20 } },		/* Phase 3 */
+	/* AC Side -> Measured values -> Grid measurements -> Phase voltage */
+	{ "6100_00467700", 2098, { 835,290,230,331 } },		/* Phase L3 against L1 */
+ 	{ "6100_00467800", 1562, { 835,290,230,331 } },		/* Phase L1 against L2 */
+	{ "6100_00467900", 2097, { 835,290,230,331 } },		/* Phase L2 against L3 */
+	{ "6100_0046E500", 325, { 835,290,230,331 } },		/* Phase L1 */
+	{ "6100_0046E600", 327, { 835,290,230,331 } },		/* Phase L2 */
+	{ "6100_0046E700", 329, { 835,290,230,331 } },		/* Phase L3 */
+	/* AC Side -> Measured values -> Grid measurements -> Apparent power */
+	{ "6100_40466C00", 325, { 835, 290, 230, 436 } },	/* Phase L1 */
+	{ "6100_40466D00", 327, { 835, 290, 230, 436 } },	/* Phase L2 */
+	{ "6100_40466E00", 329, { 835, 290, 230, 436 } },	/* Phase L3 */
+	/* AC Side -> Measured values -> Grid measurements -> Reactive power */
+	{ "6100_4046EE00", 325, { 835, 290, 230, 413 } },	/* Phase L1 */
+	{ "6100_4046EF00", 327, { 835, 290, 230, 413 } },	/* Phase L2 */
+	{ "6100_4046F000", 329, { 835, 290, 230, 413 } },	/* Phase L3 */
+	/* AC Side -> Measured values -> Grid measurements -> Active power */
+	{ "6100_0046E800", 325, { 835, 290, 230, 448 } },	/* Phase L1 */
+	{ "6100_0046E900", 327, { 835, 290, 230, 448 } },	/* Phase L2 */
+	{ "6100_0046EA00", 329, { 835, 290, 230, 448 } },	/* Phase L3 */
+	/* AC Side -> Measured values -> Grid measurements -> Active power consumed */
+	{ "6100_0046EB00", 325, { 835, 290, 230, 824 } },	/* Phase L1 */
+	{ "6100_0046EC00", 327, { 835, 290, 230, 824 } },	/* Phase L2 */
+	{ "6100_0046ED00", 329, { 835, 290, 230, 824 } },	/* Phase L3 */
+	/* AC Side -> Operation */
+	{ "6180_0846A600", 1459, { 835,309, }  },		/* Mains connection */
+	/* AC Side -> PV generation */
+	{ "6100_0046C200", 2369, { 835,2360, }, 18  },		/* PV generation power */
+	{ "6400_0046C300", 2366, { 835,2360, }, 19  },		/* Meter count and PV gen. meter */
+	/* AC Side -> Emergency power measurements */
+	{ "6100_0046C600", 441, { 835, 2484 }, 14, 0.01 },	/* Voltage */
+	{ "6100_0046C700", 38, { 835, 2484 }, 3, 0.001 },	/* Current */
+	{ "6100_0046C800", 416, { 835, 2484 }, 18 },		/* Power */
+
+	/* System communication -> Measured values -> Modbus */
+	{ "6180_084A2C00", 4144, { 839,290,1628 }  },		/* Energy meter used */
+	{ "6180_084A2E00", 240, { 839,290,1628 }  },		/* Condition */
+	/* System communication -> Measured values -> Meter on Speedwire */
+	{ "6180_084AAA00", 240, { 839,290,2314, }  },		/* Condition */
+	/* System communication -> Speedwire */
+	{ "6180_104A9A00", 1712, { 839,1708, }  },		/* Current IP address */
+	{ "6180_104A9B00", 1713, { 839,1708, }  },		/* Current subnet mask */
+	{ "6180_104A9C00", 1714, { 839,1708, }  },		/* Current gateway address */
+	{ "6180_104A9D00", 1715, { 839,1708, }  },		/* Current DNS server address */
+	/* System communication -> Speedwire -> SMACOM A */
+	{ "6180_084A9600", 50, { 839,1708,1709, }  },		/* Status */
+	{ "6180_084A9700", 1711, { 839,1708,1709, }  },		/* Connection speed */
+	/* System communication -> Speedwire -> SMACOM B */
+	{ "6180_084A9800", 50, { 839,1708,1710, }  },		/* Status */
+	{ "6180_084A9900", 1711, { 839,1708,1710, }  },		/* Connection speed */
+	/* System communication -> WLAN */
+	{ "6100_004AB600", 3314, { 839,3313, }, 1  },		/* Signal strength of the selected network */
+	{ "6180_084A6400", 3820, { 839,3313, }  },		/* Soft Access Point status */
+	{ "6180_104AB700", 1712, { 839,3313, }  },		/* Current IP address */
+	{ "6180_104AB800", 1713, { 839,3313, }  },		/* Current subnet mask */
+	{ "6180_104AB900", 1714, { 839,3313, }  },		/* Current gateway address */
+	{ "6180_104ABA00", 1715, { 839,3313, }  },		/* Current DNS server address */
+	{ "6180_084ABB00", 3365, { 839,3313, }  },		/* Status of the scan */
+	{ "6180_084ABC00", 3316, { 839,3313, }  },		/* Connection status */
+	{ "6180_084ABD00", 3317, { 839,3313, }  },		/* Antenna type */
+
+	/* External Communication -> Operation -> EnnexOS */
+	{ "6180_084B2300", 240, { 840,309,4246 }, },		/* Condition */
+	/* External Communication -> Webconnect */
+	{ "6180_084B1E00", 50, { 840,1716, }  },		/* Status */
+
+	/* System and device control -> Operation -> Specification */
+	{ "6180_00522700", 2509, { 847,309,2508, }, 18  },	/* Active power limitation P */
+	{ "6180_40522800", 2510, { 847,309,2508, }  },		/* Reactive power mode */
+	{ "6180_00522900", 2511, { 847,309,2508, }  },		/* cos Phi */
+	{ "6180_08522A00", 2512, { 847,309,2508, }  },		/* Excitation type cos Phi */
+
+	/* System and device control -> Operation -> Active power limitation P */
+	{ "6180_08522F00", 50, { 847,309,2509, }  },		/* Status */

@@ -2,7 +2,7 @@
 SMANET=yes
 
 PROGNAME=si
-SRCS=main.c can.c smanet.c info.c si.c read.c config.c charge.c jsfuncs.c
+SRCS=main.c can.c smanet.c info.c si.c config.c charge.c jsfuncs.c
 
 include ../../Makefile.sd
 

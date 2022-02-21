@@ -31,7 +31,7 @@ static int _std_get_hwinfo(jbd_session_t *s) {
 	dprintf(3,"mfgdate: %s\n", s->hwinfo.mfgdate);
 	version = data[18] / 10.0;
 	sprintf(s->hwinfo.version,"%.1f", version);
-	jbd_eeprom_start(s);
+	if (jbd_eeprom_open(s) < 0) return 1;
 	if (jbd_rw(s, JBD_CMD_READ, JBD_REG_MFGNAME, data, sizeof(data)) < 0) return 1;
 	trim((char *)data);
 	strncat(s->hwinfo.manufacturer,(char *)data,sizeof(s->hwinfo.manufacturer)-1);
@@ -40,7 +40,7 @@ static int _std_get_hwinfo(jbd_session_t *s) {
 	trim((char *)data);
 	strncat(s->hwinfo.model,(char *)data,sizeof(s->hwinfo.model)-1);
 	dprintf(1,"model: %s\n", s->hwinfo.model);
-	jbd_eeprom_end(s);
+	jbd_eeprom_close(s);
 	return 0;
 }
 
@@ -59,24 +59,26 @@ int jbd_get_hwinfo(jbd_session_t *s) {
 	return r;
 }
 
-int jbd_get_info(jbd_session_t *s) {
-	jbd_hwinfo_t info;
+json_value_t *jbd_get_info(jbd_session_t *s) {
 	json_object_t *o;
 	long mem_start;
+	uint8_t data[8];
+	uint16_t val;
+	char tpstr[128];
+	int i,have_info,bytes;
 
 	dprintf(1,"s: %p\n", s);
-	if (!s) return 1;
+	if (!s) return 0;
 
-	memset(&info,0,sizeof(info));
-#if 0
+
 	/* Get the info */
-	if (jbd_open(s) < 0) return 1;
-	if (_get_info(s,&info)) return 1;
+	if (jbd_open(s) < 0) return 0;
+	have_info = (jbd_get_hwinfo(s) ? 0 : 1);
 
 	/* Get balance info */
-	if (jbd_eeprom_start(s) < 0) return 1;
+	if (jbd_eeprom_open(s) < 0) return 0;
 	bytes = jbd_rw(s, JBD_CMD_READ, JBD_REG_FUNCMASK, data, sizeof(data));
-	if (bytes < 0) return 1;
+	if (bytes < 0) return 0;
 	val = jbd_getshort(data);
 	dprintf(1,"val: %d\n", val);
 	if (val & JBD_FUNC_CHG_BALANCE)
@@ -85,35 +87,31 @@ int jbd_get_info(jbd_session_t *s) {
 		s->balancing = 1;
 	else
 		s->balancing = 0;
-	jbd_close(s);
-#endif
+	jbd_eeprom_close(s);
 
 	mem_start = mem_used();
 	dprintf(1,"mem_start: %ld\n",mem_start);
 
 	o = json_create_object();
-	if (!o) return 1;
-	json_object_set_string(o,"agent_name","jbd");
+	if (!o) return 0;
+	json_object_set_string(o,"agent_name",jbd_driver.name);
 	json_object_set_string(o,"agent_role",SOLARD_ROLE_BATTERY);
 	json_object_set_string(o,"agent_description","JBD BMS Agent");
 	json_object_set_string(o,"agent_version",jbd_version_string);
 	json_object_set_string(o,"agent_author","Stephen P. Shoecraft");
-	json_object_set_string(o,"device_manufacturer",info.manufacturer);
-	json_object_set_string(o,"device_model",info.model);
-	json_object_set_string(o,"device_mfgdate",info.mfgdate);
-	json_object_set_string(o,"device_version",info.version);
-#if 0
-	a = json_create_array();
-	json_array_add_descriptor(a,(json_descriptor_t){ "CHARGE_CONTROL", DATA_TYPE_BOOL, 0, 0, 0, 2, (char *[]){ "off", "on" } });
-	json_array_add_descriptor(a,(json_descriptor_t){ "DISCHARGE_CONTROL", DATA_TYPE_BOOL, 0, 0, 0, 2, (char *[]){ "off", "on" } });
-	json_array_add_descriptor(a,(json_descriptor_t){ "BALANCE_CONTROL", DATA_TYPE_INT, "select", 3, (int []){ 0,1,2 }, 3, (char *[]){ "off", "on", "charge" } });
-	json_object_set_value(j,"controls",a);
-	config_add_info(s->ap->cp,a);
-	jbd_config_add_params(o);
-#endif
+	for(*tpstr=i=0; jbd_transports[i]; i++) {
+		if (i) strcat(tpstr,",");
+		strcat(tpstr,jbd_transports[i]->name);
+        }
+	json_object_set_string(o,"agent_transports",tpstr);
+	if (have_info) {
+		json_object_set_string(o,"device_manufacturer",s->hwinfo.manufacturer);
+		json_object_set_string(o,"device_model",s->hwinfo.model);
+		json_object_set_string(o,"device_mfgdate",s->hwinfo.mfgdate);
+		json_object_set_string(o,"device_version",s->hwinfo.version);
+	}
 	config_add_info(s->ap->cp,o);
-	s->info = json_object_get_value(o);
 
 	dprintf(1,"mem_used: %ld\n",mem_used() - mem_start);
-	return 0;
+	return json_object_get_value(o);
 }

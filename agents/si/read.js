@@ -5,21 +5,6 @@ include(agent.libdir+"/utils.js");
 include(agent.libdir+"/inverter.js");
 include(agent.libdir+"/charger.js");
 
-//printf("can_connected: %s, smanet_connected: %s\n", si.can_connected, si.smanet_connected);
-if (!si.can_connected) {
-	dprintf(1,"can_transport: %s, can_target: %s, can_topts: %s\n", si.can_transport, si.can_target, si.can_topts);
-	if (si.can_transport.length && si.can_target.length) si.can_init();
-}
-
-if (0 == 1) {
-if (typeof(last_read) == "undefined") var last_read = Date();
-printf("last_read: %s\n", last_read);
-var cur_read = Date();
-printf("cur_read: %s\n", cur_read);
-var diff = cur_read - last_read;
-printf("diff: %d\n", Math.abs(diff));
-}
-
 var fields = inverter_fields.concat(charger_fields).unique().sort();
 //printf("fields: %s\n", fields);
 
@@ -34,30 +19,15 @@ var fields = inverter_fields.concat(charger_fields).unique().sort();
 //	printf("%s: %s\n", key, data[key]);
 //}
 
-function merge(target, source) {
-    Object.keys(source).forEach(function (key) {
-        if (source[key] && typeof source[key] === 'object') {
-            merge(target[key] = target[key] || {}, source[key]);
-            return;
-        }
-        target[key] = source[key];
-    });
-}
-
-function addit(str,val,text) {
-//	printf("val: %d, text: %s\n", val, text);
-	if (str.length) str += ",";
-str += text + ":" + (val ? "true" : "false");
-	return str;
-}
-
 function addstat(str,val,text) {
 	if (val) str += "[" + text + "]";
 	return str;
 }
+
 /******************************************************/
 //printf("si: %s\n", typeof(si));
 if (typeof(si) != "undefined") {
+	if (!si.can_connected && !si.smanet_connected) exit(0);
 	var data = (typeof(si.data) != "undefined" ? si.data : {});
 	var mydata = data;
 	mydata.charge_current = si.charge_amps;
@@ -68,7 +38,7 @@ if (typeof(si) != "undefined") {
 	}
 	var status = "";
 //	printf("batlev: %f\n", data.battery_level);
-	status = addstat(status,si.bms_mode != 0,"bms");
+	status = addstat(status,si.bms_mode,"bms");
 	status = addstat(status,si.can_connected,"can");
 	status = addstat(status,si.smanet_connected,"smanet");
 	status = addstat(status,si.charge_mode != 0,"charging");
@@ -76,8 +46,16 @@ if (typeof(si) != "undefined") {
 	status = addstat(status,mydata.GdOn,"grid");
 	status = addstat(status,mydata.GnOn,"gen");
 //	printf("status: %s\n", status);
-	printf("%s Battery: Voltage: %.1f, Current: %.1f(%.1f), Level: %.1f\n", status, mydata.battery_voltage,
+if (0 == 1) {
+	printf("%s Battery: Voltage: %.1f, Current: %.1f, Level: %.1f\n", status, mydata.battery_voltage,
+		mydata.battery_current, mydata.battery_level);
+} else if (0 == 1) {
+	printf("%s Battery: Voltage: %.1f, Current: %.1f, Power: %.1f, Level: %.1f\n", status, mydata.battery_voltage,
 		mydata.battery_current, mydata.battery_power, mydata.battery_level);
+} else {
+	printf("%s Battery: Voltage: %.1f, Power: %.1f, Level: %.1f\n", status, mydata.battery_voltage,
+		mydata.battery_power, mydata.battery_level);
+}
 	mydata.status = status;
 //	printf("mydata: %s\n", mydata);
 	fields.push("status");
@@ -114,5 +92,3 @@ if (0 == 1) {
                 }
         }
 }
-
-last_read = Date();

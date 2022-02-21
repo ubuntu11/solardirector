@@ -15,7 +15,7 @@ LICENSE file in the root directory of this source tree.
 *
 ******************************/
 
-static void _get_arr(char *name,void *dest, int len,json_value_t *v) {
+static void _get_arr(void *ctx, char *name,void *dest, int len,json_value_t *v) {
 	solard_battery_t *bp = dest;
 	json_array_t *a;
 	int i,type;
@@ -32,15 +32,17 @@ static void _get_arr(char *name,void *dest, int len,json_value_t *v) {
 		for(i=0; i < a->count; i++) bp->temps[i] = json_value_get_number(a->items[i]);
 		bp->ntemps = a->count;
 	} else if (strcmp(name,"cellvolt")==0) {
-		for(i=0; i < a->count; i++) bp->cells[i].voltage = json_value_get_number(a->items[i]);
+//		for(i=0; i < a->count; i++) bp->cells[i].voltage = json_value_get_number(a->items[i]);
+		for(i=0; i < a->count; i++) bp->cellvolt[i] = json_value_get_number(a->items[i]);
 		bp->ncells = a->count;
 	} else if (strcmp(name,"cellres")==0) {
-		for(i=0; i < a->count; i++) bp->cells[i].resistance = json_value_get_number(a->items[i]);
+//		for(i=0; i < a->count; i++) bp->cells[i].resistance = json_value_get_number(a->items[i]);
+		for(i=0; i < a->count; i++) bp->cellres[i] = json_value_get_number(a->items[i]);
 	}
 	return;
 }
 
-static void _set_arr(char *name,void *dest, int len,json_value_t *v) {
+static void _set_arr(void *ctx, char *name,void *dest, int len,json_value_t *v) {
 	solard_battery_t *bp = dest;
 	json_array_t *a;
 	int i;
@@ -51,15 +53,17 @@ static void _set_arr(char *name,void *dest, int len,json_value_t *v) {
 	if (strcmp(name,"temps")==0) {
 		for(i=0; i < len; i++) json_array_add_number(a,bp->temps[i]);
 	} else if (strcmp(name,"cellvolt")==0) {
-		for(i=0; i < len; i++) json_array_add_number(a,bp->cells[i].voltage);
+//		for(i=0; i < len; i++) json_array_add_number(a,bp->cells[i].voltage);
+		for(i=0; i < len; i++) json_array_add_number(a,bp->cellvolt[i]);
 	} else if (strcmp(name,"cellres")==0) {
-		for(i=0; i < len; i++) json_array_add_number(a,bp->cells[i].resistance);
+//		for(i=0; i < len; i++) json_array_add_number(a,bp->cells[i].resistance);
+		for(i=0; i < len; i++) json_array_add_number(a,bp->cellres[i]);
 	}
 	json_object_set_array(json_value_get_object(v),name,a);
 	return;
 }
 
-static void _flat_arr(char *name,void *dest, int len,json_value_t *v) {
+static void _flat_arr(void *ctx, char *name,void *dest, int len,json_value_t *v) {
 	solard_battery_t *bp = dest;
 	json_object_t *o;
 	char label[32];
@@ -75,12 +79,14 @@ static void _flat_arr(char *name,void *dest, int len,json_value_t *v) {
 	} else if (strcmp(name,"cellvolt")==0) {
 		for(i=0; i < len; i++) {
 			sprintf(label,"cell_%02d",i);
-			json_object_set_number(o,label,bp->cells[i].voltage);
+//			json_object_set_number(o,label,bp->cells[i].voltage);
+			json_object_set_number(o,label,bp->cellvolt[i]);
 		}
 	} else if (strcmp(name,"cellres")==0) {
 		for(i=0; i < len; i++) {
 			sprintf(label,"res_%02d",i);
-			json_object_set_number(o,label,bp->cells[i].resistance);
+//			json_object_set_number(o,label,bp->cells[i].resistance);
+			json_object_set_number(o,label,bp->cellres[i]);
 		}
 	}
 	return;
@@ -91,36 +97,35 @@ static struct battery_states {
 	char *label;
 } states[] = {
 	{ BATTERY_STATE_CHARGING, "Charging" },
+	{ BATTERY_STATE_DISCHARGING, "Discharging" },
 	{ BATTERY_STATE_BALANCING, "Balancing" },
 };
 #define NSTATES (sizeof(states)/sizeof(struct battery_states))
 
-static void _get_state(char *name, void *dest, int len, json_value_t *v) {
+static void _get_state(void *ctx, char *name, void *dest, int len, json_value_t *v) {
 	solard_battery_t *bp = dest;
-	list lp;
-	char *p;
-	int i;
+	char *p,*sp;
+	int i,j;
 
 	p = json_value_get_string(v);
 	dprintf(4,"value: %s\n", p);
-	conv_type(DATA_TYPE_STRING_LIST,&lp,0,DATA_TYPE_STRING,p,strlen(p));
-
-	bp->state = 0;
-	list_reset(lp);
-	while((p = list_get_next(lp)) != 0) {
-		dprintf(6,"p: %s\n", p);
-		for(i=0; i < NSTATES; i++) {
-			if (strcmp(p,states[i].label) == 0) {
-				bp->state |= states[i].mask;
+	for(i=0; i < 99; i++) {
+		sp = strele(i,",",p);
+		if (!strlen(sp)) break;
+		dprintf(4,"sp: %s\n", sp);
+		for(j=0; j < NSTATES; j++) {
+			dprintf(4,"states[j].label: %s\n", states[j].label);
+			if (strcmp(sp,states[j].label) == 0) {
+				dprintf(4,"found\n");
+				bp->state |= states[j].mask;
 				break;
 			}
 		}
 	}
 	dprintf(4,"state: %x\n", bp->state);
-	list_destroy(lp);
 }
 
-static void _set_state(char *name, void *dest, int len, json_value_t *v) {
+static void _set_state(void *ctx, char *name, void *dest, int len, json_value_t *v) {
 	solard_battery_t *bp = dest;
 	char temp[128],*p;
 	int i,j;
@@ -161,7 +166,7 @@ static void _set_state(char *name, void *dest, int len, json_value_t *v) {
 		{ "state",0,bp,0,STATE }, \
 		JSON_PROCTAB_END
 
-static void _dump_arr(char *name,void *dest, int flen,json_value_t *v) {
+static void _dump_arr(void *ctx, char *name,void *dest, int flen,json_value_t *v) {
 	solard_battery_t *bp = dest;
 	char format[16];
 	int i,*dlevel = (int *) v;
@@ -175,10 +180,12 @@ static void _dump_arr(char *name,void *dest, int flen,json_value_t *v) {
 			for(i=0; i < bp->ntemps; i++) printf(format,name,bp->temps[i]);
 		} else if (strcmp(name,"cellvolt")==0) {
 			sprintf(format,"%%%ds: %%.3f\n",flen);
-			for(i=0; i < bp->ncells; i++) printf(format,name,bp->cells[i].voltage);
+//			for(i=0; i < bp->ncells; i++) printf(format,name,bp->cells[i].voltage);
+			for(i=0; i < bp->ncells; i++) printf(format,name,bp->cellvolt[i]);
 		} else if (strcmp(name,"cellres")==0) {
 			sprintf(format,"%%%ds: %%.3f\n",flen);
-			for(i=0; i < bp->ncells; i++) printf(format,name,bp->cells[i].resistance);
+//			for(i=0; i < bp->ncells; i++) printf(format,name,bp->cell[i].resistance);
+			for(i=0; i < bp->ncells; i++) printf(format,name,bp->cellres[i]);
 		}
 #ifdef DEBUG
 	}
@@ -186,7 +193,7 @@ static void _dump_arr(char *name,void *dest, int flen,json_value_t *v) {
 	return;
 }
 
-static void _dump_state(char *name, void *dest, int flen, json_value_t *v) {
+static void _dump_state(void *ctx, char *name, void *dest, int flen, json_value_t *v) {
 	solard_battery_t *bp = dest;
 	char format[16];
 	int *dlevel = (int *) v;
@@ -213,7 +220,7 @@ void battery_dump(solard_battery_t *bp, int dlevel) {
 	sprintf(format,"%%%ds: %%s\n",flen);
 	dprintf(dlevel,"battery:\n");
 	for(p=tab; p->field; p++) {
-		if (p->cb) p->cb(p->field,p->ptr,flen,(void *)&dlevel);
+		if (p->cb) p->cb(bp,p->field,p->ptr,flen,(void *)&dlevel);
 		else {
 			conv_type(DATA_TYPE_STRING,&temp,sizeof(temp)-1,p->type,p->ptr,p->len);
 #ifdef DEBUG
@@ -241,11 +248,16 @@ int battery_from_json(solard_battery_t *bp, char *str) {
 	json_proctab_t battery_tab[] = { BATTERY_TAB(BATTERY_MAX_TEMPS,BATTERY_MAX_CELLS,_get_arr,_get_state) };
 	json_value_t *v;
 
+	dprintf(1,"parsing...\n");
 	v = json_parse(str);
+	dprintf(1,"v: %p\n", v);
+	if (!v) return 1;
 	memset(bp,0,sizeof(*bp));
+	dprintf(1,"getting tab...\n");
 	json_to_tab(battery_tab,v);
 //	battery_dump(bp,3);
 	json_destroy_value(v);
+	dprintf(1,"done!\n");
 	return 0;
 };
 
@@ -333,7 +345,8 @@ static JSBool battery_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rva
 
 				rows = JS_NewArrayObject(cx, bp->ncells, NULL);
 				for(i=0; i < bp->ncells; i++) {
-					JS_NewDoubleValue(cx, bp->cells[i].voltage, &val);
+//					JS_NewDoubleValue(cx, bp->cells[i].voltage, &val);
+					JS_NewDoubleValue(cx, bp->cellvolt[i], &val);
 					JS_SetElement(cx, rows, i, &val);
 				}
 				*rval = OBJECT_TO_JSVAL(rows);
@@ -346,7 +359,8 @@ static JSBool battery_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rva
 
 				rows = JS_NewArrayObject(cx, bp->ncells, NULL);
 				for(i=0; i < bp->ncells; i++) {
-					JS_NewDoubleValue(cx, bp->cells[i].resistance, &val);
+//					JS_NewDoubleValue(cx, bp->cells[i].resistance, &val);
+					JS_NewDoubleValue(cx, bp->cellres[i], &val);
 					JS_SetElement(cx, rows, i, &val);
 				}
 				*rval = OBJECT_TO_JSVAL(rows);

@@ -14,6 +14,7 @@ LICENSE file in the root directory of this source tree.
 #include "mqtt.h"
 #include "utils.h"
 #include "config.h"
+#include "uuid.h"
 
 #define DEBUG_MQTT 1
 #define dlevel 5
@@ -37,23 +38,42 @@ struct mqtt_session {
 };
 typedef struct mqtt_session mqtt_session_t;
 
-#if 0
-int mqtt_get_config(void *cfg, mqtt_config_t *conf) {
-	struct cfg_proctab tab[] = {
-		{ "mqtt", "broker", "Broker URL", DATA_TYPE_STRING,&conf->host,sizeof(conf->host), 0 },
-		{ "mqtt", "clientid", "Client ID", DATA_TYPE_STRING,&conf->clientid,sizeof(conf->clientid), 0 },
-		{ "mqtt", "username", "Broker username", DATA_TYPE_STRING,&conf->user,sizeof(conf->user), 0 },
-		{ "mqtt", "password", "Broker password", DATA_TYPE_STRING,&conf->pass,sizeof(conf->pass), 0 },
-		CFG_PROCTAB_END
-	};
-
-	cfg_get_tab(cfg,tab);
-#ifdef DEBUG
-	if (debug) cfg_disp_tab(tab,"MQTT",0);
-#endif
+int mqtt_parse_config(mqtt_config_t *conf, char *mqtt_info) {
+	strncpy(conf->host,strele(0,",",mqtt_info),sizeof(conf->host)-1);
+	strncpy(conf->clientid,strele(1,",",mqtt_info),sizeof(conf->clientid)-1);
+	strncpy(conf->username,strele(2,",",mqtt_info),sizeof(conf->username)-1);
+	strncpy(conf->password,strele(3,",",mqtt_info),sizeof(conf->password)-1);
+	dprintf(1,"host: %s, clientid: %s, user: %s, pass: %s\n", conf->host, conf->clientid, conf->username, conf->password);
 	return 0;
 }
-#endif
+
+int mqtt_init(mqtt_session_t *m, mqtt_config_t *conf) {
+
+	dprintf(1,"host: %s, clientid: %s, user: %s, pass: %s\n",
+		conf->host, conf->clientid, conf->username, conf->password);
+	if (!strlen(conf->host)) {
+		log_write(LOG_WARNING,"mqtt host not specified, using localhost\n");
+		strcpy(conf->host,"localhost");
+	}
+
+	/* Create a unique ID for MQTT */
+	if (!strlen(conf->clientid)) {
+		uint8_t uuid[16];
+
+		dprintf(1,"gen'ing MQTT ClientID...\n");
+		uuid_generate_random(uuid);
+		my_uuid_unparse(uuid, conf->clientid);
+		dprintf(4,"clientid: %s\n",conf->clientid);
+	}
+
+	/* Create a new client */
+	if (mqtt_newclient(m, conf)) return 1;
+
+	/* Connect to the server */
+	if (mqtt_connect(m,20)) return 1;
+
+	return 0;
+}
 
 void logProperties(MQTTProperties *props) {
 	int i = 0;
@@ -560,6 +580,45 @@ JSObject *JSMQTT(JSContext *cx, void *priv) {
 	JS_AliasProperty(cx, JS_GetGlobalObject(cx), "MQTT", "mqtt");
 	JS_SetPrivate(cx,obj,priv);
 	return obj;
+}
+
+void mqtt_add_props(config_t *cp, mqtt_config_t *gconf, char *name, mqtt_config_t *conf) {
+	config_property_t mqtt_props[] = {
+		{ "host", DATA_TYPE_STRING, conf->host, sizeof(conf->host)-1, "localhost", 0,
+                        0, 0, 0, 1, (char *[]){ "MQTT host" }, 0, 1, 0 },
+		{ "port", DATA_TYPE_INT, &conf->port, 0, "1883", 0,
+			0, 0, 0, 1, (char *[]){ "MQTT port" }, 0, 1, 0 },
+		{ "clientid", DATA_TYPE_STRING, conf->clientid, sizeof(conf->clientid)-1, "", 0,
+                        0, 0, 0, 1, (char *[]){ "MQTT clientid" }, 0, 1, 0 },
+		{ "username", DATA_TYPE_STRING, conf->username, sizeof(conf->username)-1, "", 0,
+                        0, 0, 0, 1, (char *[]){ "MQTT username" }, 0, 1, 0 },
+		{ "password", DATA_TYPE_STRING, conf->password, sizeof(conf->password)-1, "", 0,
+                        0, 0, 0, 1, (char *[]){ "MQTT password" }, 0, 1, 0 },
+		{ 0 }
+	};
+	dprintf(1,"adding mqtt...\n");
+
+	config_add_props(cp, "mqtt", mqtt_props, CONFIG_FLAG_NOID);
+
+	/* Add the mqtt props to the instance config */
+	{
+		char *names[] = { "mqtt_host", "mqtt_port", "mqtt_clientid", "mqtt_username", "mqtt_password", 0 };
+		config_section_t *s;
+		config_property_t *p;
+		int i;
+
+		s = config_get_section(cp, name);
+		if (!s) {
+			log_error("%s section does not exist?!?\n", name);
+			return;
+		}
+		for(i=0; names[i]; i++) {
+			p = config_section_dup_property(s, &mqtt_props[i], names[i]);
+			if (!p) continue;
+			dprintf(1,"p->name: %s\n",p->name);
+			config_section_add_property(cp, s, p, CONFIG_FLAG_NOID);
+		}
+	}
 }
 
 int mqtt_jsinit(JSEngine *js, mqtt_session_t *m) {

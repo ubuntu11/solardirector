@@ -16,13 +16,14 @@ LICENSE file in the root directory of this source tree.
 struct json_value;
 typedef struct json_value json_value_t;
 
-typedef void (json_ptcallback_t)(char *,void *,int,json_value_t *);
+typedef void (json_ptcallback_t)(void *,char *,void *,int,json_value_t *);
 struct json_proctab {
 	char *field;
 	int type;
 	void *ptr;
 	int len;
 	json_ptcallback_t *cb;
+	void *ctx;
 };
 typedef struct json_proctab json_proctab_t;
 
@@ -61,6 +62,7 @@ enum JSON_TYPE {
 
 char *json_typestr(int);
 json_value_t *json_parse(char *);
+json_value_t *json_parse_file(char *filename);
 
 /* Values */
 enum JSON_TYPE json_value_get_type(json_value_t *);
@@ -86,6 +88,7 @@ json_value_t *json_object_dotget_value(json_object_t *, char *);
 json_object_t *json_object_dotget_object(json_object_t *o,char *n);
 json_array_t *json_object_dotget_array(json_object_t *o,char *n);
 int json_object_delete_value(json_object_t *, char *);
+int json_object_add_string(json_object_t *,char *,char *);
 int json_object_set_string(json_object_t *,char *,char *);
 int json_object_set_boolean(json_object_t *,char *,int);
 int json_object_set_number(json_object_t *,char *,double);

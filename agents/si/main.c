@@ -8,10 +8,10 @@ LICENSE file in the root directory of this source tree.
 
 #include "si.h"
 #include "transports.h"
+#include "__sd_build.h"
 
-#define TESTING 0
-
-#define DEBUG_STARTUP 1
+#define TESTING 1
+#define DEBUG_STARTUP 0
 
 #if DEBUG_STARTUP
 #define _ST_DEBUG LOG_DEBUG
@@ -19,7 +19,7 @@ LICENSE file in the root directory of this source tree.
 #define _ST_DEBUG 0
 #endif
 
-char *si_agent_version_string = "1.0";
+char *si_agent_version_string = "1.0-" STRINGIFY(__SD_BUILD);
 
 static int si_cb(void *ctx) {
 	si_session_t *s = ctx;
@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
 	time_t start,end,diff;
 
 #if TESTING
-	char *args[] = { "si", "-d", "7", "-c", "sitest.conf" };
+	char *args[] = { "si", "-d", "4", "-c", "sitest.conf" };
 	argc = (sizeof(args)/sizeof(char *));
 	argv = args;
 #endif
@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
 //	log_write(LOG_INFO,"Starting up...\n");
 
 	/* Init the SI driver */
-	s = si_driver.new(0,0,0);
+	s = si_driver.new(0,0);
 	if (!s) return 1;
 
 	if (si_agent_init(argc,argv,si_opts,s)) return 1;
@@ -81,14 +81,16 @@ int main(int argc, char **argv) {
 	dprintf(1,"s->can_transport: %s, s->can_target: %s, s->can_topts: %s\n",
 		s->can_transport, s->can_target, s->can_topts);
 
+#if 0
 	if (si_can_init(s)) {
 		/* safety */
 		s->can = &null_driver;
-		s->can_handle = s->can->new(0,0,0);
-		si_can_set_reader(s);
+		s->can_handle = s->can->new(0,0);
+//		si_can_set_reader(s);
 	} else {
 		s->ap->read_interval = s->ap->write_interval = s->interval = 10;
 	}
+#endif
 
 	/* init SMANET but do not connect */
 	dprintf(1,"smatpinfo: %s\n", smatpinfo);
@@ -108,6 +110,9 @@ int main(int argc, char **argv) {
 	time(&end);
 	diff = end - start;
 	dprintf(1,"--> startup time: %d\n", diff);
+
+	/* Init charging - must be done after agent_init calls info */
+	charge_init(s);
 
 	/* Go */
 	agent_run(s->ap);

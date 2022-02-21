@@ -13,7 +13,7 @@ LICENSE file in the root directory of this source tree.
 #include "json.h"
 #include "utils.h"
 
-#define DEBUG_JSON 1
+#define DEBUG_JSON 0
 #define dlevel 6
 
 #ifdef DEBUG
@@ -44,6 +44,10 @@ json_value_t *json_parse(char *str) {
 	return (json_value_t *)parson_parse_string(str);
 }
 
+json_value_t *json_parse_file(char *filename) {
+	return (json_value_t *)parson_parse_file(filename);
+}
+
 /* Values */
 enum JSON_TYPE json_value_get_type(json_value_t *v) { return(VAL(v)->type); }
 char *json_value_get_string(json_value_t *v) { return (char *)parson_string(VAL(v)); }
@@ -54,6 +58,8 @@ int json_value_get_boolean(json_value_t *v) { return parson_boolean(VAL(v)); }
 int json_destroy_value(json_value_t *v);
 
 /* Objects */
+/*****************************************************/
+/* json_object */
 json_object_t *json_create_object(void);
 json_value_t *json_object_get_value(json_object_t *o) { return (json_value_t *)OBJV(o); }
 char *json_object_get_string(json_object_t *o,char *name) { return (char *)parson_object_get_string(OBJ(o),name); }
@@ -76,7 +82,12 @@ json_value_t *json_object_dotget_value(json_object_t *o, char *n) {
 int json_object_delete_value(json_object_t *o, char *name) {
 	return parson_object_remove_internal(OBJ(o), name, 1);
 }
-int json_object_set_string(json_object_t *,char *,char *);
+int json_object_set_string(json_object_t *o,char *name,char *value) {
+	return parson_object_set_string(OBJ(o),name,value);
+}
+int json_object_add_string(json_object_t *o,char *name,char *value) {
+	return parson_object_set_string(OBJ(o),name,value);
+}
 int json_object_set_boolean(json_object_t *,char *,int);
 int json_object_set_number(json_object_t *,char *,double);
 int json_object_set_object(json_object_t *o,char *name,json_object_t *no) {
@@ -93,6 +104,25 @@ int json_object_set_value(json_object_t *,char *,json_value_t *);
 int json_destroy_object(json_object_t *);
 int json_object_dotset_value(json_object_t *o, char *label, json_value_t *v) {
 	return parson_object_dotset_value((JSON_Object *)o, label, (JSON_Value *)v);
+}
+int json_object_set_number(json_object_t *o, char *name, double value) {
+	dprintf(dlevel,"object: %p, name: %s, value: %f\n", o, name, value);
+	return parson_object_set_number(OBJ(o), name, value);
+}
+
+int json_object_set_boolean(json_object_t *o, char *name, int value) {
+	dprintf(dlevel,"object: %p, name: %s, value: %d\n", o, name, value);
+	return parson_object_set_boolean(OBJ(o), name, value);
+}
+
+int json_object_set_value(json_object_t *o, char *name, json_value_t *value) {
+//	XXX json_object_set_value does not copy passed value so it shouldn't be freed afterwards.
+	dprintf(dlevel,"object: %p, name: %s, value: %p\n", o, name, value);
+	return parson_object_set_value(OBJ(o), name, VAL(value));
+}
+
+int json_object_set_array(json_object_t *o, char *name, json_array_t *a) {
+	return parson_object_set_value(OBJ(o), name, ARRV(a));
 }
 
 /* Arrays */
@@ -147,23 +177,23 @@ int json_destroy_array(json_array_t *a) {
 
 #if 0
 int json_add_string(json_value_t *o, char *name, char *value) {
-	dprintf(5,"object: %p, name: %s, value: %s\n", o, name, value);
+	dprintf(dlevel,"object: %p, name: %s, value: %s\n", o, name, value);
 	return json_object_set_string(json_object(o), name, value);
 }
 
 int json_add_number(json_value_t *o, char *name, double value) {
-	dprintf(5,"object: %p, name: %s, value: %f\n", o, name, value);
+	dprintf(dlevel,"object: %p, name: %s, value: %f\n", o, name, value);
 	return json_object_set_number(json_object(o), name, value);
 }
 
 int json_add_boolean(json_value_t *o, char *name, int value) {
-	dprintf(5,"object: %p, name: %s, value: %d\n", o, name, value);
+	dprintf(dlevel,"object: %p, name: %s, value: %d\n", o, name, value);
 	return json_object_set_boolean(json_object(o), name, value);
 }
 
 int json_add_value(json_value_t *v, char *name, json_value_t *value) {
 //	XXX json_object_set_value does not copy passed value so it shouldn't be freed afterwards.
-	dprintf(5,"object: %p, name: %s, value: %p\n", v, name, value);
+	dprintf(dlevel,"object: %p, name: %s, value: %p\n", v, name, value);
 	return json_object_set_value(json_object(v), name, value);
 }
 
@@ -180,7 +210,7 @@ int json_add_list(json_object_t *j, char *label, list values) {
 	array = json_array(value);
 	list_reset(values);
 	while((p = list_get_next(values)) != 0) {
-		dprintf(5,"adding: %s\n", p);
+		dprintf(dlevel,"adding: %s\n", p);
 		parson_array_append_string(array,p);
 	}
 	return 0;
@@ -188,32 +218,6 @@ int json_add_list(json_object_t *j, char *label, list values) {
 
 #endif
 
-/*****************************************************/
-/* json_object */
-int json_object_set_string(json_object_t *o, char *name, char *value) {
-	dprintf(5,"object: %p, name: %s, value: %s\n", o, name, value);
-	return parson_object_set_string(OBJ(o), name, value);
-}
-
-int json_object_set_number(json_object_t *o, char *name, double value) {
-	dprintf(5,"object: %p, name: %s, value: %f\n", o, name, value);
-	return parson_object_set_number(OBJ(o), name, value);
-}
-
-int json_object_set_boolean(json_object_t *o, char *name, int value) {
-	dprintf(5,"object: %p, name: %s, value: %d\n", o, name, value);
-	return parson_object_set_boolean(OBJ(o), name, value);
-}
-
-int json_object_set_value(json_object_t *o, char *name, json_value_t *value) {
-//	XXX json_object_set_value does not copy passed value so it shouldn't be freed afterwards.
-	dprintf(5,"object: %p, name: %s, value: %p\n", o, name, value);
-	return parson_object_set_value(OBJ(o), name, VAL(value));
-}
-
-int json_object_set_array(json_object_t *o, char *name, json_array_t *a) {
-	return parson_object_set_value(OBJ(o), name, ARRV(a));
-}
 
 /*****************************************************/
 /* json_array */
@@ -229,7 +233,7 @@ int json_array_add_strings(json_array_t *a,char *value) {
 	i = 0;
 	for(p = value; *p; p++) {
 		if (*p == ',') {
-			dprintf(5,"temp: %s\n", temp);
+			dprintf(dlevel,"temp: %s\n", temp);
 			parson_array_append_string(ARR(a),temp);
 			i = 0;
 		} else
@@ -237,7 +241,7 @@ int json_array_add_strings(json_array_t *a,char *value) {
 	}
 	if (i > 0) {
 		temp[i] = 0;
-		dprintf(5,"temp: %s\n", temp);
+		dprintf(dlevel,"temp: %s\n", temp);
 		parson_array_append_string(ARR(a),temp);
 	}
 	return 0;
@@ -274,6 +278,7 @@ json_value_t *json_from_tab(json_proctab_t *tab) {
 	json_proctab_t *p;
 	json_object_t *o;
 	int *ip;
+	bool *bp;
 	float *fp;
 	double *dp;
 
@@ -281,7 +286,7 @@ json_value_t *json_from_tab(json_proctab_t *tab) {
 	if (!o) return 0;
 	for(p=tab; p->field; p++) {
 		dprintf(dlevel,"p: field: %s, ptr: %p, len: %d, cb: %p\n", p->field, p->ptr, p->len, p->cb);
-		if (p->cb) p->cb(p->field,p->ptr,p->len,json_object_get_value(o));
+		if (p->cb) p->cb(p->ctx, p->field,p->ptr,p->len,json_object_get_value(o));
 		else {
 			dprintf(dlevel,"p->type: %d\n", p->type);
 			switch(p->type) {
@@ -292,6 +297,10 @@ json_value_t *json_from_tab(json_proctab_t *tab) {
 				ip = p->ptr;
 				json_object_set_number(o,p->field,*ip);
 				break;
+			case DATA_TYPE_BOOLEAN:
+				bp = p->ptr;
+				json_object_set_boolean(o,p->field,*bp);
+				break;
 			case DATA_TYPE_FLOAT:
 				fp = p->ptr;
 				json_object_set_number(o,p->field,*fp);
@@ -300,8 +309,22 @@ json_value_t *json_from_tab(json_proctab_t *tab) {
 				dp = p->ptr;
 				json_object_set_number(o,p->field,*dp);
 				break;
+			case DATA_TYPE_INT_ARRAY:
+				{
+					register int i;
+					json_array_t *a;
+
+					ip = p->ptr;
+					a = json_create_array();
+					for(i=0; i < p->len; i++) json_array_add_number(a,ip[i]);
+					json_object_add_array(o,p->field,a);
+				}
+				break;
+			case DATA_TYPE_STRING_ARRAY:
+			case DATA_TYPE_FLOAT_ARRAY:
+			case DATA_TYPE_DOUBLE_ARRAY:
 			default:
-				dprintf(dlevel,"json_from_type: unhandled type: %d\n", p->type);
+				log_error("json_from_tab: unhandled type: %s\n", typestr(p->type));
 				break;
 			}
 		}
@@ -336,9 +359,10 @@ json_value_t *json_from_cfgtab(cfg_proctab_t *ct) {
 int json_to_tab(json_proctab_t *tab, json_value_t *v) {
 	json_proctab_t *p;
 	json_object_t *o;
+	json_array_t *a;
 	char *s;
 	double d;
-	int i,n;
+	int i,n,size;
 
 	/* must be object */
 	dprintf(dlevel,"v: %p\n", v);
@@ -347,30 +371,84 @@ int json_to_tab(json_proctab_t *tab, json_value_t *v) {
 
 	o = json_value_get_object(v);
         for (i = 0; i < o->count; i++) {
-		dprintf(5,"name: %s\n", o->names[i]);
+		dprintf(dlevel,"name: %s\n", o->names[i]);
 		for(p=tab; p->field; p++) {
 			if (strcmp(p->field,o->names[i])==0) {
-				if (p->cb) p->cb(p->field,p->ptr,p->len,o->values[i]);
+				if (p->cb) p->cb(p->ctx, p->field,p->ptr,p->len,o->values[i]);
 				else {
 					json_value_t *vv = o->values[i];
 					switch(json_value_get_type(vv)) {
 					case JSON_TYPE_STRING:
 						s = json_value_get_string(vv);
+						dprintf(dlevel,"s: %s\n", s);
 						conv_type(p->type,p->ptr,p->len,DATA_TYPE_STRING,s,strlen(s));
 						break;
 					case JSON_TYPE_NUMBER:
 						d =  json_value_get_number(vv);
+						dprintf(dlevel,"d: %f\n", d);
 						conv_type(p->type,p->ptr,p->len,DATA_TYPE_DOUBLE,&d,0);
 						break;
 					case JSON_TYPE_BOOLEAN:
 						n = json_value_get_boolean(vv);
+						dprintf(dlevel,"n: %d\n", n);
 						conv_type(p->type,p->ptr,p->len,DATA_TYPE_LOGICAL,&n,0);
 						break;
+					case JSON_TYPE_ARRAY:
+						a = json_value_get_array(vv);
+						if (a->count) {
+							/* get array type (only string or number supported) */
+							int j,atype;
+
+							atype = json_value_get_type(a->items[0]);
+							dprintf(dlevel,"atype: %s\n", json_typestr(atype));
+							switch(atype) {
+							case JSON_TYPE_STRING:
+								{
+									char **sa;
+
+									size = a->count * sizeof(char *);
+									sa = malloc(size);
+									if (!sa) return 1;
+									for(j=0; j < a->count; j++) sa[j] = json_value_get_string(a->items[j]);
+									conv_type(p->type,p->ptr,p->len,DATA_TYPE_STRING_ARRAY,sa,a->count);
+									free(sa);
+								}
+								break;
+							case JSON_TYPE_NUMBER:
+								{
+									double *da;
+
+									size = a->count * sizeof(double);
+									da = malloc(size);
+									if (!da) return 1;
+									for(j=0; j < a->count; j++) da[j] = json_value_get_number(a->items[j]);
+									conv_type(p->type,p->ptr,p->len,DATA_TYPE_F64_ARRAY,da,a->count);
+									free(da);
+								}
+								break;
+							case JSON_TYPE_BOOLEAN:
+								{
+									bool *ba;
+
+									size = a->count * sizeof(bool);
+									ba = malloc(size);
+									if (!ba) return 1;
+									for(j=0; j < a->count; j++) ba[j] = json_value_get_boolean(a->items[j]);
+									conv_type(p->type,p->ptr,p->len,DATA_TYPE_BOOL_ARRAY,ba,a->count);
+									free(ba);
+								}
+								break;
+							default:
+								log_error("json_to_tab: unhandled array type: %s\n", json_typestr(atype));
+								break;
+							}
+						}
+						break;
 					default:
+						log_error("json_to_tab: unhandled type: %s\n", json_typestr(json_value_get_type(vv)));
 						break;
 					}
 				}
-				break;
 			}
 		}
         }
@@ -385,18 +463,18 @@ json_value_t *json_from_type(int type, void *src, int len) {
 	dprintf(dlevel,"type: %d(%s)\n", type, typestr(type));
 	if (type == DATA_TYPE_BOOLEAN) {
 		v = (json_value_t *)parson_value_init_boolean(*((int *)src));
-	} else if (DATA_TYPE_ISARRAY(type)) {
-		printf("dont handle arrays atm\n");
 	} else if (DATA_TYPE_ISNUMBER(type)) {
 		conv_type(DATA_TYPE_DOUBLE,&d,0,type,src,len);
 		dprintf(dlevel,"d: %f\n", d);
 		v = (json_value_t *)parson_value_init_number(d);
-	} else if (DATA_TYPE_ISLIST(type)) {
-		printf("dont handle lists atm\n");
 	} else if (type == DATA_TYPE_STRING) {
 		v = (json_value_t *)parson_value_init_string(src);
+	} else if (type == DATA_TYPE_STRING_LIST) {
+		char value[4096];
+		conv_type(DATA_TYPE_STRING,value,sizeof(value)-1,type,src,len);
+		v = (json_value_t *)parson_value_init_string(value);
 	} else  {
-		printf("dont handle %s atm\n",typestr(type));
+		log_error("json_from_type: unhandled type: %s\n",typestr(type));
 	}
 	return v;
 }
@@ -426,9 +504,7 @@ int json_to_type(int dt, void *dest, int len, json_value_t *v) {
 			int i;
 
 			o = parson_object(VAL(v));
-			for (i = 0; i < o->count; i++) {
-				dprintf(5,"name: %s\n", o->names[i]);
-			}
+			for (i = 0; i < o->count; i++) dprintf(dlevel,"name: %s\n", o->names[i]);
 			return 1;
 		}
 		break;

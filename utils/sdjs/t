@@ -1,0 +1,2 @@
+var c = new client("test1");
+while(true) sleep(1);

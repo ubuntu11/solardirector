@@ -40,23 +40,32 @@ static int sort_inv(void *i1, void *i2) {
 
 }
 
-void getinv(solard_config_t *conf, char *name, char *data) {
+void getinv(solard_config_t *conf, client_agentinfo_t *ap) {
 	solard_inverter_t inverter,*inv = &inverter;
+	solard_message_t *msg;
 
-//	inverter_from_json(&inverter,data);
-//	inverter_dump(&inverter,3);
-	solard_set_state((&inverter),SOLARD_INVERTER_STATE_UPDATED);
-	time(&inverter.last_update);
+//	dprintf(0,"agent %s count %d\n", ap->name, list_count(ap->mq));
+	list_reset(ap->mq);
+	while((msg = list_get_next(ap->mq)) != 0) {
+		if (strcmp(msg->func,SOLARD_FUNC_DATA) != 0) {
+			list_delete(ap->mq,msg);
+			continue;
+		}
+		inverter_from_json(&inverter,msg->data);
+		inverter_dump(&inverter,3);
+		solard_set_state((&inverter),SOLARD_INVERTER_STATE_UPDATED);
+		time(&inverter.last_update);
 
-	inv = find_by_name(conf,inverter.name);
-	if (!inv) {
-		dprintf(7,"adding inv...\n");
-		list_add(conf->inverters,&inverter,sizeof(inverter));
-		dprintf(7,"sorting invs...\n");
-		list_sort(conf->inverters,sort_inv,0);
-	} else {
-		dprintf(7,"updating inv...\n");
-		memcpy(inv,&inverter,sizeof(inverter));
+		inv = find_by_name(conf,inverter.name);
+		if (!inv) {
+			dprintf(7,"adding inv...\n");
+			list_add(conf->inverters,&inverter,sizeof(inverter));
+			dprintf(7,"sorting invs...\n");
+			list_sort(conf->inverters,sort_inv,0);
+		} else {
+			dprintf(7,"updating inv...\n");
+			memcpy(inv,&inverter,sizeof(inverter));
+		}
 	}
 	return;
-};
+}

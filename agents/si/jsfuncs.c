@@ -108,11 +108,13 @@ static JSBool si_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 
 static JSBool si_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 	si_session_t *s;
-	int ok;
 
 	s = JS_GetPrivate(cx,obj);
-	ok = config_jssetprop(cx, obj, id, rval, s->ap->cp, s->props);
-	return ok;
+	if (!s) {
+		JS_ReportError(cx,"private is null!");
+		return JS_FALSE;
+	}
+	return config_jssetprop(cx, obj, id, rval, s->ap->cp, s->props);
 }
 
 
@@ -166,8 +168,8 @@ static JSBool jscan_read(JSContext *cx, uintN argc, jsval *vp) {
 	dprintf(dlevel,"len: %d\n", len);
 	if (len > 8) len = 8;
 	dprintf(1,"****** id: %03x, len: %d\n", id, len);
-	if (!s->can_read || !s->can) return JS_FALSE;
-	r = s->can_read(s,id,data,len);
+	if (!s->can) return JS_FALSE;
+	r = si_can_read(s,id,data,len);
 	dprintf(4,"r: %d\n", r);
 	if (r) return JS_FALSE;
 	*vp = type_to_jsval(cx,DATA_TYPE_U8_ARRAY,data,len);

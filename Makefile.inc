@@ -306,12 +306,17 @@ ifeq ($(SHARED),yes)
 CLEANFILES+=lib$(LIBNAME)$(SUFFIX).a
 endif
 endif
+ifneq ("$(wildcard $(SCRIPTS))","")
+install:
+	mkdir -p $(LIBDIR)/$(LIBNAME)
+	$(INSTALL) -m 755 $(INSTALL_USER) $(SCRIPTS) $(LIBDIR)/$(LIBNAME)
+endif
 endif
 
 ifneq ($(PROGNAME),)
 PROG=$(PROGNAME)$(EXE)
 _all: $(PROG)
-$(PROG): $(OBJS) $(DEPS)
+$(PROG): __sd_build $(OBJS) $(DEPS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $(PROG) $(OBJS) $(LIBS) $(ENDLIBS)
 
 debug: $(PROG)
@@ -328,6 +333,10 @@ endif
 ifneq ("$(wildcard $(PROGCONF))","")
 	mkdir -p $(ETCDIR)
 	$(INSTALL) -m 644 $(INSTALL_USER) $(PROGCONF) $(ETCDIR)/$(PROGCONF)
+endif
+ifneq ("$(wildcard $(SCRIPTS))","")
+	mkdir -p $(LIBDIR)/agents/$(PROGNAME)
+	$(INSTALL) -m 755 $(INSTALL_USER) $(SCRIPTS) $(LIBDIR)/agents/$(PROGNAME)
 endif
 	mkdir -p $(BINDIR)
 	$(INSTALL) -m 755 $(INSTALL_USER) $(PROG) $(BINDIR)/$(PROG)
@@ -346,7 +355,7 @@ release: $(PROG)
 	$(MAKE) PREFIX=$(SRC_ROOT)/releases/$(TARGET) TARGET=$(TARGET) install
 
 clean:
-	rm -rf $(LIB) $(PROG) $(OBJS) *.o $(CLEANFILES)
+	rm -rf $(LIB) $(PROG) $(OBJS) *.o $(CLEANFILES) __sd_build.h
 
 #
 # Deps
@@ -361,11 +370,11 @@ FULLCPP = $(CPP) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH)
 
 %.o : %.c
 %.o : %.c $(DEPDIR)/%.d | $(DEPDIR)
-	$(FULLCC) -c $(OUTPUT_OPTION) $<
+	$(FULLCC) -c $<
 
 %.o : %.cpp
 %.o : %.cpp $(DEPDIR)/%.d | $(DEPDIR)
-	$(FULLCPP) -c $(OUTPUT_OPTION) $<
+	$(FULLCPP) -c $<
 
 $(DEPDIR): ; @mkdir -p $@
 
@@ -373,3 +382,11 @@ DEPFILES := $(SRCS:%.c=$(DEPDIR)/%.d)
 $(DEPFILES):
 
 include $(wildcard $(DEPFILES))
+
+#__sd_build.h:
+#	echo "#define __SD_BUILD $$(date '+%Y%m%d%H%M')" > __sd_build.h
+
+__sd_build:
+	echo "#define __SD_BUILD $$(date '+%Y%m%d%H%M')" > __sd_build.h
+
+main.o: __sd_build

@@ -25,9 +25,11 @@ struct client_agentinfo {
 	int online;
 	json_value_t *info;
 	json_value_t *config;
+	void *data;
 	list funcs;
 	int status;
 	char errmsg[1024];
+	list mq;
 };
 typedef struct client_agentinfo client_agentinfo_t;
 
@@ -36,15 +38,23 @@ typedef struct client_agentinfo client_agentinfo_t;
 
 struct solard_client {
 	char name[SOLARD_NAME_LEN];		/* Client name */
-	mqtt_config_t mqtt_config;		/* MQTT config */
+	char section_name[CFG_SECTION_NAME_SIZE]; /* Config section name */
 	mqtt_session_t *m;			/* MQTT session */
+	mqtt_config_t mc;			/* MQTT config */
+	int mqtt_init;
 	list mq;				/* Messages */
-	influx_config_t influx_config;		/* Influx config */
 	influx_session_t *i;			/* Influx session */
+	influx_config_t ic;			/* Influx config */
 	config_t *cp;				/* Config */
 	list agents;				/* Agents */
-	cfg_info_t *cfg;
-	char section_name[CFG_SECTION_NAME_SIZE]; /* Config section name */
+//	cfg_info_t *cfg;
+	JSPropertySpec *props;
+	int rtsize;
+	JSEngine *js;
+	char script_dir[SOLARD_PATH_MAX];
+	char init_script[SOLARD_PATH_MAX];
+	char start_script[SOLARD_PATH_MAX];
+	char stop_script[SOLARD_PATH_MAX];
 };
 typedef struct solard_client solard_client_t;
 
@@ -60,5 +70,8 @@ int client_config_init(solard_client_t *c, config_property_t *client_props, conf
 int client_mqtt_init(solard_client_t *c);
 int client_matchagent(client_agentinfo_t *ap, char *target);
 int client_getagentstatus(client_agentinfo_t *ap, solard_message_t *msg);
+char *client_getagentrole(client_agentinfo_t *ap);
+
+int client_jsinit(JSEngine *e, void *priv);
 
 #endif

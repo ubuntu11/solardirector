@@ -9,9 +9,109 @@ LICENSE file in the root directory of this source tree.
 #include "jk.h"
 #include "transports.h"
 
-#define TESTING 0
+#define jk_data_t solard_battery_t
 
-void *jk_new(void *conf, void *driver, void *driver_handle) {
+#if defined(__WIN32) || defined(__WIN64)
+static solard_driver_t *jk_transports[] = { &ip_driver, &serial_driver, &rdev_driver, 0 };
+#else
+#ifdef BLUETOOTH
+static solard_driver_t *jk_transports[] = { &ip_driver, &bt_driver, &serial_driver, &can_driver, &rdev_driver, 0 };
+#else
+static solard_driver_t *jk_transports[] = { &ip_driver, &serial_driver, &can_driver, &rdev_driver, 0 };
+#endif
+#endif
+
+/* Function cannot return error */
+int jk_tp_init(jk_session_t *s) {
+	solard_driver_t *old_driver;
+	void *old_handle;
+
+	/* If it's open, close it */
+	if (solard_check_state(s,JK_STATE_OPEN)) jk_close(s);
+
+	/* Save current driver & handle */
+	dprintf(1,"s->tp: %p, s->tp_handle: %p\n", s->tp, s->tp_handle);
+	if (s->tp && s->tp_handle) {
+		old_driver = s->tp;
+		old_handle = s->tp_handle;
+	} else {
+		old_driver = 0;
+		old_handle = 0;
+	}
+
+	/* Find the driver */
+	if (strlen(s->transport)) s->tp = find_driver(jk_transports,s->transport);
+	dprintf(1,"s->tp: %p\n", s->tp);
+	if (!s->tp) {
+		/* Restore old driver & handle, open it and return */
+		dprintf(1,"old_driver: %p, old_handle: %p\n", old_driver, old_handle);
+		if (old_driver && old_handle) {
+			dprintf(1,"restoring...\n");
+			s->tp = old_driver;
+			s->tp_handle = old_handle;
+			return 1;
+#if 0
+			return jk_open(s);
+		/* Otherwise fallback to null driver if enabled */
+		} else if (s->tp_fallback) {
+			dprintf(1,"setting null driver\n");
+			s->tp = &null_driver;
+#endif
+		} else if (strlen(s->transport)) {
+			sprintf(s->errmsg,"unable to find driver for transport: %s",s->transport);
+			return 1;
+		} else {
+			sprintf(s->errmsg,"transport is empty!\n");
+			return 1;
+		}
+	}
+
+	/* Open new one */
+	dprintf(1,"using driver: %s\n", s->tp->name);
+	s->tp_handle = s->tp->new(s->target, s->topts);
+	dprintf(1,"tp_handle: %p\n", s->tp_handle);
+	if (!s->tp_handle) {
+		dprintf(1,"old_driver: %p, old_handle: %p\n", old_driver, old_handle);
+		/* Restore old driver */
+		if (old_driver && old_handle) {
+			dprintf(1,"restoring...\n");
+			s->tp = old_driver;
+			s->tp_handle = old_handle;
+			/* Make sure we dont close it below */
+			old_driver = 0;
+#if 0
+		/* Otherwise fallback to null driver if enabled */
+		} else if (s->tp_fallback) {
+			s->tp = &null_driver;
+			s->tp_handle = s->tp->new(0, 0, 0);
+#endif
+		} else {
+			sprintf(s->errmsg,"unable to create new instance of %s driver",s->tp->name);
+			return 1;
+		}
+	}
+
+	/* Warn if using the null driver */
+	if (strcmp(s->tp->name,"null") == 0) log_warning("using null driver for I/O");
+
+#if 0
+	/* Open the new driver */
+	if (jk_open(s)) {
+		sprintf(s->errmsg,"open failed!");
+		return 1;
+	}
+#endif
+
+	/* Close and free the old handle */
+	dprintf(1,"old_driver: %p, old_handle: %p\n", old_driver, old_handle);
+	if (old_driver && old_handle) {
+		old_driver->close(old_handle);
+		old_driver->destroy(old_handle);
+	}
+	return 0;
+}
+
+void *jk_new(void *driver, void *driver_handle) {
 	jk_session_t *s;
 
 	s = calloc(1,sizeof(*s));
@@ -19,17 +119,10 @@ void *jk_new(void *conf, void *driver, void *driver_handle) {
 		perror("jk_new: calloc");
 		return 0;
 	}
-	s->ap = conf;
 	if (driver && driver_handle) {
 		s->tp = driver;
 		s->tp_handle = driver_handle;
 	}
-
-	/* Save a copy of our name */
-	if (s->ap) strcpy(s->name,s->ap->instance_name);
-
-	/* If it's bluetooth, reduce read interval to 15s */
-	if (s->ap) if (strcmp(s->tp->name,"bt")==0) s->ap->read_interval = 15;
 
 	return s;
 }
@@ -76,8 +169,416 @@ int jk_close(void *handle) {
 	return r;
 }
 
+static int jk_can_read(jk_session_t *s) {
+	return 1;
+}
+
+void dshort(int i, uint8_t *p) {
+	return;
+	uint16_t dw = _getshort(p);
+	int ival = _getlong(p);
+	float wf10 = dw / 10.0;
+	float wf1000 = dw / 1000.0;
+	float if10 = ival / 10.0;
+	float if1000 = ival / 1000.0;
+	dprintf(1,"%02x: %d %04x d10: %f, d1000: %f\n", i, dw, dw, wf10, wf1000);
+	dprintf(1,"%02x: %d %08x d10: %f, d1000: %f\n", i, ival, ival, if10, if1000);
+}
+
+static void _getvolts(jk_data_t *dp, uint8_t *data) {
+	int i,j;
+	float f;
+
+	if (debug) bindump("getvolts",data,300);
+
+	i = 6;
+	/* 6: Cell voltages */
+	for(j=0; j < 24; j++) {
+		dp->cellvolt[j] = _getshort(&data[i]) / 1000.0;
+		if (!dp->cellvolt[j]) break;
+		dprintf(1,"cellvolt[%02d] = data[%02d] = %.3f\n", j, i, (_getshort(&data[i]) / 1000.0));
+		i += 2;
+	}
+	dp->ncells = j;
+	dprintf(4,"cells: %d\n", dp->ncells);
+	while(i < 58) {
+		dshort(i,&data[i]);
+		i += 2;
+	}
+	dprintf(1,"i: %02x\n", i);
+	/* 0x3a: Average cell voltage */
+//	dp->avg_cell = data[34];
+	dprintf(1,"cell_avg: %f\n", _getshort(&data[58]) / 1000.0);
+	i += 2;
+	/* 0x3c: Delta cell voltage */
+	dprintf(1,"cell_diff: %f\n", _getshort(&data[60]) / 1000.0);
+	i += 2;
+	/* 0x3e: Current balancer?? */
+	dprintf(1,"current: %d\n", _getshort(&data[62]));
+	i += 2;
+	dprintf(1,"i: %02x\n", i);
+	/* 0x40: Cell resistances */
+	for(j=0; j < 24; j++) {
+		dp->cellres[j] = _getshort(&data[i]) / 1000.0;
+		if (!dp->cellres[j]) break;
+		dprintf(1,"cellres[%02d] = data[%02d] = %.3f\n", j, i, (_getshort(&data[i]) / 1000.0));
+		i += 2;
+	}
+	dprintf(1,"i: %02x\n", i);
+	while(i < 0x76) {
+		dshort(i,&data[i]);
+		i += 2;
+	}
+	/* 0x76: Battery voltage */
+	dprintf(1,"i: %02x\n", i);
+	dp->voltage = ((unsigned short)_getshort(&data[i])) / 1000.0;
+	dprintf(1,"voltage: %.2f\n", dp->voltage);
+	i += 2;
+	while(i < 0x7e) {
+		dshort(i,&data[i]);
+		i += 2;
+	}
+	/* 0x7e: Battery current */
+	dprintf(1,"i: %02x\n", i);
+	dp->current = _getshort(&data[i]) / 1000.0;
+	dprintf(1,"current: %.2f\n", dp->current);
+	i += 2;
+	while(i < 0x82) {
+		dshort(i,&data[i]);
+		i += 2;
+	}
+	/* 0x82: Temps */
+	dprintf(1,"i: %02x\n", i);
+	dp->ntemps = 2;
+	dp->temps[0] = ((unsigned short)_getshort(&data[i])) / 10.0;
+	dprintf(1,"temp 1: %f\n", dp->temps[0]);
+	i += 2;
+	dp->temps[1] = ((unsigned short)_getshort(&data[i])) / 10.0;
+	dprintf(1,"temp 2: %f\n", dp->temps[1]);
+	i += 2;
+	dp->temps[2] = ((unsigned short)_getshort(&data[i])) / 10.0;
+	dprintf(1,"MOS Temp: %f\n", dp->temps[2]);
+	i += 2;
+	dprintf(1,"i: %02x\n", i);
+	while(i < 0x8e) {
+		dshort(i,&data[i]);
+		i += 2;
+	}
+#if 0
+read.c(26) dshort: 8e: 59867 e9db d10: 5986.700195, d1000: 59.867001
+read.c(27) dshort: 8e: 59867 0000e9db d10: 5986.700195, d1000: 59.867001
+read.c(26) dshort: 90: 0 0000 d10: 0.000000, d1000: 0.000000
+read.c(27) dshort: 90: 947912704 38800000 d10: 94791272.000000, d1000: 947912.687500
+read.c(26) dshort: 92: 14464 3880 d10: 1446.400024, d1000: 14.464000
+read.c(27) dshort: 92: 80000 00013880 d10: 8000.000000, d1000: 80.000000
+	/* 0x8d: Percent remain */
+	dprintf(1,"i: %02x\n", i);
+	f = _getlong(&data[i]);
+	dprintf(1,"% remain: %f\n", f);
+	i += 4;
+#endif
+	/* 0x8e: Capacity remain */
+	dprintf(1,"i: %02x\n", i);
+	f = _getlong(&data[i]);
+	dprintf(1,"capacity remain: %f\n", f);
+	i += 4;
+	/* 0x92: Nominal capacity */
+	dprintf(1,"i: %02x\n", i);
+	dp->capacity = _getlong(&data[i]) / 1000.0;
+	dprintf(1,"capacity: %.2f\n", dp->capacity);
+	i += 4;
+	dprintf(1,"i: %02x\n", i);
+	while(i < 0xd4) {
+		dshort(i,&data[i]);
+		i += 2;
+	}
+}
+
+static void _getinfo(jk_hwinfo_t *info, uint8_t *data) {
+	int i,j,uptime;
+
+//	bindump("getInfo",data,300);
+
+	j=0;
+	/* Model */
+	for(i=6; i < 300 && data[i]; i++) {
+		info->model[j++] = data[i];
+		if (j >= sizeof(info->model)-1) break;
+	}
+	info->model[j] = 0;
+	dprintf(1,"Model: %s\n", info->model);
+	/* Skip 0s */
+	while(i < 300 && !data[i]) i++;
+	/* HWVers */
+	dprintf(1,"i: %x\n", i);
+	j=0;
+	while(i < 300 && data[i]) {
+		info->hwvers[j++] = data[i++];
+		if (j >= sizeof(info->hwvers)-1) break;
+	}
+	info->hwvers[j] = 0;
+	dprintf(1,"HWVers: %s\n", info->hwvers);
+	/* Skip 0s */
+	while(i < 300 && !data[i]) i++;
+	/* SWVers */
+	j=0;
+	dprintf(1,"i: %x\n", i);
+	while(i < 300 && data[i]) {
+		info->swvers[j++] = data[i++];
+		if (j >= sizeof(info->swvers)-1) break;
+	}
+	info->swvers[j] = 0;
+	dprintf(1,"SWVers: %s\n", info->swvers);
+	/* Skip 0s */
+	while(i < 300 && !data[i]) i++;
+	dprintf(1,"i: %x\n", i);
+	uptime = _getlong(&data[i]);
+	dprintf(1,"uptime: %04x\n", uptime);
+	i += 4;
+//	unk = _getshort(&data[i]);
+//	i += 2;
+	/* Skip 0s */
+	while(i < 300 && !data[i]) i++;
+	/* Device */
+	j=0;
+	dprintf(1,"i: %x\n", i);
+	while(i < 300 && data[i]) {
+		info->device[j++] = data[i++];
+		if (j >= sizeof(info->device)-1) break;
+	}
+	info->device[j] = 0;
+	dprintf(1,"Device: %s\n", info->device);
+}
+
+#define GOT_RES 0x01
+#define GOT_VOLT 0x02
+#define GOT_INFO 0x04
+
+static int getdata(jk_session_t *s, uint8_t *data, int bytes) {
+	jk_hwinfo_t *info = &s->hwinfo;
+	jk_data_t *dp = &s->data;
+	uint8_t sig[] = { 0x55,0xAA,0xEB,0x90 };
+	int i,j,start,r;
+
+	r = 0;
+//	bindump("data",data,bytes);
+	for(i=j=0; i < bytes; i++) {
+		dprintf(6,"data[%d]: %02x, sig[%d]: %02x\n", i, data[i], j, sig[j]);
+		if (data[i] == sig[j]) {
+			if (j == 0) start = i;
+			j++;
+			if (j >= sizeof(sig) && (start + 300) < bytes) {
+				dprintf(1,"found sig, type: %d\n", data[i+1]);
+				if (data[i+1] == 1)  {
+#if BATTERY_CELLRES
+					_getres(dp,&data[start]);
+#endif
+					r |= GOT_RES;
+				} else if (data[i+1] == 2) {
+					if (dp) _getvolts(dp,&data[start]);
+					r |= GOT_VOLT;
+				} else if (data[i+1] == 3) {
+					if (!dp) _getinfo(info,&data[start]);
+					r |= GOT_INFO;
+				}
+				i += 300;
+				j = 0;
+			}
+		}
+		if (r & GOT_VOLT) break;
+	}
+	dprintf(4,"returning: %d\n", r);
+	return r;
+}
+
+int jk_bt_read(jk_session_t *s) {
+	unsigned char getInfo[] =     { 0xaa,0x55,0x90,0xeb,0x97,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x11 };
+	unsigned char getCellInfo[] = { 0xaa,0x55,0x90,0xeb,0x96,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x10 };
+	uint8_t data[2048];
+	int bytes,r,retries;
+
+	/* Have to getInfo before can getCellInfo ... */
+	dprintf(1,"getInfo...\n");
+	retries=5;
+	while(retries--) {
+		bytes = s->tp->write(s->tp_handle,0,getInfo,sizeof(getInfo));
+		dprintf(4,"bytes: %d\n", bytes);
+		if (bytes < 0) return -1;
+		bytes = s->tp->read(s->tp_handle,0,data,sizeof(data));
+		dprintf(4,"bytes: %d\n", bytes);
+		if (bytes < 0) return -1;
+		r = getdata(s,data,bytes);
+		if (r & GOT_INFO) break;
+		sleep(1);
+	}
+	dprintf(1,"retries: %d\n", retries);
+	/* info-only flag?? */
+//	if (!dp) return (retries < 1 ? -1 : 0);
+
+	dprintf(1,"getCellInfo...\n");
+	retries=5;
+	bytes = s->tp->write(s->tp_handle,0,getCellInfo,sizeof(getCellInfo));
+	dprintf(4,"bytes: %d\n", bytes);
+	if (bytes < 0) return -1;
+	while(retries--) {
+		bytes = s->tp->read(s->tp_handle,0,data,sizeof(data));
+		dprintf(4,"bytes: %d\n", bytes);
+		r = getdata(s,data,bytes);
+		if (r & GOT_VOLT) break;
+	}
+	return (retries < 1 ? -1 : 0);
+}
+
+static int jk_std_read(jk_session_t *s) {
+	jk_data_t *dp = &s->data;
+	uint8_t data[128];
+	int i,j,bytes;
+//	struct jk_protect prot;
+
+	dprintf(3,"getting HWINFO...\n");
+	if ((bytes = jk_rw(s, JK_CMD_READ, JK_CMD_HWINFO, data, sizeof(data))) < 0) {
+		dprintf(1,"returning 1!\n");
+		return 1;
+	}
+
+	dp->voltage = (float)jk_getshort(&data[0]) / 100.0;
+	dp->current = (float)jk_getshort(&data[2]) / 100.0;
+	dp->capacity = (float)jk_getshort(&data[6]) / 100.0;
+        dprintf(2,"voltage: %.2f\n", dp->voltage);
+        dprintf(2,"current: %.2f\n", dp->current);
+        dprintf(2,"capacity: %.2f\n", dp->capacity);
+
+	/* Balance */
+	dp->balancebits = jk_getshort(&data[12]);
+	dp->balancebits |= jk_getshort(&data[14]) << 16;
+#ifdef DEBUG
+	{
+		char bits[40];
+		unsigned short mask = 1;
+		i = 0;
+		while(mask) {
+			bits[i++] = ((dp->balancebits & mask) != 0 ? '1' : '0');
+			mask <<= 1;
+		}
+		bits[i] = 0;
+		dprintf(5,"balancebits: %s\n",bits);
+	}
+#endif
+
+	/* Protectbits */
+//	jk_get_protect(&prot,jk_getshort(&data[16]));
+
+	s->fetstate = data[20];
+	dprintf(2,"s->fetstate: %02x\n", s->fetstate);
+	if (s->fetstate & JK_MOS_CHARGE) solard_set_state(s,JK_STATE_CHARGING);
+	else solard_clear_state(s,JK_STATE_CHARGING);
+	if (s->fetstate & JK_MOS_DISCHARGE) solard_set_state(s,JK_STATE_DISCHARGING);
+	else solard_clear_state(s,JK_STATE_DISCHARGING);
+
+	dp->ncells = data[21];
+	dprintf(2,"cells: %d\n", dp->ncells);
+	dp->ntemps = data[22];
+
+	/* Temps */
+#define CTEMP(v) ( (v - 2731) / 10 )
+	/* 1st temp is MOS - we dont care about it */
+	j=0;
+	for(i=1; i < dp->ntemps; i++) {
+		dp->temps[j++] = CTEMP((float)jk_getshort(&data[23+(i*2)]));
+	}
+	dp->ntemps--;
+
+	/* Cell volts */
+	if ((bytes = jk_rw(s, JK_CMD_READ, JK_CMD_CELLINFO, data, sizeof(data))) < 0) return 1;
+//	bindump("cell",data,bytes);
+
+	for(i=0; i < dp->ncells; i++) {
+		dp->cellvolt[i] = (float)jk_getshort(&data[i*2]) / 1000;
+	}
+	return 0;
+}
+
+static int jk_can_get_hwinfo(jk_session_t *s) {
+	return 1;
+}
+
+static int jk_std_get_hwinfo(jk_session_t *s) {
+	return 0;
+}
+
+int jk_get_hwinfo(jk_session_t *s) {
+	int r;
+
+	dprintf(5,"transport: %s\n", s->tp->name);
+	if (strncmp(s->tp->name,"can",3)==0) 
+		r = jk_can_get_hwinfo(s);
+	else if (strcmp(s->tp->name,"bt")==0 || (strcmp(s->transport,"rdev")==0 && strncmp(s->topts,"bt",2) == 0))
+		r = jk_bt_read(s);
+	else
+		r = jk_std_get_hwinfo(s);
+	dprintf(1,"r: %d\n", r);
+	return r;
+}
+
+int jk_pub(jk_session_t *s) {
+	solard_battery_t *pp = &s->data;
+	char *p;
+	json_value_t *v;
+
+	strcpy(pp->name,s->ap->instance_name);
+	if (s->flatten) v = battery_to_flat_json(pp);
+	else v = battery_to_json(pp);
+	if (!v) return 1;
+	p = json_dumps(v,0);
+	dprintf(2,"sending mqtt data...\n");
+	if (mqtt_pub(s->ap->m, s->topic, p, 1, 0)) log_error("error sending mqtt message!\n");
+	free(p);
+	json_destroy_value(v);
+	return 0;
+}
+
+static int jk_read(void *handle, uint32_t *control, void *buf, int buflen) {
+	jk_session_t *s = handle;
+	float v,min,max,avg,tot;
+	int i,r;
+
+	dprintf(2,"transport: %s\n", s->tp->name);
+	r = 1;
+	if (strcmp(s->tp->name,"can")==0) 
+		r = jk_can_read(s);
+	else if (strcmp(s->tp->name,"bt")==0 || (strcmp(s->transport,"rdev") == 0 && strncmp(s->topts,"bt",2) == 0)) 
+		r = jk_bt_read(s);
+	else
+		r = jk_std_read(s);
+
+        /* min/max/avg/total */
+        min = 9999999;
+        tot = max = 0;
+        for(i=0; i < s->data.ncells; i++) {
+                v = s->data.cellvolt[i];
+                if (v < min) min = v;
+                else if (v > max) max = v;
+                tot += v;
+        }
+        avg = tot / s->data.ncells;
+        s->data.cell_min = min;
+        s->data.cell_max = max;
+        s->data.cell_diff = max - min;
+        s->data.cell_avg = avg;
+        s->data.cell_total = tot;
+        if (s->balancing) solard_set_state(s,JK_STATE_BALANCING);
+        else solard_clear_state(s,JK_STATE_BALANCING);
+
+	if (agent_script_exists(s->ap,"pub.js")) {
+		agent_start_script(s->ap,"pub.js");
+	} else {
+		jk_pub(s);
+	}
+	dprintf(1,"returning: %d\n", r);
+	return r;
+}
+
 solard_driver_t jk_driver = {
-	SOLARD_DRIVER_AGENT,
 	"jk",
 	jk_new,				/* New */
 	0,				/* Destroy */

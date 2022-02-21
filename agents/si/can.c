@@ -7,6 +7,8 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
+#define DEBUG_BITS 1
+
 #define TARGET_ENDIAN BIG_ENDIAN
 #include "types.h"
 #include "si.h"
@@ -21,163 +23,16 @@ LICENSE file in the root directory of this source tree.
 
 solard_driver_t *si_transports[] = { &can_driver, &rdev_driver, 0 };
 
-#if 0
-#define _getshort(v) (short)( ((v)[1]) << 8 | ((v)[0]) )
-#define _getlong(v) (long)( ((v)[3]) << 24 | ((v)[2]) << 16 | ((v)[1]) << 8 | ((v)[0]) )
-#define si_putshort(p,v) { float tmp; *((p+1)) = ((int)(tmp = v) >> 8); *((p)) = (int)(tmp = v); }
-#define si_putlong(p,v) { *((p+3)) = ((int)(v) >> 24); *((p)+2) = ((int)(v) >> 16); *((p+1)) = ((int)(v) >> 8); *((p)) = ((int)(v) & 0x0F); }
-#endif
-
-static void *si_can_recv_thread(void *handle) {
-	si_session_t *s = handle;
-	struct can_frame frame;
-	int bytes,id,idx;
-	uint32_t mask;
-#ifndef __WIN32
-	sigset_t set;
-
-	/* Ignore SIGPIPE */
-	sigemptyset(&set);
-	sigaddset(&set, SIGPIPE);
-	sigprocmask(SIG_BLOCK, &set, NULL);
-#endif
-
-	dprintf(dlevel,"thread started!\n");
-	while(solard_check_state(s,SI_STATE_RUNNING)) {
-		dprintf(dlevel,"open: %d\n", solard_check_state(s,SI_STATE_OPEN));
-		if (!solard_check_state(s,SI_STATE_OPEN)) {
-			memset(&s->bitmaps,0,sizeof(s->bitmaps));
-			sleep(1);
-			continue;
-		}
-		bytes = s->can->read(s->can_handle,&frame,0xffff);
-		dprintf(dlevel,"bytes: %d\n", bytes);
-		if (bytes < 1) {
-			memset(&s->bitmaps,0,sizeof(s->bitmaps));
-			sleep(1);
-			continue;
-		}
-		dprintf(dlevel,"frame.can_id: %03x\n",frame.can_id);
-		if (frame.can_id < SI_FRAME_START || frame.can_id >= SI_FRAME_START+SI_NFRAMES) continue;
-//		bindump("frame",&frame,sizeof(frame));
-		id = frame.can_id - SI_FRAME_START;
-		idx = id / 32;
-		mask = 1 << (id % 32);
-		memcpy(&s->frames[id],&frame,sizeof(frame));
-		s->bitmaps[idx] |= mask;
-	}
-	dprintf(dlevel,"returning!\n");
-	return 0;
-}
-
-static int si_can_get_local(si_session_t *s, int can_id, uint8_t *data, int datasz) {
-	char what[16];
-	uint32_t mask;
-	int id,idx,retries,len;
-
-	dprintf(dlevel,"id: %03x, data: %p, len: %d\n", can_id, data, datasz);
-	if (can_id < SI_FRAME_START || can_id >= SI_FRAME_START+SI_NFRAMES) return 1;
-
-	id = can_id - SI_FRAME_START;
-	idx = id / 32;
-	mask = 1 << (id % 32);
-	dprintf(dlevel,"id: %03x, mask: %08x, bitmaps[%d]: %08x\n", id, mask, idx, s->bitmaps[idx]);
-	retries=5;
-	while(retries--) {
-		if ((s->bitmaps[idx] & mask) == 0) {
-			dprintf(dlevel,"bit not set, sleeping...\n");
-			sleep(1);
-			continue;
-		}
-		sprintf(what,"%03x", id);
-//		if (debug >= 5) bindump(what,&s->frames[id],sizeof(struct can_frame));
-		len = (datasz > 8 ? 8 : datasz);
-		memcpy(data,s->frames[id].data,len);
-		return 0;
-	}
-	return 1;
-}
-
-/* Func for can data that is remote (dont use thread/messages) */
-static int si_can_get_remote(si_session_t *s, int id, uint8_t *data, int datasz) {
-	int retries,bytes,len;
-	struct can_frame frame;
-
-	dprintf(6,"id: %03x, data: %p, data_len: %d\n", id, data, datasz);
-	retries=5;
-	while(retries--) {
-		bytes = s->can->read(s->can_handle,&frame,id);
-		dprintf(6,"bytes read: %d\n", bytes);
-		if (bytes < 0) return 1;
-		dprintf(6,"sizeof(frame): %d\n", sizeof(frame));
-		if (bytes == sizeof(frame)) {
-			len = (frame.can_dlc > datasz ? datasz : frame.can_dlc);
-#if DEBUG
-			if (debug >= 7) {
-				char line[64], *p;
-				int i;
-				p = line;
-				p += sprintf(p,"can frame: id: %03x, dlc: %d, data: ", (unsigned int)frame.can_id, frame.can_dlc);
-				for(i=0; i < frame.can_dlc; i++) p += sprintf(p,"%02x ",frame.data[i]);
-				dprintf(7,"%s\n",line);
-			}
-#endif
-			memcpy(data,&frame.data,len);
-//			if (debug >= 7) bindump("FROM SERVER",data,len);
-			break;
-		}
-		sleep(1);
-	}
-	dprintf(6,"returning: %d\n", (retries > 0 ? 0 : 1));
-	return (retries > 0 ? 0 : 1);
-}
-
-int si_can_set_reader(si_session_t *s) {
-	/* Start background recv thread */
-	dprintf(dlevel,"driver name: %s\n", s->can->name);
-	if (strcmp(s->can->name,"can") == 0) {
-		pthread_attr_t attr;
-		
-		/* Create a detached thread */
-		if (pthread_attr_init(&attr)) {
-			sprintf(s->errmsg,"pthread_attr_init: %s",strerror(errno));
-			goto si_can_set_reader_error;
-		}
-		if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED)) {
-			sprintf(s->errmsg,"pthread_attr_setdetachstate: %s",strerror(errno));
-			goto si_can_set_reader_error;
-		}
-		solard_set_state(s,SI_STATE_RUNNING);
-		if (pthread_create(&s->th,&attr,&si_can_recv_thread,s)) {
-			sprintf(s->errmsg,"pthread_create: %s",strerror(errno));
-			goto si_can_set_reader_error;
-		}
-		pthread_attr_destroy(&attr);
-		dprintf(dlevel,"setting func to local data\n");
-		s->can_read = si_can_get_local;
-	} else {
-		dprintf(dlevel,"setting func to remote data\n");
-		s->can_read = si_can_get_remote;
-	}
-	return 0;
-si_can_set_reader_error:
-	s->can_read = si_can_get_remote;
-	return 1;
-}
-
 int si_can_init(si_session_t *s) {
 
-	/* Stop the read thread and wait for it to exit */
-	dprintf(dlevel,"SI_STATE_RUNNING: %d\n", solard_check_state(s,SI_STATE_RUNNING))
-	if (solard_check_state(s,SI_STATE_RUNNING)) {
-		solard_clear_state(s,SI_STATE_RUNNING);
-		sleep(1);
-	}
-
-	/* If it's open, close it */
-	if (solard_check_state(s,SI_STATE_OPEN)) si_driver.close(s);
-
+	si_driver.close(s);
 	s->can_connected = false;
+
+	if (s->can_init) {
+        	s->can->config(s->can_handle,CAN_CONFIG_CLEAR_FILTER);
+        	s->can->config(s->can_handle,CAN_CONFIG_STOP_BUFFER);
+		s->can_init = false;
+	}
 
 	/* Find the driver */
 	s->can = find_driver(si_transports,s->can_transport);
@@ -194,30 +49,42 @@ int si_can_init(si_session_t *s) {
 
 	/* Create new instance */
 	dprintf(dlevel,"using driver: %s\n", s->can->name);
-	s->can_handle = s->can->new(0, s->can_target, s->can_topts);
+	s->can_handle = s->can->new(s->can_target, s->can_topts);
 	dprintf(dlevel,"can_handle: %p\n", s->can_handle);
 	if (!s->can_handle) {
 		sprintf(s->errmsg,"unable to create new instance of %s driver: %s",
 			s->can->name,strerror(errno));
 		return 1;
 	}
-	if (si_can_set_reader(s)) return 1;
 
-	/* Open it */
-	if (si_driver.open(s)) {
-		sprintf(s->errmsg,"error opening can driver");
-		return 1;
-	}
+        /* Set the filter to our range */
+        s->can->config(s->can_handle,CAN_CONFIG_SET_RANGE,0x300,0x30F);
 
-	/* OK, we're connected */
-	s->can_connected = true;
+        /* Start buffering */
+        s->can->config(s->can_handle,CAN_CONFIG_START_BUFFER,0x300,0x30F);
 
 	if (!strlen(s->input.text)) s->input.source = CURRENT_SOURCE_NONE;
 	if (!strlen(s->input.text)) s->output.source = CURRENT_SOURCE_NONE;
+
+	dprintf(1,"==> can_init = true\n");
+	s->can_init = true;
+	if (s->ap) s->ap->read_interval = s->ap->write_interval = s->interval = 10;
 	return 0;
 }
 
-#ifdef DEBUG
+int si_can_read(si_session_t *s, int id, uint8_t *data, int rdlen) {
+	struct can_frame frame;
+	uint32_t control = id;
+	int len;
+
+	if (s->can->read(s->can_handle,&control,&frame,sizeof(frame)) != sizeof(frame)) return 1;
+	dprintf(1,"frame.id: %d\n", frame.can_id);
+	len = frame.can_dlc > rdlen ? rdlen : frame.can_dlc;
+	memcpy(data,frame.data,len);
+	return 0;
+}
+
+#ifdef DEBUG_BITS
 static void _dump_bits(char *label, uint8_t bits) {
 	register uint8_t i,mask;
 	char bitstr[9];
@@ -242,7 +109,7 @@ int si_can_read_relays(si_session_t *s) {
 	uint8_t data[8],bits;
 
 	/* 0x307 Relay state / Relay function bit 1 / Relay function bit 2 / Synch-Bits */
-	if (s->can_read(s,0x307,data,8)) return 1;
+	if (si_can_read(s,0x307,data,8)) return 1;
 	/* 0-1 Relay State */
 	bits = data[0];
 	dump_bits("data[0]",bits);
@@ -315,7 +182,7 @@ static int _getcur(si_session_t *s, char *what, si_current_source_t *spec, float
 		log_warning("%s_current_source offset > 7, using 0\n",what);
 		spec->can.offset = 0;
 	}
-	if (s->can_read(s,spec->can.id,data,8)) return 1;
+	if (si_can_read(s,spec->can.id,data,8)) return 1;
 	switch(spec->can.size) {
 	case 1:
 		val = data[spec->can.offset];
@@ -340,9 +207,11 @@ static int _getcur(si_session_t *s, char *what, si_current_source_t *spec, float
 int si_can_read_data(si_session_t *s, int all) {
 	uint8_t data[8];
 
+//	sleep(60);
+
 	if (all || s->input.source == CURRENT_SOURCE_CALCULATED) {
 	/* x300 Active power grid/gen */
-	if (s->can_read(s,0x300,data,8)) return 1;
+	if (si_can_read(s,0x300,data,8)) return 1;
 	s->data.active_grid_l1 = _getshort(&data[0]) * 100.0;
 	s->data.active_grid_l2 = _getshort(&data[2]) * 100.0;
 	s->data.active_grid_l3 = _getshort(&data[4]) * 100.0;
@@ -352,7 +221,7 @@ int si_can_read_data(si_session_t *s, int all) {
 
 	if (all || s->output.source == CURRENT_SOURCE_CALCULATED) {
 	/* x301 Active power Sunny Island */
-	if (s->can_read(s,0x301,data,8)) return 1;
+	if (si_can_read(s,0x301,data,8)) return 1;
 	s->data.active_si_l1 = _getshort(&data[0]) * 100.0;
 	s->data.active_si_l2 = _getshort(&data[2]) * 100.0;
 	s->data.active_si_l3 = _getshort(&data[4]) * 100.0;
@@ -362,7 +231,7 @@ int si_can_read_data(si_session_t *s, int all) {
 
 	if (all || s->input.source == CURRENT_SOURCE_CALCULATED) {
 	/* x302 Reactive power grid/gen */
-	if (s->can_read(s,0x302,data,8)) return 1;
+	if (si_can_read(s,0x302,data,8)) return 1;
 	s->data.reactive_grid_l1 = _getshort(&data[0]) * 100.0;
 	s->data.reactive_grid_l2 = _getshort(&data[2]) * 100.0;
 	s->data.reactive_grid_l3 = _getshort(&data[4]) * 100.0;
@@ -372,7 +241,7 @@ int si_can_read_data(si_session_t *s, int all) {
 
 	if (all || s->output.source == CURRENT_SOURCE_CALCULATED) {
 	/* x303 Reactive power Sunny Island */
-	if (s->can_read(s,0x303,data,8)) return 1;
+	if (si_can_read(s,0x303,data,8)) return 1;
 	s->data.reactive_si_l1 = _getshort(&data[0]) * 100.0;
 	s->data.reactive_si_l2 = _getshort(&data[2]) * 100.0;
 	s->data.reactive_si_l3 = _getshort(&data[4]) * 100.0;
@@ -381,7 +250,7 @@ int si_can_read_data(si_session_t *s, int all) {
 	}
 
 	/* 0x304 OutputVoltage - L1 / L2 / L3 / Output Freq */
-	if (s->can_read(s,0x304,data,8)) return 1;
+	if (si_can_read(s,0x304,data,8)) return 1;
 	s->data.ac1_voltage_l1 = _getshort(&data[0]) / 10.0;
 	s->data.ac1_voltage_l2 = _getshort(&data[2]) / 10.0;
 	s->data.ac1_voltage_l3 = _getshort(&data[4]) / 10.0;
@@ -392,7 +261,7 @@ int si_can_read_data(si_session_t *s, int all) {
 	dprintf(dlevel,"ac1_voltage: %.1f, ac1_frequency: %.1f\n",s->data.ac1_voltage,s->data.ac1_frequency);
 
 	/* 0x305 Battery voltage Battery current Battery temperature SOC battery */
-	if (s->can_read(s,0x305,data,8)) return 1;
+	if (si_can_read(s,0x305,data,8)) return 1;
 	s->data.battery_voltage = _getshort(&data[0]) / 10.0;
 	s->data.battery_current = _getshort(&data[2]) / 10.0;
 	if (s->charge_mode)
@@ -407,7 +276,7 @@ int si_can_read_data(si_session_t *s, int all) {
 	dprintf(dlevel,"battery_soc: %.1f\n", s->data.battery_soc);
 
 	/* 0x306 SOH battery / Charging procedure / Operating state / active Error Message / Battery Charge Voltage Set-point */
-	s->can_read(s,0x306,data,8);
+	si_can_read(s,0x306,data,8);
 	s->data.battery_soh = _getshort(&data[0]);
 	s->data.charging_proc = data[2];
 	s->data.state = data[3];
@@ -419,12 +288,12 @@ int si_can_read_data(si_session_t *s, int all) {
 	if (si_can_read_relays(s)) return 1;
 
 	/* 0x308 TotLodPwr */
-	if (s->can_read(s,0x308,data,8)) return 1;
+	if (si_can_read(s,0x308,data,8)) return 1;
 	s->data.TotLodPwr = _getshort(&data[0]) * 100.0;
 	dprintf(dlevel,"TotLodPwr: %.1f\n", s->data.TotLodPwr);
 
 	/* 0x309 AC2 Voltage L1 / AC2 Voltage L2 / AC2 Voltage L3 / AC2 Frequency */
-	if (s->can_read(s,0x309,data,8)) return 1;
+	if (si_can_read(s,0x309,data,8)) return 1;
 	s->data.ac2_voltage_l1 = _getshort(&data[0]) / 10.0;
 	s->data.ac2_voltage_l2 = _getshort(&data[2]) / 10.0;
 	s->data.ac2_voltage_l3 = _getshort(&data[4]) / 10.0;
@@ -435,7 +304,7 @@ int si_can_read_data(si_session_t *s, int all) {
 
 	if (all) {
 	/* 0x30A PVPwrAt / GdCsmpPwrAt / GdFeedPwr */
-	s->can_read(s,0x30a,data,8);
+	si_can_read(s,0x30a,data,8);
 	s->data.PVPwrAt = _getshort(&data[0]) / 10.0;
 	s->data.GdCsmpPwrAt = _getshort(&data[0]) / 10.0;
 	s->data.GdFeedPwr = _getshort(&data[0]) / 10.0;
@@ -486,6 +355,7 @@ int si_can_read_data(si_session_t *s, int all) {
 
 int si_can_write(si_session_t *s, int id, uint8_t *data, int data_len) {
 	struct can_frame frame;
+	uint32_t control = id;
 	int len,bytes;
 
 	dprintf(dlevel,"id: %03x, data: %p, data_len: %d\n",id,data,data_len);
@@ -494,17 +364,16 @@ int si_can_write(si_session_t *s, int id, uint8_t *data, int data_len) {
 	if (s->readonly) return data_len;
 
 	/* XXX disabled */
-	dprintf(dlevel,"*** NOT WRITING ***\n");
+	printf("*** NOT WRITING ***\n");
 	return data_len;
 
 	len = data_len > 8 ? 8 : data_len;
 
-	memset(&frame,0,sizeof(frame));
 	frame.can_id = id;
 	frame.can_dlc = len;
 	memcpy(&frame.data,data,len);
 //	bindump("write data",data,data_len);
-	bytes = s->can->write(s->can_handle,&frame,sizeof(frame));
+	bytes = s->can->write(s->can_handle,&control,&frame,sizeof(frame));
 	dprintf(dlevel,"bytes: %d\n", bytes);
 	return bytes;
 }

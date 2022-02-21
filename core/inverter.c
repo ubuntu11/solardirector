@@ -1,5 +1,4 @@
 
-#if 0
 /*
 Copyright (c) 2021, Stephen P. Shoecraft
 All rights reserved.
@@ -16,8 +15,8 @@ static struct inverter_states {
 } states[] = {
 	{ SOLARD_INVERTER_STATE_RUNNING, "Running" },
 	{ SOLARD_INVERTER_STATE_CHARGING, "Charging" },
-	{ SOLARD_INVERTER_STATE_GRID, "GridConnected" },
-	{ SOLARD_INVERTER_STATE_GEN, "GeneratorRunning" },
+	{ SOLARD_INVERTER_STATE_GRID, "Grid" },
+	{ SOLARD_INVERTER_STATE_GEN, "Generator" },
 };
 #define NSTATES (sizeof(states)/sizeof(struct inverter_states))
 
@@ -84,31 +83,30 @@ expect:
 	}
 #endif
 
-static void _get_state(char *name, void *dest, int len, json_value_t *v) {
+static void _get_state(void *ctx, char *name, void *dest, int len, json_value_t *v) {
 	solard_inverter_t *inv = dest;
-	list lp;
-	char *p;
-	int i;
+	char *p,*sp;
+	int i,j;
 
-	dprintf(4,"value: %s\n", v->value.string.chars);
-	conv_type(DATA_TYPE_LIST,&lp,0,DATA_TYPE_STRING,v->value.string.chars,v->value.string.length);
-
-	inv->state = 0;
-	list_reset(lp);
-	while((p = list_get_next(lp)) != 0) {
-		dprintf(6,"p: %s\n", p);
-		for(i=0; i < NSTATES; i++) {
-			if (strcmp(p,states[i].label) == 0) {
-				inv->state |= states[i].mask;
+	p = json_value_get_string(v);
+	dprintf(4,"value: %s\n", p);
+	for(i=0; i < 99; i++) {
+		sp = strele(i,",",p);
+		if (!strlen(sp)) break;
+		dprintf(4,"sp: %s\n", sp);
+		for(j=0; j < NSTATES; j++) {
+			dprintf(4,"states[j].label: %s\n", states[j].label);
+			if (strcmp(sp,states[j].label) == 0) {
+				dprintf(4,"found\n");
+				inv->state |= states[j].mask;
 				break;
 			}
 		}
 	}
 	dprintf(4,"state: %x\n", inv->state);
-	list_destroy(lp);
 }
 
-static void _set_state(char *name, void *dest, int len, json_value_t *v) {
+static void _set_state(void *ctx, char *name, void *dest, int len, json_value_t *v) {
 	solard_inverter_t *inv = dest;
 	char temp[128],*p;
 	int i,j;
@@ -126,7 +124,7 @@ static void _set_state(char *name, void *dest, int len, json_value_t *v) {
 		}
 	}
 	dprintf(4,"temp: %s\n", temp);
-	json_add_string(v, "states", temp);
+	json_object_set_string(json_value_get_object(v), "states", temp);
 }
 
 /* XXX these dont need to be reported via MQTT */
@@ -184,7 +182,7 @@ static void _set_state(char *name, void *dest, int len, json_value_t *v) {
 		{ "state",0,inv,0,ACTION }, \
 		JSON_PROCTAB_END
 
-static void _dump_state(char *name, void *dest, int flen, json_value_t *v) {
+static void _dump_state(void *ctx, char *name, void *dest, int flen, json_value_t *v) {
 	solard_inverter_t *inv = dest;
 	char format[16];
 	int *dlevel = (int *) v;
@@ -207,7 +205,7 @@ void inverter_dump(solard_inverter_t *inv, int dlevel) {
 	sprintf(format,"%%%ds: %%s\n",flen);
 	dprintf(dlevel,"inverter:\n");
 	for(p=tab; p->field; p++) {
-		if (p->cb) p->cb(p->field,p->ptr,flen,(void *)&dlevel);
+		if (p->cb) p->cb(inv,p->field,p->ptr,flen,(void *)&dlevel);
 		else {
 			conv_type(DATA_TYPE_STRING,&temp,sizeof(temp)-1,p->type,p->ptr,p->len);
 			if (debug >= dlevel) printf(format,p->field,temp);
@@ -223,7 +221,7 @@ int inverter_from_json(solard_inverter_t *inv, char *str) {
 	memset(inv,0,sizeof(*inv));
 	json_to_tab(inverter_tab,v);
 //	inverter_dump(inv,3);
-	json_destroy(v);
+	json_destroy_value(v);
 	return 0;
 };
 
@@ -364,5 +362,4 @@ JSObject *JSInverter(JSContext *cx, solard_inverter_t *bp) {
 	dprintf(5,"done!\n");
 	return obj;
 }
-#endif
 #endif

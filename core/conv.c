@@ -7,7 +7,7 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#define DEBUG_CONV 1
+#define DEBUG_CONV 0
 #define dlevel 4
 
 #include <stdio.h>
@@ -76,14 +76,13 @@ str2int_errno str2int(int *out, char *s, int base) {
     return STR2INT_SUCCESS;
 }
 
-void str2list(list *dest,char *src) {
+void str2list(list dest,char *src) {
 	char temp[2048];
 	int tmax,tlen,q;
 	register char *p;
 	register int i;
 
 	dprintf(dlevel,"dest: %p, src: %s", dest, src);
-	*dest = list_create();
 	dprintf(dlevel,"src: %s",src);
 	if (!src) return;
 
@@ -100,7 +99,7 @@ void str2list(list *dest,char *src) {
 			trim(temp);
 			tlen = strlen(temp);
 			dprintf(dlevel,"adding: %s (%d)\n", temp, tlen);
-			if (tlen) list_add(*dest,temp,tlen+1);
+			if (tlen) list_add(dest,temp,tlen+1);
 			i = 0;
 		} else {
 			temp[i++] = *p;
@@ -112,19 +111,68 @@ void str2list(list *dest,char *src) {
 		trim(temp);
 		tlen = strlen(temp);
 		dprintf(dlevel,"adding: %s (%d)\n", temp, tlen);
-		if (tlen) list_add(*dest,temp,tlen+1);
+		if (tlen) list_add(dest,temp,tlen+1);
 	}
 #if DEBUG
 	dprintf(dlevel,"list:");
-	list_reset(*dest);
-	while( (p = list_get_next(*dest)) != 0) dprintf(dlevel,"\t%s",p);
+	list_reset(dest);
+	while( (p = list_get_next(dest)) != 0) dprintf(dlevel,"\t%s",p);
 #endif
 	return;
 }
+#if 0
+			char temp[2048];
+			int tmax,tlen,q;
+			list l = (list)d;
+			register char *p;
+			register int i;
+
+			if (!s) break;
+
+			p = s;
+			dprintf(dlevel,"src: %s\n", p);
+			tmax = sizeof(temp)-1;
+			i = q = 0;
+			while(*p) {
+				dprintf(dlevel+1,"p: %c, q: %d, i: %d\n", *p, q, i);
+				if (*p == '\"' && !q)
+					q = 1;
+				else if (*p == '\"' && q)
+					q = 0;
+				else if ((*p == ',' && !q) || i >= tmax) {
+					temp[i] = 0;
+					trim(temp);
+					tlen = strlen(temp);
+					dprintf(dlevel,"adding: %s (%d)\n", temp, tlen);
+					if (tlen) list_add(l,temp,tlen+1);
+					i = 0;
+				} else {
+					temp[i++] = *p;
+				}
+				p++;
+			}
+			dprintf(dlevel,"i: %d\n", i);
+			if (i) {
+				temp[i] = 0;
+				trim(temp);
+				tlen = strlen(temp);
+				dprintf(dlevel,"adding: %s (%d)\n", temp, tlen);
+				if (tlen) list_add(l,temp,tlen+1);
+			}
+#if 1
+			dprintf(dlevel,"list:");
+			list_reset(l);
+			while( (p = list_get_next(l)) != 0) dprintf(dlevel,"\t%s",p);
+#endif
+			dprintf(dlevel,"done!\n");
+		    }
+#endif
 
 int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 	register int i;
 	int return_len;
+
+	dprintf(dlevel,"dt: %d(%s), d: %p, dl: %d, st: %d(%s), s: %p, sl: %d\n", dt, typestr(dt), d, dl, st, typestr(st), s, sl);
 
 	return_len = -1;
 	switch(dt) {
@@ -132,6 +180,9 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 	    {
 		char *dest = d;
 		switch(st) {
+		case DATA_TYPE_VOID:
+			*dest = 0;
+			break;
 		case DATA_TYPE_STRING:
 			*dest = 0;
 			strncat(dest,s,dl);
@@ -205,7 +256,9 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 			*dest = 0;
 			dlen = 0;
 			first = 1;
+			dprintf(dlevel,"restting...\n");
 			list_reset(l);
+			dprintf(dlevel,"iterating...\n");
 			while( (p = list_get_next(l)) != 0) {
 				dprintf(dlevel,"p: %s\n", p);
 				slen = strlen(p);
@@ -220,7 +273,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		    }
 		    break;
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -286,7 +339,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_F64_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -351,7 +404,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_F64_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -417,7 +470,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_F64_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -482,7 +535,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_F64_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -547,7 +600,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_F64_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -612,7 +665,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_F64_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -676,7 +729,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_F64_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -741,7 +794,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_F64_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -801,7 +854,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_STRING_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -861,7 +914,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_STRING_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -1000,7 +1053,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_STRING_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -1101,7 +1154,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_STRING_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -1202,7 +1255,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_STRING_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -1295,7 +1348,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 			break;
 		case DATA_TYPE_BOOL_ARRAY:
 			{
-				int *sa = s;
+				bool *sa = s;
 				for(i=0; i < sl && i < dl; i++) da[i] = sa[i];
 				return_len = dl;
 			}
@@ -1303,7 +1356,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_STRING_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -1404,7 +1457,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_STRING_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -1521,7 +1574,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 			break;
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -1622,7 +1675,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_STRING_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -1723,7 +1776,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_STRING_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -1824,7 +1877,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_STRING_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -1925,7 +1978,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_STRING_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -1940,7 +1993,8 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 			list l;
 			char *p;
 
-			str2list(&l,s);
+			l = list_create();
+			str2list(l,s);
 			i = 0;
 			list_reset(l);
 			while((p = list_get_next(l)) != 0) {
@@ -2075,94 +2129,46 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_STRING_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
 	    break;
 	case DATA_TYPE_STRING_ARRAY:
 	    {
+		char **da = (char **) d;
 		switch(st) {
-		case DATA_TYPE_STRING:
-		case DATA_TYPE_S8:
-		case DATA_TYPE_S16:
-		case DATA_TYPE_S32:
-		case DATA_TYPE_S64:
-		case DATA_TYPE_U8:
-		case DATA_TYPE_U16:
-		case DATA_TYPE_U32:
-		case DATA_TYPE_U64:
-		case DATA_TYPE_F32:
-		case DATA_TYPE_F64:
-		case DATA_TYPE_BOOL:
-		case DATA_TYPE_S8_ARRAY:
-		case DATA_TYPE_S16_ARRAY:
-		case DATA_TYPE_S32_ARRAY:
-		case DATA_TYPE_S64_ARRAY:
-		case DATA_TYPE_U8_ARRAY:
-		case DATA_TYPE_U16_ARRAY:
-		case DATA_TYPE_U32_ARRAY:
-		case DATA_TYPE_U64_ARRAY:
-		case DATA_TYPE_F32_ARRAY:
-		case DATA_TYPE_F64_ARRAY:
 		case DATA_TYPE_STRING_ARRAY:
-		case DATA_TYPE_STRING_LIST:
-		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
-			break;
-		}
-	    }
-	    break;
-	case DATA_TYPE_STRING_LIST:
-	    {
-		switch(st) {
+		    {
+			char **sa = (char **) s;
+
+			dprintf(dlevel,"sl: %d\n", sl);
+			for(i=0; i < sl && i < dl; i++) {
+				dprintf(dlevel,"sa[%d]: %s\n", i, sa[i]);
+				da[i] = malloc(strlen(sa[i])+1);
+				if (!da[i]) break;
+				strcpy(da[i],sa[i]);
+			}
+			return_len = i;
+		    }
+		    break;
 		case DATA_TYPE_STRING:
 		    {
-			char temp[2048];
-			int tmax,tlen,q;
-			list *dest = d;
-			register char *p;
-			register int i;
+			list l;
+			char *p;
 
-			*dest = list_create();
-			if (!s) break;
-
-			p = s;
-//			printf("==> src: %s\n", p);
-			tmax = sizeof(temp)-1;
-			i = q = 0;
-			while(*p) {
-//				printf("==> p: %c, q: %d, i: %d\n", *p, q, i);
-				if (*p == '\"' && !q)
-					q = 1;
-				else if (*p == '\"' && q)
-					q = 0;
-				else if ((*p == ',' && !q) || i >= tmax) {
-					temp[i] = 0;
-					trim(temp);
-					tlen = strlen(temp);
-//					printf("==> adding: %s (%d)\n", temp, tlen);
-					if (tlen) list_add(*dest,temp,tlen+1);
-					i = 0;
-				} else {
-					temp[i++] = *p;
-				}
-				p++;
+			l = list_create();
+			str2list(l,s);
+			i = 0;
+			list_reset(l);
+			while((p = list_get_next(l)) != 0) {
+				if (i >= dl) break;
+				da[i] = malloc(strlen(p)+1);
+				if (!da[i]) break;
+				strcpy(da[i],p);
 			}
-			if (i) {
-				temp[i] = 0;
-				trim(temp);
-				tlen = strlen(temp);
-//				dprintf(dlevel,"adding: %s (%d)\n", temp, tlen);
-				if (tlen) list_add(*dest,temp,tlen+1);
-			}
-#if 0
-#if DEBUG
-			dprintf(dlevel,"list:");
-			list_reset(*dest);
-			while( (p = list_get_next(*dest)) != 0) dprintf(dlevel,"\t%s",p);
-#endif
-#endif
+			list_destroy(l);
+			return_len = i;
 		    }
 		    break;
 		case DATA_TYPE_S8:
@@ -2186,10 +2192,44 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_U64_ARRAY:
 		case DATA_TYPE_F32_ARRAY:
 		case DATA_TYPE_F64_ARRAY:
+		case DATA_TYPE_STRING_LIST:
+		default:
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
+		}
+	    }
+	    break;
+	case DATA_TYPE_STRING_LIST:
+	    {
+		switch(st) {
+		case DATA_TYPE_STRING:
+			str2list(d,s);
+			break;
+		case DATA_TYPE_S8:
+		case DATA_TYPE_S16:
+		case DATA_TYPE_S32:
+		case DATA_TYPE_S64:
+		case DATA_TYPE_U8:
+		case DATA_TYPE_U16:
+		case DATA_TYPE_U32:
+		case DATA_TYPE_U64:
+		case DATA_TYPE_F32:
+		case DATA_TYPE_F64:
+		case DATA_TYPE_BOOL:
+		case DATA_TYPE_S8_ARRAY:
+		case DATA_TYPE_S16_ARRAY:
+		case DATA_TYPE_S32_ARRAY:
+		case DATA_TYPE_S64_ARRAY:
+		case DATA_TYPE_U8_ARRAY:
+		case DATA_TYPE_U16_ARRAY:
+		case DATA_TYPE_U32_ARRAY:
+		case DATA_TYPE_U64_ARRAY:
+		case DATA_TYPE_F32_ARRAY:
+		case DATA_TYPE_F64_ARRAY:
 		case DATA_TYPE_STRING_ARRAY:
 		case DATA_TYPE_STRING_LIST:
 		default:
-			dprintf(0,"**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
 		}
 	    }
@@ -2197,6 +2237,7 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 	}
 
 	if (return_len < 0) {
+		dprintf(dlevel,"dt: %d(%s)\n", dt,typestr(dt));
 		switch(dt) {
 		case DATA_TYPE_STRING:
 			return strlen((char *)d);
@@ -2215,10 +2256,11 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_BOOL:
 			return sizeof(int);
 		case DATA_TYPE_STRING_LIST:
-			return list_count(*((list *)d));
+			return list_count((list)d);
 		default:
 			return 0;
 		}
 	}
+	dprintf(dlevel,"returning: %d\n", return_len);
 	return return_len;
 }

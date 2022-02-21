@@ -22,6 +22,16 @@ Array.prototype.unique = function() {
     return a;
 };
 
+function merge(target, source) {
+    Object.keys(source).forEach(function (key) {
+        if (source[key] && typeof source[key] === 'object') {
+            merge(target[key] = target[key] || {}, source[key]);
+            return;
+        }
+        target[key] = source[key];
+    });
+}
+
 var STRIP_COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
 var ARGUMENT_NAMES = /([^\s,]+)/g;
 function getParamNames(func) {

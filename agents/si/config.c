@@ -114,7 +114,9 @@ static int si_set_value(void *ctx, list args, char *errmsg) {
 			solard_set_bit(p->flags,CONFIG_FLAG_ALLOC);
 		}
 		p->len = conv_type(p->type,p->dest,p->dsize,DATA_TYPE_STRING,value,strlen(value));
+		p->dirty = 1;
 	}
+	config_write(s->ap->cp);
 	return 0;
 }
 
@@ -196,8 +198,8 @@ static void _getsource(si_session_t *s, si_current_source_t *spec) {
 
 int si_agent_init(int argc, char **argv, opt_proctab_t *si_opts, si_session_t *s) {
 	config_property_t si_props[] = {
-		{ "bms_mode", DATA_TYPE_BOOL, &s->bms_mode, 0, "-1", 0, 0, 0, 0, 0, 0, 0, 1, 0 },
-		{ "readonly", DATA_TYPE_BOOL, &s->readonly, 0, "1", 0, 0, 0, 0, 0, 0, 0, 1, 0 },
+		{ "bms_mode", DATA_TYPE_BOOL, &s->bms_mode, 0, "no", 0, 0, 0, 0, 0, 0, 0, 1, 0 },
+		{ "readonly", DATA_TYPE_BOOL, &s->readonly, 0, "yes", 0, 0, 0, 0, 0, 0, 0, 1, 0 },
 		{ "startup_charge_mode", DATA_TYPE_INT, &s->startup_charge_mode, 0, "0", 0,
 			"select", 3, (int []){ 0, 1, 2 }, 1, (char *[]){ "Off","On","CV" }, 0, 1, 0 },
 		{ "charge_mode", DATA_TYPE_INT, &s->charge_mode, 0, "0", 0,
@@ -451,6 +453,7 @@ int si_config(void *h, int req, ...) {
 		/* Add si_data to config */
 		si_config_add_si_data(s);
 
+#if 0
 		/* Set min/max for volts if not set */
 		if (!si_isvrange(s->min_voltage)) {
 			log_warning("setting min_voltage to %.1f\n", 41.0);
@@ -460,9 +463,7 @@ int si_config(void *h, int req, ...) {
 			log_warning("setting max_voltage to %.1f\n", 58.1);
 			s->max_voltage = 58.1;
 		}
-
-		/* Init charge params */
-		charge_init(s);
+#endif
 
 		/* Interval cannot be more than 30s */
 		if (s->interval > 30) {

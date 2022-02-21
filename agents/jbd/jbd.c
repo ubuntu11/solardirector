@@ -8,8 +8,91 @@ LICENSE file in the root directory of this source tree.
 */
 
 #include "jbd.h"
+#include "transports.h"
 
 #define MIN_CMD_LEN 7
+
+#if defined(__WIN32) || defined(__WIN64)
+solard_driver_t *jbd_transports[] = { &ip_driver, &serial_driver, 0 };
+#else
+#ifdef BLUETOOTH
+solard_driver_t *jbd_transports[] = { &ip_driver, &bt_driver, &serial_driver, &can_driver, 0 };
+#else
+solard_driver_t *jbd_transports[] = { &ip_driver, &serial_driver, &can_driver, 0 };
+#endif
+#endif
+
+/* init the transport */
+int jbd_tp_init(jbd_session_t *s) {
+	solard_driver_t *old_driver;
+	void *old_handle;
+
+	/* If it's open, close it */
+	if (solard_check_state(s,JBD_STATE_OPEN)) jbd_close(s);
+
+	/* Save current driver & handle */
+	dprintf(1,"s->tp: %p, s->tp_handle: %p\n", s->tp, s->tp_handle);
+	if (s->tp && s->tp_handle) {
+		old_driver = s->tp;
+		old_handle = s->tp_handle;
+	} else {
+		old_driver = 0;
+		old_handle = 0;
+	}
+
+	/* Find the driver */
+	if (strlen(s->transport)) s->tp = find_driver(jbd_transports,s->transport);
+	dprintf(1,"s->tp: %p\n", s->tp);
+	if (!s->tp) {
+		/* Restore old driver & handle, open it and return */
+		dprintf(1,"old_driver: %p, old_handle: %p\n", old_driver, old_handle);
+		if (old_driver && old_handle) {
+			dprintf(1,"restoring...\n");
+			s->tp = old_driver;
+			s->tp_handle = old_handle;
+			return 1;
+		} else if (strlen(s->transport)) {
+			sprintf(s->errmsg,"unable to find driver for transport: %s",s->transport);
+			return 1;
+		} else {
+			sprintf(s->errmsg,"transport is empty!\n");
+			return 2;
+		}
+	}
+
+	/* Open new one */
+	dprintf(1,"using driver: %s\n", s->tp->name);
+	s->tp_handle = s->tp->new(s->target, s->topts);
+	dprintf(1,"tp_handle: %p\n", s->tp_handle);
+	if (!s->tp_handle) {
+		dprintf(1,"old_driver: %p, old_handle: %p\n", old_driver, old_handle);
+		/* Restore old driver */
+		if (old_driver && old_handle) {
+			dprintf(1,"restoring...\n");
+			s->tp = old_driver;
+			s->tp_handle = old_handle;
+			/* Make sure we dont close it below */
+			old_driver = 0;
+		} else {
+			sprintf(s->errmsg,"unable to create new instance %s driver",s->tp->name);
+			return 1;
+		}
+	}
+
+	/* Warn if using the null driver */
+	if (strcmp(s->tp->name,"null") == 0) log_warning("using null driver for I/O");
+
+	/* Open the new driver */
+//	jbd_open(s);
+
+	/* Close and free the old handle */
+	dprintf(1,"old_driver: %p, old_handle: %p\n", old_driver, old_handle);
+	if (old_driver && old_handle) {
+		old_driver->close(old_handle);
+		old_driver->destroy(old_handle);
+	}
+	return 0;
+}
 
 uint16_t jbd_crc(unsigned char *data, int len) {
 	uint16_t crc = 0;
@@ -116,7 +199,7 @@ unsigned short jbd_can_crc(unsigned char *pchMsg) {
 	return wCRC;
 }
 
-int jbd_can_get(jbd_session_t *s, int id, unsigned char *data, int datalen, int chk) {
+int jbd_can_get(jbd_session_t *s, uint32_t id, unsigned char *data, int datalen, int chk) {
         unsigned short crc, mycrc;
 	int retries,bytes,len;
 	struct can_frame frame;
@@ -127,9 +210,9 @@ int jbd_can_get(jbd_session_t *s, int id, unsigned char *data, int datalen, int 
 		/* First, write a 0 len frame to the ID */
 		frame.can_id = id;
 		frame.can_dlc = 0;
-		if (s->tp->write(s->tp_handle,&frame,sizeof(frame)) < 0) return 1;
+		if (s->tp->write(s->tp_handle,&id,&frame,sizeof(frame)) < 0) return 1;
 		/* Then read the response */
-		bytes = s->tp->read(s->tp_handle,&frame,sizeof(frame));
+		bytes = s->tp->read(s->tp_handle,&id,&frame,sizeof(frame));
 		dprintf(3,"bytes: %d\n", bytes);
 		if (bytes < 0) return 1;
 		memset(data,0,datalen);
@@ -175,10 +258,10 @@ int jbd_rw(jbd_session_t *s, uint8_t action, uint8_t reg, uint8_t *data, int dat
 			return -1;
 		}
 		dprintf(5,"writing...\n");
-		bytes = s->tp->write(s->tp_handle,cmd,cmdlen);
+		bytes = s->tp->write(s->tp_handle,0,cmd,cmdlen);
 		dprintf(5,"bytes: %d\n", bytes);
 		memset(data,0,datasz);
-		bytes = s->tp->read(s->tp_handle,buf,sizeof(buf));
+		bytes = s->tp->read(s->tp_handle,0,buf,sizeof(buf));
 		dprintf(5,"bytes: %d\n", bytes);
 		if (bytes < 0) return -1;
 		if (!jbd_verify(buf,bytes)) break;
@@ -189,18 +272,24 @@ int jbd_rw(jbd_session_t *s, uint8_t action, uint8_t reg, uint8_t *data, int dat
 	return buf[3];
 }
 
-int jbd_eeprom_start(jbd_session_t *s) {
+int jbd_eeprom_open(jbd_session_t *s) {
 	uint8_t payload[2] = { 0x56, 0x78 };
+	int r;
 
-	dprintf(5,"starting...\n");
-	return jbd_rw(s, JBD_CMD_WRITE, JBD_REG_EEPROM, payload, sizeof(payload) );
+	dprintf(4,"opening...\n");
+	r = jbd_rw(s, JBD_CMD_WRITE, JBD_REG_EEPROM, payload, sizeof(payload) );
+	if (r >= 0) solard_set_state(s,JBD_STATE_EEPROM);
+	return r;
 }
 
-int jbd_eeprom_end(jbd_session_t *s) {
+int jbd_eeprom_close(jbd_session_t *s) {
 	uint8_t payload[2] = { 0x00, 0x00 };
+	int r;
 
-	dprintf(5,"ending...\n");
-	return jbd_rw(s, JBD_CMD_WRITE, JBD_REG_CONFIG, payload, sizeof(payload) );
+	dprintf(4,"closing...\n");
+	r = jbd_rw(s, JBD_CMD_WRITE, JBD_REG_CONFIG, payload, sizeof(payload) );
+	if (r >= 0) solard_clear_state(s,JBD_STATE_EEPROM);
+	return r;
 }
 
 int jbd_set_mosfet(jbd_session_t *s, int val) {
@@ -209,9 +298,9 @@ int jbd_set_mosfet(jbd_session_t *s, int val) {
 
 	dprintf(5,"val: %x\n", val);
 	jbd_putshort(payload,val);
-	if (jbd_eeprom_start(s) < 0) return 1;
+	if (jbd_eeprom_open(s) < 0) return 1;
 	r = jbd_rw(s, JBD_CMD_WRITE, JBD_REG_MOSFET, payload, sizeof(payload));
-	if (jbd_eeprom_end(s) < 0) return 1;
+	if (jbd_eeprom_close(s) < 0) return 1;
 	return (r < 0 ? 1 : 0);
 }
 
@@ -468,8 +557,10 @@ int jbd_get_fetstate(jbd_session_t *s) {
 	return r;
 }
 
-int jbd_read(void *handle, void *buf, int buflen) {
+int jbd_read(void *handle, uint32_t *what, void *buf, int buflen) {
 	jbd_session_t *s = handle;
+	float v,min,max,avg,tot;
+	int i;
 
 	dprintf(1,"reader: %p\n", s->reader);
 	if (!s->reader) {
@@ -483,7 +574,28 @@ int jbd_read(void *handle, void *buf, int buflen) {
 		else
 			s->reader = jbd_std_read;
 	}
-	if (s->reader(s)) return 1;
+
+	if (!solard_check_state(s,JBD_STATE_OPEN) && jbd_open(s)) return 1;
+	if (s->reader(s)) {
+		jbd_close(s);
+		return 1;
+	}
+
+	/* min/max/avg/total */
+	min = 9999999;
+	tot = max = 0;
+	for(i=0; i < s->data.ncells; i++) {
+		v = s->data.cellvolt[i];
+		if (v < min) min = v;
+		else if (v > max) max = v;
+		tot += v;
+	}
+	avg = tot / s->data.ncells;
+	s->data.cell_min = min;
+	s->data.cell_max = max;
+	s->data.cell_diff = max - min;
+	s->data.cell_avg = avg;
+	s->data.cell_total = tot;
 	if (s->balancing) solard_set_state(s,JBD_STATE_BALANCING);
 	else solard_clear_state(s,JBD_STATE_BALANCING);
 	return 0;
@@ -562,7 +674,7 @@ _can_init_error:
 	return 1;
 }
 
-void *jbd_new(void *ctx, void *transport, void *transport_handle) {
+void *jbd_new(void *transport, void *transport_handle) {
 	jbd_session_t *s;
 
 	s = calloc(1,sizeof(*s));
@@ -570,7 +682,6 @@ void *jbd_new(void *ctx, void *transport, void *transport_handle) {
 		log_syserr("jbd_new: calloc");
 		return 0;
 	}
-	s->ap = ctx;
 //	pthread_mutex_init(&s->lock,0);
 	if (transport && transport_handle) {
 		s->tp = transport;
@@ -592,7 +703,7 @@ int jbd_open(void *handle) {
 
 	r = 0;
 	if (!solard_check_state(s,JBD_STATE_OPEN)) {
-		if (s->tp->open(s->tp_handle) == 0)
+		if (s->tp && s->tp->open(s->tp_handle) == 0)
 			solard_set_state(s,JBD_STATE_OPEN);
 		else
 			r = 1;
@@ -608,7 +719,7 @@ int jbd_close(void *handle) {
 	dprintf(3,"s: %p\n", s);
 	r = 0;
 	if (solard_check_state(s,JBD_STATE_OPEN)) {
-		if (s->tp->close(s->tp_handle) == 0)
+		if (s->tp && s->tp->close(s->tp_handle) == 0)
 			solard_clear_state(s,JBD_STATE_OPEN);
 		else
 			r = 1;
@@ -627,7 +738,6 @@ int jbd_free(void *handle) {
 }
 
 solard_driver_t jbd_driver = {
-	SOLARD_DRIVER_AGENT,
 	"jbd",
 	jbd_new,			/* New */
 	jbd_free,			/* Free */

@@ -13,11 +13,14 @@ enum CONFIG_FILE_FORMAT {
 	CONFIG_FILE_FORMAT_MAX,
 };
 
-#define CONFIG_FLAG_READONLY	0x01	/* Item not updated by mqtt/js */
-#define CONFIG_FLAG_NOSAVE	0x02	/* Do not save to file/mqtt */
+#define CONFIG_FLAG_READONLY	0x01	/* Do not update */
+#define CONFIG_FLAG_NOSAVE	0x02	/* Do not save */
 #define CONFIG_FLAG_NOID	0x04	/* Do not assign an ID */
-#define CONFIG_FLAG_FILEONLY	0x08	/* Exists in file only (not visible by mqtt/js) */
-#define CONFIG_FLAG_ALLOC	0x10	/* Contents of dest have been malloc'd (and must be freed) */
+#define CONFIG_FLAG_FILE	0x08	/* Exists in storage (file/mqtt) */
+#define CONFIG_FLAG_FILEONLY	0x10	/* Exists in file only (not visible by mqtt/js) */
+#define CONFIG_FLAG_ALLOC	0x20	/* Contents of dest have been malloc'd (and must be freed) */
+#define CONFIG_FLAG_NOPUB	0x40	/* Do not publish */
+#define CONFIG_FLAG_DIRTY	0x80	/* Has been updated since last write */
 
 struct config_property {
 	char *name;
@@ -38,7 +41,6 @@ struct config_property {
 	int len;			/* actual length of storage */
 	int id;				/* Property ID */
 	int dirty;			/* Has been updated since last write */
-	int (*func)(void *,struct config_property *);	/* func called when updated */
 };
 typedef struct config_property config_property_t;
 
@@ -56,7 +58,7 @@ typedef struct config_function config_function_t;
 struct config_section {
 	char name[CONFIG_SECTION_NAME_SIZE];
 	list items;
-	int flags;
+	uint32_t flags;
 };
 typedef struct config_section config_section_t;
 
@@ -105,25 +107,27 @@ config_section_t *config_get_section(config_t *,char *);
 config_section_t *config_create_section(config_t *,char *,int);
 config_property_t *config_get_property(config_t *cp, char *sname, char *name);
 config_property_t *config_section_get_property(config_section_t *s, char *name);
+int config_section_get_properties(config_section_t *s, config_property_t *props);
 config_property_t *config_section_add_property(config_t *cp, config_section_t *s, config_property_t *p, int flags);
 config_property_t *config_section_add_props(config_t *cp, config_section_t *s, config_property_t *p);
 
 config_function_t *config_function_get(config_t *, char *name);
 int config_function_set(config_t *, char *name, config_function_t *);
 
-json_value_t *config_to_json(config_t *cp);
+json_value_t *config_to_json(config_t *cp, int noflags);
 int config_from_json(config_t *cp, json_value_t *v);
 int config_write(config_t *);
 int config_add(config_t *cp,char *section, char *label, char *value);
 int config_del(config_t *cp,char *section, char *label, char *value);
 int config_get(config_t *cp,char *section, char *label, char *value);
-int config_set(config_t *cp,char *section, char *label, char *value);
+//int config_set(config_t *cp,char *section, char *label, char *value);
 //int config_pub(config_t *cp, mqtt_session_t *m);
 config_property_t *config_find_property(config_t *cp, char *name);
 config_property_t *config_get_propbyid(config_t *cp, int);
 
 //typedef int (config_process_callback_t)(void *,char *,char *,char *,char *);
 int config_process(config_t *cp, char *req);
+
 
 void config_build_propmap(config_t *cp);
 

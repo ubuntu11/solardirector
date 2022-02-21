@@ -405,6 +405,24 @@ JSObject *JSInflux(JSContext *cx, void *priv) {
 	return obj;
 }
 
+void influx_add_props(config_t *cp, influx_config_t *gconf, char *name, influx_config_t *conf) {
+	config_property_t influx_props[] = {
+		{ "host", DATA_TYPE_STRING, conf->host, sizeof(conf->host)-1, "localhost", 0,
+                        0, 0, 0, 1, (char *[]){ "InfluxDB host" }, 0, 1, 0 },
+		{ "port", DATA_TYPE_INT, &conf->port, 0, "8086", 0,
+			0, 0, 0, 1, (char *[]){ "InfluxDB port" }, 0, 1, 0 },
+		{ "database", DATA_TYPE_STRING, conf->database, sizeof(conf->database)-1, "", 0,
+                        0, 0, 0, 1, (char *[]){ "InfluxDB database" }, 0, 1, 0 },
+		{ "username", DATA_TYPE_STRING, conf->username, sizeof(conf->username)-1, "", 0,
+                        0, 0, 0, 1, (char *[]){ "InfluxDB username" }, 0, 1, 0 },
+		{ "password", DATA_TYPE_STRING, conf->password, sizeof(conf->password)-1, "", 0,
+                        0, 0, 0, 1, (char *[]){ "InfluxDB password" }, 0, 1, 0 },
+		{ 0 }
+	};
+
+	config_add_props(cp, "influx", influx_props, 0);
+}
+
 int influx_jsinit(JSEngine *js, influx_session_t *i) {
 	return JS_EngineAddInitFunc(js, "influx", JSInflux, i);
 }

@@ -7,6 +7,9 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
+#define DEBUG_JSENGINE 0
+#define dlevel 4
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -22,9 +25,7 @@ LICENSE file in the root directory of this source tree.
 #include "jsdbgapi.h"
 #include "jsdtracef.h"
 #include "jsobj.h"
-
-#define DEBUG_JSENGINE 1
-#define dlevel 1
+#include "jscntxt.h"
 
 #ifdef DEBUG
 #undef DEBUG
@@ -37,7 +38,8 @@ struct _scriptinfo {
 	char filename[256];
 	int modtime;
 	JSScript *script;
-	JSObject *obj;
+//	JSObject *obj;
+	JSTempValueRooter tvr;
 	int exitcode;
 };
 typedef struct _scriptinfo scriptinfo_t;
@@ -69,10 +71,6 @@ static scriptinfo_t *_getsinfo(JSEngine *e, char *filename) {
 static int _chkscript(JSContext *cx, scriptinfo_t *sp) {
 	time_t mt;
 
-//	dprintf(dlevel,"scriptinfo: e: %p, cx: %p, newcx: %d, filename: %s, modtime: %d, script: %p\n",
-//		sp->e, sp->cx, sp->newcx, sp->filename, sp->modtime, sp->script);
-//	dprintf(dlevel,"scriptinfo: sp: %p, e: %p, newcx: %d, filename: %s, modtime: %d, script: %p\n", sp,
-//		sp->e, sp->newcx, sp->filename, sp->modtime, sp->script);
 	dprintf(dlevel,"scriptinfo: sp: %p, e: %p, filename: %s, modtime: %d, script: %p\n", sp,
 		sp->e, sp->filename, sp->modtime, sp->script);
 
@@ -80,16 +78,27 @@ static int _chkscript(JSContext *cx, scriptinfo_t *sp) {
 	dprintf(dlevel,"mt: %ld, modtime: %ld\n", mt, sp->modtime);
 	if (!sp->script || sp->modtime != mt) {
 		dprintf(dlevel,"script: %p\n", sp->script);
-		if (sp->script) JS_DestroyScript(cx, sp->script);
+		if (sp->script) {
+			/* Removing the root will cause GC to destroy the script */
+			JS_RemoveRoot(cx, &sp->script->object);
+		}
+		JS_BeginRequest(cx);
 		sp->script = JS_CompileFile(cx, JS_GetGlobalObject(cx), sp->filename);
 		dprintf(dlevel,"script: %p\n", sp->script);
-		if (!sp->script) return 1;
-		sp->obj = JS_NewScriptObject(cx, sp->script);
-		if (!sp->obj) {
-			JS_DestroyScript(cx, sp->script);
+		if (!sp->script) {
+			JS_EndRequest(cx);
 			return 1;
 		}
-		if (!JS_AddNamedRoot(cx, &sp->obj, sp->filename)) return 1;
+		JS_NewScriptObject(cx, sp->script);
+		dprintf(dlevel,"script->object: %p\n", sp->script->object);
+		if (!sp->script->object) {
+			JS_DestroyScript(cx, sp->script);
+			sp->script = 0;
+			JS_EndRequest(cx);
+			return 1;
+		}
+		if (!JS_AddNamedRoot(cx, &sp->script->object, sp->filename)) return 1;
+		JS_EndRequest(cx);
 		sp->modtime = mt;
 	}
 	return 0;
@@ -206,11 +215,10 @@ static void _relcx(JSEngine *e) {
 	pthread_mutex_unlock(&e->lockcx);
 }
 
-
 JSEngine *JS_EngineInit(int rtsize, js_outputfunc_t *output) {
 	JSEngine *e;
 
-	dprintf(dlevel,"Initialize JS Engine...\n");
+	dprintf(dlevel,"rtsize: %d, output: %p\n", rtsize, output);
 
 	e = calloc(sizeof(*e),1);
 	if (!e) return 0;
@@ -226,7 +234,7 @@ JSEngine *JS_EngineInit(int rtsize, js_outputfunc_t *output) {
 	e->scripts = list_create();
 	e->initfuncs = list_create();
 	pthread_mutex_init(&e->lockcx, 0);
-	e->stacksize = 4096;
+	e->stacksize = 1048576;
 //	e->cx = JS_EngineNewContext(e);
 
 	return e;
@@ -240,30 +248,14 @@ JS_EngineInit_error:
 JSEngine *JS_DupEngine(JSEngine *old) {
 	JSEngine *e;
 
-	dprintf(dlevel,"Initialize JS Engine...\n");
-
-	e = calloc(sizeof(*e),1);
+	dprintf(dlevel,"OLD: rtsize: %d, output: %p\n", old->rtsize, old->output);
+	e = JS_EngineInit(old->rtsize, old->output);
 	if (!e) return 0;
-
-	dprintf(dlevel,"rtsize: %d\n", old->rtsize);
-	e->rt = JS_NewRuntime(old->rtsize);
-	if (!e->rt) {
-		dprintf(dlevel,"error creating runtime\n");
-		goto JS_EngineInit_error;
-	}
-	e->rtsize = old->rtsize;
-	e->output = old->output;
-	pthread_mutex_init(&e->lockcx, 0);
-	e->scripts = list_create();
+	list_destroy(e->initfuncs);
 	e->initfuncs = list_dup(old->initfuncs);
 	e->stacksize = old->stacksize;
 
 	return e;
-
-JS_EngineInit_error:
-	if (e->rt) JS_DestroyRuntime(e->rt);
-	free(e);
-	return 0;
 }
 
 int JS_EngineDestroy(JSEngine *e) {
@@ -272,19 +264,15 @@ int JS_EngineDestroy(JSEngine *e) {
 	return 1;
 }
 
-#if 0
 int JS_EngineAddObject(JSEngine *e, jsobjinit_t *func, void *priv) {
-	jsval rval;
 	JSContext *cx;
-	int ok;
 
 	cx = _getcx(e);
 	if (!cx) return 1;
 	func(cx, priv);
 	_relcx(e);
-	return (ok ? 0 : 1);
+	return 0;
 }
-#endif
 
 int JS_EngineAddInitFunc(JSEngine *e, char *name, js_initfunc_t *func, void *priv) {
 	js_initfuncinfo_t newfunc;

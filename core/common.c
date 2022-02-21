@@ -10,8 +10,10 @@ LICENSE file in the root directory of this source tree.
 #include <string.h>
 #include <stdlib.h>
 #include <dirent.h>
-#include "config.h"
 #include "common.h"
+#include "config.h"
+#include "mqtt.h"
+#include "influx.h"
 #ifdef __WIN32
 #include <winsock2.h>
 #endif
@@ -304,6 +306,97 @@ int solard_common_config(cfg_info_t *cfg, char *section_name) {
 	return solard_get_dirs(cfg,section_name,home,0);
 }
 
+int solard_common_startup(config_t **cp, char *sname, char *configfile,
+			config_property_t *props, config_function_t *funcs,
+			mqtt_session_t **m, mqtt_callback_t *getmsg, void *mctx,
+			char *mqtt_info, mqtt_config_t *mc, int config_from_mqtt,
+			influx_session_t **i, char *influx_info, influx_config_t *ic,
+#ifdef JS
+			JSEngine **js, int rtsize, js_outputfunc_t *jsout)
+#endif
+{
+	mqtt_config_t gmc;
+	influx_config_t gic;
+	int mqtt_init_done;
+
+	/* Create MQTT session */
+	*m = mqtt_new(getmsg, mctx);
+	if (!*m) {
+		log_syserror("unable to create MQTT session\n");
+		return 1;
+	}
+	dprintf(dlevel,"m: %p\n", *m);
+
+	/* Create InfluxDB session */
+	*i = influx_new();
+	if (!*i) {
+		log_syserror("unable to create InfluxDB session\n");
+		return 1;
+	}
+	dprintf(dlevel,"i: %p\n", *i);
+
+	/* Init the config */
+	*cp = config_init(sname, props, funcs);
+	if (!*cp) return 0;
+	common_add_props(*cp, sname);
+	mqtt_add_props(*cp, &gmc, sname, mc);
+	influx_add_props(*cp, &gic, sname, ic);
+
+	mqtt_init_done = 0;
+	if (config_from_mqtt) {
+		/* If mqtt info specified on command line, parse it */
+		dprintf(dlevel,"mqtt_info: %s\n", mqtt_info);
+		if (strlen(mqtt_info)) mqtt_parse_config(mc,mqtt_info);
+
+		/* init mqtt */
+		if (mqtt_init(*m, mc)) return 1;
+		mqtt_init_done = 1;
+
+		/* read the config */
+//		if (config_from_mqtt(*cp, topic, m)) return 1;
+
+	} else if (strlen(configfile)) {
+		int fmt;
+		char *p;
+
+		/* Try to determine format */
+		p = strrchr(configfile,'.');
+		if (p && (strcasecmp(p,".json") == 0)) fmt = CONFIG_FILE_FORMAT_JSON;
+		else fmt = CONFIG_FILE_FORMAT_INI;
+
+		dprintf(dlevel,"reading configfile...\n");
+		if (config_read(*cp,configfile,fmt)) {
+			log_error(config_get_errmsg(*cp));
+			return 1;
+		}
+	}
+	config_dump(*cp);
+
+	/* If MQTT not init, do it now */
+	if (!mqtt_init_done) {
+		dprintf(1,"mqtt_info: %s\n", mqtt_info);
+		if (strlen(mqtt_info)) mqtt_parse_config(mc, mqtt_info);
+
+		if (mqtt_init(*m, mc)) return 1;
+		mqtt_init_done = 1;
+	}
+
+	/* Subscribe to our clientid */
+	sprintf(mqtt_info,"%s/%s/%s",SOLARD_TOPIC_ROOT,SOLARD_TOPIC_CLIENTS,mc->clientid);
+	mqtt_sub(*m,mqtt_info);
+
+#ifdef JS
+	/* Init js scripting */
+	*js = JS_EngineInit(rtsize, jsout);
+	common_jsinit(*js);
+	config_jsinit(*js, *cp);
+	mqtt_jsinit(*js, *m);
+	influx_jsinit(*js, *i);
+#endif
+
+	return 0;
+}
+
 #ifdef JS
 enum COMMON_PROPERTY_ID {
 	COMMON_PROPERTY_ID_NONE,
@@ -408,6 +501,20 @@ JSObject *JSCommon(JSContext *cx, void *priv) {
 	}
 	return obj;
 }
+
+void common_add_props(config_t *cp, char *name) {
+	config_property_t common_props[] = {
+		{ "bindir", DATA_TYPE_STRING, SOLARD_BINDIR, sizeof(SOLARD_BINDIR)-1, 0 },
+		{ "etcdir", DATA_TYPE_STRING, SOLARD_ETCDIR, sizeof(SOLARD_ETCDIR)-1, 0 },
+		{ "libdir", DATA_TYPE_STRING, SOLARD_LIBDIR, sizeof(SOLARD_LIBDIR)-1, 0 },
+		{ "logdir", DATA_TYPE_STRING, SOLARD_LOGDIR, sizeof(SOLARD_LOGDIR)-1, 0 },
+		{ "debug", DATA_TYPE_INT, &debug, 0, 0, 0,
+			"range", 3, (int []){ 0, 99, 1 }, 1, (char *[]) { "debug level" }, 0, 1, 0 },
+		{ 0 }
+	};
+	config_add_props(cp, name, common_props, 0);
+}
+
 int common_jsinit(JSEngine *e) {
 	return JS_EngineAddInitFunc(e, "common", JSCommon, 0);
 }

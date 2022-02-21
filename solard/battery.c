@@ -108,33 +108,37 @@ int battery_to_influxdb(battery_session_t *s) {
 }
 #endif
 
-void getpack(solard_config_t *conf, char *name, char *data) {
-	solard_battery_t bat,*pp = &bat;
+//void getpack(solard_config_t *conf, char *name, char *data) {
+void getpack(solard_config_t *conf, client_agentinfo_t *ap) {
+	solard_battery_t bat,*pp;
+	solard_message_t *msg;
 
-//	battery_from_json(&bat,data);
-//	battery_dump(&bat,3);
-	/* See if this pack is ours */
-	dprintf(1,"name: %s\n", bat.name);
-	pp = find_pack_by_name(conf,bat.name);
-	if (!pp) {
-		dprintf(1,"not mine, ignoring...\n");
-		return;
+	dprintf(4,"agent %s count %d\n", ap->name, list_count(ap->mq));
+	list_reset(ap->mq);
+	while((msg = list_get_next(ap->mq)) != 0) {
+		if (strcmp(msg->func,SOLARD_FUNC_DATA) != 0) {
+			dprintf(4,"error: NOT data\n");
+			list_delete(ap->mq,msg);
+			continue;
+		}
+		dprintf(4,"updating pack: %s\n", ap->name);
+		if (battery_from_json(&bat,msg->data)) {
+			dprintf(0,"battery_from_json failed on %s\n", msg->data);
+			return;
+		}
+//		battery_dump(&bat,4);
+		/* See if this pack is ours */
+		dprintf(4,"name: %s\n", bat.name);
+		pp = find_pack_by_name(conf,bat.name);
+		if (!pp) {
+			dprintf(4,"not our pack: %s\n", bat.name);
+			return;
+		}
+		*pp = bat;
+//		memcpy(pp,&bat,sizeof(bat));
+		solard_set_state(pp,BATTERY_STATE_UPDATED);
+		time(&pp->last_update);
+		list_delete(ap->mq,msg);
 	}
-	memcpy(pp,&bat,sizeof(bat));
-	solard_set_state(pp,BATTERY_STATE_UPDATED);
-	time(&pp->last_update);
-#if 0
-
-	pp = find_pack_by_name(conf,bat.name);
-	if (!pp) {
-		dprintf(7,"adding pack...\n");
-		list_add(conf->batteries,&bat,sizeof(bat));
-		dprintf(7,"sorting batteries...\n");
-		list_sort(conf->batteries,sort_batteries,0);
-	} else {
-		dprintf(7,"updating pack...\n");
-		memcpy(pp,&bat,sizeof(bat));
-	}
-#endif
 	return;
 };

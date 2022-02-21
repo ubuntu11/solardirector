@@ -25,6 +25,7 @@ list list_dup( list );
 void *list_add( list, void *, int );
 int list_add_list( list, list );
 int list_delete( list, void * );
+int list_purge(list);
 void *list_get_next( list );
 #define list_next list_get_next
 int list_reset( list );

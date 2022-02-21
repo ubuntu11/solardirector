@@ -9,6 +9,7 @@ LICENSE file in the root directory of this source tree.
 
 #include "solard.h"
 #include "transports.h"
+#include "__sd_build.h"
 
 #define TESTING 1
 
@@ -18,8 +19,34 @@ LICENSE file in the root directory of this source tree.
 #define _ST_DEBUG 0
 #endif
 
-char *solard_version_string = "1.0";
+char *sd_version_string = "1.0-" STRINGIFY(__SD_BUILD);
+
 solard_driver_t sd_driver;
+
+int solard_read(void *handle, uint32_t *control, void *buf, int buflen) {
+	solard_config_t *conf = handle;
+	list agents = conf->c->agents;
+	client_agentinfo_t *ap;
+	char *p;
+
+	/* Update the agents */
+//	dprintf(0,"agent count: %d\n", list_count(agents));
+	list_reset(agents);
+	while((ap = list_get_next(agents)) != 0) {
+		p = client_getagentrole(ap);
+		if (!p) continue;
+//		dprintf(0,"role: %s, name: %s, count: %d\n", p, ap->name, list_count(ap->mq));
+		if (strcmp(p,SOLARD_ROLE_BATTERY) == 0) getpack(conf,ap);
+		else if (strcmp(p,SOLARD_ROLE_BATTERY) == 0) getinv(conf,ap);
+		else list_purge(ap->mq);
+	}
+
+	check_agents(conf);
+	solard_monitor(conf);
+	agent_start_script(conf->ap,"monitor.js");
+	time(&conf->last_check);
+	return 0;
+}
 
 int main(int argc,char **argv) {
 	solard_config_t *conf;
@@ -27,20 +54,18 @@ int main(int argc,char **argv) {
 		OPTS_END
 	};
 #if TESTING
-	char *args[] = { "solard", "-d", "6", "-c", "sdtest.conf" };
+	char *args[] = { "solard", "-d", "0", "-e", "agent.script_dir=\".\"; agent.libdir=\"../../\";", "-c", "sdtest.conf" };
 	argc = (sizeof(args)/sizeof(char *));
 	argv = args;
 #endif
-
-	debug = 4;
 
 //	log_open("solard",0,LOG_INFO|LOG_WARNING|LOG_ERROR|LOG_SYSERR|_ST_DEBUG);
 //	log_open("solard",0,0xffffff);
 
 	/* Init agent driver */
 	memset(&sd_driver,0,sizeof(sd_driver));
-	sd_driver.type = SOLARD_DRIVER_AGENT;
 	sd_driver.name = "solard";
+	sd_driver.read = solard_read;
 	sd_driver.config = solard_config;
 
 	conf = calloc(1,sizeof(*conf));
@@ -55,22 +80,14 @@ int main(int argc,char **argv) {
 
 	if (solard_agent_init(argc,argv,sd_opts,conf)) return 1;
 
-	if (mqtt_sub(conf->ap->m,SOLARD_TOPIC_ROOT"/"SOLARD_ROLE_BATTERY"/+/"SOLARD_FUNC_DATA)) return 1;
-	if (mqtt_sub(conf->ap->m,SOLARD_TOPIC_ROOT"/"SOLARD_ROLE_INVERTER"/+/"SOLARD_FUNC_DATA)) return 1;
+//	conf->ap->read_interval = conf->ap->write_interval = -1;
 
-//	if (conf->ap->cfg && cfg_is_dirty(conf->ap->cfg)) solard_write_config(conf);
+	/* We're not only the president but a client too! */
+	dprintf(1,"calling client_init...\n");
+	conf->c = client_init(0,0,0,sd_driver.name,0,0);
+	dprintf(1,"c: %p\n", conf->c);
+	if (!conf->c) return 1;
 
-	conf->start = mem_used();
-
-	/* This is called once/second */
-//	agent_set_callback(ap,solard_cb,conf);
-
-//	config_set_filename(conf->ap->cp, "sdtest.json", 0);
-//	config_write(conf->ap->cp);
-//	return 0;
-
-//	agent_run_script(conf->ap,"test.js");
-//	return 0;
 	agent_run(conf->ap);
 	return 0;
 }

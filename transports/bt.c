@@ -31,7 +31,7 @@ struct bt_session {
 };
 typedef struct bt_session bt_session_t;
 
-static void *bt_new(void *conf, void *target, void *topts) {
+static void *bt_new(void *target, void *topts) {
 	bt_session_t *s;
 
 	s = calloc(sizeof(*s),1);
@@ -132,7 +132,7 @@ static int bt_open(void *handle) {
 	return 0;
 }
 
-static int bt_read(void *handle, void *buf, int buflen) {
+static int bt_read(void *handle, uint32_t *control, void *buf, int buflen) {
 	bt_session_t *s = handle;
 	int len, retries;
 
@@ -158,7 +158,7 @@ static int bt_read(void *handle, void *buf, int buflen) {
 	return len;
 }
 
-static int bt_write(void *handle, void *buf, int buflen) {
+static int bt_write(void *handle, uint32_t *control, void *buf, int buflen) {
 	bt_session_t *s = handle;
 
 	if (!s->c) return -1;
@@ -219,7 +219,6 @@ static int bt_destroy(void *handle) {
 }
 
 solard_driver_t bt_driver = {
-	SOLARD_DRIVER_TRANSPORT,
 	"bt",
 	bt_new,
 	bt_destroy,

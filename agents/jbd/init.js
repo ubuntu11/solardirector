@@ -1,2 +1,1 @@
-agent.libdir="../../core";
-include(agent.libdir+"/init.js");
+include(agent.libdir+"/core/init.js");

@@ -7,9 +7,10 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#define THREAD_SAFE 1
 #define DEBUG_LIST 0
 #define dlevel 4
+
+#define THREAD_SAFE 1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -191,6 +192,7 @@ list list_create(void) {
 	lp->first = lp->last = lp->next = (list_item) 0;
 
 #if THREAD_SAFE
+	dprintf(dlevel,"initializing lock...\n");
 	pthread_mutex_init(&lp->mutex,NULL);
 #endif
 
@@ -250,6 +252,32 @@ int list_delete(list lp,void *item) {
 	return (found ? 0 : 1);
 }
 
+int list_purge(list lp) {
+	list_item ip,next;
+
+	if (!lp) return -1;
+
+#if THREAD_SAFE
+	pthread_mutex_lock(&lp->mutex);
+#endif
+
+	ip = lp->first;                         /* Start at beginning */
+	while(ip) {
+		if (ip->size) free(ip->item);	/* Free the item data */
+		next = ip->next;                /* Get next pointer */
+		free(ip);			/* Free current item */
+		ip = next;                      /* Set current item to next */
+	}
+
+	/* fixup first/last/next */
+	lp->first = lp->last = lp->next = (list_item) 0;
+
+#if THREAD_SAFE
+	pthread_mutex_unlock(&lp->mutex);
+#endif
+	return 0;
+}
+
 int list_destroy(list lp) {
 	list_item ip,next;
 
@@ -257,7 +285,7 @@ int list_destroy(list lp) {
 
 	ip = lp->first;                         /* Start at beginning */
 	while(ip) {
-		if (ip->size) free(ip->item);	/* Free the item */
+		if (ip->size) free(ip->item);	/* Free the item data */
 		next = ip->next;                /* Get next pointer */
 		free(ip);			/* Free current item */
 		ip = next;                      /* Set current item to next */
@@ -304,6 +332,7 @@ void *list_get_next(list lp) {
 	if (!lp) return 0;
 
 #if THREAD_SAFE
+	DPRINTF("locking...\n");
 	pthread_mutex_lock(&lp->mutex);
 #endif
 
@@ -317,6 +346,7 @@ void *list_get_next(list lp) {
 	}
 
 #if THREAD_SAFE
+	DPRINTF("unlocking...\n");
 	pthread_mutex_unlock(&lp->mutex);
 #endif
 	return item;

@@ -216,7 +216,7 @@ int smanet_write_frame(smanet_session_t *s, uint8_t *buffer, int buflen) {
 	p += copy2buf(p,fcsd,2);
 	*p++ = 0x7e;
 //	if (debug >= dlevel+1) bindump("put frame",data,p - data);
-	bytes = s->tp->write(s->tp_handle,data,p - data);
+	bytes = s->tp->write(s->tp_handle,0,data,p - data);
 	dprintf(dlevel,"bytes: %d\n", bytes);
 	if (bytes < 0) return -1;
 	return 0;

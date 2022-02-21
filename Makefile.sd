@@ -104,7 +104,7 @@ endif
 ifeq ($(BLUETOOTH),yes)
 ifneq ($(ISWIN),yes)
 CFLAGS+=-DBLUETOOTH
-LIBS+=-lgattlib -lglib-2.0 -lgobject-2.0 -lgio-2.0
+LIBS+=-lgattlib -lglib-2.0 -lgobject-2.0 -lgio-2.0 -lbluetooth
 endif
 #else
 #ifneq ($(TRANSPORTS),)

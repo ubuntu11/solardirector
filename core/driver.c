@@ -4,20 +4,16 @@
 #include "debug.h"
 
 solard_driver_t *find_driver(solard_driver_t **transports, char *name) {
-	solard_driver_t *tp;
-	int i;
+	register int i;
 
-	/* Find the transport in the list of transports */
-	tp = 0;
+	if (!transports || !name) return 0;
+
 	for(i=0; transports[i]; i++) {
-		dprintf(1,"type: %d\n", transports[i]->type);
-		if (transports[i]->type != SOLARD_DRIVER_TRANSPORT) continue;
-		dprintf(1,"name: %s\n", transports[i]->name);
-		if (strcmp(transports[i]->name,name)==0) {
-			tp = transports[i];
-			break;
-		}
+//		dprintf(1,"transports[%d]: %p\n", i, transports[i]);
+//		dprintf(1,"name[%d]: %s\n", i, transports[i]->name);
+		if (strcmp(transports[i]->name,name)==0) break;
 	}
-	dprintf(1,"tp: %p\n", tp);
-	return tp;
+
+	dprintf(1,"tp: %p\n", transports[i]);
+	return transports[i];
 }

@@ -45,11 +45,13 @@ static void *call_rdevserver(void *ctx) {
 }
 #endif
 
-int server(rdev_config_t *conf, int port) {
+int server(rdev_config_t *conf) {
 	struct sockaddr_in sin;
 	socklen_t sin_size;
 	int c,status;
 	socket_t s;
+	char addr[32];
+	unsigned char *ptr;
 #if USE_THREADS
 	struct rdevctx ctx;
 	pthread_attr_t attr;
@@ -83,7 +85,8 @@ int server(rdev_config_t *conf, int port) {
 
 	sin.sin_family = AF_INET;
 	sin.sin_addr.s_addr = htonl(INADDR_ANY);
-	sin.sin_port = htons((unsigned short)port);
+	dprintf(1,"port: %d\n", conf->port);
+	sin.sin_port = htons((unsigned short)conf->port);
 
 	dprintf(1,"binding...\n");
 	if (bind(s, (struct sockaddr *) &sin, sizeof(sin)) < 0)  {
@@ -95,7 +98,7 @@ int server(rdev_config_t *conf, int port) {
 		log_write(LOG_SYSERR,"listen");
 		goto rdev_server_error;
 	}
-	while(solard_check_state(conf,RDEV_STATE_RUNNING)) {
+	while(solard_check_state(conf,RDEVSERVER_RUNNING)) {
 		dprintf(1,"accepting...\n");
 		c = accept(s,(struct sockaddr *)&sin,&sin_size);
 		if (c < 0) {
@@ -103,6 +106,9 @@ int server(rdev_config_t *conf, int port) {
 			goto rdev_server_error;
 		}
 		dprintf(1,"c: %d\n", c);
+		ptr = (unsigned char *) &sin.sin_addr.s_addr;
+		sprintf(addr,"%d.%d.%d.%d", ptr[0],ptr[1],ptr[2],ptr[3]);
+		log_info("Connection from %s\n", addr);
 #if USE_THREADS
 		/* Create a detached thread */
 		dprintf(1,"init attr...\n");
@@ -134,7 +140,7 @@ int server(rdev_config_t *conf, int port) {
 		} else if (pid == 0) {
 			dprintf(1,"pid: %d\n", pid);
 			dprintf(1,"calling devserver...\n");
-			_exit(devserver(&conf->ds,c));
+			_exit(devserver(conf,c));
 		} else {
 			dprintf(1,"pid: %d\n", pid);
 			close(c);
@@ -148,14 +154,6 @@ int server(rdev_config_t *conf, int port) {
 #endif
 		}
 #endif
-	}
-	if (conf->can) {
-		/* Close the IF */
-		if (conf->can->close(conf->can_handle)) {
-			log_write(LOG_SYSERR,"can close");
-			goto rdev_server_error;
-		}
-		solard_clear_state(conf,RDEV_STATE_OPEN);
 	}
 	return 0;
 rdev_server_error:

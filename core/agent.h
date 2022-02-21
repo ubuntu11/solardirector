@@ -84,6 +84,7 @@ void agent_add_msghandler(solard_agent_t *, solard_msghandler_t *, void *);
 
 void *agent_get_handle(solard_agent_t *);
 int agent_start_script(solard_agent_t *ap, char *name);
+int agent_script_exists(solard_agent_t *ap, char *name);
 #define agent_run_script(a,n) agent_start_script(a,n,0)
 
 #include "config.h"

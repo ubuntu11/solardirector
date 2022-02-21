@@ -157,6 +157,8 @@ void solard_monitor(solard_config_t *conf) {
 		dprintf(5,"name: %s, role: %s\n", info->name, info->role);
 		if (strcmp(info->role,SOLARD_ROLE_BATTERY) != 0) continue;
 		bp = info->data;
+		dprintf(1,"bp: %p\n", bp);
+		if (!bp) continue;
 		if (!solard_check_state(bp,BATTERY_STATE_UPDATED)) continue;
 		dprintf(5,"ntemps: %d\n", bp->ntemps);
 		for(i=0; i < bp->ntemps; i++) {

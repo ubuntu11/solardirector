@@ -11,8 +11,9 @@ LICENSE file in the root directory of this source tree.
 #define __JK_H
 
 #include "agent.h"
+#include "battery.h"
 
-struct jk_info {
+struct jk_hwinfo {
 	char manufacturer[32];		/* Maker */
 	char device[64];		/* Device name */
 	char model[64];			/* Model name */
@@ -21,11 +22,12 @@ struct jk_info {
 	char hwvers[34];
 	char swvers[34];
 };
-typedef struct jk_info jk_info_t;
+typedef struct jk_hwinfo jk_hwinfo_t;
 
 #define JK_MAX_TEMPS 8
 #define JK_MAX_CELLS 32
 
+#if 0
 struct jk_data {
 	float capacity;			/* Battery pack capacity, in AH */
 	float voltage;			/* Pack voltage */
@@ -43,24 +45,33 @@ struct jk_data {
 	uint32_t balancebits;		/* Balance bitmask */
 };
 typedef struct jk_data jk_data_t;
+#endif
 
 struct jk_session {
 	char name[SOLARD_NAME_LEN];	/* Our instance name (from battery) */
 	solard_agent_t *ap;		/* Agent config pointer */
+	char tpinfo[SOLARD_TRANSPORT_LEN+SOLARD_TARGET_LEN+SOLARD_TOPTS_LEN+3];
 	char transport[SOLARD_TRANSPORT_LEN];
 	char target[SOLARD_TARGET_LEN];
 	char topts[SOLARD_TOPTS_LEN];
 	solard_driver_t *tp;		/* Our transport */
 	void *tp_handle;		/* Our transport handle */
 	uint16_t state;			/* Pack state */
-	jk_info_t info;
-	jk_data_t data;
+	bool flatten;
+	jk_hwinfo_t hwinfo;
+//	jk_data_t data;
+	solard_battery_t data;
 	uint8_t fetstate;		/* Mosfet state */
 	uint8_t balancing;		/* 0=off, 1=on, 2=only when charging */
 	int errcode;			/* error indicator */
 	char errmsg[256];		/* Error message if errcode !0 */
+	JSPropertySpec *props;
+	JSPropertySpec *data_props;
+	char topic[SOLARD_TOPIC_SIZE];
 };
 typedef struct jk_session jk_session_t;
+
+extern solard_driver_t jk_driver;
 
 /* States */
 #define JK_STATE_OPEN		0x01
@@ -69,22 +80,9 @@ typedef struct jk_session jk_session_t;
 #define JK_STATE_DISCHARGING	0x20
 #define JK_STATE_BALANCING	0x40
 
-#if 0
-struct jk_session {
-	solard_agent_t *ap;		/* Our config */
-	solard_driver_t *tp;		/* Our transport */
-	void *tp_handle;		/* Our transport handle */
-	char name[SOLARD_NAME_LEN];
-	jk_info_t info;
-	uint8_t fetstate;
-	uint16_t state;			/* Pack state */
-};
-typedef struct jk_session jk_session_t;
-#endif
-
 /* I/O */
-int jk_can_get_crc(jk_session_t *s, int id, unsigned char *data, int len);
-int jk_can_get(jk_session_t *s, int id, unsigned char *data, int datalen, int chk);
+int jk_can_get_crc(jk_session_t *s, uint32_t id, unsigned char *data, int len);
+int jk_can_get(jk_session_t *s, uint32_t id, unsigned char *data, int datalen, int chk);
 int jk_eeprom_start(jk_session_t *s);
 int jk_eeprom_end(jk_session_t *s);
 int jk_rw(jk_session_t *, uint8_t action, uint8_t reg, uint8_t *data, int datasz);
@@ -93,21 +91,21 @@ int jk_cmd(uint8_t *pkt, int pkt_size, int action, uint16_t reg, uint8_t *data, 
 int jk_rw(jk_session_t *s, uint8_t action, uint8_t reg, uint8_t *data, int datasz);
 
 /* Driver */
+int jk_tp_init(jk_session_t *s);
 int jk_open(void *handle);
 int jk_close(void *handle);
-
-typedef void (jk_info_callback_t)(jk_info_t *,uint8_t *);
-
-/* Read */
-int jk_bt_read(jk_session_t *s);
-int jk_read(void *handle, void *, int);
+int jk_get_hwinfo(jk_session_t *s);
 
 /* Config */
+int jk_agent_init(jk_session_t *s, int argc, char **argv);
 int jk_config(void *,int,...);
 int jk_config_add_params(json_object_t *);
 
 /* Info */
-json_value_t *jk_info(void *handle);
+json_value_t *jk_get_info(void *handle);
+
+/* jsfuncs */
+int jk_jsinit(jk_session_t *s);
 
 #define jk_getshort(p) ((short) ((*((p)) << 8) | *((p)+1) ))
 #define jk_putshort(p,v) { float tmp; *((p)) = ((int)(tmp = v) >> 8); *((p+1)) = (int)(tmp = v); }
@@ -118,7 +116,7 @@ json_value_t *jk_info(void *handle);
 #define JK_CMD_WRITE		0x5A
 
 #define JK_CMD_HWINFO		0x03
-#define JK_CMD_CELLINFO	0x04
+#define JK_CMD_CELLINFO		0x04
 #define JK_CMD_HWVER		0x05
 #define JK_CMD_MOS		0xE1
 

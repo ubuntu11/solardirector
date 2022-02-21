@@ -682,7 +682,7 @@ static int _getarg(void *dest, JSContext *cx, int *idx, int argc, jsval *argv, e
 		}
 		break;
 	default:
-		printf("_getarg: unhandled type: %d!\n", type);
+		log_error("_getarg: unhandled type: %d!\n", type);
 		return 1;
 	}
 	*idx = *idx + 1;

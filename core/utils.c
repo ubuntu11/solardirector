@@ -7,6 +7,8 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
+#define DEBUG_UTILS 0
+
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -14,10 +16,11 @@ LICENSE file in the root directory of this source tree.
 #include <time.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <unistd.h>
 #ifdef DEBUG
 #undef DEBUG
 #endif
-#define DEBUG 1
+#define DEBUG DEBUG_UTILS
 #include "utils.h"
 #include "debug.h"
 #ifdef __WIN32
@@ -59,14 +62,13 @@ void _bindump(long offset,void *bptr,int len) {
 		}
 		for(y=end; y < x+16; y++) *ptr++ = ' ';
 		*ptr = 0;
-//		dprintf(1,"%s\n",line);
-		log_write(LOG_INFO,"%s\n", line);
+		log_info("%s\n", line);
 		offset += 16;
 	}
 }
 
 void bindump(char *label,void *bptr,int len) {
-	printf("%s(%d):\n",label,len);
+	log_info("%s(%d):\n",label,len);
 	_bindump(0,bptr,len);
 }
 
@@ -229,7 +231,7 @@ is_ip_error:
 int get_timestamp(char *ts, int tslen, int local) {
 	struct tm *tptr;
 	time_t t;
-	char temp[32];
+//	char temp[32];
 
 	if (!ts || !tslen) return 1;
 
@@ -248,13 +250,14 @@ int get_timestamp(char *ts, int tslen, int local) {
 	if (tptr->tm_mon < 0 || tptr->tm_mon > 11) tptr->tm_mon = 0;
 
 	/* Fill string with yyyymmddhhmmss */
-	sprintf(temp,"%04d-%02d-%02d %02d:%02d:%02d",
+//	sprintf(temp,"%04d-%02d-%02d %02d:%02d:%02d",
+	snprintf(ts,tslen,"%04d-%02d-%02d %02d:%02d:%02d",
 		1900+tptr->tm_year,tptr->tm_mon+1,tptr->tm_mday,
 		tptr->tm_hour,tptr->tm_min,tptr->tm_sec);
-	DPRINTF("temp: %s\n", temp);
+//	DPRINTF("temp: %s\n", temp);
 
-	ts[0] = 0;
-	strncat(ts,temp,tslen);
+//	ts[0] = 0;
+//	strncat(ts,temp,tslen);
 	DPRINTF("returning: %s\n", ts);
 	return 0;
 }
@@ -281,6 +284,12 @@ int os_setenv(const char *name, const char *value, int overwrite) {
 #endif
 }
 
+int os_exists(char *path, char *name) {
+	char temp[1024];
+
+	snprintf(temp,sizeof(temp)-1,"%s/%s",path,name);
+	return (access(temp,0) == 0);
+}
 
 bool fequal(float a, float b) {
 	return fabs(a-b) < 0.00001f;
@@ -310,20 +319,25 @@ int double_equals(double a, double b) {
         return (r > 0.00001);
 }
 
-#if 0
+#if 1
 int float_equals(float f1, float f2) {
-	float precision = 0.00001;
-	return (((f1 - precision) < f2) && (f1 + precision) > f2) ? 1 : 0;
+	int r,r1,r2;
+//	float precision = 0.00001;
+//	return (((f1 - precision) < f2) && (f1 + precision) > f2) ? 1 : 0;
+	r1 = ((f1 - 0.00001) < f2);
+	r2 = ((f1 + 0.00001) > f2);
+	r = r1 && r2;
+//	printf("r: %d, r1: %d, r2: %d\n", r, r1, r2);
+	return r;
 }
 #else
 int float_equals(float a, float b) {
 	float r;
 
-	if (a == b) return 1;
 	if (a > b) r = a - b;
 	else r = b - a;
 	dprintf(0,"a: %f, b: %f, r: %f\n", a, b, r);
-	dprintf(0,"returning: %d\n", r > 0.00001f);
-	return (r > 0.00001f);
+	dprintf(0,"returning: %d\n", r < 0.00001f);
+	return (r < 0.00001f);
 }
 #endif

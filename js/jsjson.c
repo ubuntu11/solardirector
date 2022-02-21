@@ -1361,20 +1361,21 @@ static JSFunctionSpec json_static_methods[] = {
     JS_FS_END
 };
 
-JSObject *
-js_InitJSONClass(JSContext *cx, JSObject *obj)
-{
+JSObject *jsjson_new(JSContext *cx, JSObject *gobj) {
+	JSObject *obj;
+
+	obj = JS_InitClass(cx, gobj, gobj, &js_JSONClass, 0, 0, 0, 0, 0, 0);
+
+	return obj;
+}
+
+JSObject * js_InitJSONClass(JSContext *cx, JSObject *obj) {
     JSObject *JSON;
 
     JSON = JS_NewObject(cx, &js_JSONClass, NULL, obj);
-    if (!JSON)
-        return NULL;
-    if (!JS_DefineProperty(cx, obj, js_JSON_str, OBJECT_TO_JSVAL(JSON),
-                           JS_PropertyStub, JS_PropertyStub, 0))
-        return NULL;
-
-    if (!JS_DefineFunctions(cx, JSON, json_static_methods))
-        return NULL;
+    if (!JSON) return NULL;
+    if (!JS_DefineProperty(cx, obj, js_JSON_str, OBJECT_TO_JSVAL(JSON), JS_PropertyStub, JS_PropertyStub, 0)) return NULL;
+    if (!JS_DefineFunctions(cx, JSON, json_static_methods)) return NULL;
 
     return JSON;
 }

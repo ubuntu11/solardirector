@@ -15,12 +15,12 @@ LICENSE file in the root directory of this source tree.
 //#define isvrange(v) ((v >= 1.0) && (v  <= 1000.0))
 
 int si_check_config(si_session_t *s) {
-	int r;
-	char *msg;
+//	int r;
+//	char *msg;
 	float spread;
 
 	dprintf(1,"min_voltage: %.1f, max_voltage: %.1f\n", s->min_voltage, s->max_voltage);
-	if (!si_isvrange(s->min_voltage) && !fequal(s->min_voltage,0.0)) {
+	if (!si_isvrange(s->min_voltage) && !float_equals(s->min_voltage,0.0)) {
 		log_warning("min_voltage (%.1f) out of range(%.1f to %.1f)\n",
 			s->min_voltage, SI_VOLTAGE_MIN, SI_VOLTAGE_MAX);
 		s->min_voltage = 0.0;
@@ -28,7 +28,7 @@ int si_check_config(si_session_t *s) {
 		log_warning("min_voltage >= max_voltage\n");
 		s->min_voltage = 0.0;
 	}
-	if (!si_isvrange(s->max_voltage) && !fequal(s->max_voltage,0.0)) {
+	if (!si_isvrange(s->max_voltage) && !float_equals(s->max_voltage,0.0)) {
 		log_warning("max_voltage (%.1f) out of range(%.1f to %.1f)\n",
 			s->max_voltage, SI_VOLTAGE_MIN, SI_VOLTAGE_MAX);
 		s->max_voltage = 0.0;
@@ -36,11 +36,11 @@ int si_check_config(si_session_t *s) {
 		log_warning("min_voltage >= max_voltage\n");
 		s->max_voltage = 0.0;
 	}
-	if (fequal(s->min_voltage,0.0)) {
+	if (float_equals(s->min_voltage,0.0)) {
 		log_warning("setting min_voltage to %.1f\n", 41.0);
 		s->min_voltage = 41.0;
 	}
-	if (fequal(s->max_voltage,0.0)) {
+	if (float_equals(s->max_voltage,0.0)) {
 		log_warning("setting max_voltage to %.1f\n", 58.1);
 		s->max_voltage = 58.1;
 	}
@@ -68,14 +68,15 @@ int si_check_config(si_session_t *s) {
 #endif
 
 #if 0
-	if (fequal(s->charge_start_soc,0.0)) {
+	if (float_equals(s->charge_start_soc,0.0)) {
 		log_warning("setting charge_start_soc to 25\n");
 		s->charge_start_soc = 85.0;
 	}
 #endif
 
+check_again:
 	spread = s->max_voltage - s->min_voltage;
-	if (!fequal(s->charge_start_voltage,0.0)) {
+	if (!float_equals(s->charge_start_voltage,0.0)) {
 		if (!si_isvrange(s->charge_start_voltage)) {
 			log_warning("charge_start_voltage (%.1f) out of range(%.1f to %.1f)\n",
 				s->charge_start_voltage, SI_VOLTAGE_MIN, SI_VOLTAGE_MAX);
@@ -91,11 +92,11 @@ int si_check_config(si_session_t *s) {
 			s->charge_start_voltage = 0.0;
 		}
 	}
-	if (fequal(s->charge_start_voltage,0.0)) {
+	if (float_equals(s->charge_start_voltage,0.0)) {
 		s->charge_start_voltage = s->min_voltage + (spread * 0.25);
 		log_warning("setting charge_start_voltage to %.1f\n", s->charge_start_voltage);
 	}
-	if (!fequal(s->charge_end_voltage,0.0)) {
+	if (!float_equals(s->charge_end_voltage,0.0)) {
 		if (!si_isvrange(s->charge_end_voltage)) {
 			log_warning("charge_end_voltage (%.1f) out of range(%.1f to %.1f)\n",
 				s->charge_end_voltage, SI_VOLTAGE_MIN, SI_VOLTAGE_MAX);
@@ -111,9 +112,10 @@ int si_check_config(si_session_t *s) {
 			s->charge_end_voltage = 0.0;
 		}
 	}
-	if (fequal(s->charge_end_voltage,0.0)) {
+	if (float_equals(s->charge_end_voltage,0.0)) {
 		s->charge_end_voltage = s->min_voltage + (spread * 0.85);
 		log_warning("setting charge_end_voltage to %.1f\n", s->charge_end_voltage);
+		goto check_again;
 	}
 
 #if 0

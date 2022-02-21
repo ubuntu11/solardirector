@@ -9,7 +9,9 @@ LICENSE file in the root directory of this source tree.
 
 #include <fcntl.h> 
 #include <time.h>
-#ifndef WINDOWS
+#ifdef __WIN32
+#include <windows.h>
+#else
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
@@ -78,11 +80,11 @@ serial_get_done:
 }
 #endif
 
-static void *serial_new(void *conf, void *target, void *topts) {
+static void *serial_new(void *target, void *topts) {
 	serial_session_t *s;
 	char *p;
 
-	s = calloc(sizeof(*s),1);
+	s = calloc(1,sizeof(*s));
 	if (!s) {
 		log_write(LOG_SYSERR,"serial_new: calloc(%d)",sizeof(*s));
 		return 0;
@@ -340,65 +342,39 @@ static int serial_open(void *handle) {
 }
 #endif
 
+#ifdef WINDOWS
+static int serial_read(void *handle, uint32_t *control, void *buf, int buflen) {
+	ReadFile(s->h, buf, buflen, (LPDWORD)&bytes, 0);
+	dprintf(1,"bytes: %d\n", bytes);
+	return bytes;
+}
+#else
 #if USE_BUFFER
-static int serial_read(void *handle, void *buf, int buflen) {
+static int serial_read(void *handle, uint32_t *control, void *buf, int buflen) {
 	serial_session_t *s = handle;
 
 	return buffer_get(s->buffer,buf,buflen);
 }
 #else
-static int serial_read(void *handle, void *buf, int buflen) {
+static int serial_read(void *handle, uint32_t *control, void *buf, int buflen) {
 	serial_session_t *s = handle;
-//	register uint8_t *p = buf;
-//	register int i;
-//	uint8_t ch;
 	int bytes;
-//	int num, i;
-//	time_t start,cur;
-#ifndef __WIN32
 	struct timeval tv;
 	fd_set rfds;
 	int num,count;
-#endif
 
 	dprintf(8,"buf: %p, buflen: %d\n", buf, buflen);
 	if (!buf || !buflen) return 0;
 
-#ifdef __WIN32
-	ReadFile(s->h, buf, buflen, (LPDWORD)&bytes, 0);
-	dprintf(1,"bytes: %d\n", bytes);
-	return bytes;
-#else
-#if 0
-	time(&start);
-	for(i=0; i < buflen; i++) {
-		bytes = read(s->fd,p,1);
-		dprintf(8,"bytes: %d\n", bytes);
-		if (bytes < 0) {
-			if (errno == EAGAIN) break;
-			else return -1;
-		}
-		if (bytes == 0) break;
-		time(&cur);
-		if (cur - start >= 1) break;
-		dprintf(8,"ch: %02X\n", *p);
-		if (*p == 0x11 || *p == 0x13) {
-			printf("***** p: %02X ******\n",*p);
-			exit(0);
-		}
-		p++;
-	}
-	count = i;
-#else
 	/* See if there's anything to read */
 	count = 0;
 	FD_ZERO(&rfds);
 	FD_SET(s->fd,&rfds);
-	dprintf(8,"waiting...\n");
-//	tv.tv_usec = 500000;
-	tv.tv_sec = 1;
+//	dprintf(8,"waiting...\n");
+	tv.tv_usec = 500000;
+	tv.tv_sec = 0;
 	num = select(s->fd+1,&rfds,0,0,&tv);
-	dprintf(8,"num: %d\n", num);
+//	dprintf(8,"num: %d\n", num);
 	if (num < 1) goto serial_read_done;
 
 	/* Read */
@@ -407,37 +383,19 @@ static int serial_read(void *handle, void *buf, int buflen) {
 		log_write(LOG_SYSERR|LOG_DEBUG,"serial_read: read");
 		return -1;
 	}
-	dprintf(8,"bytes read: %d\n", bytes);
 	count = bytes;
-#endif
-#endif
 
-#if 0
-	/* See how many bytes are waiting to be read */
-	bytes = ioctl(s->fd, FIONREAD, &count);
-//	dprintf(8,"bytes: %d\n", bytes);
-	if (bytes < 0) {
-		log_write(LOG_SYSERR|LOG_DEBUG,"serial_read: iotcl");
-		return -1;
-	}
-//	dprintf(8,"count: %d\n", count);
-	/* select said there was data yet there is none? */
-	if (count == 0) goto serial_read_done;
-
-#endif
-
-#ifndef __WIN32
 serial_read_done:
 #ifdef DEBUG
 	if (debug >= 8 && count > 0) bindump("FROM DEVICE",buf,count);
 #endif
 	dprintf(8,"returning: %d\n", count);
 	return count;
-#endif
 }
 #endif
+#endif
 
-static int serial_write(void *handle, void *buf, int buflen) {
+static int serial_write(void *handle, uint32_t *control, void *buf, int buflen) {
 	serial_session_t *s = handle;
 	int bytes;
 
@@ -460,10 +418,8 @@ static int serial_close(void *handle) {
 	serial_session_t *s = handle;
 
 #ifdef _WIN32
-	if (s->h != INVALID_HANDLE_VALUE) {
-		CloseHandle(s->h);
-		s->h = INVALID_HANDLE_VALUE;
-	}
+	CloseHandle(s->h);
+	s->h = INVALID_HANDLE_VALUE;
 #else
 	dprintf(1,"fd: %d\n",s->fd);
 	if (s->fd >= 0) {
@@ -496,9 +452,7 @@ static int serial_destroy(void *handle) {
         return 0;
 }
 
-
 solard_driver_t serial_driver = {
-	SOLARD_DRIVER_TRANSPORT,
 	"serial",
 	serial_new,
 	serial_destroy,

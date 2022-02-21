@@ -64,24 +64,6 @@ int solard_getmsg(solard_message_t *msg, char *topic, char *message, int msglen,
 		return 1;
 	}
 
-#if 0
-	slashes=0;
-	for(p=topic; *p; p++) {
-		if (*p == '/') slashes++;
-	}
-//	dprintf(4,"slashes: %d\n", slashes);
-	i = 1;
-	strncpy(msg->id,strele(i++,"/",topic),sizeof(msg->id)-1);
-//	dprintf(4,"id: %s\n", msg->id);
-	if (slashes > 2) {
-		r = sizeof(msg->id) - strlen(msg->id);
-		strcat(msg->id,"/");
-		strncat(msg->id,strele(i++,"/",topic),r);
-		dprintf(4,"NEW id: %s\n", msg->id);
-	}
-	strncpy(msg->func,strele(i++,"/",topic),sizeof(msg->func)-1);
-//	dprintf(4,"func: %s\n", msg->func);
-#endif
 	if (message && msglen) {
 		if (msglen >= SOLARD_MAX_PAYLOAD_SIZE) {
 			log_warning("solard_getmsg: msglen(%d) > %d",msglen,SOLARD_MAX_PAYLOAD_SIZE);
@@ -94,7 +76,7 @@ int solard_getmsg(solard_message_t *msg, char *topic, char *message, int msglen,
 	}
 	if (replyto) strncpy(msg->replyto,replyto,sizeof(msg->replyto)-1);
 //	dprintf(4,"replyto: %s\n", msg->replyto);
-	solard_message_dump(msg,0);
+//	solard_message_dump(msg,0);
 	return 0;
 }
 

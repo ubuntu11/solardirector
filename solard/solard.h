@@ -11,6 +11,7 @@ LICENSE file in the root directory of this source tree.
 #define __SOLARD_H
 
 #include "agent.h"
+#include "client.h"
 #include "battery.h"
 #include "inverter.h"
 
@@ -43,6 +44,7 @@ typedef struct solard_agentinfo solard_agentinfo_t;
 
 struct solard_config {
 	solard_agent_t *ap;
+	solard_client_t *c;
 	list inverters;
 	list batteries;
 	list agents;
@@ -62,9 +64,11 @@ struct solard_config {
 };
 typedef struct solard_config solard_config_t;
 
+extern solard_driver_t sd_driver;
+
 int solard_agent_init(int argc, char **argv, opt_proctab_t *sd_opts, solard_config_t *conf);
 
-json_value_t *solard_info(void *handle);
+json_value_t *sd_get_info(void *handle);
 
 int solard_read_config(solard_config_t *conf);
 int solard_write_config(solard_config_t *conf);
@@ -73,9 +77,11 @@ int solard_config(void *, int, ...);
 int solard_add_config(solard_config_t *conf, char *label, char *value, char *errmsg);
 
 
-void getinv(solard_config_t *conf, char *name, char *data);
-void getpack(solard_config_t *conf, char *name, char *data);
-void solard_setcfg(cfg_info_t *cfg, char *section_name, solard_agentinfo_t *info);
+void getinv(solard_config_t *conf, client_agentinfo_t *ap);
+void getpack(solard_config_t *conf, client_agentinfo_t *ap);
+//void getinv(solard_config_t *conf, char *name, char *data);
+//void getpack(solard_config_t *conf, char *name, char *data);
+//void solard_setcfg(cfg_info_t *cfg, char *section_name, solard_agentinfo_t *info);
 
 /* agents */
 solard_agentinfo_t *agent_find(solard_config_t *conf, char *name);

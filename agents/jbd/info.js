@@ -32,7 +32,7 @@ conf.agent = JSON.parse(agent_config);
 info.configuration.push(conf);
 
 j = JSON.stringify(info,null,4);
-//printf("j: %s\n", j);
+//printf("info: %s\n", j);
 
-mqtt.pub(SOLARD_TOPIC_ROOT+"/"+agent.name+"/"+SOLARD_FUNC_INFO,j,1);
+mqtt.pub(agent.mktopic(SOLARD_FUNC_INFO),j,1);
 exit(0);

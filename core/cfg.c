@@ -6,7 +6,8 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#define DEBUG_CFG 1
+#define DEBUG_CFG 0
+#define dlevel 4
 
 #include <stdio.h>
 #include <string.h>
@@ -20,7 +21,6 @@ LICENSE file in the root directory of this source tree.
 #undef DEBUG
 #endif
 #define DEBUG DEBUG_CFG
-#define DLEVEL 4
 
 #include "debug.h"
 
@@ -79,13 +79,13 @@ int cfg_delete_section(CFG_INFO *info,char *name) {
 	if (!section) return 1;
 	list_reset(section->items);
 	while((item = list_get_next(section->items)) != 0) {
-		dprintf(DLEVEL,"item->keyword: %s\n",item->keyword);
+		dprintf(dlevel,"item->keyword: %s\n",item->keyword);
 		free(item->value);
 		if (item->desc) free(item->desc);
 	}
-	dprintf(DLEVEL,"destoying items list...\n");
+	dprintf(dlevel,"destoying items list...\n");
 	list_destroy(section->items);
-	dprintf(DLEVEL,"deleting section...\n");
+	dprintf(dlevel,"deleting section...\n");
 	list_delete(info->sections,section);
 	return 0;
 }
@@ -113,16 +113,16 @@ void cfg_destroy(CFG_INFO *info) {
 CFG_ITEM *cfg_section_get_item(CFG_SECTION *section, char *name) {
 	CFG_ITEM *item;
 
-	dprintf(DLEVEL,"looking for keyword: %s", name);
+	dprintf(dlevel,"looking for keyword: %s", name);
 	list_reset(section->items);
 	while( (item = list_get_next(section->items)) != 0) {
-		dprintf(DLEVEL,"item->keyword: %s",item->keyword);
+		dprintf(dlevel,"item->keyword: %s",item->keyword);
 		if (strcmp(item->keyword,name)==0) {
-			dprintf(DLEVEL, "found\n");
+			dprintf(dlevel, "found\n");
 			return item;
 		}
 	}
-	dprintf(DLEVEL, "not found");
+	dprintf(dlevel, "not found");
 	return 0;
 }
 
@@ -148,7 +148,7 @@ char *cfg_get_item(CFG_INFO *info,char *section_name,char *keyword) {
 	register int x;
 
 	if (!info) return 0;
-	dprintf(DLEVEL,"section name: %s, keyword: %s", section_name,keyword);
+	dprintf(dlevel,"section name: %s, keyword: %s", section_name,keyword);
 
 	/* Get the section */
 	section = cfg_get_section(info,section_name);
@@ -239,9 +239,9 @@ int cfg_delete_item(CFG_INFO *info, char *sname, char *keyword) {
 
 	if (!info) return 1;
 
-	dprintf(DLEVEL,"cfg_delete_item: section: %s, keyword: %s", sname,keyword);
+	dprintf(dlevel,"cfg_delete_item: section: %s, keyword: %s", sname,keyword);
 	section = cfg_get_section(info,sname);
-	dprintf(DLEVEL,"section: %p\n", section);
+	dprintf(dlevel,"section: %p\n", section);
 	if (!section) return 1;
 	return cfg_section_delete_item(section,keyword);
 }
@@ -255,7 +255,7 @@ int cfg_set_item(CFG_INFO *info, char *sname, char *iname, char *desc, char *iva
 	if (!info) return 1;
 
 	/* Get the section */
-	dprintf(DLEVEL,"cfg_set_item: section: %s, name: %s, value: %s", sname,iname,ival);
+	dprintf(dlevel,"cfg_set_item: section: %s, name: %s, value: %s", sname,iname,ival);
 	section = cfg_get_section(info,sname);
 	if (!section) {
 		section = cfg_create_section(info,sname);
@@ -290,12 +290,12 @@ int cfg_set_item(CFG_INFO *info, char *sname, char *iname, char *desc, char *iva
 			return 1;
 		}
 		strcpy(item->value,ival);
-		dprintf(DLEVEL,"cfg_set_item: desc: %p", desc);
+		dprintf(dlevel,"cfg_set_item: desc: %p", desc);
 		if (desc) {
-			dprintf(DLEVEL,"cfg_set_item: desc: %s", desc);
-			dprintf(DLEVEL,"cfg_set_item: item->desc: %p", item->desc);
+			dprintf(dlevel,"cfg_set_item: desc: %s", desc);
+			dprintf(dlevel,"cfg_set_item: item->desc: %p", item->desc);
 			if (item->desc) {
-				dprintf(DLEVEL,"cfg_set_item: item->desc: %s", item->desc);
+				dprintf(dlevel,"cfg_set_item: item->desc: %s", item->desc);
 				free(item->desc);
 			}
 			item->desc = (char *) malloc(strlen(desc)+1);
@@ -407,10 +407,10 @@ CFG_INFO *cfg_read(char *filename) {
 	register int x;
 
 	fp = 0;
-	dprintf(DLEVEL,"cfg_read: filename: %s",filename);
+	dprintf(dlevel,"cfg_read: filename: %s",filename);
 	if (filename) {
 		fp = fopen(filename,"r");
-		if (!fp) dprintf(DLEVEL,"cfg_read: error: fopen(%s): %s", filename, strerror(errno));
+		if (!fp) dprintf(dlevel,"cfg_read: error: fopen(%s): %s", filename, strerror(errno));
 	}
 
 	/* Create a cfg_info with no type (version defaults to 2) */
@@ -427,7 +427,7 @@ CFG_INFO *cfg_read(char *filename) {
 	/* Read all lines */
 	desc[0] = 0;
 	while(_readline(line,sizeof(line),fp)) {
-		dprintf(DLEVEL,"_cfg_read: line: %s",line);
+		dprintf(dlevel,"_cfg_read: line: %s",line);
 
 		/* Blank lines end a section */
 		if (!strlen(line)) {
@@ -492,13 +492,13 @@ CFG_INFO *cfg_read(char *filename) {
 			/* Was there a prev item for this keyword? */
 			item = cfg_section_get_item(section,newitem.keyword);
 			if (item) {
-				dprintf(DLEVEL,"cfg_read: deleting previous item!");
+				dprintf(dlevel,"cfg_read: deleting previous item!");
 				list_delete(section->items,item);
 			}
 
 
 			/* Add the new item to the section */
-			dprintf(DLEVEL,"cfg_read: keyword: %s, value: %s", newitem.keyword,newitem.value);
+			dprintf(dlevel,"cfg_read: keyword: %s, value: %s", newitem.keyword,newitem.value);
 
 			list_add(section->items,&newitem,CFG_ITEM_SIZE);
 			desc[0] = 0;
@@ -522,12 +522,12 @@ CFG_SECTION *cfg_get_section(CFG_INFO *info,char *name) {
 	secname[x] = 0;
 
 	/* Find the section */
-	dprintf(DLEVEL,"cfg_get_section: looking for section: %s", secname);
+	dprintf(dlevel,"cfg_get_section: looking for section: %s", secname);
 	list_reset(info->sections);
 	while( (section = list_get_next(info->sections)) != 0) {
-		dprintf(DLEVEL,"name: %s", section->name);
+		dprintf(dlevel,"name: %s", section->name);
 		if (strcmp(section->name,secname)==0) {
-			dprintf(DLEVEL,"found section.");
+			dprintf(dlevel,"found section.");
 			return section;
 		}
 	}
@@ -539,25 +539,19 @@ int cfg_get_tab(CFG_INFO *info, struct cfg_proctab *tab) {
 	char *p;
 	int i;
 
-	dprintf(DLEVEL,"cfg_get_tab: filename: %s",info->filename);
+	dprintf(dlevel,"cfg_get_tab: filename: %s",info->filename);
 	for(i=0; tab[i].section; i++) {
 		ent = &tab[i];
-		dprintf(DLEVEL,"ent->section: %s, ent->keyword: %s\n", ent->section, ent->keyword);
+		dprintf(dlevel,"ent->section: %s, ent->keyword: %s\n", ent->section, ent->keyword);
 		p = cfg_get_item(info, ent->section, ent->keyword);
-		dprintf(DLEVEL,"p: %p, ent->def: %p", p, ent->def);
+		dprintf(dlevel,"p: %p, ent->def: %p", p, ent->def);
 		if (!p) {
-			if (ent->def)
-				p = ent->def;
-			else {
-				/* XXX Because conv would have created the list */
-				/* XXX Need to fix conv so that it doesnt? */
-				if (ent->type == DATA_TYPE_STRING_LIST)
-					*((list *)ent->dest) = list_create();
-				continue;
-			}
+			if (ent->def) p = ent->def;
+			else continue;
 		}
-		dprintf(DLEVEL,"value: %s", p);
+		dprintf(dlevel,"value: %s", p);
 		conv_type(ent->type,ent->dest,ent->dlen,DATA_TYPE_STRING,p,strlen(p));
+		dprintf(dlevel,"converted...\n");
 	}
 
 	return 0;
@@ -571,7 +565,7 @@ int cfg_set_tab(CFG_INFO *info, struct cfg_proctab *tab, int empty) {
 	for(i=0; tab[i].section; i++) {
 		ent = &tab[i];
 		conv_type(DATA_TYPE_STRING,temp,sizeof(temp)-1,ent->type,ent->dest,ent->dlen);
-		dprintf(DLEVEL,"cfg_set_tab: section: %s, keyword: %s, value: %s\n",
+		dprintf(dlevel,"cfg_set_tab: section: %s, keyword: %s, value: %s\n",
 			ent->section, ent->keyword, temp);
 		if (empty || strlen(temp)) cfg_set_item(info,ent->section,ent->keyword,ent->desc,temp);
 	}
@@ -585,8 +579,8 @@ void cfg_disp_tab(struct cfg_proctab *tab, char *name, int logopt) {
 
 	/* Get len of longest section */
 	smax = 0;
-	dprintf(DLEVEL,"tab: %p\n", tab);
-	dprintf(DLEVEL,"tab->section: %p\n", tab->section);
+	dprintf(dlevel,"tab: %p\n", tab);
+	dprintf(dlevel,"tab->section: %p\n", tab->section);
 	for(ent = tab; ent->section; ent++) {
 		if (strlen(ent->section) > smax)
 			smax = strlen(ent->section);
@@ -597,22 +591,22 @@ void cfg_disp_tab(struct cfg_proctab *tab, char *name, int logopt) {
 		if (strlen(ent->keyword) > kmax)
 			kmax = strlen(ent->keyword);
 	}
-	dprintf(DLEVEL,"smax: %d, kmax: %d", smax,kmax);
+	dprintf(dlevel,"smax: %d, kmax: %d", smax,kmax);
 	sprintf(format,"%%-%ds %%%ds: %%s\n",smax+4, kmax+4);
-	dprintf(DLEVEL,"format: %s", format);
+	dprintf(dlevel,"format: %s", format);
 
 	/* Display the tab */
-	dprintf(DLEVEL,"cfg_disp_tab: displaying tab...");
-	dprintf(DLEVEL,"*************** %s Configuration ***************", name);
+	dprintf(dlevel,"cfg_disp_tab: displaying tab...");
+	dprintf(dlevel,"*************** %s Configuration ***************", name);
 	for(ent = tab; ent->section; ent++) {
-		dprintf(DLEVEL,"ent->section: %s", ent->section);
-		dprintf(DLEVEL,"keyword: %s", ent->keyword);
+		dprintf(dlevel,"ent->section: %s", ent->section);
+		dprintf(dlevel,"keyword: %s", ent->keyword);
 		conv_type(DATA_TYPE_STRING,temp,sizeof(temp)-1,ent->type,ent->dest,ent->dlen);
-		dprintf(DLEVEL,"temp: %s", temp);
+		dprintf(dlevel,"temp: %s", temp);
 		sprintf(stemp,"[%s]",ent->section);
 		log_write(LOG_INFO,format,stemp,ent->keyword,temp);
 	}
-	dprintf(DLEVEL,"cfg_disp_tab: done!");
+	dprintf(dlevel,"cfg_disp_tab: done!");
 }
 
 #if 0
@@ -630,7 +624,7 @@ struct cfg_proctab *cfg_combine_tabs(struct cfg_proctab *tab1, struct cfg_procta
 	int count,i,found;
 	list l;
 
-	dprintf(DLEVEL,"cfg_combine_tabs: tab1: %p, tab2: %p", tab1, tab2);
+	dprintf(dlevel,"cfg_combine_tabs: tab1: %p, tab2: %p", tab1, tab2);
 
 	l = list_create();
 
@@ -664,7 +658,7 @@ struct cfg_proctab *cfg_combine_tabs(struct cfg_proctab *tab1, struct cfg_procta
 			count++;
 		}
 	}
-	dprintf(DLEVEL,"cfg_combine_tabs: count: %d", count);
+	dprintf(dlevel,"cfg_combine_tabs: count: %d", count);
 
 	/* Alloc a new tab big enough to hold both XXX plus end marker  */
 	tab = (struct cfg_proctab *) malloc(sizeof(struct cfg_proctab) * (count + 1));
@@ -690,7 +684,7 @@ struct cfg_proctab *cfg_combine_tabs(struct cfg_proctab *tab1, struct cfg_procta
 	memset(&tab[i],0,sizeof(*ent));
 	list_destroy(l);
 
-	dprintf(DLEVEL,"cfg_combine_tabs: returning: %p",tab);
+	dprintf(dlevel,"cfg_combine_tabs: returning: %p",tab);
 	return tab;
 }
 
@@ -700,7 +694,7 @@ int cfg_write(CFG_INFO *info) {
 	CFG_ITEM *item;
 
 	/* open the file */
-	dprintf(DLEVEL,"cfg_write: filename: %s", info->filename);
+	dprintf(dlevel,"cfg_write: filename: %s", info->filename);
 	fp = fopen(info->filename,"wb+");
 	if (!fp) return 1;
 

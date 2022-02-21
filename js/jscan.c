@@ -185,7 +185,8 @@ static JSClass can_class = {
 
 static JSBool jscan_read(JSContext *cx, uintN argc, jsval *vp) {
 	can_private_t *p;
-	int id,len,r;
+	int len,r;
+	uint32_t id;
 	struct can_frame frame;
 	jsval *argv = vp + 2;
 	JSObject *obj;
@@ -200,10 +201,10 @@ static JSBool jscan_read(JSContext *cx, uintN argc, jsval *vp) {
 	}
 
 	if (!jsval_to_type(DATA_TYPE_INT,&id,0,cx,argv[0])) return JS_FALSE;
-	if (!jsval_to_type(DATA_TYPE_INT,&len,0,cx,argv[1])) return JS_FALSE;
+	if (!jsval_to_type(DATA_TYPE_U32,&len,0,cx,argv[1])) return JS_FALSE;
 	dprintf(dlevel,"id: %03x, len: %d\n", id, len);
 	if (len > 8) len = 8;
-	r = p->tp->read(p->tp_handle,&frame,id);
+	r = p->tp->read(p->tp_handle,&id,&frame,sizeof(frame));
 	dprintf(0,"r: %d\n", r);
 	if (r != 16) *p->connected = false;
 	*vp = type_to_jsval(cx,DATA_TYPE_U8_ARRAY,frame.data,frame.can_dlc);
@@ -214,7 +215,8 @@ static JSBool jscan_write(JSContext *cx, uintN argc, jsval *vp) {
 	can_private_t *p;
 	uint8_t data[8];
 	struct can_frame frame;
-	int id,len,bytes;
+	int len,bytes;
+	uint32_t id;
 	jsval *argv = vp + 2;
 	JSObject *obj, *array = 0;
 	JSClass *classp;
@@ -246,7 +248,7 @@ static JSBool jscan_write(JSContext *cx, uintN argc, jsval *vp) {
 
 	dprintf(dlevel,"id: %d, array: %p\n", id, array);
 
-	if (!jsval_to_type(DATA_TYPE_INT,&id,0,cx,argv[0])) return JS_FALSE;
+	if (!jsval_to_type(DATA_TYPE_U32,&id,0,cx,argv[0])) return JS_FALSE;
 	len = jsval_to_type(DATA_TYPE_U8_ARRAY,data,8,cx,argv[1]);
 	dprintf(dlevel,"id: %03x, len: %d\n", len);
 
@@ -254,7 +256,7 @@ static JSBool jscan_write(JSContext *cx, uintN argc, jsval *vp) {
         frame.can_id = id;
         frame.can_dlc = len;
         memcpy(&frame.data,data,len);
-        bytes = p->tp->write(p->tp_handle,&frame,sizeof(frame));
+        bytes = p->tp->write(p->tp_handle,&id,&frame,sizeof(frame));
         dprintf(dlevel,"bytes: %d\n", bytes);
 	if (bytes != 16) *p->connected = false;
 	*vp = BOOLEAN_TO_JSVAL(bytes != 16);
@@ -270,7 +272,7 @@ static int do_connect(JSContext *cx, can_private_t *p) {
 	}
 
 	/* Create a new driver instance */
-	p->tp_handle = p->tp->new(0, p->target, p->topts);
+	p->tp_handle = p->tp->new(p->target, p->topts);
 	if (!p->tp_handle) {
 		JS_ReportError(cx, "%s_new: %s", p->transport, strerror(errno));
 		return JS_FALSE;

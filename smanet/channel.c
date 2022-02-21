@@ -176,43 +176,12 @@ static int parse_channels(smanet_session_t *s, uint8_t *data, int data_len) {
 int smanet_read_channels(smanet_session_t *s) {
 	smanet_packet_t *p;
 
-#if 0
-	FILE *fp;
-	fp = fopen(filename,"rb");
-	if (fp) {
-		int fd;
-		struct stat buf;
-
-		fd = fileno(fp);
-		dprintf(smanet_dlevel,"fd: %d\n", fd);
-		if (fstat(fd, &buf) == 0) {
-			dprintf(smanet_dlevel,"st_size: %d\n", buf.st_size);
-			if (buf.st_size > 0) {
-				p = smanet_alloc_packet(buf.st_size);
-				if (!p) return 1;
-				p->dataidx = fread(p->data,1,buf.st_size,fp);
-				parse_channels(s,p->data,p->dataidx);
-				smanet_free_packet(p);
-				return 0;
-			}
-		}
-		fclose(fp);
-	}
-#endif
-
 	p = smanet_alloc_packet(8192);
 	if (!p) return 1;
 	if (smanet_command(s,CMD_GET_CINFO,p,0,0)) return 1;
 	dprintf(smanet_dlevel,"p->dataidx: %d\n", p->dataidx);
 //	if (debug) bindump("channel data",p->data,p->dataidx);
 
-#if 0
-	fp = fopen(filename,"wb+");
-	if (fp) {
-		fwrite(p->data,1,p->dataidx,fp);
-		fclose(fp);
-	}
-#endif
 	parse_channels(s,p->data,p->dataidx);
 	return 0;
 }
@@ -342,7 +311,8 @@ int smanet_load_channels(smanet_session_t *s, char *filename) {
 			}
 			temp[len] = 0;
 			dprintf(dlevel,"temp: %s\n", temp);
-			conv_type(DATA_TYPE_STRING_LIST,&newchan.strings,0,DATA_TYPE_STRING,temp,len);
+			newchan.strings = list_create();
+			conv_type(DATA_TYPE_STRING_LIST,newchan.strings,0,DATA_TYPE_STRING,temp,len);
 			dprintf(dlevel,"count: %d\n", list_count(newchan.strings));
 		}
 		s->chans[i] = newchan;

@@ -6,15 +6,16 @@ var battery_fields = [
 	"capacity",
 	"voltage",
 	"current",
-	"temps",
+	"power",
+	"temp",
 	"cellvolt",
+	"cellres",
+	"cell_min",
+	"cell_max",
+	"cell_diff",
+	"cell_avg",
+	"cell_total",
+	"state",
 	"status",
 	"errmsg"
 ];
-
-//        print("cell_min: ",bp.cell_min);
-//        print("cell_max: ",bp.cell_max);
-//        print("cell_diff: ",bp.cell_diff);
-//        print("cell_avg: ",bp.cell_avg);
-//        print("cell_total: ",bp.cell_total);
-

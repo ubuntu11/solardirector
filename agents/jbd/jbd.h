@@ -19,7 +19,6 @@ LICENSE file in the root directory of this source tree.
 #define JBD_MAX_TEMPS 8
 #define JBD_MAX_CELLS 32
 
-
 struct jbd_data {
 	float capacity;			/* Battery pack capacity, in AH */
 	float voltage;			/* Pack voltage */
@@ -46,7 +45,8 @@ struct jbd_hwinfo {
 typedef struct jbd_hwinfo jbd_hwinfo_t;
 
 struct jbd_session {
-	solard_agent_t *ap;		/* Agent config pointer */
+	solard_agent_t *ap;
+	char tpinfo[SOLARD_TRANSPORT_LEN+SOLARD_TARGET_LEN+SOLARD_TOPTS_LEN+3];
 	char transport[SOLARD_TRANSPORT_LEN];
 	char target[SOLARD_TARGET_LEN];
 	char topts[SOLARD_TOPTS_LEN];
@@ -55,7 +55,6 @@ struct jbd_session {
 	int (*can_get)(struct jbd_session *s, int id, uint8_t *data, int datasz);
 	int (*reader)(struct jbd_session *);
 	jbd_hwinfo_t hwinfo;
-	json_value_t *info;
 	uint16_t state;			/* Pack state */
 	jbd_data_t data;
 	uint8_t fetstate;		/* Mosfet state */
@@ -63,8 +62,10 @@ struct jbd_session {
 	int errcode;			/* error indicator */
 	char errmsg[256];		/* Error message if errcode !0 */
 //	pthread_mutex_t lock;
+	bool flatten;
 #ifdef JS
 	JSPropertySpec *props;
+	JSPropertySpec *data_props;
 #endif
 };
 typedef struct jbd_session jbd_session_t;
@@ -75,6 +76,7 @@ typedef struct jbd_session jbd_session_t;
 #define JBD_STATE_CHARGING	0x10
 #define JBD_STATE_DISCHARGING	0x20
 #define JBD_STATE_BALANCING	0x40
+#define JBD_STATE_EEPROM	0x80
 
 struct jbd_protect {
 	unsigned sover: 1;		/* Single overvoltage protection */
@@ -91,78 +93,6 @@ struct jbd_protect {
 	unsigned ic: 1;			/* Front detection IC error */
 	unsigned mos: 1;		/* Software lock MOS */
 };
-
-#if 0
-/* I/O */
-int jbd_can_get_crc(jbd_session_t *s, int id, unsigned char *data, int len);
-int jbd_can_get(jbd_session_t *s, int id, unsigned char *data, int datalen, int chk);
-int jbd_eeprom_start(jbd_session_t *s);
-int jbd_eeprom_end(jbd_session_t *s);
-int jbd_rw(jbd_session_t *, uint8_t action, uint8_t reg, uint8_t *data, int datasz);
-int jbd_verify(uint8_t *buf, int len);
-int jbd_cmd(uint8_t *pkt, int pkt_size, int action, uint16_t reg, uint8_t *data, int data_len);
-int jbd_rw(jbd_session_t *s, uint8_t action, uint8_t reg, uint8_t *data, int datasz);
-
-/* Driver */
-int jbd_open(void *handle);
-int jbd_close(void *handle);
-
-/* Read */
-int jbd_get_fetstate(jbd_session_t *);
-int jbd_read(void *handle,void *buf,int buflen);
-
-/* Config */
-int jbd_config(void *,int,...);
-int jbd_config_add_params(json_value_t *);
-
-/* Info */
-int jbd_get_info(jbd_session_t *);
-
-/* Control */
-int jbd_control(void *handle,char *,char *,json_value_t *);
-int charge_control(jbd_session_t *s, int);
-int discharge_control(jbd_session_t *s, int);
-int balance_control(jbd_session_t *s, int);
-
-/* Misc */
-int jbd_set_mosfet(jbd_session_t *s, int val);
-#endif
-
-/* jbd.c */
-int jbd_verify(uint8_t *buf, int len);
-int jbd_cmd(uint8_t *pkt, int pkt_size, int action, uint16_t reg, uint8_t *data, int data_len);
-int jbd_can_get(jbd_session_t *s, int id, unsigned char *data, int datalen, int chk);
-int jbd_can_get_crc(jbd_session_t *s, int id, unsigned char *data, int len);
-int jbd_rw(jbd_session_t *s, uint8_t action, uint8_t reg, uint8_t *data, int datasz);
-int jbd_eeprom_start(jbd_session_t *s);
-int jbd_eeprom_end(jbd_session_t *s);
-int jbd_set_mosfet(jbd_session_t *s, int val);
-int jbd_reset(void *h, int nargs, char **args, char *errmsg);
-int jbd_can_get_fetstate(struct jbd_session *s);
-int jbd_can_read(struct jbd_session *s);
-int jbd_std_read(jbd_session_t *s);
-int jbd_get_fetstate(jbd_session_t *s);
-int jbd_read(void *handle, void *buf, int buflen);
-int jbd_get_local_can_data(jbd_session_t *s, int id, uint8_t *data, int datasz);
-int jbd_get_remote_can_data(jbd_session_t *s, int id, uint8_t *data, int datasz);
-int jbd_open(void *handle);
-int jbd_close(void *handle);
-int jbd_free(void *handle);
-
-/* info */
-int jbd_get_hwinfo(jbd_session_t *s);
-
-/* config.c */
-int jbd_config_init(jbd_session_t *s);
-int jbd_config_add_params(json_value_t *j);
-int jbd_get(void *h, char *name, char *value, char *errmsg);
-int jbd_config(void *h, int req, ...);
-
-/* jsfuncs.c */
-int jbd_jsinit(jbd_session_t *s);
-
-#define jbd_getshort(p) ((short) ((*((p)) << 8) | *((p)+1) ))
-#define jbd_putshort(p,v) { float tmp; *((p)) = ((int)(tmp = v) >> 8); *((p+1)) = (int)(tmp = v); }
 
 #define JBD_PKT_START		0xDD
 #define JBD_PKT_END		0x77
@@ -194,5 +124,47 @@ int jbd_jsinit(jbd_session_t *s);
 #define JBD_NTC6		0x20
 #define JBD_NTC7		0x40
 #define JBD_NTC8		0x80
+
+extern solard_driver_t *jbd_transports[];
+
+/* jbd.c */
+extern solard_driver_t jbd_driver;
+int jbd_tp_init(jbd_session_t *s);
+int jbd_verify(uint8_t *buf, int len);
+int jbd_cmd(uint8_t *pkt, int pkt_size, int action, uint16_t reg, uint8_t *data, int data_len);
+int jbd_can_get(jbd_session_t *s, uint32_t id, unsigned char *data, int datalen, int chk);
+int jbd_can_get_crc(jbd_session_t *s, int id, unsigned char *data, int len);
+int jbd_rw(jbd_session_t *s, uint8_t action, uint8_t reg, uint8_t *data, int datasz);
+int jbd_eeprom_open(jbd_session_t *s);
+int jbd_eeprom_close(jbd_session_t *s);
+int jbd_set_mosfet(jbd_session_t *s, int val);
+int jbd_reset(void *h, int nargs, char **args, char *errmsg);
+int jbd_can_get_fetstate(struct jbd_session *s);
+int jbd_can_read(struct jbd_session *s);
+int jbd_std_read(jbd_session_t *s);
+int jbd_get_fetstate(jbd_session_t *s);
+int jbd_read(void *handle, uint32_t *, void *buf, int buflen);
+int jbd_get_local_can_data(jbd_session_t *s, int id, uint8_t *data, int datasz);
+int jbd_get_remote_can_data(jbd_session_t *s, int id, uint8_t *data, int datasz);
+int jbd_open(void *handle);
+int jbd_close(void *handle);
+int jbd_free(void *handle);
+
+/* info */
+int jbd_get_hwinfo(jbd_session_t *s);
+json_value_t *jbd_get_info(jbd_session_t *s);
+
+/* config.c */
+int jbd_agent_init(jbd_session_t *s, int argc, char **argv);
+int jbd_config_init(jbd_session_t *s);
+int jbd_config_add_params(json_value_t *j);
+int jbd_get(void *h, char *name, char *value, char *errmsg);
+int jbd_config(void *h, int req, ...);
+
+/* jsfuncs.c */
+int jbd_jsinit(jbd_session_t *s);
+
+#define jbd_getshort(p) ((short) ((*((p)) << 8) | *((p)+1) ))
+#define jbd_putshort(p,v) { float tmp; *((p)) = ((int)(tmp = v) >> 8); *((p+1)) = (int)(tmp = v); }
 
 #endif

@@ -23,9 +23,9 @@ LICENSE file in the root directory of this source tree.
 
 #define SOLARD_ID_LEN		38
 #define SOLARD_NAME_LEN		32
-#define SOLARD_TRANSPORT_LEN	32
-#define SOLARD_TARGET_LEN	64
-#define SOLARD_TOPTS_LEN	32
+#define SOLARD_TRANSPORT_LEN	16
+#define SOLARD_TARGET_LEN	128
+#define SOLARD_TOPTS_LEN	64
 #define SOLARD_TOPIC_LEN	128	/* Max topic length */
 #define SOLARD_TOPIC_SIZE	256	/* Max topic length */
 #define SOLARD_ERRMSG_LEN	128
@@ -114,9 +114,20 @@ extern char SOLARD_BINDIR[SOLARD_PATH_MAX], SOLARD_ETCDIR[SOLARD_PATH_MAX], SOLA
 
 int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_opts);
 int solard_common_config(cfg_info_t *,char *);
+int solard_common_startup(config_t **cp, char *sname, char *configfile,
+                        config_property_t *props, config_function_t *funcs,
+                        mqtt_session_t **m, mqtt_callback_t *getmsg, void *mctx,
+                        char *mqtt_info, mqtt_config_t *mc, int config_from_mqtt,
+                        influx_session_t **i, char *influx_info, influx_config_t *ic,
+#ifdef JS
+                        JSEngine **js, int rtsize, js_outputfunc_t *jsout
+#endif
+			);
+
 
 #ifdef JS
 #include "jsapi.h"
+void common_add_props(config_t *, char *);
 int common_jsinit(JSEngine *e);
 #endif
 
