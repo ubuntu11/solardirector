@@ -7,9 +7,19 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
+#define DEBUG_AGENT 1
+#define DEBUG_STARTUP 0
 #define dlevel 2
 
-#define DEBUG_STARTUP 1
+#ifdef DEBUG
+#undef DEBUG
+#endif
+#define DEBUG DEBUG_AGENT
+#include "debug.h"
+
+#include "agent.h"
+#include "jsobj.h"
+#include "jsstr.h"
 
 #if DEBUG_STARTUP
 #define _ST_DEBUG LOG_DEBUG
@@ -17,36 +27,15 @@ LICENSE file in the root directory of this source tree.
 #define _ST_DEBUG 0
 #endif
 
-#include <time.h>
-#include <ctype.h>
-#include "agent.h"
-#include "uuid.h"
-#ifdef JS
-#include "jsengine.h"
-#include <pthread.h>
-#endif
-
-extern FILE *logfp;
-
-static int suspend_read = 0;
-static int suspend_write = 0;
-#ifndef __WIN32
-#include <sys/signal.h>
-
-void usr_handler(int signo) {
-	if (signo == SIGUSR1) {
-		log_write(LOG_INFO,"agent: %s reads\n", (suspend_read ? "resuming" : "suspending"));
-		suspend_read = (suspend_read ? 0 : 1);
-	} else if (signo == SIGUSR2) {
-		log_write(LOG_INFO,"agent: %s writes\n", (suspend_write ? "resuming" : "suspending"));
-		suspend_write = (suspend_write ? 0 : 1);
-	}
-}
-#endif
-
 int agent_set_callback(solard_agent_t *ap, solard_agent_callback_t cb, void *ctx) {
 	ap->callback.func = cb;
 	ap->callback.ctx = ctx;
+	return 0;
+}
+
+int agent_clear_callback(solard_agent_t *ap) {
+	ap->callback.func = 0;
+	ap->callback.ctx = 0;
 	return 0;
 }
 
@@ -104,6 +93,22 @@ int agent_pubinfo(solard_agent_t *ap, int disp) {
 	return r;
 }
 
+int agent_get_info(solard_agent_t *ap, int info_flag) {
+
+	/* If info flag, print info to stdout then exit */
+	dprintf(dlevel,"info_flag: %d\n", info_flag);
+
+	if (ap->driver_info) json_destroy_value(ap->driver_info);
+
+	/* Get driver info */
+	if (ap->driver->config(ap->handle,SOLARD_CONFIG_GET_INFO,&ap->driver_info)) return 1;
+
+	/* Publish the info */
+	agent_pubinfo(ap, info_flag);
+	if (info_flag) exit(0);
+	return 0;
+}
+
 int agent_pubconfig(solard_agent_t *ap) {
 	char *data;
 	json_value_t *v;
@@ -111,7 +116,7 @@ int agent_pubconfig(solard_agent_t *ap) {
 
 	dprintf(dlevel,"publishing config...\n");
 
-	v = config_to_json(ap->cp,CONFIG_FLAG_NOPUB);
+	v = config_to_json(ap->cp,CONFIG_FLAG_NOPUB,0);
 	if (!v) {
 		log_error(config_get_errmsg(ap->cp));
 		return 1;
@@ -141,29 +146,6 @@ int agent_reply(solard_agent_t *ap, char *replyto, int status, char *message) {
 	return mqtt_pub(ap->m,topic,payload,1,0);
 }
 
-static int agent_config_from_mqtt(solard_agent_t *ap) {
-	char topic[SOLARD_TOPIC_SIZE];
-	solard_message_t *msg;
-//	list lp;
-
-	/* Sub to our config topic */
-	agent_mktopic(topic,sizeof(topic)-1,ap,ap->instance_name,SOLARD_FUNC_CONFIG);
-	if (mqtt_sub(ap->m,topic)) return 1;
-
-	/* Ingest config */
-	if (solard_message_wait(ap->mq,2) < 1) {
-		log_error("timeout getting config from %s\n",topic);
-		return 1;
-	}
-
-	list_reset(ap->mq);
-	while((msg = list_get_next(ap->mq)) != 0) {
-//		config_process(ap->cp, msg->data);
-	}
-	mqtt_unsub(ap->m,topic);
-	return 0;
-}
-
 static int agent_process(solard_agent_t *ap, solard_message_t *msg) {
 	int status;
 
@@ -171,6 +153,8 @@ static int agent_process(solard_agent_t *ap, solard_message_t *msg) {
 	dprintf(dlevel,"status: %d\n", status);
 	/* pub config 1st then reply so the data is there when msg is read */
 	if (!status) {
+		dprintf(dlevel,"writing config\n");
+		config_write(ap->cp);
 		dprintf(dlevel,"publishing config...\n");
 		status = agent_pubconfig(ap);
 	}
@@ -188,29 +172,6 @@ void agent_getmsg(void *ctx, char *topic, char *message, int msglen, char *reply
 	list_add(ap->mq,&newmsg,sizeof(newmsg));
 }
 
-#if JS
-#if 0
-struct jsargs {
-	JSEngine *js;
-	char script[256];
-	int newcx;
-};
-	
-static void *_dojsexec(void *ctx) {
-	struct jsargs *args = ctx;
-	JSEngine *e;
-
-	if (args->newcx) {
-		e = JS_DupEngine(args->js);
-	} else {
-		e = args->js;
-	}
-	if (e) JS_EngineExec(e, args->script, args->newcx);
-	free(args);
-	return 0;
-}
-#endif
-
 int agent_script_exists(solard_agent_t *ap, char *name) {
 	char path[256];
 	int r;
@@ -224,7 +185,6 @@ int agent_script_exists(solard_agent_t *ap, char *name) {
 
 int agent_start_script(solard_agent_t *ap, char *name) {
 	char script[256];
-//	pthread_t th;
 
 	dprintf(dlevel,"name: %s, script_dir: %s\n", name, ap->script_dir);
 	if (strncmp(name,"./",2) != 0 && strlen(ap->script_dir))
@@ -234,41 +194,7 @@ int agent_start_script(solard_agent_t *ap, char *name) {
 	dprintf(dlevel,"script: %s\n", script);
 //	if (agent_script_exists(ap,script)) strcpy(script,name);
 	return JS_EngineExec(ap->js, script, 0);
-#if 0
-	dprintf(dlevel,"script: %s, bg: %d\n",script,bg);
-
-	if (bg) {
-		pthread_attr_t attr;
-		struct jsargs *args;
-		int status;
-
-		args = calloc(sizeof(*args),1);
-		if (!args) return 1;
-		args->js = ap->js;
-		strncpy(args->script,script,sizeof(args->script)-1);
-		args->newcx = newcx;
-
-		status = pthread_attr_init(&attr);
-		if (status != 0) { /* . */}
-		status = pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
-		if (status != 0) { /* . */}
-		if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED)) {
-			sprintf(ap->errmsg,"pthread_attr_setdetachstate: %s",strerror(errno));
-		}
-		status = pthread_create(&th, &attr, _dojsexec, args);
-		if (status != 0) { /* . */}
-		status = pthread_attr_destroy(&attr); // destroy attribute object
-		if (status != 0) { /* . */} 
-		return 0;
-	} else {
-		return JS_EngineExec(ap->js, script, newcx);
-	}
-	return 1;
-#endif
 }
-#else
-#define agent_start_script(a,b,c,d) /* noop */
-#endif
 
 int cf_agent_stop(void *ctx, list args, char *errmsg) {
 	solard_clear_state((solard_agent_t *)ctx,SOLARD_AGENT_RUNNING);
@@ -282,7 +208,7 @@ int cf_agent_ping(void *ctx, list args, char *errmsg) {
 
 int cf_agent_getinfo(void *ctx, list args, char *errmsg) {
 	sprintf(errmsg,"publish error");
-	return agent_pubinfo((solard_agent_t *)ctx,0);
+	return agent_get_info((solard_agent_t *)ctx,0);
 }
 
 int cf_agent_getconfig(void *ctx, list args, char *errmsg) {
@@ -304,16 +230,24 @@ int cf_agent_log_open(void *ctx, list args, char *errmsg) {
 	return 0;
 }
 
-int agent_config_init(solard_agent_t *ap, config_property_t *driver_props, config_function_t *driver_funcs) {
-	config_property_t common_props[] = {
-		{ "bindir", DATA_TYPE_STRING, SOLARD_BINDIR, sizeof(SOLARD_BINDIR)-1, 0 },
-		{ "etcdir", DATA_TYPE_STRING, SOLARD_ETCDIR, sizeof(SOLARD_ETCDIR)-1, 0 },
-		{ "libdir", DATA_TYPE_STRING, SOLARD_LIBDIR, sizeof(SOLARD_LIBDIR)-1, 0 },
-		{ "logdir", DATA_TYPE_STRING, SOLARD_LOGDIR, sizeof(SOLARD_LOGDIR)-1, 0 },
-		{ "debug", DATA_TYPE_INT, &debug, 0, 0, 0,
-			"range", 3, (int []){ 0, 99, 1 }, 1, (char *[]) { "debug level" }, 0, 1, 0 },
-		{ 0 }
-	};
+int cf_agent_exec(void *ctx, list args, char *errmsg) {
+	solard_agent_t *ap = ctx;
+	char *string;
+	extern int logopts;
+
+	dprintf(dlevel,"count: %d\n", list_count(args));
+	list_reset(args);
+	string = list_get_next(args);
+	dprintf(dlevel,"string: %s\n", string);
+	if (JS_EngineExecString(ap->js, string)) {
+		sprintf(errmsg,"unable to execute");
+		return 1;
+	}
+	return 0;
+}
+
+static int agent_startup(solard_agent_t *ap, char *configfile, char *mqtt_info, char *influx_info,
+		config_property_t *driver_props, config_function_t *driver_funcs) {
 	config_property_t agent_props[] = {
 		{ "name", DATA_TYPE_STRING, ap->instance_name, sizeof(ap->instance_name)-1, 0 },
 		{ "read_interval", DATA_TYPE_INT, &ap->read_interval, 0, "30", 0,
@@ -328,7 +262,6 @@ int agent_config_init(solard_agent_t *ap, config_property_t *driver_props, confi
 			"range", 3, (int []){ -1, 0, 1 }, 3, (char *[]){ "Not set", "No", "Yes" }, 0, 1, 0 },
 		{ "close_after_write", DATA_TYPE_BOOL, &ap->close_after_write, 0, "no", 0,
 			"range", 3, (int []){ -1, 0, 1 }, 3, (char *[]){ "Not set", "No", "Yes" }, 0, 1, 0 },
-#ifdef JS
 		{ "script_dir", DATA_TYPE_STRING, ap->script_dir, sizeof(ap->script_dir)-1, 0 },
 		{ "init_script", DATA_TYPE_STRING, ap->init_script, sizeof(ap->init_script)-1, "init.js", 0 },
 		{ "start_script", DATA_TYPE_STRING, ap->start_script, sizeof(ap->start_script)-1, "start.js", 0 },
@@ -336,92 +269,51 @@ int agent_config_init(solard_agent_t *ap, config_property_t *driver_props, confi
 		{ "write_script", DATA_TYPE_STRING, ap->write_script, sizeof(ap->write_script)-1, "write.js", 0 },
 		{ "run_script", DATA_TYPE_STRING, ap->run_script, sizeof(ap->run_script)-1, "run.js", 0 },
 		{ "stop_script", DATA_TYPE_STRING, ap->stop_script, sizeof(ap->stop_script)-1, "stop.js", 0 },
-#endif
 		{0}
 	};
-	config_property_t mqtt_props[] = {
-		{ "host", DATA_TYPE_STRING, ap->mqtt_config.host, sizeof(ap->mqtt_config.host)-1, "localhost", 0,
-                        0, 0, 0, 1, (char *[]){ "MQTT host" }, 0, 1, 0 },
-		{ "port", DATA_TYPE_INT, &ap->mqtt_config.port, 0, "1883", 0,
-			0, 0, 0, 1, (char *[]){ "MQTT port" }, 0, 1, 0 },
-		{ "clientid", DATA_TYPE_STRING, ap->mqtt_config.clientid, sizeof(ap->mqtt_config.clientid)-1, "", 0,
-                        0, 0, 0, 1, (char *[]){ "MQTT clientid" }, 0, 1, 0 },
-		{ "username", DATA_TYPE_STRING, ap->mqtt_config.username, sizeof(ap->mqtt_config.username)-1, "", 0,
-                        0, 0, 0, 1, (char *[]){ "MQTT username" }, 0, 1, 0 },
-		{ "password", DATA_TYPE_STRING, ap->mqtt_config.password, sizeof(ap->mqtt_config.password)-1, "", 0,
-                        0, 0, 0, 1, (char *[]){ "MQTT password" }, 0, 1, 0 },
-		{ 0 }
-	};
-	config_property_t influx_props[] = {
-		{ "host", DATA_TYPE_STRING, ap->influx_config.host, sizeof(ap->influx_config.host)-1, "localhost", 0,
-                        0, 0, 0, 1, (char *[]){ "InfluxDB host" }, 0, 1, 0 },
-		{ "port", DATA_TYPE_INT, &ap->influx_config.port, 0, "8086", 0,
-			0, 0, 0, 1, (char *[]){ "InfluxDB port" }, 0, 1, 0 },
-		{ "database", DATA_TYPE_STRING, ap->influx_config.database, sizeof(ap->influx_config.database)-1, "", 0,
-                        0, 0, 0, 1, (char *[]){ "InfluxDB database" }, 0, 1, 0 },
-		{ "username", DATA_TYPE_STRING, ap->influx_config.username, sizeof(ap->influx_config.username)-1, "", 0,
-                        0, 0, 0, 1, (char *[]){ "InfluxDB username" }, 0, 1, 0 },
-		{ "password", DATA_TYPE_STRING, ap->influx_config.password, sizeof(ap->influx_config.password)-1, "", 0,
-                        0, 0, 0, 1, (char *[]){ "InfluxDB password" }, 0, 1, 0 },
-		{ 0 }
-	};
+	config_property_t *props;
+	config_function_t *funcs;
 	config_function_t agent_funcs[] = {
 		{ "ping", cf_agent_ping, ap, 0 },
 		{ "stop", cf_agent_stop, ap, 0 },
 		{ "get_info", cf_agent_getinfo, ap, 0 },
 		{ "get_config", cf_agent_getconfig, ap, 0 },
 		{ "log_open", cf_agent_log_open, ap, 1 },
+		{ "exec", cf_agent_exec, ap, 1 },
 		{ 0 }
 	};
-//	register config_function_t *f1,*f2;
-//	int found;
+//	solard_startup_info_t info;
 
-	ap->cp = config_init(ap->section_name, driver_props, driver_funcs);
-	if (!ap->cp) return 1;
-	dprintf(dlevel,"adding common...\n");
-	config_add_props(ap->cp, ap->section_name, common_props, 0);
-	dprintf(dlevel,"adding agent...\n");
-	config_add_props(ap->cp, ap->section_name, agent_props, 0);
-	config_add_props(ap->cp, "agent", agent_props, CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOID);
+	props = driver_props ? config_combine_props(driver_props,agent_props) : agent_props;
+	funcs = driver_funcs ? config_combine_funcs(driver_funcs,agent_funcs) : agent_funcs;
+
+	/* Create LWT topic */
+	agent_mktopic(ap->mqtt_config.lwt_topic,sizeof(ap->mqtt_config.lwt_topic)-1,ap,ap->instance_name,"Status");
+
+        /* Call common startup */
 #if 0
-	if (driver_funcs) {
-		for(f1=driver_funcs; f1->name; f1++) {
-			found = 0;
-			for(f2=agent_funcs; f2->name; f2++) {
-				if (strcmp(f2->name,f1->name) == 0) {
-					found = 1;
-					break;
-				}
-			}
-			if (!found
+	info.ctx = ap;
+	info.config_handle = &ap->cp;
+	info.config_section = ap->section_name;
+	info.config_file = configfile;
+	info.config_props = props;
+	info.config_funcs = funcs;
+	info.mqtt_handle = &ap->m;
+	info.mqtt_info = mqtt_info;
+	info.mqtt_config = &ap->mqtt_config;
+	info.mqtt_callback = agent_getmsg;
+	info.influx_handle = &ap->i;
+	info.influx_info = influx_info;
+	info.influx_config = &ap->influx_config;
+	info.js_handle = &ap->js;
+	info.js_rtsize = ap->rtsize;
+	info.js_output = (js_outputfunc_t *) log_info;
+
+	if (solard_common_startup(&info)) return 1;
+return 1;
 #endif
-	config_add_funcs(ap->cp, agent_funcs);
-	dprintf(dlevel,"adding mqtt...\n");
-	config_add_props(ap->cp, "mqtt", mqtt_props, CONFIG_FLAG_NOID);
-	dprintf(dlevel,"adding influx...\n");
-	config_add_props(ap->cp, "influx", influx_props, CONFIG_FLAG_NOID);
+	if (solard_common_startup(&ap->cp, ap->section_name, configfile, props, funcs, &ap->m, agent_getmsg, ap, mqtt_info, &ap->mqtt_config, ap->config_from_mqtt, &ap->i, influx_info, &ap->influx_config, &ap->js, ap->rtsize, ap->stksize, (js_outputfunc_t *)log_info)) return 1;
 
-	/* Add the mqtt props to the instance config */
-	{
-		char *names[] = { "mqtt_host", "mqtt_port", "mqtt_clientid", "mqtt_username", "mqtt_password", 0 };
-		config_section_t *s;
-		config_property_t *p;
-		int i;
-
-		s = config_get_section(ap->cp, ap->section_name);
-		if (!s) {
-			log_error("%s section does not exist?!?\n", ap->section_name);
-			return 1;
-		}
-		for(i=0; names[i]; i++) {
-			p = config_section_dup_property(s, &mqtt_props[i], names[i]);
-			if (!p) continue;
-			dprintf(dlevel,"p->name: %s\n",p->name);
-			config_section_add_property(ap->cp, s, p, CONFIG_FLAG_NOID);
-		}
-	}
-
-#ifdef JS
 	/* Set script_dir if empty */
 	dprintf(dlevel,"script_dir(%d): %s\n", strlen(ap->script_dir), ap->script_dir);
 	if (!strlen(ap->script_dir)) {
@@ -430,65 +322,20 @@ int agent_config_init(solard_agent_t *ap, config_property_t *driver_props, confi
 		dprintf(dlevel,"NEW script_dir(%d): %s\n", strlen(ap->script_dir), ap->script_dir);
 	}
 
-#endif
-
-	dprintf(dlevel,"done!\n");
+	config_add_props(ap->cp, "agent", agent_props, CONFIG_FLAG_NOPUB | CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOID);
+	agent_jsinit(ap->js, ap);
 	return 0;
-}
-
-int agent_mqtt_init(solard_agent_t *ap) {
-
-	if (ap->mqtt_init) return 0;
-
-	dprintf(dlevel,"host: %s, clientid: %s, user: %s, pass: %s\n",
-		ap->mqtt_config.host, ap->mqtt_config.clientid, ap->mqtt_config.username, ap->mqtt_config.password);
-	if (!strlen(ap->mqtt_config.host)) {
-		log_write(LOG_WARNING,"mqtt host not specified, using localhost\n");
-		strcpy(ap->mqtt_config.host,"localhost");
-	}
-
-	/* Create a unique ID for MQTT */
-	if (!strlen(ap->mqtt_config.clientid)) {
-		uint8_t uuid[16];
-
-		dprintf(dlevel,"gen'ing MQTT ClientID...\n");
-		uuid_generate_random(uuid);
-		my_uuid_unparse(uuid, ap->mqtt_config.clientid);
-		dprintf(dlevel,"clientid: %s\n",ap->mqtt_config.clientid);
-	}
-
-	/* Create LWT topic */
-	agent_mktopic(ap->mqtt_config.lwt_topic,sizeof(ap->mqtt_config.lwt_topic)-1,ap,ap->instance_name,"Status");
-
-	/* Create a new client */
-	if (mqtt_newclient(ap->m, &ap->mqtt_config)) goto agent_mqtt_init_error;
-
-	/* Connect to the server */
-	if (mqtt_connect(ap->m,20)) goto agent_mqtt_init_error;
-
-	ap->mqtt_init = 0;
-	return 0;
-agent_mqtt_init_error:
-	return 1;
-}
-
-void agent_parse_mqttinfo(solard_agent_t *ap, char *mqtt_info) {
-	strncpy(ap->mqtt_config.host,strele(0,",",mqtt_info),sizeof(ap->mqtt_config.host)-1);
-	strncpy(ap->mqtt_config.clientid,strele(1,",",mqtt_info),sizeof(ap->mqtt_config.clientid)-1);
-	strncpy(ap->mqtt_config.username,strele(2,",",mqtt_info),sizeof(ap->mqtt_config.username)-1);
-	strncpy(ap->mqtt_config.password,strele(3,",",mqtt_info),sizeof(ap->mqtt_config.password)-1);
 }
 
 /* Do most of the mechanics of an agent startup */
-solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts,
-		solard_driver_t *Cdriver, void *handle, config_property_t *props, config_function_t *funcs) {
-#ifdef JS
+solard_agent_t *agent_init(int argc, char **argv, char *agent_version, opt_proctab_t *agent_opts,
+		solard_driver_t *Cdriver, void *handle, config_property_t *driver_props, config_function_t *driver_funcs) {
 	char jsexec[4096];
-	int rtsize;
 	char script[256];
-#endif
+	int rtsize,stksize;
 	solard_agent_t *ap;
 	char mqtt_info[200];
+	char influx_info[200];
 	char mqtt_topic[SOLARD_TOPIC_SIZE];
 	char configfile[256];
 	char name[SOLARD_NAME_LEN];
@@ -503,11 +350,12 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts,
 		{ "-F:%|config file format",&cformat,DATA_TYPE_INT,0,0,"-1" },
 		{ "-s::|config section name",&sname,DATA_TYPE_STRING,sizeof(sname)-1,0,"" },
 		{ "-n::|agent name",&name,DATA_TYPE_STRING,sizeof(name)-1,0,"" },
-#ifdef JS
+		{ "-i::|influx host[,user[,pass]]",&influx_info,DATA_TYPE_STRING,sizeof(influx_info)-1,0,"" },
 		{ "-e:%|exectute javascript",&jsexec,DATA_TYPE_STRING,sizeof(jsexec)-1,0,"" },
-		{ "-R:#|javascript runtime size",&rtsize,DATA_TYPE_INT,0,0,"67108864" },
+//		{ "-R:#|javascript runtime size",&rtsize,DATA_TYPE_INT,0,0,"67108864" },
+		{ "-R:#|javascript runtime size",&rtsize,DATA_TYPE_INT,0,0,"131072" },
+		{ "-S:#|javascript stack size",&stksize,DATA_TYPE_INT,0,0,"8192" },
 		{ "-X::|execute JS script and exit",&script,DATA_TYPE_STRING,sizeof(script)-1,0,"" },
-#endif
 		{ "-I|display agent info and exit",&info_flag,DATA_TYPE_LOGICAL,0,0,"0" },
 		{ "-r:#|reporting (read) interval",&read_interval,DATA_TYPE_INT,0,0,"-1" },
 		{ "-w:#|update (write) interval",&write_interval,DATA_TYPE_INT,0,0,"-1" },
@@ -517,7 +365,7 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts,
 
 	if (!Cdriver) {
 		printf("agent_init: agent driver is null, aborting\n");
-		exit(1);
+		return 0;
 	}
 
 	if (agent_opts) opts = opt_addopts(std_opts,agent_opts);
@@ -527,12 +375,11 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts,
 		return 0;
 	}
 	*jsexec = *mqtt_info = *configfile = *name = *sname = 0;
-	if (solard_common_init(argc,argv,opts,logopts)) {
+	if (solard_common_init(argc,argv,agent_version,opts,logopts)) {
 		dprintf(dlevel,"common init failed!\n");
 		return 0;
 	}
 
-//	ap = calloc(sizeof(*ap),1);
 	ap = malloc(sizeof(*ap));
 	if (!ap) {
 		log_write(LOG_SYSERR,"calloc agent config");
@@ -542,13 +389,39 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts,
 	ap->driver = Cdriver;
 	ap->handle = handle;
 	ap->mq = list_create();
-	ap->mh = list_create();
 #ifdef DEBUG_MEM
 	ap->mem_start = mem_used();
 #endif
+	ap->config_from_mqtt = config_from_mqtt;
+	ap->rtsize = rtsize;
+	ap->stksize = stksize;
 
 	/* Agent name is driver name */
 	strncpy(ap->name,Cdriver->name,sizeof(ap->name)-1);
+
+	if (!config_from_mqtt && !strlen(configfile)) {
+		char *names[4];
+		char *types[] = { "conf", "json", 0 };
+		char path[256];
+		int c,i,j,f;
+
+		f = c = 0;
+		if (strlen(name)) names[c++] = name;
+		if (strlen(sname)) names[c++] = sname;
+		names[c++] = Cdriver->name;
+		for(i=0; i < c; i++) {
+			for(j=0; types[j]; j++) {
+				sprintf(path,"%s/%s.%s",SOLARD_ETCDIR,names[i],types[j]);
+				dprintf(dlevel,"trying: %s\n", path);
+				if (access(path,0) == 0) {
+					f = 1;
+					break;
+				}
+			}
+			if (f) break;
+		}
+		if (f) strcpy(configfile,path);
+	}
 
 	/* Read the config section for the agent */
 	strncpy(ap->section_name,strlen(sname) ? sname : (strlen(name) ? name : Cdriver->name), sizeof(ap->section_name)-1);
@@ -561,89 +434,15 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts,
 	/* If still no instance name, set it to driver name */
 	if (!strlen(ap->instance_name)) strncpy(ap->instance_name,Cdriver->name,sizeof(ap->instance_name)-1);
 
-	/* Create MQTT session */
-	ap->m = mqtt_new(agent_getmsg, ap);
-	if (!ap->m) {
-		log_syserror("unable to create MQTT session\n");
-		goto agent_init_error;
-	}
-	dprintf(dlevel,"ap->m: %p\n", ap->m);
-
-	/* Create InfluxDB session */
-	ap->i = influx_new();
-	if (!ap->i) {
-		log_syserror("unable to create InfluxDB session\n");
-		goto agent_init_error;
-	}
-	dprintf(dlevel,"ap->i: %p\n", ap->i);
-
-	/* Init the config */
-	if (agent_config_init(ap,props,funcs)) return 0;
-
-	if (config_from_mqtt) {
-		/* If mqtt info specified on command line, parse it */
-		dprintf(dlevel,"mqtt_info: %s\n", mqtt_info);
-		if (strlen(mqtt_info)) agent_parse_mqttinfo(ap,mqtt_info);
-
-		/* init mqtt */
-		if (agent_mqtt_init(ap)) goto agent_init_error;
-
-		/* read the config */
-		if (agent_config_from_mqtt(ap)) goto agent_init_error;
-	}
-
-
-	/* Read the configfile */
-	if (strlen(configfile)) {
-		int fmt;
-		if (cformat > CONFIG_FILE_FORMAT_UNKNOWN && cformat < CONFIG_FILE_FORMAT_MAX) {
-			fmt = cformat;
-		} else {
-			char *p;
-
-			/* Try to determine format */
-			p = strrchr(configfile,'.');
-			if (p && (strcasecmp(p,".json") == 0)) fmt = CONFIG_FILE_FORMAT_JSON;
-			else fmt = CONFIG_FILE_FORMAT_INI;
-		}
-		dprintf(dlevel,"reading configfile...\n");
-		if (config_read(ap->cp,configfile,fmt)) {
-			log_error(config_get_errmsg(ap->cp));
-			goto agent_init_error;
-		}
-	}
-	config_dump(ap->cp);
-
-	/* Name specified on command line overrides configfile */
-	if (strlen(name)) strcpy(ap->instance_name,name);
-
-	/* If read/write interval specified on command line, they take precidence */
-	if (read_interval >= 0) ap->read_interval = read_interval;
-	if (write_interval >= 0) ap->write_interval = write_interval;
-
-	dprintf(dlevel,"driver->name: %s, mqtt_init: %d\n", Cdriver->name, ap->mqtt_init);
-	if (strcmp(Cdriver->name,"sdjs") != 0 && !ap->mqtt_init) {
-		if (strlen(mqtt_info)) agent_parse_mqttinfo(ap,mqtt_info);
-		if (agent_mqtt_init(ap)) goto agent_init_error;
-	}
-
-	agent_sub(ap, ap->instance_name, 0);
-
-#ifdef JS
-	/* Init js scripting */
-	ap->js = JS_EngineInit(rtsize, (js_outputfunc_t *)log_info);
-	common_jsinit(ap->js);
-	config_jsinit(ap->js, ap->cp);
-	agent_jsinit(ap->js, ap);
-	mqtt_jsinit(ap->js, ap->m);
-	influx_jsinit(ap->js, ap->i);
-	dprintf(dlevel,"handle: %p\n", ap->handle);
-#endif
+	/* call common startup */
+	if (agent_startup(ap, configfile, mqtt_info, influx_info, driver_props, driver_funcs)) goto agent_init_error;
 
 	/* Call the agent's config init func */
 	if (ap->driver->config && ap->driver->config(ap->handle, SOLARD_CONFIG_INIT, ap)) goto agent_init_error;
 
-#ifdef JS
+	/* XXX req'd for sdconfig */
+	agent_sub(ap, ap->instance_name, 0);
+
 	/* Execute any command-line javascript code */
 	dprintf(dlevel,"jsexec(%d): %s\n", strlen(jsexec), jsexec);
 	if (strlen(jsexec)) {
@@ -652,26 +451,20 @@ solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts,
 	}
 
 	/* Start the init script */
-	if (agent_script_exists(ap,ap->init_script)) agent_start_script(ap,ap->init_script);
+	if (agent_script_exists(ap,ap->init_script) && agent_start_script(ap,ap->init_script)) {
+		log_error("init_script failed\n");
+		goto agent_init_error;
+	}
 
 	/* if specified, Execute javascript file then exit */
 	dprintf(dlevel,"script: %s\n", script);
 	if (strlen(script)) {
 		agent_start_script(ap,script);
-		free(ap);
-		return 0;
+		goto agent_init_error;
 	}
-#endif
 
-	/* Get driver info */
-	if (Cdriver->config(handle,SOLARD_CONFIG_GET_INFO,&ap->driver_info) == 0) {
-		/* If info flag, print info to stdout then exit */
-		dprintf(dlevel,"info_flag: %d\n", info_flag);
-		if (info_flag) exit(agent_pubinfo(ap, 1));
-
-		/* Publish the info */
-		agent_pubinfo(ap, 0);
-	}
+	/*  Get and publish driver info */
+	if (agent_get_info(ap,info_flag)) goto agent_init_error;
 
 	/* Publish our config */
 	if (strcmp(Cdriver->name,"sdjs") != 0 && agent_pubconfig(ap)) goto agent_init_error;
@@ -718,7 +511,7 @@ int agent_run(solard_agent_t *ap) {
 		diff = cur - last_read;
 		dprintf(dlevel,"diff: %d, read_interval: %d\n", (int)diff, ap->read_interval);
 		read_status = 0;
-		if (suspend_read == 0 && diff >= ap->read_interval) {
+		if (diff >= ap->read_interval) {
 			dprintf(dlevel,"open_before_read: %d, open: %p\n", ap->open_before_read, ap->driver->open);
 			if (ap->open_before_read && ap->driver->open) {
 				if (ap->driver->open(ap->handle)) {
@@ -770,7 +563,7 @@ int agent_run(solard_agent_t *ap) {
 		time(&cur);
 		diff = cur - last_write;
 		dprintf(dlevel,"diff: %d, write_interval: %d\n", (int)diff, ap->write_interval);
-		if (read_status == 0 && suspend_write == 0 && diff >= ap->write_interval) {
+		if (read_status == 0 && diff >= ap->write_interval) {
 			dprintf(dlevel,"writing...\n");
 			if (ap->open_before_write && ap->driver->open) {
 				if (ap->driver->open(ap->handle)) {
@@ -795,7 +588,6 @@ int agent_run(solard_agent_t *ap) {
 			if (write_status) log_error("write failed!\n");
 		}
 		sleep(1);
-		JS_EngineCleanup(ap->js);
 	}
 	if (strlen(ap->stop_script)) agent_start_script(ap,ap->stop_script);
 	mqtt_disconnect(ap->m,10);
@@ -803,13 +595,58 @@ int agent_run(solard_agent_t *ap) {
 	return 0;
 }
 
-#ifdef JS
+#define AGENT_PROPERTY_ID_CONFIG 1024
+#define AGENT_PROPERTY_ID_MQTT 1025
+#define AGENT_PROPERTY_ID_INFLUX 1026
+
 static JSBool agent_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
+	int prop_id;
 	solard_agent_t *ap;
+	config_property_t *p;
+
 
 	ap = JS_GetPrivate(cx,obj);
 	if (!ap) return JS_FALSE;
-	return config_jsgetprop(cx, obj, id, rval, ap->cp, ap->props);
+
+	dprintf(dlevel,"id type: %s\n", jstypestr(cx,id));
+	p = 0;
+	if(JSVAL_IS_INT(id)) {
+		prop_id = JSVAL_TO_INT(id);
+		dprintf(dlevel,"prop_id: %d\n", prop_id);
+		switch(prop_id) {
+		case AGENT_PROPERTY_ID_CONFIG:
+			*rval = OBJECT_TO_JSVAL(JSConfig(cx,ap->cp));
+			break;
+		case AGENT_PROPERTY_ID_MQTT:
+			*rval = OBJECT_TO_JSVAL(JSMQTT(cx,ap->m));
+			break;
+		case AGENT_PROPERTY_ID_INFLUX:
+			*rval = OBJECT_TO_JSVAL(JSInflux(cx,ap->i));
+			break;
+		default:
+			p = CONFIG_GETMAP(ap->cp,prop_id);
+			if (!p) p = config_get_propbyid(ap->cp,prop_id);
+			if (!p) {
+				JS_ReportError(cx, "internal error: property %d not found", prop_id);
+				return JS_FALSE;
+			}
+			break;
+		}
+	} else if (JSVAL_IS_STRING(id)) {
+		char *sname, *name;
+		JSClass *classp = OBJ_GET_CLASS(cx, obj);
+
+		sname = (char *)classp->name;
+		name = (char *)js_GetStringBytes(cx, JSVAL_TO_STRING(id));
+		dprintf(dlevel,"sname: %s, name: %s\n", sname, name);
+		if (sname && name) p = config_get_property(ap->cp, sname, name);
+	}
+	dprintf(dlevel,"p: %p\n", p);
+	if (p && p->dest) {
+		dprintf(dlevel,"p: type: %d(%s), name: %s\n", p->type, typestr(p->type), p->name);
+		*rval = type_to_jsval(cx,p->type,p->dest,p->len);
+	}
+	return JS_TRUE;
 }
 
 static JSBool agent_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp) {
@@ -857,8 +694,8 @@ static JSBool agent_jsmktopic(JSContext *cx, uintN argc, jsval *vp) {
 	return JS_TRUE;
 }
 
-static JSBool agent_ctor(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
 #if 0
+static JSBool agent_ctor(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
 	agent_private_t *p;
 	JSObject *newobj;
 	int r;
@@ -886,10 +723,8 @@ static JSBool agent_ctor(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, 
 	*rval = OBJECT_TO_JSVAL(newobj);
 
 	return r;
-#endif
-	*rval = JSVAL_NULL;
-	return JS_FALSE;
 }
+#endif
 
 JSObject *jsagent_new(JSContext *cx, void *tp, void *handle, char *transport, char *target, char *topts, int *con) {
 #if 0
@@ -916,6 +751,12 @@ JSObject *jsagent_new(JSContext *cx, void *tp, void *handle, char *transport, ch
 }
 
 JSObject *JSAgent(JSContext *cx, void *priv) {
+	JSPropertySpec agent_props[] = {
+		{ "config", AGENT_PROPERTY_ID_CONFIG, JSPROP_ENUMERATE },
+		{ "mqtt", AGENT_PROPERTY_ID_MQTT, JSPROP_ENUMERATE },
+		{ "influx", AGENT_PROPERTY_ID_INFLUX, JSPROP_ENUMERATE },
+		{ 0 }
+	};
 	JSFunctionSpec agent_funcs[] = {
 		JS_FN("mktopic",agent_jsmktopic,1,1,0),
 //		JS_FN("run",agent_jsrun,1,1,0),
@@ -927,11 +768,11 @@ JSObject *JSAgent(JSContext *cx, void *priv) {
 
 	props = 0;
 	if (ap && !ap->props) {
-		ap->props = config_to_props(ap->cp, ap->section_name, 0);
+		ap->props = config_to_props(ap->cp, ap->section_name, agent_props);
 		if (!ap->props) {
-			ap->props = config_to_props(ap->cp, ap->instance_name, 0);
+			ap->props = config_to_props(ap->cp, ap->instance_name, agent_props);
 			if (!ap->props) {
-				ap->props = config_to_props(ap->cp, ap->driver->name, 0);
+				ap->props = config_to_props(ap->cp, ap->driver->name, agent_props);
 				if (!ap->props) {
 					log_error("unable to create props: %s\n", config_get_errmsg(ap->cp));
 					return 0;
@@ -955,5 +796,3 @@ JSObject *JSAgent(JSContext *cx, void *priv) {
 int agent_jsinit(JSEngine *e, void *priv) {
 	return JS_EngineAddInitFunc(e, "agent", JSAgent, priv);
 }
-
-#endif

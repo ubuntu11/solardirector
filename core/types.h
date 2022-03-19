@@ -238,4 +238,7 @@ static inline float _getf64(unsigned char *v) {
 #define _putlong(p,v) _puts32(p,v)
 #define _putfloat(p,v) _putf32(p,v)
 
+#include "jsengine.h"
+int types_jsinit(JSEngine *e);
+
 #endif /* __SD_TYPES_H */

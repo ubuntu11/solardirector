@@ -9,6 +9,8 @@ LICENSE file in the root directory of this source tree.
 
 #include "jk.h"
 
+extern char *jk_version_string;
+
 int jk_agent_init(jk_session_t *s, int argc, char **argv) {
 	opt_proctab_t jk_opts[] = {
 		/* Spec, dest, type len, reqd, default val, have */
@@ -30,7 +32,7 @@ int jk_agent_init(jk_session_t *s, int argc, char **argv) {
 		{0}
 	};
 
-	s->ap = agent_init(argc,argv,jk_opts,&jk_driver,s,jk_props,jk_funcs);
+	s->ap = agent_init(argc,argv,jk_version_string,jk_opts,&jk_driver,s,jk_props,jk_funcs);
 	if (!s->ap) return 1;
 	dprintf(1,"topic: %s(%d)\n", s->topic, strlen(s->topic));
 	if (!strlen(s->topic)) agent_mktopic(s->topic,sizeof(s->topic)-1,s->ap,s->ap->instance_name,SOLARD_FUNC_DATA);

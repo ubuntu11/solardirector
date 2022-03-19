@@ -18,6 +18,7 @@ LICENSE file in the root directory of this source tree.
 #include <stdint.h>
 #include <errno.h>
 #include <time.h>
+#include "jsapi.h"
 
 #define SOLARD_PATH_MAX		256
 
@@ -78,6 +79,7 @@ typedef struct solard_power solard_power_t;
 
 extern char SOLARD_BINDIR[SOLARD_PATH_MAX], SOLARD_ETCDIR[SOLARD_PATH_MAX], SOLARD_LIBDIR[SOLARD_PATH_MAX], SOLARD_LOGDIR[SOLARD_PATH_MAX];
 
+#if 0
 #if defined(__WIN32) && defined(NEED_EXPORT)
 #ifdef DLL_EXPORT
   #define EXPORT __declspec(dllexport)
@@ -86,10 +88,14 @@ extern char SOLARD_BINDIR[SOLARD_PATH_MAX], SOLARD_ETCDIR[SOLARD_PATH_MAX], SOLA
 #endif
 #define DLLCALL __cdecl
 #endif
+#endif
 
+/* Macros */
 #define STRINGIFY2(x) #x
 #define STRINGIFY(x) STRINGIFY2(x)
-#define STR(s) STRINGIFY2(x)
+#define solard_set_bit(b,v)	((b) |= (v))
+#define solard_clear_bit(b,v)	((b) &= (~v))
+#define solard_check_bit(b,v)	(((b) & v) != 0)
 
 #include "types.h"
 #include "opts.h"
@@ -112,23 +118,40 @@ extern char SOLARD_BINDIR[SOLARD_PATH_MAX], SOLARD_ETCDIR[SOLARD_PATH_MAX], SOLA
 #define Cyan "\033[0;36m"
 #define White "\033[0;37m"
 
-int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_opts);
+#if 0
+struct solard_startup_info {
+	void *ctx;
+	config_t **config_handle;
+	char *config_section;
+	char *config_file;
+	config_property_t *config_props;
+	config_function_t *config_funcs;
+	mqtt_session_t **mqtt_handle;
+	char *mqtt_info;
+	mqtt_config_t *mqtt_config;
+	mqtt_callback_t *mqtt_callback;
+	influx_session_t **influx_handle;
+	char *influx_info;
+	influx_config_t *influx_config;
+	JSEngine **js_handle;
+	int js_rtsize;
+	js_outputfunc_t *js_output;
+};
+typedef struct solard_startup_info solard_startup_info_t;
+#endif
+
+int solard_common_init(int argc,char **argv,char *ver,opt_proctab_t *add_opts,int start_opts);
 int solard_common_config(cfg_info_t *,char *);
+//int solard_common_startup(solard_startup_info_t *);
 int solard_common_startup(config_t **cp, char *sname, char *configfile,
                         config_property_t *props, config_function_t *funcs,
                         mqtt_session_t **m, mqtt_callback_t *getmsg, void *mctx,
                         char *mqtt_info, mqtt_config_t *mc, int config_from_mqtt,
                         influx_session_t **i, char *influx_info, influx_config_t *ic,
-#ifdef JS
-                        JSEngine **js, int rtsize, js_outputfunc_t *jsout
-#endif
-			);
+                        JSEngine **js, int rtsize, int stksize, js_outputfunc_t *jsout);
 
 
-#ifdef JS
-#include "jsapi.h"
 void common_add_props(config_t *, char *);
 int common_jsinit(JSEngine *e);
-#endif
 
 #endif

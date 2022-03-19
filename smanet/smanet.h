@@ -89,7 +89,9 @@ struct smanet_session {
 	uint16_t dest;
 	int timeouts;
 	int commands;
+#ifdef SMANET_THREADSAFE
 	pthread_mutex_t lock;
+#endif
 	char errmsg[128];
 };
 typedef struct smanet_session smanet_session_t;

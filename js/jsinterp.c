@@ -546,8 +546,7 @@ js_AllocRawStack(JSContext *cx, uintN nslots, void **markp)
     if (!cx->stackPool.first.next) {
         int64 *timestamp;
 
-        JS_ARENA_ALLOCATE_CAST(timestamp, int64 *,
-                               &cx->stackPool, sizeof *timestamp);
+        JS_ARENA_ALLOCATE_CAST(timestamp, int64 *, &cx->stackPool, sizeof *timestamp);
         if (!timestamp) {
             js_ReportOutOfScriptQuota(cx);
             return NULL;
@@ -1435,9 +1434,7 @@ js_InternalGetOrSet(JSContext *cx, JSObject *obj, jsid id, jsval fval,
     return js_InternalCall(cx, obj, fval, argc, argv, rval);
 }
 
-JSBool
-js_Execute(JSContext *cx, JSObject *chain, JSScript *script,
-           JSStackFrame *down, uintN flags, jsval *result)
+JSBool js_Execute(JSContext *cx, JSObject *chain, JSScript *script, JSStackFrame *down, uintN flags, jsval *result)
 {
     JSInterpreterHook hook;
     void *hookData, *mark;
@@ -1487,6 +1484,7 @@ js_Execute(JSContext *cx, JSObject *chain, JSScript *script,
         if (script->regexpsOffset != 0)
             frame.nvars += JS_SCRIPT_REGEXPS(script)->length;
         if (frame.nvars != 0) {
+//	    printf("==> alloc frame.nvars: %d\n", frame.nvars * sizeof(jsval));
             frame.vars = js_AllocRawStack(cx, frame.nvars, &mark);
             if (!frame.vars) {
                 ok = JS_FALSE;
@@ -1540,8 +1538,7 @@ js_Execute(JSContext *cx, JSObject *chain, JSScript *script,
     }
 
     if (hook) {
-        hookData = hook(cx, &frame, JS_TRUE, 0,
-                        cx->debugHooks->executeHookData);
+        hookData = hook(cx, &frame, JS_TRUE, 0, cx->debugHooks->executeHookData);
     }
 
     ok = js_Interpret(cx);
@@ -2653,9 +2650,11 @@ js_Interpret(JSContext *cx)
      * Initialize the pc register and allocate operand stack slots for the
      * script's worst-case depth, unless we're resuming a generator.
      */
+//printf("int(20): used: %d\n", (int)JS_ArenaTotalBytes());
     if (JS_LIKELY(!fp->spbase)) {
         ASSERT_NOT_THROWING(cx);
         JS_ASSERT(!fp->regs);
+//	printf("==> alloc depth: %d\n", script->depth * sizeof(jsval));
         fp->spbase = js_AllocRawStack(cx, script->depth, &mark);
         if (!fp->spbase) {
             ok = JS_FALSE;
@@ -2820,11 +2819,7 @@ interrupt:
                     continue;
                 if (OBJ_GET_PRIVATE(cx, obj) != fp)
                     break;
-                JS_ASSERT(fp->spbase + OBJ_BLOCK_DEPTH(cx, obj)
-                                     + ((clasp == &js_BlockClass)
-                                        ? OBJ_BLOCK_COUNT(cx, obj)
-                                        : 1)
-                          <= regs.sp);
+                JS_ASSERT(fp->spbase + OBJ_BLOCK_DEPTH(cx, obj) + ((clasp == &js_BlockClass) ? OBJ_BLOCK_COUNT(cx, obj) : 1) <= regs.sp);
             }
 #endif
           END_CASE(JSOP_POPN)
@@ -4677,8 +4672,7 @@ interrupt:
                     nvars = fun->u.i.nvars;
                     script = fun->u.i.script;
                     atoms = script->atomMap.vector;
-                    nbytes = (nframeslots + nvars + script->depth) *
-                             sizeof(jsval);
+                    nbytes = (nframeslots + nvars + script->depth) * sizeof(jsval);
 
                     /* Allocate missing expected args adjacent to actuals. */
                     a = cx->stackPool.current;
@@ -4707,8 +4701,8 @@ interrupt:
                         a->avail += nbytes;
                         JS_ASSERT(missing == 0);
                     } else {
-                        JS_ARENA_ALLOCATE_CAST(newsp, jsval *, &cx->stackPool,
-                                               nbytes);
+			printf("===> JS_ARENA_ALLOCATE_CAST\n");
+                        JS_ARENA_ALLOCATE_CAST(newsp, jsval *, &cx->stackPool, nbytes);
                         if (!newsp) {
                             js_ReportOutOfScriptQuota(cx);
                             goto bad_inline_call;
@@ -4752,8 +4746,7 @@ interrupt:
                     newifp->frame.xmlNamespace = NULL;
                     newifp->frame.blockChain = NULL;
 #ifdef DEBUG
-                    newifp->frame.pcDisabledSave =
-                        JS_PROPERTY_CACHE(cx).disabled;
+                    newifp->frame.pcDisabledSave = JS_PROPERTY_CACHE(cx).disabled;
 #endif
                     newifp->mark = newmark;
 
@@ -6971,6 +6964,7 @@ interrupt:
         fp->spbase = NULL;
         fp->regs = NULL;
         js_FreeRawStack(cx, mark);
+//	JS_GC(cx);
     } else {
         JS_ASSERT(fp->flags & JSFRAME_GENERATOR);
         if (fp->flags & JSFRAME_YIELDING) {
@@ -6986,6 +6980,7 @@ interrupt:
             fp->spbase = NULL;
         }
     }
+//printf("int(21): used: %d\n", (int)JS_ArenaTotalBytes());
 
   exit2:
     JS_ASSERT(JS_PROPERTY_CACHE(cx).disabled == fp->pcDisabledSave);

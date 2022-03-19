@@ -1343,7 +1343,7 @@ js_DumpGCStats(JSRuntime *rt, FILE *fp)
         fprintf(fp, "                 max things: %lu\n", UL(st->maxthings));
         fprintf(fp, "             alloc attempts: %lu\n", UL(st->alloc));
         fprintf(fp, "        alloc without locks: %1u  (%.1f%%)\n",
-                UL(st->localalloc), PERCENT(st->localalloc, st->alloc));
+                (unsigned int) UL(st->localalloc), PERCENT(st->localalloc, st->alloc));
         sumArenas += st->narenas;
         sumTotalArenas += st->totalarenas;
         sumThings += st->nthings;
@@ -1369,7 +1369,7 @@ js_DumpGCStats(JSRuntime *rt, FILE *fp)
     fprintf(fp, "allocation retries after GC: %lu\n", UL(sumRetry));
     fprintf(fp, "             alloc attempts: %lu\n", UL(sumAlloc));
     fprintf(fp, "        alloc without locks: %1u  (%.1f%%)\n",
-            UL(sumLocalAlloc), PERCENT(sumLocalAlloc, sumAlloc));
+            (unsigned int) UL(sumLocalAlloc), PERCENT(sumLocalAlloc, sumAlloc));
     fprintf(fp, "        allocation failures: %lu\n", UL(sumFail));
     fprintf(fp, "         things born locked: %lu\n", ULSTAT(lockborn));
     fprintf(fp, "           valid lock calls: %lu\n", ULSTAT(lock));
@@ -1397,7 +1397,7 @@ js_DumpGCStats(JSRuntime *rt, FILE *fp)
 #undef PERCENT
 
 #ifdef JS_ARENAMETER
-    JS_DumpArenaStats(fp);
+//    JS_DumpArenaStats(fp);
 #endif
 }
 #endif
@@ -1411,7 +1411,7 @@ void
 js_FinishGC(JSRuntime *rt)
 {
 #ifdef JS_ARENAMETER
-    JS_DumpArenaStats(stdout);
+//    JS_DumpArenaStats(stdout);
 #endif
 #ifdef JS_GCMETER
     js_DumpGCStats(rt, stdout);
@@ -2978,6 +2978,8 @@ js_GC(JSContext *cx, JSGCInvocationKind gckind)
     uint32 nlivearenas, nkilledarenas, nthings;
 #endif
 
+//	printf("\n****** GC *******\n\n");
+
     rt = cx->runtime;
 #ifdef JS_THREADSAFE
     /* Avoid deadlock. */
@@ -3388,8 +3390,7 @@ js_GC(JSContext *cx, JSGCInvocationKind gckind)
          * We use arenaList - &rt->gcArenaList[0], not i, as the stat index
          * due to the enumeration reorder at the beginning of the loop.
          */
-        METER(UpdateArenaStats(&rt->gcStats.arenaStats[arenaList -
-                                                       &rt->gcArenaList[0]],
+        METER(UpdateArenaStats(&rt->gcStats.arenaStats[arenaList - &rt->gcArenaList[0]],
                                nlivearenas, nkilledarenas, nthings));
     }
 
@@ -3404,12 +3405,14 @@ js_GC(JSContext *cx, JSGCInvocationKind gckind)
             METER(nkilledarenas++);
         } else {
             ap = &a->prev;
+#if 0
 #ifdef JS_GCMETER
             for (i = 0; i != DOUBLES_PER_ARENA; ++i) {
                 if (IsMarkedDouble(a, index))
                     METER(nthings++);
             }
             METER(nlivearenas++);
+#endif
 #endif
         }
     }

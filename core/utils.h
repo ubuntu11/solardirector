@@ -92,5 +92,6 @@ int os_exists(char *path, char *name);
 int double_equals(double a, double b);
 int float_equals(float a, float b);
 bool fequal(float a, float b);
+int double_isint(double z);
 
 #endif

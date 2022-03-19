@@ -14,6 +14,8 @@
 #elif defined __x86_64__ && !defined __ILP32__
 //#error X4
   #include "jscpu_lin64.h"
+#elif defined(__aarch64__) || defined(_M_ARM64)
+  #include "jscpu_lin64.h"
 #else
 //#error X5
   #include "jscpu_lin32x.h"

@@ -274,7 +274,7 @@ static int do_connect(JSContext *cx, can_private_t *p) {
 	/* Create a new driver instance */
 	p->tp_handle = p->tp->new(p->target, p->topts);
 	if (!p->tp_handle) {
-		JS_ReportError(cx, "%s_new: %s", p->transport, strerror(errno));
+		JS_ReportError(cx, "%_new: %s", p->transport, strerror(errno));
 		return JS_FALSE;
 	}
 

@@ -1,4 +1,0 @@
-#./sdconfig si can_init rdev 192.168.1.7 can0
-./sdconfig si set smanet_transport rdev smanet_target 192.168.1.7 smanet_topts serial0 smanet_channels_path /opt/sd/lib/SI6048UM.dat
-#./sdconfig si smanet_init rdev 192.168.1.7 serial0
-#./sdconfig si set smanet_channels_path /opt/sd/lib/SI6048UM.dat

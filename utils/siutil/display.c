@@ -168,6 +168,7 @@ void display_data(si_session_t *s,int mon_flag) {
 	dfloat("Battery Temp","%3.2f",s->data.battery_temp);
 	dfloat("Battery SoC","%3.2f",s->data.battery_soc);
 	dfloat("Battery CVSP","%3.2f",s->data.battery_cvsp);
+	dfloat("Battery SOH","%3.2f",s->data.battery_soh);
 	_outrelay("Master Relay",s->data.relay1,s->data.relay2);
 	_outrelay("Slave1 Relays",s->data.s1_relay1,s->data.s1_relay2);
 	_outrelay("Slave2 Relays",s->data.s2_relay1,s->data.s2_relay2);
@@ -254,11 +255,13 @@ int monitor(si_session_t *s, int interval) {
 	while(1) {
 		t = time(NULL);
 		tm = localtime(&t);
-//		if (si_driver.read(s,(void *)0xDEADBEEF,0)) {
-		if (si_can_read_data(s,1)) {
+		if (si_can_get_data(s)) {
+//		if (si_can_read_data(s,1)) {
 			log_error("unable to read data");
 			return 1;
 		}
+//		sleep(3);
+//		continue;
 #ifdef __WIN32
 		system("cls");
 //		system("time /t");
@@ -266,7 +269,7 @@ int monitor(si_session_t *s, int interval) {
 //		system("clear; echo \"**** $(date) ****\"; echo \"\"");
 		system("clear");
 #endif
-		fprintf(outfp,"%s\n", asctime(tm));
+//		fprintf(outfp,"%s\n", asctime(tm));
 		display_data(s,1);
 		fflush(outfp);
 		if (interval <= 0) usleep(35000);

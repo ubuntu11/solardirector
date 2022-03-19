@@ -2,9 +2,10 @@
 SMANET=yes
 
 PROGNAME=si
-SRCS=main.c can.c smanet.c info.c si.c config.c charge.c jsfuncs.c
+SRCS=main.c can.c smanet.c info.c si.c siconfig.c jsfuncs.c
+SCRIPTS=init.js charge.js pub.js
 
 include ../../Makefile.sd
 
-#js_si_info.h: si.h
-#	../../tools/mkjs.sh si.h si_info 'info->'
+t: t.c $(DEPS)
+	$(FULLCC) -o t t.c si.c can.c ../../utils/siutil/display.c $(LIBS)

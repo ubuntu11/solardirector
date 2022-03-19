@@ -58,7 +58,7 @@ struct solard_client {
 };
 typedef struct solard_client solard_client_t;
 
-solard_client_t *client_init(int argc,char **argv,opt_proctab_t *client_opts,char *name,config_property_t *props,config_function_t *funcs);
+solard_client_t *client_init(int argc,char **argv,char *,opt_proctab_t *client_opts,char *name,config_property_t *props,config_function_t *funcs);
 
 client_agentinfo_t *client_getagentbyname(solard_client_t *c, char *name);
 client_agentinfo_t *client_getagentbyid(solard_client_t *c, char *name);

@@ -14,6 +14,8 @@ LICENSE file in the root directory of this source tree.
 #include "jbd.h"
 #include "jbd_regs.h"
 
+extern char *jbd_version_string;
+
 #define BC_STRING 1
 #define NTC_STRING 1
 
@@ -785,7 +787,7 @@ int jbd_agent_init(jbd_session_t *s, int argc, char **argv) {
 		{0}
 	};
 
-	s->ap = agent_init(argc,argv,jbd_opts,&jbd_driver,s,jbd_props,jbd_funcs);
+	s->ap = agent_init(argc,argv,jbd_version_string,jbd_opts,&jbd_driver,s,jbd_props,jbd_funcs);
 	dprintf(1,"ap: %p\n",s->ap);
 	if (!s->ap) return 1;
 	return 0;

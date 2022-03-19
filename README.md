@@ -1,5 +1,11 @@
 IMPORTANT: INSTALL THE FOLLOWING DEPS FIRST
 
+Install dependant packages (example is for deb systems):
+
+	apt-get install libbluetooth-dev
+	apt-get install libcurl4-openssl-dev
+	apt-get install libreadline-dev
+
 paho.mqtt.c (https://github.com/eclipse/paho.mqtt.c.git)
 
 	mkdir -p build && cd build
@@ -11,11 +17,6 @@ gattlib (https://github.com/labapart/gattlib.git)
 	mkdir -p build && cd build
 	cmake -DGATTLIB_BUILD_EXAMPLES=NO -DGATTLIB_SHARED_LIB=NO -DGATTLIB_BUILD_DOCS=NO -DGATTLIB_PYTHON_INTERFACE=NO ..
 	make && make install
-
-On Debian systems:
-
-	apt-get install libcurl4-openssl-dev
-	apt-get install libreadline-gplv2-dev
 
 IF USING BLUETOOTH, YOU MUST PAIR THE DEVICE FIRST
 

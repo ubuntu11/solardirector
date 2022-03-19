@@ -649,7 +649,7 @@ js_CompileScript(JSContext *cx, JSObject *obj, JSPrincipals *principals,
            (char *)sbrk(0) - (char *)before, CG_OFFSET(cg), cg->noteCount);
 #endif
 #ifdef JS_ARENAMETER
-    JS_DumpArenaStats(stdout);
+//    JS_DumpArenaStats(stdout);
 #endif
     script = js_NewScriptFromCG(cx, &cg);
 

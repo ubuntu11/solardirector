@@ -9,6 +9,8 @@ LICENSE file in the root directory of this source tree.
 
 #include "sb.h"
 
+extern char *sb_agent_version_string;
+
 void fix_user(struct opt_process_table *pt, char *arg) {
 	if (strcmp(arg,"user") == 0) strcpy(pt->dest,"usr");
 	else if (strcmp(arg,"installer") == 0) strcpy(pt->dest,"istl");
@@ -43,7 +45,7 @@ int sb_agent_init(sb_session_t *s, int argc, char **argv) {
 		{0}
 	};
 
-	s->ap = agent_init(argc,argv,opts,&sb_driver,s,sb_props,sb_funcs);
+	s->ap = agent_init(argc,argv,sb_agent_version_string,opts,&sb_driver,s,sb_props,sb_funcs);
 	dprintf(1,"ap: %p\n",s->ap);
 	if (!s->ap) return 1;
 	if (strcmp(s->user,"user") == 0) strcpy(s->user,"usr");

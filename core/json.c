@@ -492,7 +492,12 @@ int json_to_type(int dt, void *dest, int len, json_value_t *v) {
 		break;
 	case JSONNumber:
 		d = parson_number(VAL(v));
-		return conv_type(dt,dest,len,DATA_TYPE_DOUBLE,&d,0);
+		if (double_isint(d)) {
+			i = d;
+			return conv_type(dt,dest,len,DATA_TYPE_INT,&i,0);
+		} else {
+			return conv_type(dt,dest,len,DATA_TYPE_DOUBLE,&d,0);
+		}
 		break;
 	case JSONBoolean:
 		i = parson_boolean(VAL(v));

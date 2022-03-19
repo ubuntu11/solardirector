@@ -10,7 +10,7 @@ LICENSE file in the root directory of this source tree.
 #include "smanet_internal.h"
 #include <assert.h>
 
-#define dlevel 2
+#define dlevel 4
 
 /*
 Spot value
@@ -88,7 +88,7 @@ static int _read_values(smanet_session_t *s, smanet_channel_t *cx) {
 	for(rcount=i=0; i < s->chancount; i++) {
 		m1 = (s->chans[i].mask | 0x0f);
 		m2 = (cx->mask | 0x0f);
-		dprintf(dlevel,"chan mask: %04x, req mask: %04x\n", m1, m2);
+//		dprintf(dlevel,"chan mask: %04x, req mask: %04x\n", m1, m2);
 		if (m1 == m2) {
 			smanet_channel_t *c = &s->chans[i];
 //			dprintf(dlevel,"adding: chan: id: %d, name: %s, index: %02x, mask: %04x, format: %04x, level: %d, type: %d(%s), count: %d\n", c->id, c->name, c->index, c->mask, c->format, c->level, c->type, typestr(c->type), c->count);
@@ -157,10 +157,10 @@ static int _read_values(smanet_session_t *s, smanet_channel_t *cx) {
 		smanet_channel_t *c = &s->chans[i];
 		m1 = (c->mask | 0x0f);
 		m2 = (cx->mask | 0x0f);
-		dprintf(dlevel,"chan mask: %04x, req mask: %04x\n", m1, m2);
+//		dprintf(dlevel+1,"chan: %s, mask: %04x, req mask: %04x\n", m1, m2);
 		if (m1 != m2) continue;
-		dprintf(smanet_dlevel,"offset: %04x\n", sptr - p->data);
-		dprintf(dlevel,"sptr: %p, eptr: %p\n", sptr, eptr);
+//		dprintf(smanet_dlevel,"offset: %04x\n", sptr - p->data);
+//		dprintf(dlevel,"sptr: %p, eptr: %p\n", sptr, eptr);
 		if (sptr >= eptr) {
 			log_info("internal error: _read_values: sptr >= eptr");
 			smanet_free_packet(p);
@@ -170,27 +170,31 @@ static int _read_values(smanet_session_t *s, smanet_channel_t *cx) {
 		switch(c->type) {
 		case DATA_TYPE_BYTE:
 			v->bval = _getu8(sptr);
-			dprintf(smanet_dlevel,"bval: %d (%02X)\n", v->bval, v->bval);
+//			dprintf(smanet_dlevel,"bval: %d (%02X)\n", v->bval, v->bval);
+			dprintf(dlevel,"%s: %d\n", c->name, v->bval);
 			sptr += 1;
 			break;
 		case DATA_TYPE_SHORT:
 			v->wval = _getu16(sptr);
-//			dprintf(dlevel,"%s: offset: %04x, wval: %d (%04x)\n", c->name, sptr - p->data, (short) v->wval, (unsigned short)v->wval);
+			dprintf(dlevel,"%s: %d\n", c->name, v->wval);
 			sptr += 2;
 			break;
 		case DATA_TYPE_LONG:
 			v->lval = _getu32(sptr);
-			dprintf(smanet_dlevel,"lval: %ld (%08lx)\n", v->lval, v->lval);
+//			dprintf(smanet_dlevel,"lval: %ld (%08lx)\n", v->lval, v->lval);
+			dprintf(dlevel,"%s: %ld\n", c->name, v->lval);
 			sptr += 4;
 			break;
 		case DATA_TYPE_FLOAT:
 			v->fval = _getf32(sptr);
-			dprintf(smanet_dlevel,"fval: %f\n", v->fval);
+//			dprintf(smanet_dlevel,"fval: %f\n", v->fval);
+			dprintf(dlevel,"%s: %f\n", c->name, v->fval);
 			sptr += 4;
 			break;
 		case DATA_TYPE_DOUBLE:
 			v->dval = _getf64(sptr);
-			dprintf(smanet_dlevel,"dval: %lf\n", v->dval);
+//			dprintf(smanet_dlevel,"dval: %lf\n", v->dval);
+			dprintf(dlevel,"%s: %f\n", c->name, v->dval);
 			sptr += 8;
 			break;
 		default:

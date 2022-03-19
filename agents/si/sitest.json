@@ -1,0 +1,23 @@
+{
+    "si": {
+        "bms_mode": false,
+        "min_voltage": 37.799999237060547,
+        "max_voltage": 58.099998474121094,
+        "can_transport": "rdev",
+        "can_target": "192.168.1.7",
+        "can_topts": "can0",
+        "smanet_transport": "rdev",
+        "smanet_target": "192.168.1.7",
+        "smanet_topts": "serial0",
+        "smanet_channels_path": "\/opt\/sd\/lib\/si_channels.json",
+        "input_current_source": "calculated",
+        "output_current_source": "calculated",
+        "read_interval": 5,
+        "write_interval": 5,
+        "script_dir": ".",
+        "charge_start_voltage": 44.900001525878906,
+        "charge_end_voltage": 56,
+        "grid_charge_amps": 112,
+        "gen_charge_amps": 280
+    }
+}

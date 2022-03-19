@@ -58,6 +58,7 @@ int mqtt_fullsend(char *address, char *clientid, char *message, char *topic, cha
 #include "jsapi.h"
 #include "jsengine.h"
 void mqtt_add_props(config_t *, mqtt_config_t *, char *, mqtt_config_t *);
+JSObject *JSMQTT(JSContext *cx, void *priv);
 int mqtt_jsinit(JSEngine *, mqtt_session_t *);
 #endif
 

@@ -24,7 +24,7 @@ char SOLARD_LIBDIR[SOLARD_PATH_MAX];
 char SOLARD_LOGDIR[SOLARD_PATH_MAX];
 
 #define CFG 1
-#define dlevel 7
+#define dlevel 4
 
 #if defined(__WIN32) && !defined(__WIN64)
 #include <windows.h>
@@ -135,13 +135,13 @@ static int solard_get_dirs(cfg_info_t *cfg, char *section_name, char *home, int 
 	return 0;
 }
 
-int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_opts) {
+int solard_common_init(int argc,char **argv,char *version,opt_proctab_t *add_opts,int start_opts) {
 	/* std command-line opts */
 	static char logfile[256];
 	char home[246],configfile[256];
 	cfg_info_t *cfg;
 	static int append_flag;
-	static int back_flag,verb_flag;
+	static int back_flag,verb_flag,vers_flag;
 	static int help_flag,err_flag;
 	static opt_proctab_t std_opts[] = {
 		{ "-b|run in background",&back_flag,DATA_TYPE_LOGICAL,0,0,"no" },
@@ -153,6 +153,7 @@ int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_op
 		{ "-l:%|redirect output to logfile",&logfile,DATA_TYPE_STRING,sizeof(logfile)-1,0,"" },
 		{ "-a|append to logfile",&append_flag,DATA_TYPE_LOGICAL,0,0,"N" },
 		{ "-v|enable verbose output ",&verb_flag,DATA_TYPE_LOGICAL,0,0,"N" },
+		{ "-V|program version ",&vers_flag,DATA_TYPE_LOGICAL,0,0,"N" },
 		{ 0,0,0,0,0 }
 	};
 	opt_proctab_t *opts;
@@ -199,6 +200,10 @@ int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_op
 	/* Process the opts */
 	dprintf(dlevel,"common_init: processing opts...\n");
 	error = opt_process(argc,argv,opts);
+	if (vers_flag) {
+		printf("%s\n",version);
+		exit(0);
+	}
 
 	/* If help flag, display usage and exit */
 	dprintf(dlevel,"common_init: error: %d, help_flag: %d\n",error,help_flag);
@@ -296,6 +301,7 @@ int solard_common_init(int argc,char **argv,opt_proctab_t *add_opts,int start_op
 	return 0;
 }
 
+#if 0
 int solard_common_config(cfg_info_t *cfg, char *section_name) {
 	char home[256];
 
@@ -305,15 +311,14 @@ int solard_common_config(cfg_info_t *cfg, char *section_name) {
 	dprintf(dlevel,"home: %s\n",home);
 	return solard_get_dirs(cfg,section_name,home,0);
 }
+#endif
 
 int solard_common_startup(config_t **cp, char *sname, char *configfile,
 			config_property_t *props, config_function_t *funcs,
 			mqtt_session_t **m, mqtt_callback_t *getmsg, void *mctx,
 			char *mqtt_info, mqtt_config_t *mc, int config_from_mqtt,
 			influx_session_t **i, char *influx_info, influx_config_t *ic,
-#ifdef JS
-			JSEngine **js, int rtsize, js_outputfunc_t *jsout)
-#endif
+			JSEngine **js, int rtsize, int stksize, js_outputfunc_t *jsout)
 {
 	mqtt_config_t gmc;
 	influx_config_t gic;
@@ -343,6 +348,7 @@ int solard_common_startup(config_t **cp, char *sname, char *configfile,
 	influx_add_props(*cp, &gic, sname, ic);
 
 	mqtt_init_done = 0;
+	dprintf(dlevel,"config_from_mqtt: %d, configfile: %s\n", config_from_mqtt, configfile);
 	if (config_from_mqtt) {
 		/* If mqtt info specified on command line, parse it */
 		dprintf(dlevel,"mqtt_info: %s\n", mqtt_info);
@@ -387,8 +393,9 @@ int solard_common_startup(config_t **cp, char *sname, char *configfile,
 
 #ifdef JS
 	/* Init js scripting */
-	*js = JS_EngineInit(rtsize, jsout);
+	*js = JS_EngineInit(rtsize, stksize, jsout);
 	common_jsinit(*js);
+	types_jsinit(*js);
 	config_jsinit(*js, *cp);
 	mqtt_jsinit(*js, *m);
 	influx_jsinit(*js, *i);
@@ -445,16 +452,16 @@ static JSBool common_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp) 
 		dprintf(dlevel,"prop_id: %d\n", prop_id);
 		switch(prop_id) {
 		case COMMON_PROPERTY_ID_BINDIR:
-			strncpy(SOLARD_BINDIR,JS_GetStringBytes(JSVAL_TO_STRING(*vp)),sizeof(SOLARD_BINDIR)-1);
+			jsval_to_type(DATA_TYPE_STRING,SOLARD_BINDIR,SOLARD_PATH_MAX,cx,*vp);
 			break;
 		case COMMON_PROPERTY_ID_ETCDIR:
-			strncpy(SOLARD_ETCDIR,JS_GetStringBytes(JSVAL_TO_STRING(*vp)),sizeof(SOLARD_ETCDIR)-1);
+			jsval_to_type(DATA_TYPE_STRING,SOLARD_ETCDIR,SOLARD_PATH_MAX,cx,*vp);
 			break;
 		case COMMON_PROPERTY_ID_LIBDIR:
-			strncpy(SOLARD_LIBDIR,JS_GetStringBytes(JSVAL_TO_STRING(*vp)),sizeof(SOLARD_LIBDIR)-1);
+			jsval_to_type(DATA_TYPE_STRING,SOLARD_LIBDIR,SOLARD_PATH_MAX,cx,*vp);
 			break;
 		case COMMON_PROPERTY_ID_LOGDIR:
-			strncpy(SOLARD_LOGDIR,JS_GetStringBytes(JSVAL_TO_STRING(*vp)),sizeof(SOLARD_LOGDIR)-1);
+			jsval_to_type(DATA_TYPE_STRING,SOLARD_LOGDIR,SOLARD_PATH_MAX,cx,*vp);
 			break;
 		default:
 			dprintf(1,"not found\n");

@@ -9,5 +9,5 @@ inverter_fields[i++] = "output_voltage";
 inverter_fields[i++] = "output_frequency";
 inverter_fields[i++] = "output_current";
 inverter_fields[i++] = "output_power";
-inverter_fields[i++] = "load";
+inverter_fields[i++] = "load_power";
 inverter_fields[i++] = "capabilities";

@@ -82,7 +82,9 @@ smanet_session_t *smanet_init(char *transport, char *target, char *topts) {
 		goto smanet_init_error;
 	}
 //	s->channels = list_create();
+#ifdef SMANET_THREADSAFE
 	pthread_mutex_init(&s->lock, 0);
+#endif
 	s->b = buffer_init(256,tp_get,s);
 	if (!s->b) {
 		log_write(LOG_SYSERR,"smanet_init: buffer_init");
@@ -115,6 +117,7 @@ char *smanet_get_errmsg(smanet_session_t *s) {
 	return s->errmsg;
 }
 
+#ifdef SMANET_THREADSAFE
 int smanet_lock(smanet_session_t *s) {
 	dprintf(dlevel,"locking %p\n",s);
 	pthread_mutex_lock(&s->lock);
@@ -128,3 +131,4 @@ int smanet_unlock(smanet_session_t *s) {
 	dprintf(dlevel,"done!\n");
 	return 0;
 }
+#endif

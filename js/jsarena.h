@@ -303,6 +303,9 @@ JS_ArenaCountRetract(JSArenaPool *pool, char *mark);
 extern JS_PUBLIC_API(void)
 JS_DumpArenaStats(FILE *fp);
 
+extern JS_PUBLIC_API(size_t)
+JS_ArenaTotalBytes(void);
+
 #else  /* !JS_ARENAMETER */
 
 #define JS_ArenaCountAllocation(ap, nb)                 /* nothing */

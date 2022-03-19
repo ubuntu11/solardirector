@@ -96,10 +96,10 @@ int log_open(char *ident,char *filename,int opts) {
 //FILE *log_getfp(void) { return(logfp); }
 
 static int _log_write(int type,char *format,va_list ap) {
-	char message[32768];
-	char dt[32],error[128];
-	register char *ptr;
-	int len;
+	char dt[32],*errstr;
+
+	/* get the error text now before it's gone */
+	if (type & LOG_SYSERR) errstr = strerror(errno);
 
 	/* Make sure log_open was called */
 	if (!logfp) log_open("",0,LOG_INFO|LOG_WARNING|LOG_ERROR|LOG_SYSERR|LOG_DEBUG);
@@ -108,69 +108,36 @@ static int _log_write(int type,char *format,va_list ap) {
 	DPRINTF("logopts: %0x, type: %0x\n",logopts,type);
 	if ( (logopts | type) != logopts) return 0;
 
-	/* get the error text asap before it's gone */
-	if (type & LOG_SYSERR) {
-		error[0] = 0;
-		strncat(error,strerror(errno),sizeof(error));
-	}
-
 	/* Prepend the time? */
-	ptr = message;
 	if (logopts & LOG_TIME || type & LOG_TIME) {
-//		struct tm *tptr;
-//		time_t t;
-
 		DPRINTF("prepending time...\n");
 		get_timestamp(dt,sizeof(dt),1);
-		strcat(dt,"  ");
-		ptr += sprintf(ptr,"%s",dt);
+		fprintf(logfp,"%s  ",dt);
 	}
 
 	/* If it's a warning, prepend warning: */
-	if (type & LOG_WARNING) {
-		DPRINTF("prepending warning...\n");
-		sprintf(ptr,"warning: ");
-		ptr += strlen(ptr);
-	}
+	if (type & LOG_WARNING) fprintf(logfp,"warning: ");
 
 	/* If it's an error, prepend error: */
 	else if ((type & LOG_ERROR) || (type & LOG_SYSERR)) {
 		DPRINTF("prepending error...\n");
-		sprintf(ptr,"error: ");
-		ptr += strlen(ptr);
+		fprintf(logfp,"error: ");
 	}
-
-	len = (sizeof(message) - strlen(message)) - 1;
 
 	/* Build the rest of the message */
 	DPRINTF("adding message...\n");
-	DPRINTF("format: %p\n", format);
-	vsnprintf(ptr,len,format,ap);
-
-	/* Trim */
-	trim(message);
+	DPRINTF("format: %p, ap: %p\n", format, ap);
+//	fprintf(logfp,"format: %s",format);
+	vfprintf(logfp,format,ap);
+	va_end(ap);
 
 	/* If it's a system error, concat the system message */
-	if (type & LOG_SYSERR) {
+	if (type & LOG_SYSERR && errstr) {
 		DPRINTF("adding error text...\n");
-		strcat(message,": ");
-		strcat(message, error);
+		fprintf(logfp,": %s",errstr);
 	}
-
-	/* Strip all CRs and LFs */
-#if 0
-	DPRINTF("stripping newlines...\n");
-	for(ptr = message; *ptr; ptr++) {
-		if (*ptr == '\n' || *ptr == '\r')
-			strcpy(ptr,ptr+1);
-	}
-#endif
-
-	/* Write the message */
-	DPRINTF("message: %s\n",message);
-	fprintf(logfp,"%s\n",message);
 	fflush(logfp);
-	va_end(ap);
+
 	return 0;
 }
 

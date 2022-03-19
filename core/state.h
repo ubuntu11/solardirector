@@ -10,22 +10,10 @@ LICENSE file in the root directory of this source tree.
 #ifndef __SD_STATE_H
 #define __SD_STATE_H
 
-/* Macros */
-#define solard_set_bit(b,v)	((b) |= (v))
-#define solard_clear_bit(b,v)	((b) &= (~v))
-#define solard_check_bit(b,v)	(((b) & v) != 0)
+#include "common.h"
 
 #define solard_set_state(c,v)	solard_set_bit((c)->state,v)
 #define solard_clear_state(c,v)	solard_clear_bit((c)->state,v)
 #define solard_check_state(c,v)	solard_check_bit((c)->state,v)
-
-//#define solard_set_state(c,v)	((c)->state |= (v))
-//#define solard_clear_state(c,v)	((c)->state &= (~v))
-//#define solard_check_state(c,v)	(((c)->state & v) != 0)
-
-//#define solard_set_cap(c,v)	((c)->capabilities |= (v))
-//#define solard_clear_cap(c,v)	((c)->capabilities &= (~v))
-//#define solard_check_cap(c,v)	(((c)->capabilities & v) != 0)
-
 
 #endif

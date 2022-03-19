@@ -3,6 +3,18 @@
 
 #define dlevel 4
 
+void get_runstate(si_session_t *s, smanet_multreq_t *mr) {
+	if (mr->text && strcmp(mr->text,"Run") == 0) s->data.Run = true;
+	else s->data.Run = false;
+	return;
+}
+
+void get_genstate(si_session_t *s, smanet_multreq_t *mr) {
+	if (mr->text && strcmp(mr->text,"Run") == 0) s->data.GnOn = true;
+	else s->data.GnOn = false;
+	return;
+}
+
 int si_smanet_read_data(si_session_t *s) {
 	config_section_t *sec;
 	config_property_t *p;
@@ -11,6 +23,7 @@ int si_smanet_read_data(si_session_t *s) {
 		char *data_name;
 		float mult;
 		int can;
+		void (*cb)(si_session_t *, smanet_multreq_t *);
 	} *pp, parminfo[] = {
 		{ "ExtVtg", "ac2_voltage_l1", 1, 1 },
 		{ "ExtVtgSlv1", "ac2_voltage_l2", 1, 1 },
@@ -21,11 +34,15 @@ int si_smanet_read_data(si_session_t *s) {
 		{ "InvVtgSlv1", "ac1_voltage_l2", 1, 1 },
 		{ "InvVtgSlv2", "ac1_voltage_l3", 1, 1 },
 		{ "InvFrq", "ac1_frequency", 1, 1 },
+//		{ "TotInvPwrAt", "ac1_power", 1, 1 },
 		{ "TotInvCur", "ac1_current", 1, 1 },
 		{ "BatVtg", "battery_voltage", 1, 1 },
 		{ "TotBatCur", "battery_current", 1, 1 },
 		{ "BatTmp", "battery_temp", 1, 1 },
 		{ "TotLodPwr", "TotLodPwr", 1, 1 },
+		{ "Msg", "errmsg", 1, 1 },
+		{ "GnStt", "GnOn", 1, 1, get_genstate },
+		{ "InvOpStt", "GnOn", 1, 1, get_runstate },
 		{ 0, 0, 0 }
 	};
 	smanet_multreq_t *mr;
@@ -61,7 +78,7 @@ int si_smanet_read_data(si_session_t *s) {
 	}
 	if (s->input.source == CURRENT_SOURCE_SMANET) mr[i++].name = s->input.name;
 	if (s->output.source == CURRENT_SOURCE_SMANET) mr[i++].name = s->output.name;
-	for(i=0; i < count; i++) dprintf(0,"mr[%d]: %s\n", i, mr[i].name);
+//	for(i=0; i < count; i++) dprintf(0,"mr[%d]: %s\n", i, mr[i].name);
 	if (smanet_get_multvalues(s->smanet,mr,count)) {
 		dprintf(dlevel,"smanet_get_multvalues error");
 		dprintf(0,"===> setting smanet_connected to false\n");
@@ -95,17 +112,21 @@ int si_smanet_read_data(si_session_t *s) {
 		}
 		for(pp = parminfo; pp->smanet_name; pp++) {
 			if (strcmp(pp->smanet_name, mr[i].name) == 0) {
-				p = config_section_get_property(sec, pp->data_name);
-				if (!p) break;
-				dprintf(1,"mr[%d]: value: %f, text: %s\n", i, mr[i].value, mr[i].text);
-				if (mr[i].text) 
-					p->len = conv_type(p->type, p->dest, p->dsize, DATA_TYPE_STRING,
-						mr[i].text, strlen(mr[i].text) );
-				else  {
-					double d = mr[i].value * pp->mult;
-					p->len = conv_type(p->type, p->dest, p->dsize, DATA_TYPE_DOUBLE, &d, 0 );
+				if (pp->cb) {
+					pp->cb(s, &mr[i]);
+				} else {
+					p = config_section_get_property(sec, pp->data_name);
+					if (!p) break;
+					dprintf(1,"mr[%d]: value: %f, text: %s\n", i, mr[i].value, mr[i].text);
+					if (mr[i].text) 
+						p->len = conv_type(p->type, p->dest, p->dsize, DATA_TYPE_STRING,
+							mr[i].text, strlen(mr[i].text) );
+					else  {
+						double d = mr[i].value * pp->mult;
+						p->len = conv_type(p->type, p->dest, p->dsize, DATA_TYPE_DOUBLE, &d, 0 );
+					}
+					dprintf(1,"%s: %.1f\n", p->name, *((float *)p->dest));
 				}
-				dprintf(1,"%s: %.1f\n", p->name, *((float *)p->dest));
 				break;
 			}
 		}
@@ -114,7 +135,7 @@ int si_smanet_read_data(si_session_t *s) {
 		s->data.battery_soc = s->soc;
 		dprintf(4,"Battery level: %.1f\n",s->data.battery_soc);
 
-		s->data.battery_power = s->data.battery_current * s->data.battery_voltage;
+		s->data.battery_power = s->data.battery_voltage * s->data.battery_current;
 		dprintf(4,"Battery power: %.1f\n",s->data.battery_power);
 
 		s->data.ac1_voltage = s->data.ac1_voltage_l1 + s->data.ac1_voltage_l2;
@@ -128,6 +149,10 @@ int si_smanet_read_data(si_session_t *s) {
 		dprintf(4,"ac2_current: %.1f, ac2_power: %.1f\n",s->data.ac2_current,s->data.ac2_power);
 
 		s->data.TotLodPwr *= 1000.0;
+
+		/* I was not able to figure out a way to tell if the grid is "connected" using just SMANET parms */
+		if ((s->data.ac2_voltage > 10 && s->data.ac2_frequency > 10) && s->data.ac2_power > 100) s->data.GdOn = true;
+		else s->data.GdOn = false;
 	}
 	free(mr);
 	dprintf(dlevel,"done\n");
@@ -192,8 +217,10 @@ static void *_get_smanet_info(void *ctx) {
 		s->have_grid, s->grid_soc_enabled, s->grid_soc_stop);
 	dprintf(1,"have_gen: %d, gen_soc_stop: %.1f\n", s->have_gen, s->gen_soc_stop);
 
+#if 0
 	dprintf(1,"unlocking...\n");
 	smanet_unlock(s->smanet);
+#endif
 	return 0;
 }
 #endif
@@ -209,14 +236,16 @@ static void _addchans(si_session_t *s) {
 	sec = config_create_section(s->ap->cp,"smanet",0);
 	if (!sec) return;
 
+#if 0
 	dprintf(1,"locking...\n");
 	smanet_lock(s->smanet);
+#endif
 
 	for(i=0; i < ss->chancount; i++) {
 		c = &ss->chans[i];
 		dprintf(dlevel,"c->mask: %04x, CH_PARA: %04x\n", c->mask, CH_PARA);
 		if ((c->mask & CH_PARA) == 0) continue;
-		dprintf(1,"adding chan: %s\n", c->name);
+		dprintf(4,"adding chan: %s\n", c->name);
 		memset(&newp,0,sizeof(newp));
 		newp.name = c->name;
 		newp.flags = SI_CONFIG_FLAG_SMANET;
@@ -303,17 +332,30 @@ static void _addchans(si_session_t *s) {
 		newp.units = c->unit;
 		newp.scale = 1.0;
 		config_section_add_property(s->ap->cp, sec, &newp, SI_CONFIG_FLAG_SMANET);
-//		if (strcmp(c->name,"AutoStr")==0) break;
 	}
 
 	/* Re-create info and publish it */
 	if (s->ap->driver_info) json_destroy_value(s->ap->driver_info);
 	s->ap->driver_info = si_get_info(s);
-	printf("publishing new info...\n");
 	agent_pubinfo(s->ap,0);
 
+	if (0) {
+		config_section_t *sec;
+		config_property_t *p;
+
+		sec = config_get_section(s->ap->cp,"smanet");
+		dprintf(0,"sec: %p\n", sec);
+		if (!sec) exit(1);
+		list_reset(sec->items);
+		while((p = list_get_next(sec->items)) != 0) {
+			dprintf(dlevel,"p: name: %s, flags: %x\n", p->name, p->flags);
+		}
+//		exit(0);
+	}
+#if 0
 	dprintf(1,"unlocking...\n");
 	smanet_unlock(s->smanet);
+#endif
 }
 
 /* Setup SMANET - runs 1 time per connection */
@@ -344,7 +386,6 @@ int si_smanet_setup(si_session_t *s) {
 	return 0;
 }
 
-/* Do the SMA init/collection in a thread as it may take awhile (dont want it to slow startup) */
 int si_smanet_init(si_session_t *s) {
 	dprintf(1,"sma_transport: %s, sma_target: %s, sma_topts: %s\n", s->smanet_transport, s->smanet_target, s->smanet_topts);
 
@@ -361,55 +402,3 @@ int si_smanet_init(si_session_t *s) {
 	dprintf(1,"returning 0\n");
 	return 0;
 }
-
-#if 0
-int si_start_grid(si_session_t *s, int wait) {
-	char *p;
-	time_t start,now;
-	int diff;
-
-	dprintf(1,"smanet: %p\n", s->smanet);
-	if (!s->smanet) {
-		sprintf(s->errmsg,"no SMANET");
-		return 1;
-	}
-
-	/* Get the current val */
-	if (smanet_get_value(s->smanet,"GdManStr",0,&p) != 0) {
-		sprintf(s->errmsg,"unable to get current value of GdManStr: %s",smanet_get_errmsg(s->smanet));
-		return 1;
-	}
-	if (strcmp(p,"Start")==0) {
-		dprintf(1,"already started\n");
-		return 0;
-	}
-
-	/* Set start */
-	if (smanet_set_value(s->smanet,"GdManStr",0,"Start") != 0) {
-		sprintf(s->errmsg,"unable to start grid: %s",smanet_get_errmsg(s->smanet));
-		return 1;
-	}
-	dprintf(1,"wait: %d\n", wait);
-	if (!wait) return 0;
-
-	if (s->grid_start_timeout < 0) {
-		log_warning("smanet_start_grid wait requested, but grid_start_timeout unset, not waiting!\n");
-		return 0;
-	}
-
-	time(&start);
-	while(1) {
-		if (s->data.GdOn) break;
-		time(&now);
-		diff = now - start;
-		dprintf(1,"diff: %d\n", diff);
-		if (diff > s->grid_start_timeout) {
-			sprintf(s->errmsg,"timeout waiting for grid to start");
-			return 1;
-		}
-	}
-
-	dprintf(1,"done!\n");
-	return 0;
-}
-#endif

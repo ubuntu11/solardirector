@@ -11,7 +11,7 @@ LICENSE file in the root directory of this source tree.
 #include "transports.h"
 #include "__sd_build.h"
 
-#define TESTING 1
+#define TESTING 0
 
 #if DEBUG_STARTUP
 #define _ST_DEBUG LOG_DEBUG
@@ -84,7 +84,7 @@ int main(int argc,char **argv) {
 
 	/* We're not only the president but a client too! */
 	dprintf(1,"calling client_init...\n");
-	conf->c = client_init(0,0,0,sd_driver.name,0,0);
+	conf->c = client_init(0,0,sd_version_string,0,sd_driver.name,0,0);
 	dprintf(1,"c: %p\n", conf->c);
 	if (!conf->c) return 1;
 

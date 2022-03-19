@@ -9,7 +9,7 @@ LICENSE file in the root directory of this source tree.
 
 #include "si.h"
 
-extern char *si_agent_version_string;
+extern char *si_version_string;
 
 extern solard_driver_t *si_transports[];
 
@@ -28,7 +28,7 @@ json_value_t *si_get_info(si_session_t *s) {
 //	agent_mktopic(temp,sizeof(temp)-1,s->ap,s->ap->instance_name,0);
 //	json_object_set_string(o,"agent_topic",temp);
 	json_object_set_string(o,"agent_description","SMA Sunny Island Agent");
-	json_object_set_string(o,"agent_version",si_agent_version_string);
+	json_object_set_string(o,"agent_version",si_version_string);
 	json_object_set_string(o,"agent_author","Stephen P. Shoecraft");
 	p = temp;
 	*p = 0;
@@ -38,7 +38,7 @@ json_value_t *si_get_info(si_session_t *s) {
 	}
 	json_object_set_string(o,"agent_transports",temp);
 	json_object_set_string(o,"device_manufacturer","SMA");
-	if (s->smanet) {
+	if (s->smanet_connected) {
 		char temp[32];
 
 		json_object_set_string(o,"device_model",s->smanet->type);

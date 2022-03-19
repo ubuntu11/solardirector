@@ -15,6 +15,57 @@ LICENSE file in the root directory of this source tree.
 #include <pthread.h>
 #include "can.h"
 
+struct si_raw_data {
+	int16_t *active_grid_l1;
+	int16_t *active_grid_l2;
+	int16_t *active_grid_l3;
+
+	int16_t *active_si_l1;
+	int16_t *active_si_l2;
+	int16_t *active_si_l3;
+
+	int16_t *reactive_grid_l1;
+	int16_t *reactive_grid_l2;
+	int16_t *reactive_grid_l3;
+
+	int16_t *reactive_si_l1;
+	int16_t *reactive_si_l2;
+	int16_t *reactive_si_l3;
+
+	int16_t *ac1_voltage_l1;
+	int16_t *ac1_voltage_l2;
+	int16_t *ac1_voltage_l3;
+	int16_t *ac1_frequency;
+
+	int16_t *battery_voltage;
+	int16_t *battery_current;
+	int16_t *battery_temp;
+	int16_t *battery_soc;
+
+	int16_t *battery_soh;
+	int8_t *charging_proc;
+	int8_t *state;
+	int16_t *errmsg;
+	int16_t *battery_cvsp;
+
+	uint16_t *relay_state;
+	uint16_t *relay_bits1;
+	uint16_t *relay_bits2;
+	uint8_t *synch_bits;
+
+	int16_t *TotLodPwr;
+
+	int16_t *ac2_voltage_l1;
+	int16_t *ac2_voltage_l2;
+	int16_t *ac2_voltage_l3;
+	int16_t *ac2_frequency;
+
+	int16_t *PVPwrAt;
+	int16_t *GdCsmpPwrAt;
+	int16_t *GdFeedPwr;
+};
+typedef struct si_raw_data si_raw_data_t;
+
 struct si_data {
 	float active_grid_l1;
 	float active_grid_l2;
@@ -95,6 +146,12 @@ struct si_data {
 };
 typedef struct si_data si_data_t;
 
+enum CHARGE_MODE {
+	CHARGE_MODE_NONE,
+	CHARGE_MODE_CC,
+	CHARGE_MODE_CV,
+};
+
 enum GRID_CONNECT_REASON {
 	GRID_CONNECT_REASON_SOC = 501,		/* Grid request due to SOC (insufficient value) */
 	GRID_CONNECT_REASON_PWR = 503,		/* Grid request due to exceeding the power limit */
@@ -107,22 +164,6 @@ enum GEN_CONNECT_REASON {
 	GEN_CONNECT_REASON_MAN = 403,		/* Manual generator start */
 	GEN_CONNECT_REASON_CUR = 407,		/* Current-regulated generator operation initiated? */
 };
-
-/* Can frames */
-#ifdef SI_ALL_FRAMES
-/* 0x000 to 0x7FF */
-#define SI_NFRAMES 2048
-#define SI_NBITMAPS (SI_NFRAMES/32)
-#define SI_FRAME_START 0x000
-#else
-/* 0x300 to 0x30F */
-#define SI_NFRAMES 16
-#define SI_NBITMAPS 1
-#define SI_FRAME_START 0x300
-#endif
-
-/* history of battery amps */
-#define SI_MAX_BA 6
 
 enum CURRENT_SOURCE {
 	CURRENT_SOURCE_NONE,
@@ -154,7 +195,6 @@ typedef struct si_current_source si_current_source_t;
 
 struct si_session {
 	solard_agent_t *ap;
-	bool bms_mode;			/* BMS Mode (can connected/10s interval) */
 
 	/* CAN */
 	char can_transport[SOLARD_TRANSPORT_LEN];
@@ -165,13 +205,13 @@ struct si_session {
 	void *can_handle;
 	bool can_init;
 	bool can_connected;
+	struct can_frame frames[16];
+	uint32_t bitmap;
 	pthread_t th;
-#if 0
-	struct can_frame frames[SI_NFRAMES];
-	uint32_t bitmaps[SI_NBITMAPS];
-	int (*can_read)(struct si_session *, int id, uint8_t *data, int len);
-#endif
-	si_data_t data;			/* CAN info will be read into this struct */
+	int (*can_read)(struct si_session *, uint32_t id, uint8_t *data, int len);
+	si_raw_data_t raw_data;
+	si_data_t data;
+
 	/* SMANET */
 	char smanet_transport[SOLARD_TRANSPORT_LEN];
 	char smanet_target[SOLARD_TARGET_LEN];
@@ -179,103 +219,39 @@ struct si_session {
 	char smanet_channels_path[1024];
 	smanet_session_t *smanet;
 	bool smanet_connected;
-	uint16_t state;
-	int interval;
-	int readonly;
+	char battery_type[32];
+
 	/* Charging */
-	int startup_charge_mode;
 	float max_voltage;		/* Dont go above this voltage */
 	float min_voltage;		/* Dont go below this voltage */
 	float charge_start_voltage;	/* Voltage to start charging (empty voltage) */
 	float charge_end_voltage;	/* Voltage to end charging (full voltage) */
-	int charge_at_max;		/* Charge at max_voltage until battery_voltage >= charge_end_voltage */
-	int charge_creep;		/* Increase charge voltage until battery amps = charge amps */
+	int charge_mode;
 	float charge_voltage;		/* RO|NOSAVE, charge_voltage */
 	float charge_amps;		/* Charge amps */
-	float last_ca;			/* Last charge amps */
-	float charge_amps_temp_modifier; /* RO|NOSAVE, charge_amps temperature modifier */
-	float charge_amps_soc_modifier;	/* RO|NOSAVE, charge_amps SoC modifier */
-	float charge_min_amps;		/* Set charge_amps to this value when not charging */
-	float charge_max_amps;
-	int charge_mode;
-	int charge_method;
-	time_t cv_start_time;
-	int cv_method;
-	int cv_time;
-	float cv_cutoff;		/* When average of last X amps reach below this, stop charging */
-	bool cv_timeout;		/* Timeout for amp based cv */
-	float ba[SI_MAX_BA];		/* Table of last X amps during CV */
-	int baidx;
-	int bafull;
-	float start_temp;
-
-	/* Grid */
-	bool have_grid;
-	bool grid_connected;		/* info.GdOn */
-//	enum GRID_CONNECT_REASON grid_connect_reason;	/* E501-E508 */
-	/* Charge from grid parms */
-	int charge_from_grid;		/* Always charge when grid is connected? */
-	float grid_charge_amps;		/* Charge amps to use when grid is connected */
-	float grid_charge_start_voltage; /* Voltage to start charging when grid connected */
-	float grid_charge_start_soc;	/* SoC to start charging when grid connected */
-	float grid_charge_stop_voltage; /* Voltage to stop charging when grid connected */
-	float grid_charge_stop_soc;	/* SoC to stop charging when grid connected */
-	/* End charge from grid parms */
-	int grid_soc_enabled;		/* Grid connected for SoC? (GdSocEna) */
-	float grid_soc_stop;		/* When the grid will shutoff (GdSocTm1Stp) */
-
-	/* Gen */
-	int have_gen;
-	/* EC start */
-	int gen_started;		/* Generator started via GnManStr */
-	time_t gen_op_time;		/* Time of last gen op */
-	char gen_save[32];		/* Saved value of GnManStr */
-	/* EC end */
-	bool gen_connected;		/* info.GnOn */
-//	enum GEN_CONNECT_REASON gen_connect_reason;	/* E501-E508 */
-	float gen_charge_amps;		/* Charge amps to use when gen connected */
-	float gen_soc_stop;		/* When the gen will auto shutoff (GnSocTm1Stp) */
-//	int gen_start_timeout;
-//	int gen_stop_timeout;
-
 	float discharge_amps;
 	float soc;
-	float user_soc;
 	float soh;
-	/* Uhh */
-//	json_proctab_t idata;
-//	void *pdata;
-	/* SIM */
-	int sim;
-	float tvolt;
-	float sim_amps;
-	float sim_step;
-	/* Display/Reporting */
-	float last_battery_voltage;
-	float last_soc;
-	float last_charge_voltage;
-	float last_battery_amps;
-	/* Emergency charging */
-	int ec_state;
-	/* Monitoring */
-	char notify_path[256];
-	int startup;
-	int tozero;
-	/* Booleans */
-	int have_battery_temp;
-	char errmsg[128];
-	int force_charge;
 
 	/* INTERNAL ONLY */
+	int startup;
+	int tozero;
+	uint16_t state;
+	char errmsg[128];
+	bool bms_mode;			/* BMS Mode (can connected/10s interval) */
 	int smanet_added;
-#ifdef JS
+	char notify_path[256];
 	JSPropertySpec *props;
 	JSFunctionSpec *funcs;
+	jsval agent_val;
 	JSPropertySpec *data_props;
-#endif
-
+	jsval data_val;
+	int interval;
+	int readonly;
 	si_current_source_t input;
 	si_current_source_t output;
+//	bool feed;
+	char last_out[128];
 };
 typedef struct si_session si_session_t;
 
@@ -289,9 +265,6 @@ typedef struct si_session si_session_t;
 
 #define SI_CONFIG_FLAG_SMANET	0x0100
 
-#define CV_METHOD_TIME 0
-#define CV_METHOD_AMPS 1
-
 #define SI_STATUS_CAN		0x01
 #define SI_STATUS_SMANET	0x02
 #define SI_STATUS_BMS		0x04
@@ -304,10 +277,11 @@ extern solard_driver_t si_driver;
 int si_can_connect(si_session_t *s);
 int si_can_init(si_session_t *s);
 int si_can_set_reader(si_session_t *s);
+int si_can_get_data(si_session_t *s);
 int si_can_read_relays(si_session_t *s);
 int si_can_read_data(si_session_t *s, int all);
-int si_can_read(si_session_t *s, int id, uint8_t *data, int rdlen);
-int si_can_write(si_session_t *s, int id, uint8_t *data, int data_len);
+int si_can_read(si_session_t *s, uint32_t id, uint8_t *data, int rdlen);
+int si_can_write(si_session_t *s, uint32_t id, uint8_t *data, int data_len);
 int si_can_write_va(si_session_t *s);
 int si_can_write_data(si_session_t *s);
 
@@ -347,8 +321,6 @@ int charge_control(si_session_t *s, int, int);
 
 #define si_notify(session,format,args...) solard_notify(session->notify_path,format,## args)
 
-#ifdef JS
 int si_jsinit(si_session_t *);
-#endif
 
 #endif /* __SOLARD_SI_H */

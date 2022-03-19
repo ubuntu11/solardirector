@@ -7,8 +7,10 @@
 #else
 #include <unistd.h>
 #endif
+#include <libgen.h>
 
 #include "jsapi.h"
+#include "jscntxt.h"
 #include "jsengine.h"
 #include "jsprintf.h"
 #include "jsprf.h"
@@ -19,8 +21,10 @@
 #include "jsdtracef.h"
 #include "jsengine.h"
 #include "jsscan.h"
+#include "jsarena.h"
+#include "jsgc.h"
 
-#define DEBUG_GLOBAL 0
+#define DEBUG_GLOBAL 1
 #define dlevel 6
 
 #ifdef DEBUG
@@ -31,6 +35,7 @@
 #endif
 #include "debug.h"
 
+static int version = 182;
 #define VERSION_MAJOR 1
 #define VERSION_MINOR 8
 #define VERSION_RELEASE 2
@@ -72,50 +77,29 @@ static JSBool global_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval
 	return JS_TRUE;
 }
 
-static JSBool Print(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
-	char msg[4096];
+static JSBool js_print(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
+	JSEngine *e;
 	uintN i;
 	JSString *str;
-	char *bytes,*p;
-	JSEngine *e;
+	char *bytes;
 
 	e = JS_GetPrivate(cx, obj);
 
-	p = msg;
+printf("used: %d\n", (int)JS_ArenaTotalBytes());
 	for (i = 0; i < argc; i++) {
-//		dprintf(dlevel,"argv[%d]: %x\n", i, argv[1] & JSVAL_TAGMASK);
+//		dprintf(0,"argv[%d]: %s\n", i, jstypestr(cx,argv[i]));
 		str = JS_ValueToString(cx, argv[i]);
 		if (!str) return JS_FALSE;
 		bytes = JS_EncodeString(cx, str);
-		if (!bytes) return JS_FALSE;
-		p += sprintf(p,"%s%s",i ? " " : "", bytes);
+		if (bytes) e->output("%s",bytes);
 		JS_free(cx, bytes);
 	}
-	e->output("%s\n",msg);
+printf("used: %d\n", (int)JS_ArenaTotalBytes());
 
 	return JS_TRUE;
 }
 
-static JSBool PutStr(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
-	JSString *str;
-	char *bytes;
-	JSEngine *e;
-
-	e = JS_GetPrivate(cx, obj);
-	if (argc != 0) {
-		str = JS_ValueToString(cx, argv[0]);
-		if (!str) return JS_FALSE;
-		bytes = JS_EncodeString(cx, str);
-		if (!bytes) return JS_FALSE;
-		e->output(bytes);
-		JS_free(cx, bytes);
-	}
-
-	JS_SET_RVAL(cx, rval, JSVAL_VOID);
-	return JS_TRUE;
-}
-
-static int Error(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
+static int js_error(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
 	char msg[1024];
 	register u_int i;
 
@@ -128,7 +112,7 @@ static int Error(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *r
 	return JS_TRUE;
 }
 
-static JSBool Load(JSContext *cx, uintN argc, jsval *vp) {
+static JSBool js_load(JSContext *cx, uintN argc, jsval *vp) {
 	JSObject *obj;
 	JSEngine *e;
 	jsval *argv = vp + 2;
@@ -148,18 +132,53 @@ static JSBool Load(JSContext *cx, uintN argc, jsval *vp) {
 		strncpy(fixedname,filename,sizeof(fixedname)-1);
 		JS_free(cx,filename);
 		fixpath(fixedname,sizeof(fixedname)-1);
-//		printf("fixedname: %s\n", fixedname);
-//		if (access(fixedname,0) != 0) perror("access");
-		if (_JS_EngineExec(e, fixedname, cx)) {
-			JS_ReportError(cx, "Load(%s) failed\n",fixedname);
+		if (_JS_EngineExec(e, fixedname, cx, 0)) {
+			JS_ReportError(cx, "load(%s) failed\n",fixedname);
 			return JS_FALSE;
 		}
 	}
 	return JS_TRUE;
 }
 
+static JSBool js_run(JSContext *cx, uintN argc, jsval *vp) {
+	char *name, *func;
+	JSObject *obj;
+	JSEngine *e;
+	char fixedname[256],fname[256];
+
+	if (argc < 1) {
+		JS_ReportError(cx, "run takes 2 arguments (script:string, optional-function:string)\n");
+		return 1;
+	}
+	name = func = 0;
+	if (!JS_ConvertArguments(cx, argc, JS_ARGV(cx,vp), "s / s", &name, &func)) return JS_FALSE;
+	dprintf(dlevel,"name: %s, func: %s\n", name, func);
+
+	obj = JS_THIS_OBJECT(cx, vp);
+	if (!obj) return JS_FALSE;
+	e = JS_GetPrivate(cx, obj);
+	strncpy(fixedname,name,sizeof(fixedname)-1);
+	fixpath(fixedname,sizeof(fixedname)-1);
+	if (!func) {
+		register char *p;
+
+		strncpy(fname,basename(name),sizeof(fname)-1);
+		while(1) {
+			p = strrchr(fname,'.');
+			if (!p) break;
+			*p = 0;
+		}
+		strcat(fname,"_main");
+		func = fname;
+	}
+	*vp = INT_TO_JSVAL(_JS_EngineExec(e, fixedname, cx, func));
+        return JS_TRUE;
+}
+
 static JSBool js_exit(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
+
 	dprintf(dlevel,"argc: %d\n", argc);
+
 	if (argc != 0) {
 		dprintf(1,"defining prop...\n");
 		JS_DefineProperty(cx, JS_GetGlobalObject(cx), "exit_code", argv[0] ,NULL,NULL,JSPROP_ENUMERATE|JSPROP_READONLY);
@@ -179,12 +198,6 @@ static JSBool js_abort(JSContext *cx, uintN argc, jsval *vp) {
 
 }
 
-#if 0
-static JSBool js_quit(JSContext *cx, uintN argc, jsval *vp) {
-	exit(0);
-}
-#endif
-
 static JSBool js_sleep(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
 	int r,n;
 
@@ -195,6 +208,11 @@ static JSBool js_sleep(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, js
 
 	r = (sleep(n) != 0);
 	*rval = BOOLEAN_TO_JSVAL(r);
+	return JS_TRUE;
+}
+
+static JSBool jstime(JSContext *cx, uintN argc, jsval *vp){
+	*vp = INT_TO_JSVAL(time(0));
 	return JS_TRUE;
 }
 
@@ -292,6 +310,38 @@ static JSBool js_timestamp(JSContext *cx, uintN argc, jsval *vp) {
 	return JS_TRUE;
 }
 
+static JSBool js_dirname(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
+	char *path;
+
+	if (argc != 1) {
+		JS_ReportError(cx,"dirname requires 1 argument (path:string)\n");
+		return JS_FALSE;
+	}
+	if (!JS_ConvertArguments(cx, argc, argv, "s", &path)) return JS_FALSE;
+	if (!path) {
+		JS_ReportError(cx,"path is null!");
+		return JS_FALSE;
+	}
+	*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,dirname(path)));
+	return JS_TRUE;
+}
+
+static JSBool js_basename(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
+	char *path;
+
+	if (argc != 1) {
+		JS_ReportError(cx,"basename requires 1 argument (path:string)\n");
+		return JS_FALSE;
+	}
+	if (!JS_ConvertArguments(cx, argc, argv, "s", &path)) return JS_FALSE;
+	if (!path) {
+		JS_ReportError(cx,"path is null!");
+		return JS_FALSE;
+	}
+	*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,basename(path)));
+	return JS_TRUE;
+}
+
 static JSBool js_log_info(JSContext *cx, uintN argc, jsval *vp) {
 	return js_log_write(LOG_INFO,cx,argc,vp);
 }
@@ -308,6 +358,22 @@ static JSBool js_log_syserror(JSContext *cx, uintN argc, jsval *vp) {
 	return js_log_write(LOG_SYSERR,cx,argc,vp);
 }
 
+static JSBool js_gc(JSContext *cx, uintN argc, jsval *vp) {
+	JS_GC(cx);
+	return JS_TRUE;
+}
+
+static JSBool js_memused(JSContext *cx, uintN argc, jsval *vp) {
+	*vp = INT_TO_JSVAL(JS_ArenaTotalBytes());
+	return JS_TRUE;
+}
+
+static JSBool js_version(JSContext *cx, uintN argc, jsval *vp) {
+	*vp = INT_TO_JSVAL(version);
+	return JS_TRUE;
+}
+
+
 static JSClass global_class = {
 	"global",		/* Name */
 	JSCLASS_GLOBAL_FLAGS | JSCLASS_HAS_PRIVATE,	/* Flags */
@@ -323,9 +389,7 @@ static JSClass global_class = {
 };
 
 JSObject *JS_CreateGlobalObject(JSContext *cx, void *priv) {
-	JSObject *obj;
 	JSPropertySpec global_props[] = {
-//		{ "debug",GLOBAL_PROPERTY_ID_DEBUG, JSPROP_ENUMERATE },
 		{ "script_name",GLOBAL_PROPERTY_ID_SCRIPT_NAME, JSPROP_ENUMERATE | JSPROP_READONLY },
 		{0}
 	};
@@ -333,21 +397,28 @@ JSObject *JS_CreateGlobalObject(JSContext *cx, void *priv) {
 		JS_FS("printf",JS_Printf,0,0,0),
 		JS_FS("sprintf",JS_SPrintf,0,0,0),
 		JS_FS("dprintf",JS_DPrintf,1,1,0),
-		JS_FS("putstr",PutStr,0,0,0),
-		JS_FS("print",Print,0,0,0),
-		JS_FS("error",Error,0,0,0),
-		JS_FN("load",Load,1,1,0),
-		JS_FN("include",Load,1,1,0),
+		JS_FS("putstr",js_print,0,0,0),
+		JS_FS("print",js_print,0,0,0),
+		JS_FS("error",js_error,0,0,0),
+		JS_FN("load",js_load,1,1,0),
+		JS_FN("include",js_load,1,1,0),
+		JS_FN("run",js_run,1,1,0),
 		JS_FS("sleep",js_sleep,1,0,0),
 		JS_FS("exit",js_exit,1,1,0),
 		JS_FN("abort",js_abort,1,1,0),
 		JS_FN("quit",js_abort,0,0,0),
 		JS_FN("readline",ReadLine,0,0,0),
 		JS_FN("timestamp",js_timestamp,0,1,0),
+		JS_FN("time",jstime,0,0,0),
+		JS_FS("dirname",js_dirname,1,0,0),
+		JS_FS("basename",js_basename,1,0,0),
 		JS_FN("log_info",js_log_info,0,0,0),
 		JS_FN("log_warning",js_log_warning,0,0,0),
 		JS_FN("log_error",js_log_error,0,0,0),
 		JS_FN("log_syserror",js_log_syserror,0,0,0),
+		JS_FN("gc",js_gc,0,0,0),
+		JS_FN("version",js_version,1,1,0),
+		JS_FN("memused",js_memused,0,0,0),
 		JS_FS_END
 	};
 	JSConstantSpec global_const[] = {
@@ -358,8 +429,10 @@ JSObject *JS_CreateGlobalObject(JSContext *cx, void *priv) {
 		{0}
 	};
 	JSAliasSpec global_aliases[] = {
+	//	{ "include", "load" },
 		{ 0 },
 	};
+	JSObject *obj;
 
 	/* Create the global object */
 	dprintf(1,"Creating global object...\n");

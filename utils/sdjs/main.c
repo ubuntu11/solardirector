@@ -119,6 +119,15 @@ int sdjs_config(void *h, int req, ...) {
 		client_jsinit(ap->js,0);
 		r = 0;
 		break;
+	case SOLARD_CONFIG_GET_INFO:
+	    {
+		void **vp;
+
+		vp = va_arg(va,void *);
+		*vp = json_object_get_value(json_create_object());
+		r = 0;
+	    }
+	    break;
 	}
 	return r;
 }
@@ -140,10 +149,11 @@ int main(int argc, char **argv) {
 	driver.name = "sdjs";
 	driver.config = sdjs_config;
 
-	ap = agent_init(argc,argv,opts,&driver,0,0,0);
+	ap = agent_init(argc,argv,"1.0",opts,&driver,0,0,0);
 	if (!ap) return 1;
 
         smanet_jsinit(ap->js);
+	printf("==> SCRIPT: %s\n", script);
 	dprintf(1,"script: %s\n", script);
 	if (*script) {
 		if (access(script,0) < 0) {

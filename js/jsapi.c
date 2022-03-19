@@ -1343,6 +1343,7 @@ JS_InitStandardClasses(JSContext *cx, JSObject *obj)
 		FUNC(js_InitSocketClass),
 #endif
 		FUNC(js_InitCANClass),
+		FUNC(js_InitClassClass),
 #if 0
 		FUNC(js_InitSerialClass),
 		FUNC(js_InitBluetoothClass),
@@ -3179,8 +3180,7 @@ DefineProperty(JSContext *cx, JSObject *obj, const char *name, jsval value,
         return js_DefineNativeProperty(cx, obj, id, value, getter, setter,
                                        attrs, flags, tinyid, NULL);
     }
-    return OBJ_DEFINE_PROPERTY(cx, obj, id, value, getter, setter, attrs,
-                               NULL);
+    return OBJ_DEFINE_PROPERTY(cx, obj, id, value, getter, setter, attrs, NULL);
 }
 
 #define AUTO_NAMELEN(s,n)   (((n) == (size_t)-1) ? js_strlen(s) : (n))
@@ -5134,7 +5134,6 @@ JS_CallFunctionName(JSContext *cx, JSObject *obj, const char *name, uintN argc, 
         return JS_FALSE;
     ok = js_InternalCall(cx, obj, fval, argc, argv, rval);
     LAST_FRAME_CHECKS(cx, ok);
-//    printf("JS_CallFunctionName: ok: %d\n", ok);
     return ok;
 }
 

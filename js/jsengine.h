@@ -26,20 +26,20 @@ struct JSEngine {
 	JSContext *cx;
 	pthread_mutex_t lockcx;
 	int rtsize;
-	list initfuncs;
 	int stacksize;
+	list initfuncs;
 	js_outputfunc_t *output;
 	list scripts;
 	char errmsg[128];
 };
 typedef struct JSEngine JSEngine;
 
-JSEngine *JS_EngineInit(int rtsize, js_outputfunc_t *);
+JSEngine *JS_EngineInit(int rtsize, int stksize, js_outputfunc_t *);
 JSEngine *JS_DupEngine(JSEngine *e);
 int JS_EngineDestroy(JSEngine *);
 int JS_EngineAddInitFunc(JSEngine *, char *name, js_initfunc_t *func, void *priv);
 int JS_EngineAddInitClass(JSEngine *, char *name, js_initclass_t *func);
-int _JS_EngineExec(JSEngine *, char *, JSContext *cx);
+int _JS_EngineExec(JSEngine *e, char *filename, JSContext *cx, char *fname);
 int JS_EngineExec(JSEngine *, char *, int);
 int JS_EngineSetStacksize(JSEngine *,int);
 JSBool JS_EngineExecString(JSEngine *e, char *string);

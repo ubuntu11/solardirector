@@ -26,7 +26,8 @@ char *sepstr = ",";
 json_object_t *root_object;
 extern float batcurmin,batcurmax;
 
-char *si_agent_version_string = "0.0";
+char *siutil_version = "1.0";
+char *si_version_string = "";
 
 int si_config(void *h, int req, ...) {
 	return 1;
@@ -47,7 +48,7 @@ int si_startstop(si_session_t *s, int op) {
 		dprintf(1,"bytes: %d\n", bytes);
 		if (bytes < 0) return 1;
 		dprintf(1,"reading...\n");
-		if (si_can_read(s,0x307,data,8) == 0) {
+		if (s->can_read(s,0x307,data,8) == 0) {
 			if (debug >= 3) bindump("data",data,8);
 			dprintf(1,"*** data[3] & 2: %d\n", data[3] & 0x0002);
 			if (op) {
@@ -76,10 +77,10 @@ enum ACTIONS {
 
 int main(int argc, char **argv) {
 	si_session_t *s;
-	char configfile[256],cantpinfo[256],smatpinfo[256],chanpath[256],filename[256],list_type[16];
+	char configfile[256],cantpinfo[256],smatpinfo[256],chanpath[320],filename[256],list_type[16];
 	char outfile[256];
 	int list_flag,start_flag,stop_flag,ver_flag,quiet_flag,force_flag,mon_flag,mon_interval,smanet_flag;
-	int json_flag, pretty_flag, comma_flag;
+	int json_flag, pretty_flag, comma_flag, mult_flag;
 //	int clear_flag;
 	opt_proctab_t opts[] = {
                 /* Spec, dest, type len, reqd, default val, have */
@@ -87,6 +88,7 @@ int main(int argc, char **argv) {
 		{ "-l|list SMANET channels",&list_flag,DATA_TYPE_BOOL,0,0,"N" },
 		{ "-a|display all SMANET values",&smanet_flag,DATA_TYPE_BOOL,0,0,"N" },
 		{ "-x::|specify SMANET channel type (para,spot,mean,test,all)",&list_type,DATA_TYPE_STRING,sizeof(list_type)-1,0,"all" },
+		{ "-g|get multiple chans",&mult_flag,DATA_TYPE_BOOL,0,0,"N" },
 		{ "-j|json output",&json_flag,DATA_TYPE_BOOL,0,0,"N" },
 		{ "-J|json output pretty print",&pretty_flag,DATA_TYPE_BOOL,0,0,"N" },
 		{ "-C|comma delimited output",&comma_flag,DATA_TYPE_BOOL,0,0,"N" },
@@ -109,21 +111,16 @@ int main(int argc, char **argv) {
 		{ "-n:d|monitor interval (default: 3s)",&mon_interval,DATA_TYPE_INT,0,0,"1" },
 		OPTS_END
 	};
-//	char can_transport[SOLARD_TRANSPORT_LEN],can_target[SOLARD_TARGET_LEN],can_topts[SOLARD_TOPTS_LEN];
-//	char sma_transport[SOLARD_TRANSPORT_LEN],sma_target[SOLARD_TARGET_LEN],sma_topts[SOLARD_TOPTS_LEN];
 	int logopts = LOG_INFO|LOG_WARNING|LOG_ERROR|LOG_SYSERR|_ST_DEBUG;
 	int action,source,list_mask;
 	cfg_info_t *cfg;
 	smanet_channel_t *c;
-//	solard_driver_t *tp;
-//	void *tp_handle;
 	json_array_t *a;
 
 	log_open("siutil",0,logopts);
 
-//	all = list = param = spot = type = 0;
 	*configfile = *cantpinfo = *smatpinfo = 0;
-	if (solard_common_init(argc,argv,opts,logopts)) return 1;
+	if (solard_common_init(argc,argv,siutil_version,opts,logopts)) return 1;
 	if (debug) logopts |= LOG_DEBUG|LOG_DEBUG2;
 	log_open("siutil",0,logopts);
 
@@ -138,6 +135,8 @@ int main(int argc, char **argv) {
 		action = ACTION_LIST;
 	} else if (smanet_flag) {
 		action = ACTION_SMANET;
+	} else if (mult_flag) {
+		action = ACTION_GET;
 	} else if (argc == 0) {
 		if (strlen(filename))
 			action = ACTION_FILE;
@@ -389,12 +388,6 @@ int main(int argc, char **argv) {
 		if (mon_flag) {
 			monitor(s,mon_interval);
 		} else {
-#if 0
-			if (si_driver.read(s,(void *)0xDEADBEEF,0)) {
-				log_error("unable to read data");
-				return 1;
-			}
-#endif
 			if (si_can_read_data(s,1)) return 1;
 			display_data(s,0);
 		}
@@ -483,15 +476,30 @@ int main(int argc, char **argv) {
 			double d;
 			char *text;
 
-#if 0
-			dprintf(1,"clear_flag: %d\n", clear_flag);
-			if (clear_flag)  {
-				if (smanet_reset_value(s->smanet,argv[0])) {
-					log_write(LOG_ERROR,"%s: error getting value\n",argv[0]);
+			if (mult_flag) {
+				smanet_multreq_t *mr;
+				int mr_size,i;
+
+				mr_size = argc * sizeof(smanet_multreq_t);
+				dprintf(0,"mr_size: %d\n", mr_size);
+				mr = malloc(mr_size);
+				if (!mr) return 1;
+
+				for(i=0; i < argc; i++) mr[i].name = argv[i];
+				for(i=0; i < argc; i++) dprintf(0,"mr[%d]: %s\n", i, mr[i].name);
+				if (smanet_get_multvalues(s->smanet,mr,argc)) {
+					log_error(0,"error getting multi values: %s\n", s->smanet->errmsg);
+					free(mr);
 					return 1;
 				}
+				for(i=0; i < argc; i++) {
+					dprintf(1,"mr[%d]: value: %f, text: %s\n", i, mr[i].value, mr[i].text);
+					if (text) dstr(argv[0],"%s",mr[i].text);
+					else if (double_isint(mr[i].value)) dint(argv[i],"%d",(int)mr[i].value);
+					else dfloat(argv[i],"%f",mr[i].value);
+				}
+
 			} else {
-#endif
 				if (smanet_get_value(s->smanet,argv[0],&d,&text)) {
 					log_write(LOG_ERROR,"%s: error getting value\n",argv[0]);
 					return 1;
@@ -499,7 +507,7 @@ int main(int argc, char **argv) {
 				if (text) dstr(argv[0],"%s",text);
 				else if ((int)d == d) dint(argv[0],"%d",(int)d);
 				else dfloat(argv[0],"%f",d);
-//			}
+			}
 		}
 		break;
 	case ACTION_SET:

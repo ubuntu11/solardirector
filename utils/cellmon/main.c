@@ -99,7 +99,7 @@ int main(int argc,char **argv) {
 
 	conf = calloc(1,sizeof(*conf));
 	if (!conf) return 1;
-	conf->c = client_init(argc,argv,opts,"cellmon",0,0);
+	conf->c = client_init(argc,argv,"1.0",opts,"cellmon",0,0);
 	if (!conf->c) return 1;
 	conf->packs = list_create();
 

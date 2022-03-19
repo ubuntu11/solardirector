@@ -316,7 +316,7 @@ endif
 ifneq ($(PROGNAME),)
 PROG=$(PROGNAME)$(EXE)
 _all: $(PROG)
-$(PROG): __sd_build $(OBJS) $(DEPS)
+$(PROG): $(OBJS) $(DEPS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $(PROG) $(OBJS) $(LIBS) $(ENDLIBS)
 
 debug: $(PROG)
@@ -386,7 +386,10 @@ include $(wildcard $(DEPFILES))
 #__sd_build.h:
 #	echo "#define __SD_BUILD $$(date '+%Y%m%d%H%M')" > __sd_build.h
 
-__sd_build:
-	echo "#define __SD_BUILD $$(date '+%Y%m%d%H%M')" > __sd_build.h
+#__sd_build:
+#	echo "#define __SD_BUILD $$(date '+%Y%m%d%H%M')" > __sd_build.h
 
-main.o: __sd_build
+main.o: $(SRCS)
+	@mkdir -p .deps
+	@echo "#define __SD_BUILD $$(date '+%Y%m%d%H%M')" > __sd_build.h
+	$(FULLCC) -c main.c

@@ -9,7 +9,7 @@ LICENSE file in the root directory of this source tree.
 
 #define DEBUG_BITS 1
 
-#define TARGET_ENDIAN BIG_ENDIAN
+//#define TARGET_ENDIAN BIG_ENDIAN
 #include "types.h"
 #include "si.h"
 #include <pthread.h>
@@ -23,16 +23,399 @@ LICENSE file in the root directory of this source tree.
 
 solard_driver_t *si_transports[] = { &can_driver, &rdev_driver, 0 };
 
+#define BDATA(f,b) ((int8_t *) &s->frames[f].data[b]);
+#define UBDATA(f,b) ((uint8_t *) &s->frames[f].data[b]);
+#define SDATA(f,b) ((int16_t *) &s->frames[f].data[b]);
+#define USDATA(f,b) ((uint16_t *) &s->frames[f].data[b]);
+#define LDATA(f,b) ((int32_t *) &s->frames[f].data[b]);
+
+static void _setraw(si_session_t *s) {
+	struct si_raw_data *rdp = &s->raw_data;
+
+	/* x300 Active power grid/gen */
+	rdp->active_grid_l1 = SDATA(0,0);
+	rdp->active_grid_l2 = SDATA(0,2);
+	rdp->active_grid_l3 = SDATA(0,4);
+
+	/* x301 Active power Sunny Island */
+	rdp->active_si_l1 = SDATA(1,0);
+	rdp->active_si_l2 = SDATA(1,2);
+	rdp->active_si_l3 = SDATA(1,4);
+
+	/* x302 Reactive power grid/gen */
+	rdp->reactive_grid_l1 = SDATA(2,0);
+	rdp->reactive_grid_l2 = SDATA(2,2);
+	rdp->reactive_grid_l3 = SDATA(2,4);
+
+	/* x303 Reactive power Sunny Island */
+	rdp->reactive_si_l1 = SDATA(3,0);
+	rdp->reactive_si_l2 = SDATA(3,2);
+	rdp->reactive_si_l3 = SDATA(3,4);
+
+	/* 0x304 AC1 Voltage L1 / AC1 Voltage L2 / AC1 Voltage L3 / AC1 Frequency */
+	rdp->ac1_voltage_l1 = SDATA(4,0);
+	rdp->ac1_voltage_l2 = SDATA(4,2);
+	rdp->ac1_voltage_l3 = SDATA(4,4);
+	rdp->ac1_frequency = SDATA(4,6);
+
+	/* 0x305 Battery voltage Battery current Battery temperature SOC battery */
+	rdp->battery_voltage = SDATA(5,0);
+	rdp->battery_current = SDATA(5,2);
+	rdp->battery_temp = SDATA(5,4);
+	rdp->battery_soc = SDATA(5,6);
+
+	/* 0x306 SOH battery / Charging procedure / Operating state / active Error Message / Battery Charge Voltage Set-point */
+	rdp->battery_soh = SDATA(6,0);
+	rdp->charging_proc = BDATA(6,2);
+	rdp->state = BDATA(6,3);
+	rdp->errmsg = SDATA(6,4);
+	rdp->battery_cvsp = SDATA(6,6);
+
+	/* 0x307 Relay state / Relay function bit 1 / Relay function bit 2 / Synch-Bits */
+	rdp->relay_state = USDATA(7,0);
+	rdp->relay_bits1 = USDATA(7,2);
+	rdp->relay_bits2 = USDATA(7,4);
+	rdp->synch_bits = UBDATA(7,6);
+
+	/* 0x308 TotLodPwr */
+	rdp->TotLodPwr = SDATA(8,0);
+
+	/* 0x309 AC2 Voltage L1 / AC2 Voltage L2 / AC2 Voltage L3 / AC2 Frequency */
+	rdp->ac2_voltage_l1 = SDATA(9,0);
+	rdp->ac2_voltage_l2 = SDATA(9,2);
+	rdp->ac2_voltage_l3 = SDATA(9,4);
+	rdp->ac2_frequency = SDATA(9,6);
+
+	/* 0x30A PVPwrAt / GdCsmpPwrAt / GdFeedPwr */
+	rdp->PVPwrAt = SDATA(10,0);
+	rdp->GdCsmpPwrAt = SDATA(10,2);
+	rdp->GdFeedPwr = SDATA(10,4);
+}
+
+#define GETFVAL(val) (float)_gets16(val)
+#define GETFS100(val) (((float)_gets16(val))*100)
+#define GETF100(val) (((float)_gets16(val))*100)
+#define GETD10(val) (((float)_gets16(val))/10)
+#define GETD100(val) (((float)_gets16(val))/100)
+
+static int _getcur(si_session_t *s, char *what, si_current_source_t *spec, float *dest) {
+	uint8_t data[8];
+	float val;
+
+	dprintf(dlevel,"spec: id: %03x, offset: %d, size: %d, type: %d, mult: %f\n",
+		spec->can.id, spec->can.offset, spec->can.size, spec->type, spec->mult);
+	if (spec->can.offset > 7) {
+		log_warning("%s_current_source offset > 7, using 0\n",what);
+		spec->can.offset = 0;
+	}
+	if (s->can_read(s,spec->can.id,data,8)) return 1;
+	switch(spec->can.size) {
+	case 1:
+		val = data[spec->can.offset];
+		break;
+	case 2:
+		val = _getshort(&data[spec->can.offset]);
+		break;
+	case 4:
+		val = _getlong(&data[spec->can.offset]);
+		break;
+	default:
+		val = 0;
+		log_warning("%s_current_source size must be 1,2, or 4",what);
+		break;
+	}
+	if (!fequal(spec->mult,0.0)) val *= spec->mult;
+	dprintf(dlevel,"val: %.1f\n", val);
+	*dest = val;
+	return 0;
+}
+
+void si_can_get_relays(si_session_t *s) {
+	si_raw_data_t *rdp = &s->raw_data;
+
+#define RS(m,b) { s->data.m = ((_gets16(rdp->relay_state) & b) != 0); }
+	RS(relay1,	0x0001);
+	RS(relay2,	0x0002);
+	RS(s1_relay1,	0x0004);
+	RS(s1_relay2,	0x0008);
+	RS(s2_relay1,	0x0010);
+	RS(s2_relay2,	0x0020);
+	RS(s3_relay1,	0x0040);
+	RS(s3_relay2,	0x0080);
+	RS(GnRn,	0x0100);
+	RS(s1_GnRn,	0x0200);
+	RS(s2_GnRn,	0x0400);
+	RS(s3_GnRn,	0x0800);
+
+	s->data.GnOn = (s->data.GnRn && s->data.AutoGn && s->data.ac1_frequency > 45.0) ? 1 : 0;
+
+	/* 2-3 Relay function bit 1 */
+#define RB1(m,b) { s->data.m = ((_gets16(rdp->relay_bits1) & b) != 0); }
+	RB1(AutoGn,	0x0001);
+	RB1(AutoLodExt,	0x0002);
+	RB1(AutoLodSoc,	0x0004);
+	RB1(Tm1,	0x0008);
+	RB1(Tm2,	0x0010);
+	RB1(ExtPwrDer,	0x0020);
+	RB1(ExtVfOk,	0x0040);
+	RB1(GdOn,	0x0080);
+	RB1(Error,	0x0100);
+	RB1(Run,	0x0200);
+	RB1(BatFan,	0x0400);
+	RB1(AcdCir,	0x0800);
+	RB1(MccBatFan,	0x1000);
+	RB1(MccAutoLod,	0x2000);
+	RB1(Chp,	0x4000);
+	RB1(ChpAdd,	0x8000);
+
+	/* 4 & 5 Relay function bit 2 */
+#define RB2(m,b) { s->data.m = ((_gets16(rdp->relay_bits2) & b) != 0); }
+	RB2(SiComRemote,0x0001);
+	RB2(OverLoad,	0x0002);
+	RB2(ExtSrcConn,	0x0100);
+	RB2(Silent,	0x0200);
+	RB2(Current,	0x0400);
+	RB2(FeedSelfC,	0x0800);
+	RB2(Esave,	0x1000);
+}
+
+int si_can_get_data(si_session_t *s) {
+	si_raw_data_t *rdp = &s->raw_data;
+
+//	printf("\n\n***** GETTING DATA *****\n\n\n");
+
+	s->data.active_grid_l1 = GETF100(rdp->active_grid_l1);
+	s->data.active_grid_l1 = GETF100(rdp->active_grid_l1);
+	s->data.active_grid_l2 = GETF100(rdp->active_grid_l2);
+	s->data.active_grid_l3 = GETF100(rdp->active_grid_l3);
+
+	s->data.active_si_l1 = GETF100(rdp->active_si_l1);
+	s->data.active_si_l2 = GETF100(rdp->active_si_l2);
+	s->data.active_si_l3 = GETF100(rdp->active_si_l3);
+
+	s->data.reactive_grid_l1 = GETF100(rdp->reactive_grid_l1);
+	s->data.reactive_grid_l2 = GETF100(rdp->reactive_grid_l2);
+	s->data.reactive_grid_l3 = GETF100(rdp->reactive_grid_l3);
+
+	s->data.reactive_si_l1 = GETF100(rdp->reactive_si_l1);
+	s->data.reactive_si_l2 = GETF100(rdp->reactive_si_l2);
+	s->data.reactive_si_l3 = GETF100(rdp->reactive_si_l3);
+
+	s->data.ac1_voltage_l1 =  GETD10(rdp->ac1_voltage_l1);
+	s->data.ac1_voltage_l2 =  GETD10(rdp->ac1_voltage_l2);
+	s->data.ac1_voltage_l3 =  GETD10(rdp->ac1_voltage_l3);
+	s->data.ac1_voltage = s->data.ac1_voltage_l1 + s->data.ac1_voltage_l2;
+	s->data.ac1_frequency = GETD100(rdp->ac1_frequency);
+
+	s->data.battery_voltage =  GETD10(rdp->battery_voltage);
+	s->data.battery_current = GETD10(rdp->battery_current);
+	s->data.battery_power = s->data.battery_voltage * s->data.battery_current;
+	s->data.battery_temp = GETD10(rdp->battery_temp);
+	s->data.battery_soc = GETD10(rdp->battery_soc);
+
+	s->data.battery_soh = GETFVAL(rdp->battery_soh);
+	s->data.charging_proc = _gets8(rdp->charging_proc);
+	s->data.state = _gets8(rdp->state);
+	s->data.errmsg = GETFVAL(rdp->errmsg);
+	s->data.battery_cvsp = GETD10(rdp->battery_cvsp);
+
+	si_can_get_relays(s);
+
+	s->data.TotLodPwr = GETFS100(rdp->TotLodPwr);
+
+	s->data.ac2_voltage_l1 = GETD10(rdp->ac2_voltage_l1);
+	s->data.ac2_voltage_l2 = GETD10(rdp->ac2_voltage_l2);
+	s->data.ac2_voltage_l3 = GETD10(rdp->ac2_voltage_l3);
+	s->data.ac2_voltage = s->data.ac2_voltage_l1 + s->data.ac2_voltage_l2;
+	s->data.ac2_frequency = GETD100(rdp->ac2_frequency);
+
+	s->data.PVPwrAt =  GETD10(rdp->PVPwrAt);
+	s->data.GdCsmpPwrAt = GETD10(rdp->GdCsmpPwrAt);
+	s->data.GdFeedPwr = GETD10(rdp->GdFeedPwr);
+
+	if (s->input.source == CURRENT_SOURCE_CAN) {
+		if (s->input.type == CURRENT_TYPE_WATTS) {
+			if (_getcur(s, "input", &s->input, &s->data.ac2_power)) return 1;
+			s->data.ac2_current = s->data.ac2_power / s->data.ac2_voltage_l1;
+		} else {
+			if (_getcur(s, "input", &s->input, &s->data.ac2_current)) return 1;
+			s->data.ac2_power = s->data.ac2_current * s->data.ac2_voltage_l1;
+		}
+//		dprintf(dlevel,"ac2_current: %.1f, ac2_power: %.1f\n", s->data.ac2_current, s->data.ac2_power);
+	} else if (s->input.source == CURRENT_SOURCE_CALCULATED) {
+		s->data.ac2_power = s->data.active_grid_l1 + s->data.active_grid_l2;
+		s->data.ac2_power += (s->data.reactive_grid_l1*(-1)) + (s->data.reactive_grid_l2 *(-1));
+		s->data.ac2_current = s->data.ac2_power / s->data.ac2_voltage;
+//		dprintf(dlevel,"ac2_current: %.1f, ac2_power: %.1f\n", s->data.ac2_current, s->data.ac2_power);
+	}
+
+	if (s->output.source == CURRENT_SOURCE_CAN) {
+		if (s->output.type == CURRENT_TYPE_WATTS) {
+			if (_getcur(s, "output", &s->output, &s->data.ac1_power)) return 1;
+			s->data.ac1_current = s->data.ac1_power / s->data.ac1_voltage_l1;
+		} else {
+			if (_getcur(s, "output", &s->output, &s->data.ac1_current)) return 1;
+			s->data.ac1_power = s->data.ac1_current * s->data.ac1_voltage_l1;
+		}
+//		dprintf(dlevel,"ac1_current: %.1f, ac1_power: %.1f\n", s->data.ac1_current, s->data.ac1_power);
+	} else if (s->output.source == CURRENT_SOURCE_CALCULATED) {
+		s->data.ac1_power = s->data.active_si_l1 + s->data.active_si_l2;
+		s->data.ac1_power += (s->data.reactive_si_l1*(-1)) + (s->data.reactive_si_l2 *(-1));
+		s->data.ac1_power *= (-1);
+		s->data.ac1_current = s->data.ac1_power / s->data.ac1_voltage;
+//		dprintf(dlevel,"ac1_current: %.1f, ac1_power: %.1f\n", s->data.ac1_current, s->data.ac1_power);
+	}
+	return 0;
+}
+
+static void *si_can_recv_thread(void *handle) {
+	si_session_t *s = handle;
+	struct can_frame frame;
+	int bytes,fidx;
+	uint32_t can_id,mask;
+#ifndef __WIN32
+	sigset_t set;
+
+	/* Ignore SIGPIPE */
+	sigemptyset(&set);
+	sigaddset(&set, SIGPIPE);
+	sigprocmask(SIG_BLOCK, &set, NULL);
+#endif
+
+	can_id = 0xffff;
+//	printf("===> thread started!\n");
+	while(solard_check_state(s,SI_STATE_RUNNING)) {
+//		dprintf(dlevel,"open: %d\n", solard_check_state(s,SI_STATE_OPEN));
+		if (!solard_check_state(s,SI_STATE_OPEN)) {
+			memset(&s->bitmap,0,sizeof(s->bitmap));
+			sleep(1);
+			continue;
+		}
+		bytes = s->can->read(s->can_handle,&can_id,&frame,sizeof(frame));
+//		dprintf(dlevel,"bytes: %d\n", bytes);
+		if (bytes < 1) {
+			memset(&s->bitmap,0,sizeof(s->bitmap));
+			sleep(1);
+			continue;
+		}
+//		printf("frame.can_id: %03x\n",frame.can_id);
+		if (frame.can_id < 0x300 || frame.can_id > 0x30f) continue;
+//		bindump("frame",&frame,sizeof(frame));
+		fidx = frame.can_id - 0x300;
+		mask = 1 << frame.can_id;
+		memcpy(&s->frames[fidx],&frame,sizeof(frame));
+		s->bitmap |= mask;
+	}
+	dprintf(dlevel,"returning!\n");
+	return 0;
+}
+
+static int si_can_get_local(si_session_t *s, uint32_t id, uint8_t *data, int datasz) {
+	uint32_t mask;
+	int fidx,retries,len;
+
+	dprintf(dlevel,"id: %03x, data: %p, len: %d\n", id, data, datasz);
+	if (id < 0x300 || id > 0x30f) return 1;
+
+	fidx = id - 0x300;
+	mask = 1 << id;
+	dprintf(dlevel,"id: %03x, fidx: %x, mask: %08x, bitmap: %08x\n", id, fidx, mask, s->bitmap);
+	retries=5;
+	while(retries--) {
+		if ((s->bitmap & mask) == 0) {
+			dprintf(dlevel,"bit not set, sleeping...\n");
+			sleep(1);
+			continue;
+		}
+		len = (datasz > 8 ? 8 : datasz);
+		memcpy(data,s->frames[fidx].data,len);
+		return 0;
+	}
+	return 1;
+}
+
+/* Func for can data that is remote (dont use thread/messages) */
+static int si_can_get_remote(si_session_t *s, uint32_t id, uint8_t *data, int datasz) {
+	int retries,bytes,len;
+	struct can_frame frame;
+
+	dprintf(6,"id: %03x, data: %p, data_len: %d\n", id, data, datasz);
+	retries=5;
+	while(retries--) {
+		bytes = s->can->read(s->can_handle,&id,&frame,sizeof(frame));
+		dprintf(6,"bytes read: %d\n", bytes);
+		if (bytes < 0) return 1;
+		dprintf(6,"sizeof(frame): %d\n", sizeof(frame));
+		if (bytes == sizeof(frame)) {
+			len = (frame.can_dlc > datasz ? datasz : frame.can_dlc);
+			memcpy(data,&frame.data,len);
+//			if (debug >= 7) bindump("FROM DRIVER",data,len);
+			break;
+		}
+		sleep(1);
+	}
+	dprintf(6,"returning: %d\n", (retries > 0 ? 0 : 1));
+	return (retries > 0 ? 0 : 1);
+}
+
+int si_can_set_reader(si_session_t *s) {
+	/* Start background recv thread */
+	dprintf(dlevel,"driver name: %s\n", s->can->name);
+	if (strcmp(s->can->name,"can") == 0) {
+		pthread_attr_t attr;
+
+		/* Set the filter to our range */
+		s->can->config(s->can_handle,CAN_CONFIG_SET_RANGE,0x300,0x30F);
+
+		/* Create a detached thread */
+		if (pthread_attr_init(&attr)) {
+			sprintf(s->errmsg,"pthread_attr_init: %s",strerror(errno));
+			goto si_can_set_reader_error;
+		}
+		if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED)) {
+			sprintf(s->errmsg,"pthread_attr_setdetachstate: %s",strerror(errno));
+			goto si_can_set_reader_error;
+		}
+		solard_set_state(s,SI_STATE_RUNNING);
+		if (pthread_create(&s->th,&attr,&si_can_recv_thread,s)) {
+			sprintf(s->errmsg,"pthread_create: %s",strerror(errno));
+			goto si_can_set_reader_error;
+		}
+		pthread_attr_destroy(&attr);
+
+		dprintf(dlevel,"setting func to local data\n");
+		s->can_read = si_can_get_local;
+	} else {
+		dprintf(dlevel,"setting func to remote data\n");
+		s->can_read = si_can_get_remote;
+	}
+	return 0;
+si_can_set_reader_error:
+	s->can_read = si_can_get_remote;
+	return 1;
+}
+
 int si_can_init(si_session_t *s) {
 
-	si_driver.close(s);
-	s->can_connected = false;
+	if (s->can) {
+		/* Clear any previous filters */
+		s->can->config(s->can_handle,CAN_CONFIG_CLEAR_FILTER);
 
-	if (s->can_init) {
-        	s->can->config(s->can_handle,CAN_CONFIG_CLEAR_FILTER);
-        	s->can->config(s->can_handle,CAN_CONFIG_STOP_BUFFER);
+		/* Stop any buffering */
+		s->can->config(s->can_handle,CAN_CONFIG_STOP_BUFFER);
+
+		if (strcmp(s->can->name,"can") == 0) {
+			/* Stop the read thread and wait for it to exit */
+			dprintf(dlevel,"SI_STATE_RUNNING: %d\n", solard_check_state(s,SI_STATE_RUNNING))
+			if (solard_check_state(s,SI_STATE_RUNNING)) {
+				solard_clear_state(s,SI_STATE_RUNNING);
+				sleep(1);
+			}
+		}
+		si_driver.close(s);
 		s->can_init = false;
 	}
+	s->can_connected = false;
 
 	/* Find the driver */
 	s->can = find_driver(si_transports,s->can_transport);
@@ -56,310 +439,81 @@ int si_can_init(si_session_t *s) {
 			s->can->name,strerror(errno));
 		return 1;
 	}
+	if (si_can_set_reader(s)) return 1;
 
-        /* Set the filter to our range */
-        s->can->config(s->can_handle,CAN_CONFIG_SET_RANGE,0x300,0x30F);
+	/* Set the pointers into the raw data */
+	if (!s->raw_data.active_grid_l1) _setraw(s);
 
-        /* Start buffering */
-        s->can->config(s->can_handle,CAN_CONFIG_START_BUFFER,0x300,0x30F);
+	/* Open it */
+	if (si_driver.open(s)) {
+		sprintf(s->errmsg,"error opening can driver");
+		return 1;
+	}
+
+	/* If local, "prime" the frames by reading a few IDs */
+	if (strcmp(s->can->name,"can") == 0) {
+		uint8_t data[8];
+
+		if (s->can_read(s,0x304,data,8)) return 1;
+		if (s->can_read(s,0x305,data,8)) return 1;
+		if (s->can_read(s,0x307,data,8)) return 1;
+		if (s->can_read(s,0x308,data,8)) return 1;
+		if (s->can_read(s,0x309,data,8)) return 1;
+	}
+
+	/* OK, we're connected */
+	s->can_connected = true;
 
 	if (!strlen(s->input.text)) s->input.source = CURRENT_SOURCE_NONE;
 	if (!strlen(s->input.text)) s->output.source = CURRENT_SOURCE_NONE;
-
-	dprintf(1,"==> can_init = true\n");
-	s->can_init = true;
 	if (s->ap) s->ap->read_interval = s->ap->write_interval = s->interval = 10;
+	s->can_init = true;
 	return 0;
 }
-
-int si_can_read(si_session_t *s, int id, uint8_t *data, int rdlen) {
-	struct can_frame frame;
-	uint32_t control = id;
-	int len;
-
-	if (s->can->read(s->can_handle,&control,&frame,sizeof(frame)) != sizeof(frame)) return 1;
-	dprintf(1,"frame.id: %d\n", frame.can_id);
-	len = frame.can_dlc > rdlen ? rdlen : frame.can_dlc;
-	memcpy(data,frame.data,len);
-	return 0;
-}
-
-#ifdef DEBUG_BITS
-static void _dump_bits(char *label, uint8_t bits) {
-	register uint8_t i,mask;
-	char bitstr[9];
-
-	i = 0;
-	mask = 1;
-	while(mask) {
-		bitstr[i++] = (bits & mask ? '1' : '0');
-		mask <<= 1;
-	}
-	bitstr[i] = 0;
-	dprintf(dlevel,"%s(%02x): %s\n",label,bits,bitstr);
-}
-#define dump_bits(l,b) if (debug >= 5) _dump_bits(l,b)
-#else
-#define dump_bits(l,b) /* noop */
-#endif
-
-#define SET(m,b) { s->data.m = ((bits & b) != 0); dprintf(dlevel,"%s: %d\n",#m,s->data.m); }
 
 int si_can_read_relays(si_session_t *s) {
-	uint8_t data[8],bits;
-
-	/* 0x307 Relay state / Relay function bit 1 / Relay function bit 2 / Synch-Bits */
-	if (si_can_read(s,0x307,data,8)) return 1;
-	/* 0-1 Relay State */
-	bits = data[0];
-	dump_bits("data[0]",bits);
-	SET(relay1,	0x01);
-	SET(relay2,	0x02);
-	SET(s1_relay1,	0x04);
-	SET(s1_relay2,	0x08);
-	SET(s2_relay1,	0x10);
-	SET(s2_relay2,	0x20);
-	SET(s3_relay1,	0x40);
-	SET(s3_relay2,	0x80);
-	bits = data[1];
-	dump_bits("data[1]",bits);
-	SET(GnRn,	0x01);
-	SET(s1_GnRn,	0x02);
-	SET(s2_GnRn,	0x04);
-	SET(s3_GnRn,	0x08);
-
-	s->data.GnOn = (s->data.GnRn && s->data.AutoGn && s->data.ac1_frequency > 45.0) ? 1 : 0;
-	dprintf(dlevel,"GnOn: %d\n",s->data.GnOn);
-
-	/* 2-3 Relay function bit 1 */
-	bits = data[2];
-	dump_bits("data[2]",bits);
-	SET(AutoGn,	0x01);
-	SET(AutoLodExt,	0x02);
-	SET(AutoLodSoc,	0x04);
-	SET(Tm1,	0x08);
-	SET(Tm2,	0x10);
-	SET(ExtPwrDer,	0x20);
-	SET(ExtVfOk,	0x40);
-	SET(GdOn,	0x80);
-	bits = data[3];
-	dump_bits("data[3]",bits);
-	SET(Error,	0x01);
-	SET(Run,	0x02);
-	SET(BatFan,	0x04);
-	SET(AcdCir,	0x08);
-	SET(MccBatFan,	0x10);
-	SET(MccAutoLod,	0x20);
-	SET(Chp,	0x40);
-	SET(ChpAdd,	0x80);
-
-	/* 4 & 5 Relay function bit 2 */
-	bits = data[4];
-	dump_bits("data[4]",bits);
-	SET(SiComRemote,0x01);
-	SET(OverLoad,	0x02);
-	bits = data[5];
-	dump_bits("data[5]",bits);
-	SET(ExtSrcConn,	0x01);
-	SET(Silent,	0x02);
-	SET(Current,	0x04);
-	SET(FeedSelfC,	0x08);
-	SET(Esave,	0x10);
-
-	/* 6 Sync-bits */
-	/* 7 unk */
-
-	return 0;
-}
-
-static int _getcur(si_session_t *s, char *what, si_current_source_t *spec, float *dest) {
-	uint8_t data[8];
-	float val;
-
-	dprintf(1,"spec: id: %03x, offset: %d, size: %d, type: %d, mult: %f\n",
-		spec->can.id, spec->can.offset, spec->can.size, spec->type, spec->mult);
-	if (spec->can.offset > 7) {
-		log_warning("%s_current_source offset > 7, using 0\n",what);
-		spec->can.offset = 0;
-	}
-	if (si_can_read(s,spec->can.id,data,8)) return 1;
-	switch(spec->can.size) {
-	case 1:
-		val = data[spec->can.offset];
-		break;
-	case 2:
-		val = _getshort(&data[spec->can.offset]);
-		break;
-	case 4:
-		val = _getlong(&data[spec->can.offset]);
-		break;
-	default:
-		val = 0;
-		log_warning("%s_current_source size must be 1,2, or 4",what);
-		break;
-	}
-	if (!fequal(spec->mult,0.0)) val *= spec->mult;
-	dprintf(1,"val: %.1f\n", val);
-	*dest = val;
+	if (s->can_read(s,0x307,s->frames[7].data,8)) return 1;
+	si_can_get_relays(s);
 	return 0;
 }
 
 int si_can_read_data(si_session_t *s, int all) {
-	uint8_t data[8];
 
-//	sleep(60);
+	dprintf(2,"all: %d\n",all);
+
+	/* If local can driver running, just refresh data */
+	dprintf(2,"s->can->name: %s\n", s->can->name);
+	if (strcmp(s->can->name,"rdev") != 0) return si_can_get_data(s);
 
 	if (all || s->input.source == CURRENT_SOURCE_CALCULATED) {
-	/* x300 Active power grid/gen */
-	if (si_can_read(s,0x300,data,8)) return 1;
-	s->data.active_grid_l1 = _getshort(&data[0]) * 100.0;
-	s->data.active_grid_l2 = _getshort(&data[2]) * 100.0;
-	s->data.active_grid_l3 = _getshort(&data[4]) * 100.0;
-	dprintf(dlevel,"active_grid_ l1: %.1f, l2: %.1f, l3: %.1f\n",
-		s->data.active_grid_l1, s->data.active_grid_l2, s->data.active_grid_l3);
+		if (s->can_read(s,0x300,s->frames[0].data,8)) return 1;
+		if (s->can_read(s,0x302,s->frames[2].data,8)) return 1;
 	}
 
 	if (all || s->output.source == CURRENT_SOURCE_CALCULATED) {
-	/* x301 Active power Sunny Island */
-	if (si_can_read(s,0x301,data,8)) return 1;
-	s->data.active_si_l1 = _getshort(&data[0]) * 100.0;
-	s->data.active_si_l2 = _getshort(&data[2]) * 100.0;
-	s->data.active_si_l3 = _getshort(&data[4]) * 100.0;
-	dprintf(dlevel,"active_si_ l1: %.1f, l2: %.1f, l3: %.1f\n",
-		s->data.active_si_l1, s->data.active_si_l2, s->data.active_si_l3);
+		if (s->can_read(s,0x301,s->frames[1].data,8)) return 1;
+		if (s->can_read(s,0x303,s->frames[3].data,8)) return 1;
 	}
 
-	if (all || s->input.source == CURRENT_SOURCE_CALCULATED) {
-	/* x302 Reactive power grid/gen */
-	if (si_can_read(s,0x302,data,8)) return 1;
-	s->data.reactive_grid_l1 = _getshort(&data[0]) * 100.0;
-	s->data.reactive_grid_l2 = _getshort(&data[2]) * 100.0;
-	s->data.reactive_grid_l3 = _getshort(&data[4]) * 100.0;
-	dprintf(dlevel,"reactive_grid_ l1: %.1f, l2: %.1f, l3: %.1f\n",
-		s->data.reactive_grid_l1, s->data.reactive_grid_l2, s->data.reactive_grid_l3);
-	}
+	if (s->can_read(s,0x304,s->frames[4].data,8)) return 1;
+	if (s->can_read(s,0x305,s->frames[5].data,8)) return 1;
+	if (s->can_read(s,0x306,s->frames[6].data,8)) return 1;
+	if (s->can_read(s,0x307,s->frames[7].data,8)) return 1;
+	if (s->can_read(s,0x308,s->frames[8].data,8)) return 1;
+	if (s->can_read(s,0x309,s->frames[9].data,8)) return 1;
+	if (s->can_read(s,0x30a,s->frames[10].data,8)) return 1;
 
-	if (all || s->output.source == CURRENT_SOURCE_CALCULATED) {
-	/* x303 Reactive power Sunny Island */
-	if (si_can_read(s,0x303,data,8)) return 1;
-	s->data.reactive_si_l1 = _getshort(&data[0]) * 100.0;
-	s->data.reactive_si_l2 = _getshort(&data[2]) * 100.0;
-	s->data.reactive_si_l3 = _getshort(&data[4]) * 100.0;
-	dprintf(dlevel,"reactive_si_ l1: %.1f, l2: %.1f, l3: %.1f\n",
-		s->data.reactive_si_l1, s->data.reactive_si_l2, s->data.reactive_si_l3);
-	}
-
-	/* 0x304 OutputVoltage - L1 / L2 / L3 / Output Freq */
-	if (si_can_read(s,0x304,data,8)) return 1;
-	s->data.ac1_voltage_l1 = _getshort(&data[0]) / 10.0;
-	s->data.ac1_voltage_l2 = _getshort(&data[2]) / 10.0;
-	s->data.ac1_voltage_l3 = _getshort(&data[4]) / 10.0;
-	s->data.ac1_frequency = _getshort(&data[6]) / 100.0;
-	dprintf(dlevel,"ac1_voltage: l1: %.1f, l2: %.1f, l3: %.1f\n",
-		s->data.ac1_voltage_l1, s->data.ac1_voltage_l2, s->data.ac1_voltage_l3);
-	s->data.ac1_voltage = s->data.ac1_voltage_l1 + s->data.ac1_voltage_l2;
-	dprintf(dlevel,"ac1_voltage: %.1f, ac1_frequency: %.1f\n",s->data.ac1_voltage,s->data.ac1_frequency);
-
-	/* 0x305 Battery voltage Battery current Battery temperature SOC battery */
-	if (si_can_read(s,0x305,data,8)) return 1;
-	s->data.battery_voltage = _getshort(&data[0]) / 10.0;
-	s->data.battery_current = _getshort(&data[2]) / 10.0;
-	if (s->charge_mode)
-		s->data.battery_power = s->charge_voltage * s->data.battery_current;
-	else
-		s->data.battery_power = s->data.battery_voltage * s->data.battery_current;
-	s->data.battery_temp = _getshort(&data[4]) / 10.0;
-	s->data.battery_soc = _getshort(&data[6]) / 10.0;
-	dprintf(dlevel,"battery_voltage: %.1f\n", s->data.battery_voltage);
-	dprintf(dlevel,"battery_current: %.1f\n", s->data.battery_current);
-	dprintf(dlevel,"battery_temp: %.1f\n", s->data.battery_temp);
-	dprintf(dlevel,"battery_soc: %.1f\n", s->data.battery_soc);
-
-	/* 0x306 SOH battery / Charging procedure / Operating state / active Error Message / Battery Charge Voltage Set-point */
-	si_can_read(s,0x306,data,8);
-	s->data.battery_soh = _getshort(&data[0]);
-	s->data.charging_proc = data[2];
-	s->data.state = data[3];
-	s->data.errmsg = _getshort(&data[4]);
-	s->data.battery_cvsp = _getshort(&data[6]) / 10.0;
-	dprintf(dlevel,"battery_soh: %.1f, charging_proc: %d, state: %d, errmsg: %d, battery_cvsp: %.1f\n",
-		s->data.battery_soh, s->data.charging_proc, s->data.state, s->data.errmsg, s->data.battery_cvsp);
-
-	if (si_can_read_relays(s)) return 1;
-
-	/* 0x308 TotLodPwr */
-	if (si_can_read(s,0x308,data,8)) return 1;
-	s->data.TotLodPwr = _getshort(&data[0]) * 100.0;
-	dprintf(dlevel,"TotLodPwr: %.1f\n", s->data.TotLodPwr);
-
-	/* 0x309 AC2 Voltage L1 / AC2 Voltage L2 / AC2 Voltage L3 / AC2 Frequency */
-	if (si_can_read(s,0x309,data,8)) return 1;
-	s->data.ac2_voltage_l1 = _getshort(&data[0]) / 10.0;
-	s->data.ac2_voltage_l2 = _getshort(&data[2]) / 10.0;
-	s->data.ac2_voltage_l3 = _getshort(&data[4]) / 10.0;
-	s->data.ac2_frequency = _getshort(&data[6]) / 100.0;
-	dprintf(dlevel,"ac2: l1: %.1f, l2: %.1f, l3: %.1f\n",s->data.ac2_voltage_l1, s->data.ac2_voltage_l2, s->data.ac2_voltage_l3);
-	s->data.ac2_voltage = s->data.ac2_voltage_l1 + s->data.ac2_voltage_l2;
-	dprintf(dlevel,"ac2: voltage: %.1f, frequency: %.1f\n",s->data.ac2_voltage,s->data.ac2_frequency);
-
-	if (all) {
-	/* 0x30A PVPwrAt / GdCsmpPwrAt / GdFeedPwr */
-	si_can_read(s,0x30a,data,8);
-	s->data.PVPwrAt = _getshort(&data[0]) / 10.0;
-	s->data.GdCsmpPwrAt = _getshort(&data[0]) / 10.0;
-	s->data.GdFeedPwr = _getshort(&data[0]) / 10.0;
-	dprintf(dlevel,"PVPwrAt: %.1f\n", s->data.PVPwrAt);
-	dprintf(dlevel,"GdCsmpPwrAt: %.1f\n", s->data.GdCsmpPwrAt);
-	dprintf(dlevel,"GdFeedPwr: %.1f\n", s->data.GdFeedPwr);
-	}
-
-	if (s->input.source == CURRENT_SOURCE_CAN) {
-		if (s->input.type == CURRENT_TYPE_WATTS) {
-			if (_getcur(s, "input", &s->input, &s->data.ac2_power)) return 1;
-			s->data.ac2_current = s->data.ac2_power / s->data.ac2_voltage_l1;
-		} else {
-			if (_getcur(s, "input", &s->input, &s->data.ac2_current)) return 1;
-			s->data.ac2_power = s->data.ac2_current * s->data.ac2_voltage_l1;
-		}
-		dprintf(1,"ac2_current: %.1f, ac2_power: %.1f\n", s->data.ac2_current, s->data.ac2_power);
-	} else if (s->input.source == CURRENT_SOURCE_CALCULATED) {
-//		s->data.ac2_power = s->data.active_grid_l1 + s->data.active_grid_l2 + s->data.active_grid_l3;
-		s->data.ac2_power = s->data.active_grid_l1 + s->data.active_grid_l2;
-//		s->data.ac2_power += (s->data.reactive_grid_l1*(-1)) + (s->data.reactive_grid_l2 *(-1)) + (s->data.reactive_grid_l3 *(-1));
-		s->data.ac2_power += (s->data.reactive_grid_l1*(-1)) + (s->data.reactive_grid_l2 *(-1));
-		s->data.ac2_current = s->data.ac2_power / s->data.ac2_voltage;
-		dprintf(1,"ac2_current: %.1f, ac2_power: %.1f\n", s->data.ac2_current, s->data.ac2_power);
-	}
-
-	if (s->output.source == CURRENT_SOURCE_CAN) {
-		if (s->output.type == CURRENT_TYPE_WATTS) {
-			if (_getcur(s, "output", &s->output, &s->data.ac1_power)) return 1;
-			s->data.ac1_current = s->data.ac1_power / s->data.ac1_voltage_l1;
-		} else {
-			if (_getcur(s, "output", &s->output, &s->data.ac1_current)) return 1;
-			s->data.ac1_power = s->data.ac1_current * s->data.ac1_voltage_l1;
-		}
-		dprintf(1,"ac1_current: %.1f, ac1_power: %.1f\n", s->data.ac1_current, s->data.ac1_power);
-	} else if (s->output.source == CURRENT_SOURCE_CALCULATED) {
-//		s->data.ac1_power = s->data.active_si_l1 + s->data.active_si_l2 + s->data.active_si_l3;
-		s->data.ac1_power = s->data.active_si_l1 + s->data.active_si_l2;
-//		s->data.ac1_power += (s->data.reactive_si_l1*(-1)) + (s->data.reactive_si_l2 *(-1)) + (s->data.reactive_si_l3 *(-1));
-		s->data.ac1_power += (s->data.reactive_si_l1*(-1)) + (s->data.reactive_si_l2 *(-1));
-		s->data.ac1_power *= (-1);
-		s->data.ac1_current = s->data.ac1_power / s->data.ac1_voltage;
-		dprintf(1,"ac1_current: %.1f, ac1_power: %.1f\n", s->data.ac1_current, s->data.ac1_power);
-	}
-
+	si_can_get_data(s);
 	return 0;
 }
 
-int si_can_write(si_session_t *s, int id, uint8_t *data, int data_len) {
+int si_can_write(si_session_t *s, uint32_t id, uint8_t *data, int data_len) {
 	struct can_frame frame;
-	uint32_t control = id;
 	int len,bytes;
 
 	dprintf(dlevel,"id: %03x, data: %p, data_len: %d\n",id,data,data_len);
 
+//	bindump("write data",data,data_len);
 	dprintf(dlevel,"readonly: %d\n", s->readonly);
 	if (s->readonly) return data_len;
 
@@ -373,102 +527,9 @@ int si_can_write(si_session_t *s, int id, uint8_t *data, int data_len) {
 	frame.can_dlc = len;
 	memcpy(&frame.data,data,len);
 //	bindump("write data",data,data_len);
-	bytes = s->can->write(s->can_handle,&control,&frame,sizeof(frame));
+	bytes = s->can->write(s->can_handle,&id,&frame,sizeof(frame));
 	dprintf(dlevel,"bytes: %d\n", bytes);
 	return bytes;
-}
-
-int si_can_write_va(si_session_t *s) {
-	uint8_t data[8];
-	float cv,ca;
-
-	/* If we're not in bms mode, exit */
-	if (!s->bms_mode) return 0;
-
-	/* 0x351 Battery charge voltage / DC charge current limitation / DC discharge current limitation / discharge voltage */
-	dprintf(0,"0x351: charge_mode: %d, charge_voltage: %3.2f, charge_amps: %3.2f, min_voltage: %3.2f, discharge_amps: %3.2f\n"
-,
-		s->charge_mode, s->charge_voltage, s->charge_amps, s->min_voltage, s->discharge_amps);
-        if (s->charge_mode) {
-                cv = s->charge_voltage;
-                if (s->data.GdOn) {
-                        if (s->force_charge) ca = s->grid_charge_amps;
-                        else ca = s->charge_min_amps;
-                } else if (s->data.GnRn) {
-                        ca = s->gen_charge_amps;
-                } else {
-                        cv += 1.0;
-                        ca = s->charge_amps;
-                }
-
-		/* Apply modifiers to charge amps */
-		dprintf(dlevel,"cv: %.1f\n", cv);
-		dprintf(dlevel,"ca(1): %.1f\n", ca);
-		ca *= s->charge_amps_temp_modifier;
-		dprintf(dlevel,"ca(2): %.1f\n", ca);
-		ca *= s->charge_amps_soc_modifier;
-		dprintf(dlevel,"ca(3): %.1f\n", ca);
-        } else {
-                /* Always keep the CSVP = battery_voltage so it doesnt keep pushing power to the batts */
-                /* XXX keeping the CSVP < battery (even - 0.1) will always draw from batt and turn grid off */
-                /* XXX need max_charge_amps = never go above */
-                /* Add solar output to charge amps? */
-                if (s->data.GdOn | s->data.GnRn) cv = s->data.battery_voltage;
-                else cv = s->data.battery_voltage + 1.0;
-                ca = s->charge_amps;
-        }
-
-#if 0
-	if (s->charge_mode) {
-		cv = s->charge_voltage;
-		if (s->data.GdOn) {
-			if (s->charge_from_grid || s->force_charge) ca = s->grid_charge_amps;
-			else ca = s->charge_min_amps;
-		} else if (s->data.GnOn) {
-			ca = s->gen_charge_amps;
-		} else {
-			cv += 1.0;
-			ca = s->std_charge_amps;
-		}
-
-		/* Apply modifiers to charge amps */
-		dprintf(dlevel,"cv: %.1f\n", cv);
-		dprintf(dlevel,"ca(1): %.1f\n", ca);
-		ca *= s->charge_amps_temp_modifier;
-		dprintf(dlevel,"ca(2): %.1f\n", ca);
-		ca *= s->charge_amps_soc_modifier;
-		dprintf(dlevel,"ca(3): %.1f\n", ca);
-	} else {
-		/* make sure no charge goes into batts */
-		cv = s->data.battery_voltage - 0.1;
-		ca = 0.0;
-	}
-#endif
-
-#if 0
-/* XXX I have seen the system go from 350 charge_amps to 0 in 1 second and not alarm */
-Battery charging current limitation: This is solely the limit for the charging current sent to Sunny Island. It is not to be
-understood as a set-point and cannot be required from the battery. The available charging current is calculated by other
-application dependent algorithm and cannot be set by the battery. Note that the actual charging current is not constant
-but changes according to the algorithm. Battery charging current limit is the allowed, typical or rated charging current
-value for the whole battery pack, which must not be exceeded during charging. The changes in charging current limit
-sent by an external BMS should be ramped to not more than 10 A/sec. Please note that Sunny Island control algorithm
-cannot immediately follow the changes, so that the alarm activation (in case that the limit is exceeded) must be slower
-than a ramping down period.
-
-	dprintf(dlevel,"ca: %f, last_ca: %f\n", ca, s->last_ca);
-	if (ca > s->last_ca + 10) {
-		ca = s->last_ca + 10;
-	} else if (ca < s->last_ca - 10) {
-		ca = s->last_ca - 10;
-	}
-	s->last_ca = ca;
-#endif
-	_putshort(&data[0],(cv * 10.0));
-	_putshort(&data[2],(ca * 10.0));
-	_putshort(&data[4],(s->discharge_amps * 10.0));
-	_putshort(&data[6],(s->min_voltage * 10.0));
-	return (si_can_write(s,0x351,data,8) < 0);
 }
 
 int si_can_write_data(si_session_t *s) {
@@ -478,7 +539,7 @@ int si_can_write_data(si_session_t *s) {
 	if (!s->can_connected) return 0;
 
 	/* Startup SOC/Charge amps */
-	dprintf(dlevel,"startup: %d\n", s->startup);
+	dprintf(1,"startup: %d\n", s->startup);
 	if (s->startup == 1) {
 		soc = 99.9;
 		s->charge_amps = 1;
@@ -486,17 +547,15 @@ int si_can_write_data(si_session_t *s) {
 	} else if (s->startup == 2) {
 		soc = s->soc;
 		s->charge_amps = 0;
-		charge_control(s,s->startup_charge_mode,1);
 		s->startup = 0;
 	} else {
 		soc = s->soc;
-		charge_check(s);
 	}
 
 	/* Take charge amps to 0.0? need to go to 1 first then 0.0 next pass */
-	dprintf(dlevel,"tozero: %d, charge_amps: %.1f\n", s->tozero, s->charge_amps);
+	dprintf(1,"tozero: %d, charge_amps: %.1f\n", s->tozero, s->charge_amps);
 	if (s->tozero == 1) {
-		if ((int)s->charge_amps == 1) {
+		if (float_equals(s->charge_amps,1.0)) {
 			dprintf(dlevel,"setting charge amps to 0...\n");
 			s->charge_amps = 0.0;
 			s->tozero = 2;
@@ -504,7 +563,7 @@ int si_can_write_data(si_session_t *s) {
 			s->tozero = 0;
 		}
 	} else {
-		if ((int)s->charge_amps == 0) {
+		if (float_equals(s->charge_amps,0.0)) {
 			if (s->tozero != 2) {
 				s->charge_amps = 1;
 				s->tozero = 1;
@@ -513,10 +572,21 @@ int si_can_write_data(si_session_t *s) {
 			s->tozero = 0;
 		}
 	}
+	if (float_equals(s->discharge_amps,0.0)) {
+		log_warning("discharge_amps is 0.0, setting to 1200.0\n");
+		s->discharge_amps = 1200;
+	}
 
 	/* 0x350 Active Current Set-point / Reactive current Set-Point */
-	
-	if (si_can_write_va(s)) return 1;
+
+	/* 0x351 Battery charge voltage / DC charge current limitation / DC discharge current limitation / discharge voltage */
+	dprintf(dlevel,"0x351: charge_voltage: %.1f, charge_amps: %.1f, discharge_amps: %.1f, discharge_voltage: %.1f\n",
+		s->charge_voltage, s->charge_amps, s->discharge_amps, s->min_voltage);
+	_putshort(&data[0],(s->charge_voltage * 10.0));
+	_putshort(&data[2],(s->charge_amps * 10.0));
+	_putshort(&data[4],(s->discharge_amps * 10.0));
+	_putshort(&data[6],(s->min_voltage * 10.0));
+	if (si_can_write(s,0x351,data,8) < 0) return 1;
 
 	/* 0x352 Nominal frequency (F0) */
 	/* 0x353 Nominal voltage L1 (U0) */
@@ -532,11 +602,11 @@ int si_can_write_data(si_session_t *s) {
 #if 0
 	/* 0x356 Battery Voltage / Battery Current / Battery Temperature */
 	dprintf(dlevel,"0x356: battery_voltage: %3.2f, battery_amps: %3.2f, battery_temp: %3.2f\n",
-		s->battery_voltage, s->battery_amps, s->battery_temp);
-	_putshort(&data[0],s->battery_voltage * 100.0);
-	_putshort(&data[2],s->battery_current * 10.0);
+		s->data.battery_voltage, s->data.battery_amps, s->data.battery_temp);
+	_putshort(&data[0],s->data.battery_voltage * 100.0);
+	_putshort(&data[2],s->data.battery_current * 10.0);
 	if (s->have_battery_temp) {
-		_putshort(&data[4],s->battery_temp * 10.0);
+		_putshort(&data[4],s->data.battery_temp * 10.0);
 	} else {
 		_putshort(&data[4],0);
 	}
@@ -545,7 +615,6 @@ int si_can_write_data(si_session_t *s) {
 
 	/* 0x357 - 0x359 ?? */
 
-#if 0
 	/* 0x35A Alarms / Warnings */
 	memset(data,0,sizeof(data));
 	if (si_can_write(s,0x35A,data,8) < 0) return 1;
@@ -553,7 +622,6 @@ int si_can_write_data(si_session_t *s) {
 	/* 0x35B Events */
 	memset(data,0,sizeof(data));
 	if (si_can_write(s,0x35B,data,8) < 0) return 1;
-#endif
 
 	/* 0x35C Function Bits / Function Bits Relays */
 

@@ -2677,6 +2677,7 @@ JSObject *js_InitJSONClass(JSContext *cx, JSObject *);
 JSObject *js_InitConsoleClass(JSContext *cx, JSObject *);
 JSObject *js_InitSocketClass(JSContext *cx, JSObject *);
 JSObject *js_InitCANClass(JSContext *cx, JSObject *);
+JSObject *js_InitClassClass(JSContext *cx, JSObject *);
 JSObject *js_InitSerialClass(JSContext *cx, JSObject *);
 JSObject *js_InitBluetoothClass(JSContext *cx, JSObject *);
 JSObject *jscan_new(JSContext *cx, void *tp, void *handle, char *transport, char *target, char *topts, int *conn);
@@ -2691,6 +2692,7 @@ static inline jsval js_number_to_jsval(JSContext *cx, double n) {
 #define JS_NUMCONST(n) { #n, NUMBER_TO_JSVAL((n)) }
 #define JS_STRCONST(n) { #n, STRING_TO_JSVAL(JS_NewStringCopyZ(cx,(n))) }
 
+char *jstypestr(JSContext *cx, jsval vp);
 int jsval_to_type(int dtype, void *dest, int dsize, JSContext *cx, jsval val);
 jsval type_to_jsval(JSContext *cx, int type, void *src, int len);
 

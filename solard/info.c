@@ -28,6 +28,8 @@ json_value_t *sd_get_info(void *handle) {
 	json_object_set_string(j,"agent_version",sd_version_string);
 	json_object_set_string(j,"agent_author","Stephen P. Shoecraft");
 
+	dprintf(1,"conf->ap: %p\n", conf->ap);
+	dprintf(1,"conf->ap->cp: %p\n", conf->ap->cp);
 	config_add_info(conf->ap->cp, j);
 
 	dprintf(1,"mem_used: %ld\n",mem_used() - mem_start);

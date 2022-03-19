@@ -31,4 +31,6 @@ enum CAN_CONFIG_FUNCS {
 	CAN_CONFIG_GET_FD,
 };
 
+#define CAN_ID_ANY 0xFFFF
+
 #endif

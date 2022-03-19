@@ -599,7 +599,7 @@ void mqtt_add_props(config_t *cp, mqtt_config_t *gconf, char *name, mqtt_config_
 	dprintf(1,"adding mqtt...\n");
 
 	config_add_props(cp, "mqtt", mqtt_props, CONFIG_FLAG_NOID);
-
+#if 0
 	/* Add the mqtt props to the instance config */
 	{
 		char *names[] = { "mqtt_host", "mqtt_port", "mqtt_clientid", "mqtt_username", "mqtt_password", 0 };
@@ -615,10 +615,11 @@ void mqtt_add_props(config_t *cp, mqtt_config_t *gconf, char *name, mqtt_config_
 		for(i=0; names[i]; i++) {
 			p = config_section_dup_property(s, &mqtt_props[i], names[i]);
 			if (!p) continue;
-			dprintf(1,"p->name: %s\n",p->name);
+			dprintf(dlevel,"p->name: %s\n",p->name);
 			config_section_add_property(cp, s, p, CONFIG_FLAG_NOID);
 		}
 	}
+#endif
 }
 
 int mqtt_jsinit(JSEngine *js, mqtt_session_t *m) {

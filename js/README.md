@@ -14,8 +14,8 @@ x Socket object
 x CAN oject (Linux only - SocketCAN)
 x SMANET object
 Influx object
-Config object
 Serial object
+Websocket object
 Bluetooth object (linux only)
 MQTT object (via paho.mqtt.c lib)
 HTTP object

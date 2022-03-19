@@ -7,8 +7,8 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#define DEBUG_CONV 0
-#define dlevel 4
+#define DEBUG_CONV 1
+#define dlevel 6
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -77,96 +77,15 @@ str2int_errno str2int(int *out, char *s, int base) {
 }
 
 void str2list(list dest,char *src) {
-	char temp[2048];
-	int tmax,tlen,q;
-	register char *p;
 	register int i;
+	char *p;
 
-	dprintf(dlevel,"dest: %p, src: %s", dest, src);
-	dprintf(dlevel,"src: %s",src);
-	if (!src) return;
-
-	p = src;
-	tmax = sizeof(temp)-1;
-	i = q = 0;
-	while(*p) {
-		dprintf(dlevel,"p: %c, q: %d\n", *p, q);
-		if (*p == '\"' && !q)
-			q = 1;
-		else if (*p == '\"' && q)
-			q = 0;
-		else if ((*p == ',' && !q) || i >= tmax) {
-			trim(temp);
-			tlen = strlen(temp);
-			dprintf(dlevel,"adding: %s (%d)\n", temp, tlen);
-			if (tlen) list_add(dest,temp,tlen+1);
-			i = 0;
-		} else {
-			temp[i++] = *p;
-		}
-		p++;
+	for(i=0; i >= 0; i++) {
+		p = strele(i,",",src);
+		if (!*p) break;
+		list_add(dest,p,strlen(p)+1);
 	}
-	if (i) {
-		temp[i] = 0;
-		trim(temp);
-		tlen = strlen(temp);
-		dprintf(dlevel,"adding: %s (%d)\n", temp, tlen);
-		if (tlen) list_add(dest,temp,tlen+1);
-	}
-#if DEBUG
-	dprintf(dlevel,"list:");
-	list_reset(dest);
-	while( (p = list_get_next(dest)) != 0) dprintf(dlevel,"\t%s",p);
-#endif
-	return;
 }
-#if 0
-			char temp[2048];
-			int tmax,tlen,q;
-			list l = (list)d;
-			register char *p;
-			register int i;
-
-			if (!s) break;
-
-			p = s;
-			dprintf(dlevel,"src: %s\n", p);
-			tmax = sizeof(temp)-1;
-			i = q = 0;
-			while(*p) {
-				dprintf(dlevel+1,"p: %c, q: %d, i: %d\n", *p, q, i);
-				if (*p == '\"' && !q)
-					q = 1;
-				else if (*p == '\"' && q)
-					q = 0;
-				else if ((*p == ',' && !q) || i >= tmax) {
-					temp[i] = 0;
-					trim(temp);
-					tlen = strlen(temp);
-					dprintf(dlevel,"adding: %s (%d)\n", temp, tlen);
-					if (tlen) list_add(l,temp,tlen+1);
-					i = 0;
-				} else {
-					temp[i++] = *p;
-				}
-				p++;
-			}
-			dprintf(dlevel,"i: %d\n", i);
-			if (i) {
-				temp[i] = 0;
-				trim(temp);
-				tlen = strlen(temp);
-				dprintf(dlevel,"adding: %s (%d)\n", temp, tlen);
-				if (tlen) list_add(l,temp,tlen+1);
-			}
-#if 1
-			dprintf(dlevel,"list:");
-			list_reset(l);
-			while( (p = list_get_next(l)) != 0) dprintf(dlevel,"\t%s",p);
-#endif
-			dprintf(dlevel,"done!\n");
-		    }
-#endif
 
 int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 	register int i;
@@ -2201,21 +2120,57 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 	    break;
 	case DATA_TYPE_STRING_LIST:
 	    {
+		list l = (list) d;
+		char temp[64];
+
 		switch(st) {
 		case DATA_TYPE_STRING:
-			str2list(d,s);
+			str2list(l,s);
 			break;
 		case DATA_TYPE_S8:
+			snprintf(temp,sizeof(temp)-1,"%d",*((int8_t *)s));
+			list_add(l,temp,strlen(temp)+1);
+			break;
 		case DATA_TYPE_S16:
+			snprintf(temp,sizeof(temp)-1,"%d",*((int16_t *)s));
+			list_add(l,temp,strlen(temp)+1);
+			break;
 		case DATA_TYPE_S32:
+			snprintf(temp,sizeof(temp)-1,"%d",*((int32_t *)s));
+			list_add(l,temp,strlen(temp)+1);
+			break;
 		case DATA_TYPE_S64:
+			snprintf(temp,sizeof(temp)-1,"%lld",(long long int)*((int64_t *)s));
+			list_add(l,temp,strlen(temp)+1);
+			break;
 		case DATA_TYPE_U8:
+			snprintf(temp,sizeof(temp)-1,"%d",*((uint8_t *)s));
+			list_add(l,temp,strlen(temp)+1);
+			break;
 		case DATA_TYPE_U16:
+			snprintf(temp,sizeof(temp)-1,"%d",*((uint16_t *)s));
+			list_add(l,temp,strlen(temp)+1);
+			break;
 		case DATA_TYPE_U32:
+			list_add(l,s,sizeof(uint32_t));
+			snprintf(temp,sizeof(temp)-1,"%d",*((uint32_t *)s));
+			break;
 		case DATA_TYPE_U64:
+			snprintf(temp,sizeof(temp)-1,"%lld",(unsigned long long int)*((uint64_t *)s));
+			list_add(l,temp,strlen(temp)+1);
+			break;
 		case DATA_TYPE_F32:
+			snprintf(temp,sizeof(temp)-1,"%f",*((float *)s));
+			list_add(l,temp,strlen(temp)+1);
+			break;
 		case DATA_TYPE_F64:
+			snprintf(temp,sizeof(temp)-1,"%lf",*((double *)s));
+			list_add(l,temp,strlen(temp)+1);
+			break;
 		case DATA_TYPE_BOOL:
+			strcpy(temp,*((int *)s) ? "True" : "False");
+			list_add(l,temp,strlen(temp)+1);
+			break;
 		case DATA_TYPE_S8_ARRAY:
 		case DATA_TYPE_S16_ARRAY:
 		case DATA_TYPE_S32_ARRAY:
@@ -2240,25 +2195,35 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		dprintf(dlevel,"dt: %d(%s)\n", dt,typestr(dt));
 		switch(dt) {
 		case DATA_TYPE_STRING:
-			return strlen((char *)d);
+			return_len = strlen((char *)d);
+			break;
 		case DATA_TYPE_S8:
-			return sizeof(byte);
+			return_len = sizeof(byte);
+			break;
 		case DATA_TYPE_S16:
-			return sizeof(short);
+			return_len = sizeof(short);
+			break;
 		case DATA_TYPE_S32:
-			return sizeof(int);
+			return_len = sizeof(int);
+			break;
 		case DATA_TYPE_S64:
-			return sizeof(long long);
+			return_len = sizeof(long long);
+			break;
 		case DATA_TYPE_F32:
-			return sizeof(float);
+			return_len = sizeof(float);
+			break;
 		case DATA_TYPE_F64:
-			return sizeof(double);
+			return_len = sizeof(double);
+			break;
 		case DATA_TYPE_BOOL:
-			return sizeof(int);
+			return_len = sizeof(int);
+			break;
 		case DATA_TYPE_STRING_LIST:
-			return list_count((list)d);
+			return_len = list_count((list)d);
+			break;
 		default:
-			return 0;
+			return_len = 0;
+			break;
 		}
 	}
 	dprintf(dlevel,"returning: %d\n", return_len);

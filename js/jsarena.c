@@ -419,6 +419,7 @@ JS_ArenaCountRetract(JSArenaPool *pool, char *mark)
     pool->stats.nfastrels++;
 }
 
+#if 0
 #include <stdio.h>
 
 JS_PUBLIC_API(void)
@@ -441,10 +442,23 @@ JS_DumpArenaStats(FILE *fp)
         fprintf(fp, " number of realloc'ing growths: %u\n", stats->nreallocs);
         fprintf(fp, "number of released allocations: %u\n", stats->nreleases);
         fprintf(fp, "       number of fast releases: %u\n", stats->nfastrels);
-        fprintf(fp, "         total bytes allocated: %u\n", stats->nbytes);
+        fprintf(fp, "         total bytes allocated: %u\n", (unsigned int)stats->nbytes);
         fprintf(fp, "          mean allocation size: %g\n", mean);
         fprintf(fp, "            standard deviation: %g\n", sigma);
         fprintf(fp, "       maximum allocation size: %u\n", stats->maxalloc);
     }
 }
+#endif
+
+JS_PUBLIC_API(size_t)
+JS_ArenaTotalBytes(void)
+{
+	JSArenaStats *stats;
+	size_t bytes;
+
+	bytes = 0;
+	for (stats = arena_stats_list; stats; stats = stats->next) bytes += stats->nbytes;
+	return bytes;
+}
+
 #endif /* JS_ARENAMETER */

@@ -7,8 +7,10 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#define DEBUG_JSENGINE 0
-#define dlevel 4
+#define DEBUG_JSENGINE 1
+#define dlevel 6
+
+#define SCRIPT_CACHE 1
 
 #include <stdio.h>
 #include <string.h>
@@ -16,6 +18,7 @@ LICENSE file in the root directory of this source tree.
 #include <unistd.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <libgen.h>
 
 #include "jsengine.h"
 #include "jsprf.h"
@@ -33,6 +36,7 @@ LICENSE file in the root directory of this source tree.
 #define DEBUG DEBUG_JSENGINE
 #include "debug.h"
 
+#if SCRIPT_CACHE
 struct _scriptinfo {
 	JSEngine *e;
 	char filename[256];
@@ -103,6 +107,28 @@ static int _chkscript(JSContext *cx, scriptinfo_t *sp) {
 	}
 	return 0;
 }
+#endif
+
+#if 0
+static void _delsinfo(JSEngine *e, JSContext *cx, scriptinfo_t *sp) {
+	scriptinfo_t *ssp;
+
+	printf("********* XXXX\n");
+	dprintf(dlevel,"sp: %p\n", sp);
+	list_reset(e->scripts);
+	while((ssp = list_get_next(e->scripts)) != 0) {
+		dprintf(dlevel,"ssp: %p\n", ssp);
+		if (ssp == sp) {
+			dprintf(dlevel,"found\n");
+			JS_RemoveRoot(cx, &sp->script->object);
+			list_delete(e->scripts,ssp);
+			return;
+		}
+	}
+	dprintf(dlevel,"NOT found\n");
+	return;
+}
+#endif
 
 static void script_error(JSContext *cx, const char *message, JSErrorReport *report) {
 	char line[1024], prefix[128], *p;
@@ -215,10 +241,10 @@ static void _relcx(JSEngine *e) {
 	pthread_mutex_unlock(&e->lockcx);
 }
 
-JSEngine *JS_EngineInit(int rtsize, js_outputfunc_t *output) {
+JSEngine *JS_EngineInit(int rtsize, int stacksize, js_outputfunc_t *output) {
 	JSEngine *e;
 
-	dprintf(dlevel,"rtsize: %d, output: %p\n", rtsize, output);
+	dprintf(dlevel,"rtsize: %d, stacksize: %d, output: %p\n", rtsize, stacksize, output);
 
 	e = calloc(sizeof(*e),1);
 	if (!e) return 0;
@@ -230,12 +256,11 @@ JSEngine *JS_EngineInit(int rtsize, js_outputfunc_t *output) {
 		goto JS_EngineInit_error;
 	}
 	e->rtsize = rtsize;
+	e->stacksize = stacksize;
 	e->output = output;
 	e->scripts = list_create();
 	e->initfuncs = list_create();
 	pthread_mutex_init(&e->lockcx, 0);
-	e->stacksize = 1048576;
-//	e->cx = JS_EngineNewContext(e);
 
 	return e;
 
@@ -248,8 +273,8 @@ JS_EngineInit_error:
 JSEngine *JS_DupEngine(JSEngine *old) {
 	JSEngine *e;
 
-	dprintf(dlevel,"OLD: rtsize: %d, output: %p\n", old->rtsize, old->output);
-	e = JS_EngineInit(old->rtsize, old->output);
+	dprintf(dlevel,"OLD: rtsize: %d, stacksize: %d, output: %p\n", old->rtsize, old->stacksize, old->output);
+	e = JS_EngineInit(old->rtsize, old->stacksize, old->output);
 	if (!e) return 0;
 	list_destroy(e->initfuncs);
 	e->initfuncs = list_dup(old->initfuncs);
@@ -289,6 +314,37 @@ int JS_EngineAddInitFunc(JSEngine *e, char *name, js_initfunc_t *func, void *pri
 	return 0;
 }
 
+#if 0
+static char *load_file(char *filename) {
+        FILE *fp;
+	char *buf;
+
+	dprintf(0,"filename: %s\n", filename);
+
+	buf = 0;
+        fp = fopen(filename,"rb");
+        if (fp) {
+                int fd;
+                struct stat sb;
+
+                fd = fileno(fp);
+                dprintf(0,"fd: %d\n", fd);
+                if (fstat(fd, &sb) == 0) {
+                        dprintf(0,"st_size: %d\n", sb.st_size);
+                        if (sb.st_size > 0) {
+				buf = malloc(sb.st_size);
+				dprintf(0,"buf: %p\n", buf);
+				if (!buf) return 0;
+				fread(buf,1,sb.st_size,fp);
+                        }
+                }
+                fclose(fp);
+        }
+	dprintf(0,"buf: %p\n", buf);
+	return buf;
+}
+#endif
+
 int JS_EngineAddInitClass(JSEngine *e, char *name, js_initclass_t *class) {
 	js_initfuncinfo_t newfunc;
 
@@ -303,11 +359,17 @@ int JS_EngineAddInitClass(JSEngine *e, char *name, js_initclass_t *class) {
 	return 0;
 }
 
-int _JS_EngineExec(JSEngine *e, char *filename, JSContext *cx) {
+int _JS_EngineExec(JSEngine *e, char *filename, JSContext *cx, char *function_name) {
+#if SCRIPT_CACHE
 	scriptinfo_t *sinfo;
+#endif
+	JSScript *script;
 	int status,ok;
-	jsval rval;
+	jsval rval,exit_rval;
 
+	dprintf(dlevel,"filename: %s, cx: %p, function_name: %s\n", filename, cx, function_name);
+
+#if SCRIPT_CACHE
 	/* If script previously executed, get it */
 	sinfo = _getsinfo(e,filename);
 	dprintf(dlevel,"sinfo: %p\n", sinfo);
@@ -322,29 +384,74 @@ int _JS_EngineExec(JSEngine *e, char *filename, JSContext *cx) {
 		dprintf(dlevel,"sinfo: %p\n", sinfo);
 	}
 	if (_chkscript(cx, sinfo)) return 1;
+	script = sinfo->script;
+#else
+	script = JS_CompileFile(cx, JS_GetGlobalObject(cx), filename);
+	if (!script) {
+		log_error("error compiling\n");
+		return 1;
+	}
+#endif
 
-	dprintf(dlevel,"executing script: %s\n", filename);
-	dprintf(dlevel,"cx: %p, global: %p, script: %p\n", cx, JS_GetGlobalObject(cx), sinfo->script);
-	ok = JS_ExecuteScript(cx, JS_GetGlobalObject(cx), sinfo->script, &rval);
+	dprintf(dlevel,"cx: %p, global: %p, script: %p\n", cx, JS_GetGlobalObject(cx), script);
+	ok = JS_ExecuteScript(cx, JS_GetGlobalObject(cx), script, &rval);
 	dprintf(dlevel,"%s: ok: %d\n", filename, ok);
 
-	dprintf(dlevel,"getting exit code...\n");
-	JS_GetProperty(cx, JS_GetGlobalObject(cx), "exit_code", &rval);
-	if (JSVAL_IS_VOID(rval)) {
-		dprintf(dlevel,"using ok...\n");
-		status = (ok != 1);
-	} else {
-		JS_ValueToInt32(cx,rval,&status);
+	if (ok && function_name) {
+		jsval fval;
+		
+		/* See if the func exists */
+		ok = JS_GetProperty(cx, JS_GetGlobalObject(cx), function_name, &fval);
+		dprintf(dlevel,"getprop ok: %d\n", ok);
+		if (ok) {
+			dprintf(dlevel,"fval type: %s\n", jstypestr(cx,fval));
+			if (strcmp(jstypestr(cx,fval),"function") == 0) {
+//				printf("==> %s\n", function_name);
+				ok = JS_CallFunctionValue(cx, JS_GetGlobalObject(cx), fval, 0, NULL, &rval);
+				if (ok) {
+					dprintf(dlevel,"rval type: %s\n", jstypestr(cx,rval));
+					if (strcmp(jstypestr(cx,rval),"number") == 0) {
+						JS_ValueToInt32(cx,rval,&status);
+						dprintf(dlevel,"status: %d\n", status);
+						return status;
+					}
+				}
+			}
+		}
+	}
+#if !SCRIPT_CACHE
+	JS_DestroyScript(cx, script);
+#endif
+	status = (ok ? 0 : 1);
+
+	/* If script called exit(), it will return !ok and exit code in prop */
+	dprintf(dlevel,"ok: %d\n", ok);
+	if (!ok) {
+		dprintf(dlevel,"getting exit code...\n");
+		ok = JS_GetProperty(cx, JS_GetGlobalObject(cx), "exit_code", &exit_rval);
+		dprintf(dlevel,"getprop ok: %d\n", ok);
+		if (ok) {
+			dprintf(dlevel,"exit_rval type: %s\n", jstypestr(cx,exit_rval));
+			if (strcmp(jstypestr(cx,exit_rval),"number") == 0) {
+				JS_ValueToInt32(cx,exit_rval,&status);
+				dprintf(dlevel,"new status: %d\n", status);
+			}
+			JS_DeleteProperty(cx, JS_GetGlobalObject(cx), "exit_code");
+		}
 	}
 
 	dprintf(dlevel,"status: %d\n", status);
 	return status;
+
 }
 
 int JS_EngineExec(JSEngine *e, char *filename, int newcx) {
 	JSContext *cx;
-	char local_filename[256];
+	char local_filename[256],fname[256],*p;
 	int r;
+
+//printf("\n\n------------------------------- START ---------------------------------------------\n");
+//printf("==> USED: %d\n", (int)JS_ArenaTotalBytes());
 
 	dprintf(dlevel,"engine: %p, filename: %s, newcx: %d\n", e, filename, newcx);
 	if (access(filename,0) != 0) {
@@ -358,7 +465,14 @@ int JS_EngineExec(JSEngine *e, char *filename, int newcx) {
 	else cx = _getcx(e);
 	dprintf(dlevel,"cx: %p\n", cx);
 	if (!cx) goto JS_EngineExec_error;
-	r = _JS_EngineExec(e, filename, cx);
+	strncpy(fname,basename(local_filename),sizeof(fname)-1);
+	while(1) {
+		p = strrchr(fname,'.');
+		if (!p) break;
+		*p = 0;
+	}
+	strcat(fname,"_main");
+	r = _JS_EngineExec(e, filename, cx, fname);
 
 JS_EngineExec_error:
 	dprintf(dlevel,"cx: %p, newcx: %d\n", cx, newcx);
@@ -366,9 +480,10 @@ JS_EngineExec_error:
 		dprintf(dlevel,"destroying CX!!\n");
 		JS_DestroyContext(cx);
 	} else _relcx(e);
+//printf("==> USED: %d\n", (int)JS_ArenaTotalBytes());
+//printf("\n------------------------------- END ---------------------------------------------\n\n");
 	return r;
 }
-
 
 int JS_EngineExecString(JSEngine *e, char *string) {
 	jsval rval;

@@ -40,7 +40,7 @@ int main(int argc,char **argv) {
 	argv = args;
 #endif
 
-	solard_common_init(argc,argv,opts,logopts);
+	if (solard_common_init(argc,argv,"1.0",opts,logopts)) return 1;
 
 	if (!strlen(configfile)) {
 		log_write(LOG_ERROR,"configfile required.\n");

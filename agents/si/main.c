@@ -10,7 +10,9 @@ LICENSE file in the root directory of this source tree.
 #include "transports.h"
 #include "__sd_build.h"
 
-#define TESTING 1
+#define TESTING 0
+#define TESTLVL 2
+
 #define DEBUG_STARTUP 0
 
 #if DEBUG_STARTUP
@@ -19,26 +21,7 @@ LICENSE file in the root directory of this source tree.
 #define _ST_DEBUG 0
 #endif
 
-char *si_agent_version_string = "1.0-" STRINGIFY(__SD_BUILD);
-
-static int si_cb(void *ctx) {
-	si_session_t *s = ctx;
-
-	/* Get the relay/func bits */
-	if (s->can_connected && si_can_read_relays(s) == 0) {
-		dprintf(1,"GdOn: %d, GnOn: %d\n", s->data.GdOn, s->data.GnOn);
-		if (s->data.GdOn != s->grid_connected) {
-			log_info("Grid %s\n",(s->data.GdOn ? "connected" : "disconnected"));
-		}
-		if (s->data.GnOn != s->gen_connected) {
-			log_info("Generator %s\n",(s->data.GnOn ? "connected" : "disconnected"));
-		}
-		if ((s->data.GdOn != s->grid_connected) || (s->data.GnOn != s->gen_connected)) si_can_write_va(s);
-		s->grid_connected = s->data.GdOn;
-		s->gen_connected = s->data.GnOn;
-	}
-	return 0;
-}
+char *si_version_string = "1.0-" STRINGIFY(__SD_BUILD);
 
 int main(int argc, char **argv) {
 	char cantpinfo[256];
@@ -52,7 +35,7 @@ int main(int argc, char **argv) {
 	time_t start,end,diff;
 
 #if TESTING
-	char *args[] = { "si", "-d", "4", "-c", "sitest.conf" };
+	char *args[] = { "si", "-d", STRINGIFY(TESTLVL), "-c", "sitest.json" };
 	argc = (sizeof(args)/sizeof(char *));
 	argv = args;
 #endif
@@ -81,17 +64,6 @@ int main(int argc, char **argv) {
 	dprintf(1,"s->can_transport: %s, s->can_target: %s, s->can_topts: %s\n",
 		s->can_transport, s->can_target, s->can_topts);
 
-#if 0
-	if (si_can_init(s)) {
-		/* safety */
-		s->can = &null_driver;
-		s->can_handle = s->can->new(0,0);
-//		si_can_set_reader(s);
-	} else {
-		s->ap->read_interval = s->ap->write_interval = s->interval = 10;
-	}
-#endif
-
 	/* init SMANET but do not connect */
 	dprintf(1,"smatpinfo: %s\n", smatpinfo);
 	if (strlen(smatpinfo)) {
@@ -101,18 +73,12 @@ int main(int argc, char **argv) {
 		strncat(s->smanet_topts,strele(2,",",smatpinfo),sizeof(s->smanet_topts)-1);
         }
 
-	/* Set callback */
-	agent_set_callback(s->ap,si_cb,s);
-
 	sprintf(cantpinfo,"%s/%s",SOLARD_TOPIC_ROOT,s->ap->mqtt_config.clientid);
 	mqtt_sub(s->ap->m, cantpinfo);
 
 	time(&end);
 	diff = end - start;
 	dprintf(1,"--> startup time: %d\n", diff);
-
-	/* Init charging - must be done after agent_init calls info */
-	charge_init(s);
 
 	/* Go */
 	agent_run(s->ap);

@@ -12,6 +12,7 @@ LICENSE file in the root directory of this source tree.
 #ifdef __WIN32
 #include <windows.h>
 #endif
+#include <errno.h>
 
 #define dlevel 6
 
@@ -65,11 +66,9 @@ static int parse_channels(smanet_session_t *s, uint8_t *data, int data_len) {
 		case CH_ANALOG:
 			memcpy(newchan.unit,sptr,8);
 			sptr += 8;
-//			newchan.gain = *(float *)sptr;
 			newchan.gain = _getf32(sptr);
 			sptr += 4;
-//			newchan.offset = *(float *)sptr;
-			newchan.gain = _getf32(sptr);
+			newchan.offset = _getf32(sptr);
 			sptr += 4;
 			dprintf(dlevel,"unit: %s, gain: %f, offset: %f\n", newchan.unit, newchan.gain, newchan.offset);
 			break;
@@ -83,13 +82,11 @@ static int parse_channels(smanet_session_t *s, uint8_t *data, int data_len) {
 		case CH_COUNTER:
 			memcpy(newchan.unit,sptr,8);
 			sptr += 8;
-//			newchan.gain = *(float *)sptr;
 			newchan.gain = _getf32(sptr);
 			sptr += 4;
 			dprintf(dlevel,"unit: %s, gain: %f\n", newchan.unit, newchan.gain);
 			break;
 		case CH_STATUS:
-//			newchan.size = *(uint16_t *)sptr;
 			newchan.size = _getu16(sptr);
 			dprintf(dlevel,"newchan.size: %d\n",newchan.size);
 			sptr += 2;
@@ -101,7 +98,8 @@ static int parse_channels(smanet_session_t *s, uint8_t *data, int data_len) {
 				}
 			}
 			dprintf(smanet_dlevel,"fixed status: %s\n", sptr);
-			conv_type(DATA_TYPE_STRING_LIST,&newchan.strings,0,DATA_TYPE_STRING,sptr,newchan.size);
+			newchan.strings = list_create();
+			conv_type(DATA_TYPE_STRING_LIST,newchan.strings,0,DATA_TYPE_STRING,sptr,strlen((char *)sptr));
 			dprintf(smanet_dlevel,"count: %d\n", list_count(newchan.strings));
 			sptr += newchan.size;
 			break;
@@ -173,8 +171,33 @@ static int parse_channels(smanet_session_t *s, uint8_t *data, int data_len) {
 	return 0;
 }
 
+extern char SOLARD_LIBDIR[256];
+
 int smanet_read_channels(smanet_session_t *s) {
 	smanet_packet_t *p;
+	char name[320];
+	FILE *fp;
+	struct stat sb;
+
+//	sprintf(name,"%s/%s.dat",SOLARD_LIBDIR,s->type);
+	sprintf(name,"/tmp/%s.dat",s->type);
+	dprintf(1,"name: %s\n", name);
+	if (stat(name,&sb) == 0) {
+		uint8_t *data;
+		int r;
+
+		fp = fopen(name,"rb");
+		if (fp) {
+			data = malloc(sb.st_size);
+			if (data) {
+				fread(data,1,sb.st_size,fp);
+				r = parse_channels(s,data,sb.st_size);
+				free(data);
+				return r;
+			}
+			fclose(fp);
+		}
+	}
 
 	p = smanet_alloc_packet(8192);
 	if (!p) return 1;
@@ -182,151 +205,142 @@ int smanet_read_channels(smanet_session_t *s) {
 	dprintf(smanet_dlevel,"p->dataidx: %d\n", p->dataidx);
 //	if (debug) bindump("channel data",p->data,p->dataidx);
 
-	parse_channels(s,p->data,p->dataidx);
-	return 0;
+	fp = fopen(name,"wb+");
+	if (fp) {
+		fwrite(p->data,1,p->dataidx,fp);
+		fclose(fp);
+	}
+
+	return parse_channels(s,p->data,p->dataidx);
 }
 
 int smanet_save_channels(smanet_session_t *s, char *filename) {
-	FILE *fp;
-	uint8_t temp[256];
+	json_value_t *v;
+	json_object_t *o;
+	json_array_t *a;
+	register int i;
 	smanet_channel_t *c;
-//	struct chanver chanver;
-	int r,bytes;
-	uint16_t len;
-	int i;
+	char *j;
+	FILE *fp;
 
-	fp = fopen(filename,"wb+");
+	/* make sure we can open the file first */
+	fp = fopen(filename,"w+");
 	if (!fp) {
-		log_write(LOG_SYSERR,"smanet_save_channels: fopen %s",filename);
+		log_syserror("fopen(%s)",filename);
 		return 1;
 	}
-	r = 1;
-	/* our channels file is a 5-byte header: SIG1:1 SIG2:1 VERSION:1 COUNT:2 */
-	temp[0] = CHANFILE_SIG1;
-	temp[1] = CHANFILE_SIG2;
-	temp[2] = CHANFILE_VERSION;
-	_putu16(&temp[3],s->chancount);
-	bytes = fwrite(&temp,1,5,fp);
-	if (bytes < 1) {
-		log_syserror("smanet_save_channels: error writing header");
-		goto smanet_save_channels_error;
-	}
-	dprintf(dlevel,"count: %d\n", s->chancount);
+
+	a = json_create_array();
 	for(i=0; i < s->chancount; i++) {
+		o = json_create_object();
 		c = &s->chans[i];
-		dprintf(dlevel,"chan: id: %d, name: %s, index: %02x, mask: %04x, format: %04x, level: %d, type: %d(%s), count: %d\n",
-			c->id, c->name, c->index, c->mask, c->format, c->level, c->type, typestr(c->type), c->count);
-		bytes = fwrite(c,1,sizeof(smanet_channel_t),fp);
-		dprintf(dlevel,"bytes written: %d\n", bytes);
-		if (bytes < 0) {
-			log_write(LOG_SYSERR,"smanet_save_channels: fwrite");
-			goto smanet_save_channels_error;
+		json_object_set_number(o,"id",c->id);
+		json_object_set_number(o,"index",c->index);
+		json_object_set_number(o,"mask",c->mask);
+		json_object_set_number(o,"format",c->format);
+		json_object_set_number(o,"type",c->type);
+		json_object_set_number(o,"count",c->count);
+		json_object_set_number(o,"level",c->level);
+		json_object_set_string(o,"name",c->name);
+		json_object_set_string(o,"unit",c->unit);
+		switch(c->mask & 0x0f) {
+		case CH_ANALOG:
+			json_object_set_number(o,"gain",c->gain);
+			json_object_set_number(o,"offset",c->offset);
+			break;
+		case CH_DIGITAL:
+			json_object_set_string(o,"txtlo",c->txtlo);
+			json_object_set_string(o,"txthi",c->txthi);
+			break;
+		case CH_COUNTER:
+			json_object_set_number(o,"gain",c->gain);
+			break;
+		case CH_STATUS:
+			v = json_from_type(DATA_TYPE_STRING_LIST,c->strings,list_count(c->strings));
+			json_object_add_value(o,"strings",v);
+			break;
+		default:
+			log_error("smanet_save_channels: unhandled type: %x\n", c->mask & 0x0f);
+			break;
 		}
-		/* channel text options are a comma-seperated list preceded by a 2 byte length */
-		if (c->mask & CH_STATUS) {
-			dprintf(smanet_dlevel,"count: %d\n", list_count(c->strings));
-			conv_type(DATA_TYPE_STRING,temp,sizeof(temp)-1,DATA_TYPE_STRING_LIST,&c->strings,0);
-			dprintf(smanet_dlevel,"temp: %s\n", temp);
-			len = strlen((char *)temp);
-			if (fwrite(&len,1,2,fp) < 0) {
-				log_syserror("smanet_save_channels: fwrite len");
-				goto smanet_save_channels_error;
-			}
-			if (fwrite(temp,1,len,fp) < 0) {
-				log_syserror("smanet_save_channels: fwrite temp");
-				goto smanet_save_channels_error;
-			}
-		}
-//		dprintf(smanet_dlevel,"c: name: %s, timestamp: %d\n", c->name, c->value.timestamp);
+		json_array_add_object(a,o);
 	}
-	r = 0;
-smanet_save_channels_error:
+
+	j = json_dumps(json_array_get_value(a),1);
+	if (!j) {
+		log_error("smanet_save_channels: error getting json string");
+		json_destroy_array(a);
+		fclose(fp);
+		return 1;
+	}
+
+	fwrite(j, 1, strlen(j), fp);
 	fclose(fp);
-	return r;
+	free(j);
+//	json_destroy_array(a);
+	return 0;
 }
 
 int smanet_load_channels(smanet_session_t *s, char *filename) {
-	FILE *fp;
-	char temp[256];
-	uint8_t header[5];
-	smanet_channel_t newchan;
-//	struct chanver chanver;
-	int bytes,i;
-	uint16_t len;
+	json_value_t *rv,*v;
+	json_array_t *a;
+	json_object_t *o;
+	int size,i,j;
+	smanet_channel_t *c;
+	char *n;
 
-	dprintf(smanet_dlevel,"filename: %s\n", filename);
-	fp = fopen(filename,"rb");
-	if (!fp) {
-		log_write(LOG_SYSERR,"smanet_load_channels: fopen %s",filename);
+	rv = json_parse_file(filename);
+	if (!rv) {
+		sprintf(s->errmsg,"unable to load channels: %s\n", strerror(errno));
 		return 1;
 	}
-
-	smanet_destroy_channels(s);
-
-	/* our channels file is a 5-byte header: SIG1:1 SIG2:1 VERSION:1 COUNT:2 */
-	bytes = fread(header,1,sizeof(header),fp);
-	if (bytes != sizeof(header)) {
-		log_error("smanet_load_channels: error reading header");
+	if (json_value_get_type(rv) != JSON_TYPE_ARRAY) {
+		sprintf(s->errmsg,"invalid json format");
 		return 1;
 	}
-	if (header[0] != CHANFILE_SIG1 || header[1] != CHANFILE_SIG2) {
-		log_write(LOG_ERROR,"smanet_load_channels: bad sig (%02x%02x != %02x%02x), ignoring",
-			header[0], header[1], CHANFILE_SIG1, CHANFILE_SIG2);
-		return 1;
-	}
-	if (header[2] != CHANFILE_VERSION) {
-		log_error("smanet_load_channels: version mismatch(%d != %d)",header[2],CHANFILE_VERSION);
-		return 1;
-	}
-	s->chancount = _getu16(&header[3]);
-	dprintf(dlevel,"count: %d\n", s->chancount);
-
-	s->chans = malloc(sizeof(smanet_channel_t)*s->chancount);
+	a = json_value_get_array(rv);
+	size = sizeof(smanet_channel_t)*a->count;
+	s->chans = malloc(size);
 	if (!s->chans) {
-		log_syserror("smanet_load_channels: malloc");
+		log_syserror("smanet_load_channels: malloc(%d)", size);
 		return 1;
 	}
-	for(i=0; i < s->chancount; i++) {
-		bytes = fread(&newchan,1,sizeof(newchan),fp);
-		if (bytes != sizeof(newchan)) {
-			log_write(LOG_SYSERR,"smanet_load_channels: short read");
-			goto smanet_load_channels_error;
+	memset(s->chans,0,size);
+	for(i=0; i < a->count; i++) {
+		if (json_value_get_type(a->items[i]) != JSON_TYPE_OBJECT) {
+			sprintf(s->errmsg,"invalid json format");
+			free(s->chans);
+			s->chans = 0;
+			return 1;
 		}
-		dprintf(dlevel,"id: %d, i: %d\n", newchan.id, i);
-		if (newchan.id != i) {
-			log_error("smanet_load_channels: id does not match index (%d:%d) for channel %s",
-				newchan.id, i,  newchan.name);
-			goto smanet_load_channels_error;
-		}
-		/* has text field? */
-		if (newchan.mask & CH_STATUS) {
-			if (fread(&len,1,sizeof(len),fp) < 0) {
-				log_syserror("smanet_load_channels: error reading length for channel %s", newchan.name);
-				goto smanet_load_channels_error;
+		o = json_value_get_object(a->items[i]);
+		c = &s->chans[i];
+		for(j=0; j < o->count; j++) {
+			n = o->names[j];
+			v = o->values[j];
+			if (strcmp(n,"id") == 0) json_to_type(DATA_TYPE_U16,&c->id,0,v);
+			else if (strcmp(n,"index") == 0) json_to_type(DATA_TYPE_U8,&c->index,0,v);
+			else if (strcmp(n,"mask") == 0) json_to_type(DATA_TYPE_U16,&c->mask,0,v);
+			else if (strcmp(n,"format") == 0) json_to_type(DATA_TYPE_U16,&c->format,0,v);
+			else if (strcmp(n,"type") == 0) json_to_type(DATA_TYPE_INT,&c->type,0,v);
+			else if (strcmp(n,"count") == 0) json_to_type(DATA_TYPE_INT,&c->count,0,v);
+			else if (strcmp(n,"level") == 0) json_to_type(DATA_TYPE_U16,&c->level,0,v);
+			else if (strcmp(n,"name") == 0) json_to_type(DATA_TYPE_STRING,c->name,sizeof(c->name)-1,v);
+			else if (strcmp(n,"unit") == 0) json_to_type(DATA_TYPE_STRING,c->unit,sizeof(c->unit)-1,v);
+			else if (strcmp(n,"gain") == 0) json_to_type(DATA_TYPE_F32,&c->gain,0,v);
+			else if (strcmp(n,"offset") == 0) json_to_type(DATA_TYPE_F32,&c->offset,0,v);
+			else if (strcmp(n,"txtlo") == 0) json_to_type(DATA_TYPE_STRING,c->txtlo,sizeof(c->txtlo)-1,v);
+			else if (strcmp(n,"txthi") == 0) json_to_type(DATA_TYPE_STRING,c->txthi,sizeof(c->txthi)-1,v);
+			else if (strcmp(n,"strings") == 0) {
+				c->strings = list_create();
+				json_to_type(DATA_TYPE_STRING_LIST,c->strings,0,v);
 			}
-			dprintf(dlevel,"name: %s, len: %d\n", newchan.name, len);
-			if (fread(temp,1,len,fp) < 0) {
-				log_syserror("smanet_load_channels: error reading text for channel %s", newchan.name);
-				goto smanet_load_channels_error;
-			}
-			temp[len] = 0;
-			dprintf(dlevel,"temp: %s\n", temp);
-			newchan.strings = list_create();
-			conv_type(DATA_TYPE_STRING_LIST,newchan.strings,0,DATA_TYPE_STRING,temp,len);
-			dprintf(dlevel,"count: %d\n", list_count(newchan.strings));
 		}
-		s->chans[i] = newchan;
+//		printf("chan: id: %d, name: %s, index: %02x, mask: %04x, format: %04x, level: %d, type: %d(%s), count: %d\n", c->id, c->name, c->index, c->mask, c->format, c->level, c->type, typestr(c->type), c->count);
 	}
-//	dprintf(dlevel,"i: %d, chancount: %d\n", i, s->chancount);
-	fclose(fp);
+	json_destroy_value(rv);
+	s->chancount = a->count;
 	return 0;
-
-smanet_load_channels_error:
-	fclose(fp);
-	free(s->chans);
-	s->chans = 0;
-	s->chancount = 0;
-	return 1;
 }
 
 smanet_channel_t *smanet_get_channel(smanet_session_t *s, char *name) {

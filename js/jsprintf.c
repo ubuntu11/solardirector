@@ -611,7 +611,7 @@ static char *_typestr(int type) {
 	return _typenames[type];
 }
 
-static char *_js_typenames[JSTYPE_LIMIT] = { "undefined","object","function","string","number","boolean","null","xml" };
+//static char *_js_typenames[JSTYPE_LIMIT] = { "undefined","object","function","string","number","boolean","null","xml" };
 static char *js_typestr(JSContext *cx, jsval v) {
 	if (JSVAL_IS_OBJECT(v)) return "object";
 	else if (JSVAL_IS_INT(v)) return "int";
@@ -640,32 +640,25 @@ static int _getarg(void *dest, JSContext *cx, int *idx, int argc, jsval *argv, e
 	dprintf(dlevel,"arg type: %d(%s)\n", type, _typestr(type));
 	switch(type) {
 	case JSARG_TYPE_CHAR:
-//		_getnum(char);
 		jsval_to_type(DATA_TYPE_S8,dest,1,cx,argv[*idx]);
 		break;
 	case JSARG_TYPE_UCHAR:
-//		_getnum(unsigned char);
 		jsval_to_type(DATA_TYPE_U8,dest,1,cx,argv[*idx]);
 		break;
 	case JSARG_TYPE_SHORT:
-//		_getnum(short);
-		jsval_to_type(DATA_TYPE_S16,dest,1,cx,argv[*idx]);
+		jsval_to_type(DATA_TYPE_S16,dest,2,cx,argv[*idx]);
 		break;
 	case JSARG_TYPE_USHORT:
-//		_getnum(unsigned short);
-		jsval_to_type(DATA_TYPE_U16,dest,1,cx,argv[*idx]);
+		jsval_to_type(DATA_TYPE_U16,dest,2,cx,argv[*idx]);
 		break;
 	case JSARG_TYPE_INT:
-//		_getnum(int);
-		jsval_to_type(DATA_TYPE_S32,dest,1,cx,argv[*idx]);
+		jsval_to_type(DATA_TYPE_S32,dest,4,cx,argv[*idx]);
 		break;
 	case JSARG_TYPE_UINT:
-//		_getnum(unsigned int);
-		jsval_to_type(DATA_TYPE_U32,dest,1,cx,argv[*idx]);
+		jsval_to_type(DATA_TYPE_U32,dest,4,cx,argv[*idx]);
 		break;
 	case JSARG_TYPE_DOUBLE:
-//		_getnum(double);
-		jsval_to_type(DATA_TYPE_F64,dest,1,cx,argv[*idx]);
+		jsval_to_type(DATA_TYPE_F64,dest,8,cx,argv[*idx]);
 		break;
 	case JSARG_TYPE_STRING:
 		{
@@ -676,7 +669,11 @@ static int _getarg(void *dest, JSContext *cx, int *idx, int argc, jsval *argv, e
 			dprintf(dlevel,"str: %p\n", str);
 			if (!str) return _error(cx, "unable to convert argument %d to string",*idx);
 			text = JS_EncodeString(cx, str);
-			dprintf(dlevel,"text: %s\n", text);
+			if (text[strlen(text)-1] == '\n') {
+				dprintf(dlevel,"text: %s", text);
+			} else {
+				dprintf(dlevel,"text: %s\n", text);
+			}
 			if (!text) return JS_FALSE;
 			*((char **)dest) = text;
 		}
@@ -697,9 +694,9 @@ static int js_vsnprintf(out_fct_type out, char** buffer, size_t *maxlen, JSConte
 	int argvidx = 0;
 
 	if (_getarg(&format,cx,&argvidx,argc,argv,JSARG_TYPE_STRING)) return -1;
+	dprintf(dlevel,"format: %s\n", format);
 
-	while (*format)
-	{
+	while (*format) {
 		// format specifier?  %[flags][width][.precision][length]
 		if (*format != '%') {
 			// no
@@ -760,37 +757,37 @@ static int js_vsnprintf(out_fct_type out, char** buffer, size_t *maxlen, JSConte
 		// evaluate length field
 		switch (*format) {
 		case 'l' :
-		flags |= FLAGS_LONG;
-		format++;
-		if (*format == 'l') {
-		  flags |= FLAGS_LONG_LONG;
-		  format++;
-		}
-		break;
+			flags |= FLAGS_LONG;
+			format++;
+			if (*format == 'l') {
+				flags |= FLAGS_LONG_LONG;
+				format++;
+			}
+			break;
 		case 'h' :
-		flags |= FLAGS_SHORT;
-		format++;
-		if (*format == 'h') {
-		  flags |= FLAGS_CHAR;
-		  format++;
-		}
-		break;
-		#if defined(PRINTF_SUPPORT_PTRDIFF_T)
+			flags |= FLAGS_SHORT;
+			format++;
+			if (*format == 'h') {
+			  flags |= FLAGS_CHAR;
+			  format++;
+			}
+			break;
+#if defined(PRINTF_SUPPORT_PTRDIFF_T)
 		case 't' :
-		flags |= (sizeof(ptrdiff_t) == sizeof(long) ? FLAGS_LONG : FLAGS_LONG_LONG);
-		format++;
-		break;
-		#endif
+			flags |= (sizeof(ptrdiff_t) == sizeof(long) ? FLAGS_LONG : FLAGS_LONG_LONG);
+			format++;
+			break;
+#endif
 		case 'j' :
-		flags |= (sizeof(intmax_t) == sizeof(long) ? FLAGS_LONG : FLAGS_LONG_LONG);
-		format++;
-		break;
+			flags |= (sizeof(intmax_t) == sizeof(long) ? FLAGS_LONG : FLAGS_LONG_LONG);
+			format++;
+			break;
 		case 'z' :
-		flags |= (sizeof(size_t) == sizeof(long) ? FLAGS_LONG : FLAGS_LONG_LONG);
-		format++;
-		break;
+			flags |= (sizeof(size_t) == sizeof(long) ? FLAGS_LONG : FLAGS_LONG_LONG);
+			format++;
+			break;
 		default :
-		break;
+			break;
 		}
 
 		// evaluate specifier
@@ -802,97 +799,94 @@ static int js_vsnprintf(out_fct_type out, char** buffer, size_t *maxlen, JSConte
 		case 'X' :
 		case 'o' :
 		case 'b' : {
-		// set the base
-		unsigned int base;
-		if (*format == 'x' || *format == 'X') {
-		  base = 16U;
-		}
-		else if (*format == 'o') {
-		  base =  8U;
-		}
-		else if (*format == 'b') {
-		  base =  2U;
-		}
-		else {
-		  base = 10U;
-		  flags &= ~FLAGS_HASH;   // no hash for dec format
-		}
-		// uppercase
-		if (*format == 'X') {
-		  flags |= FLAGS_UPPERCASE;
-		}
-
-		// no plus or space flag for u, x, X, o, b
-		if ((*format != 'i') && (*format != 'd')) {
-		  flags &= ~(FLAGS_PLUS | FLAGS_SPACE);
-		}
-
-		// ignore '0' flag when precision is given
-		if (flags & FLAGS_PRECISION) {
-		  flags &= ~FLAGS_ZEROPAD;
-		}
-
-		// convert the integer
-		if ((*format == 'i') || (*format == 'd')) {
-		  // signed
-		  if (flags & FLAGS_LONG_LONG) {
-		#if defined(PRINTF_SUPPORT_LONG_LONG)
-//		    const long long value = va_arg(va, long long);
-		    long long value;
-			if (_getarg(&value, cx, &argvidx, argc, argv, JSARG_TYPE_INT)) return -1;
-		    idx = _ntoa_long_long(out, buffer, idx, maxlen, (unsigned long long)(value > 0 ? value : 0 - value), value < 0, base, precision, width, flags);
-		#endif
-		  }
-		  else if (flags & FLAGS_LONG) {
-//		    const long value = va_arg(va, long);
-		    long value;
-			if (_getarg(&value, cx, &argvidx, argc, argv, JSARG_TYPE_INT)) return -1;
-		    idx = _ntoa_long(out, buffer, idx, maxlen, (unsigned long)(value > 0 ? value : 0 - value), value < 0, base, precision, width, flags);
-		  } else {
-//		    const int value = (flags & FLAGS_CHAR) ? (char)va_arg(va, int) : (flags & FLAGS_SHORT) ? (short int)va_arg(va, int) : va_arg(va, int);
-		    int value;
-			if (flags & FLAGS_CHAR) {
-				if (_getarg(&value, cx, &argvidx, argc, argv, JSARG_TYPE_CHAR)) return -1;
-			} else if (flags & FLAGS_SHORT) {
-				if (_getarg(&value, cx, &argvidx, argc, argv, JSARG_TYPE_SHORT)) return -1;
+			// set the base
+			unsigned int base;
+			if (*format == 'x' || *format == 'X') {
+				base = 16U;
+			} else if (*format == 'o') {
+				base =  8U;
+			} else if (*format == 'b') {
+				base =  2U;
 			} else {
+				base = 10U;
+				flags &= ~FLAGS_HASH;   // no hash for dec format
+			}
+			// uppercase
+			if (*format == 'X') {
+				flags |= FLAGS_UPPERCASE;
+			}
+
+			// no plus or space flag for u, x, X, o, b
+			if ((*format != 'i') && (*format != 'd')) {
+			  flags &= ~(FLAGS_PLUS | FLAGS_SPACE);
+			}
+
+			// ignore '0' flag when precision is given
+			if (flags & FLAGS_PRECISION) {
+			  flags &= ~FLAGS_ZEROPAD;
+			}
+
+			// convert the integer
+			if ((*format == 'i') || (*format == 'd')) {
+			  // signed
+			  if (flags & FLAGS_LONG_LONG) {
+			#if defined(PRINTF_SUPPORT_LONG_LONG)
+	//		    const long long value = va_arg(va, long long);
+			    long long value;
 				if (_getarg(&value, cx, &argvidx, argc, argv, JSARG_TYPE_INT)) return -1;
+			    idx = _ntoa_long_long(out, buffer, idx, maxlen, (unsigned long long)(value > 0 ? value : 0 - value), value < 0, base, precision, width, flags);
+			#endif
+			  }
+			  else if (flags & FLAGS_LONG) {
+	//		    const long value = va_arg(va, long);
+			    long value;
+				if (_getarg(&value, cx, &argvidx, argc, argv, JSARG_TYPE_INT)) return -1;
+			    idx = _ntoa_long(out, buffer, idx, maxlen, (unsigned long)(value > 0 ? value : 0 - value), value < 0, base, precision, width, flags);
+			  } else {
+	//		    const int value = (flags & FLAGS_CHAR) ? (char)va_arg(va, int) : (flags & FLAGS_SHORT) ? (short int)va_arg(va, int) : va_arg(va, int);
+			    int value;
+				if (flags & FLAGS_CHAR) {
+					if (_getarg(&value, cx, &argvidx, argc, argv, JSARG_TYPE_CHAR)) return -1;
+				} else if (flags & FLAGS_SHORT) {
+					if (_getarg(&value, cx, &argvidx, argc, argv, JSARG_TYPE_SHORT)) return -1;
+				} else {
+					if (_getarg(&value, cx, &argvidx, argc, argv, JSARG_TYPE_INT)) return -1;
+				}
+			    idx = _ntoa_long(out, buffer, idx, maxlen, (unsigned int)(value > 0 ? value : 0 - value), value < 0, base, precision, width, flags);
+			  }
 			}
-		    idx = _ntoa_long(out, buffer, idx, maxlen, (unsigned int)(value > 0 ? value : 0 - value), value < 0, base, precision, width, flags);
-		  }
-		}
-		else {
-		  // unsigned
-		  if (flags & FLAGS_LONG_LONG) {
-		#if defined(PRINTF_SUPPORT_LONG_LONG)
-//		    idx = _ntoa_long_long(out, buffer, idx, maxlen, va_arg(va, unsigned long long), false, base, precision, width, flags);
-                    long long value;
-                        if (_getarg(&value, cx, &argvidx, argc, argv, JSARG_TYPE_INT)) return -1;
-			
-		    idx = _ntoa_long_long(out, buffer, idx, maxlen, value, false, base, precision, width, flags);
-		#endif
-		  }
-		  else if (flags & FLAGS_LONG) {
-//		    idx = _ntoa_long(out, buffer, idx, maxlen, va_arg(va, unsigned long), false, base, precision, width, flags);
-                    long long value;
-                        if (_getarg(&value, cx, &argvidx, argc, argv, JSARG_TYPE_INT)) return -1;
-		    idx = _ntoa_long(out, buffer, idx, maxlen, value, false, base, precision, width, flags);
-		  }
-		  else {
-//		    const unsigned int value = (flags & FLAGS_CHAR) ? (unsigned char)va_arg(va, unsigned int) : (flags & FLAGS_SHORT) ? (unsigned short int)va_arg(va, unsigned int) : va_arg(va, unsigned int);
-		    unsigned int value;
-			if (flags & FLAGS_CHAR) {
-				if (_getarg(&value, cx, &argvidx, argc, argv, JSARG_TYPE_UCHAR)) return -1;
-			} else if (flags & FLAGS_SHORT) {
-				if (_getarg(&value, cx, &argvidx, argc, argv, JSARG_TYPE_USHORT)) return -1;
-			} else {
-				if (_getarg(&value, cx, &argvidx, argc, argv, JSARG_TYPE_UINT)) return -1;
+			else {
+			  // unsigned
+			  if (flags & FLAGS_LONG_LONG) {
+			#if defined(PRINTF_SUPPORT_LONG_LONG)
+	//		    idx = _ntoa_long_long(out, buffer, idx, maxlen, va_arg(va, unsigned long long), false, base, precision, width, flags);
+			    long long value;
+				if (_getarg(&value, cx, &argvidx, argc, argv, JSARG_TYPE_INT)) return -1;
+				
+			    idx = _ntoa_long_long(out, buffer, idx, maxlen, value, false, base, precision, width, flags);
+			#endif
+			  }
+			  else if (flags & FLAGS_LONG) {
+	//		    idx = _ntoa_long(out, buffer, idx, maxlen, va_arg(va, unsigned long), false, base, precision, width, flags);
+			    long long value;
+				if (_getarg(&value, cx, &argvidx, argc, argv, JSARG_TYPE_INT)) return -1;
+			    idx = _ntoa_long(out, buffer, idx, maxlen, value, false, base, precision, width, flags);
+			  }
+			  else {
+	//		    const unsigned int value = (flags & FLAGS_CHAR) ? (unsigned char)va_arg(va, unsigned int) : (flags & FLAGS_SHORT) ? (unsigned short int)va_arg(va, unsigned int) : va_arg(va, unsigned int);
+			    unsigned int value;
+				if (flags & FLAGS_CHAR) {
+					if (_getarg(&value, cx, &argvidx, argc, argv, JSARG_TYPE_UCHAR)) return -1;
+				} else if (flags & FLAGS_SHORT) {
+					if (_getarg(&value, cx, &argvidx, argc, argv, JSARG_TYPE_USHORT)) return -1;
+				} else {
+					if (_getarg(&value, cx, &argvidx, argc, argv, JSARG_TYPE_UINT)) return -1;
+				}
+			    idx = _ntoa_long(out, buffer, idx, maxlen, value, false, base, precision, width, flags);
+			  }
 			}
-		    idx = _ntoa_long(out, buffer, idx, maxlen, value, false, base, precision, width, flags);
-		  }
-		}
-		format++;
-		break;
+			format++;
+			break;
 		}
 #if defined(PRINTF_SUPPORT_FLOAT)
 		case 'f' :
@@ -1059,7 +1053,8 @@ JSBool JS_Printf(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *r
 		goto JS_Printf_done;
 	}
 	buffer[ret] = 0;
-	if (e->output) e->output(buffer);
+	dprintf(dlevel,"output: %p\n", e->output);
+	if (e->output) e->output("%s",buffer);
 	*rval = INT_TO_JSVAL(ret);
 	r = JS_TRUE;
 JS_Printf_done:
@@ -1110,7 +1105,7 @@ JSBool js_log_write(int flags, JSContext *cx, uintN argc, jsval *vp) {
 	}
 	buffer[ret] = 0;
 	dprintf(1,"flags: %04x, buffer: %s\n", flags, buffer);
-	log_write(flags,buffer);
+	log_write(flags,"%s",buffer);
 	r = JS_TRUE;
 JS_SPrintf_done:
 	if (buffer) free(buffer);

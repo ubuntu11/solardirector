@@ -31,17 +31,19 @@ struct solard_agent {
 	json_value_t *driver_info;
 	mqtt_session_t *m;		/* MQTT Session handle */
 	mqtt_config_t mqtt_config;
+	bool config_from_mqtt;
 	influx_session_t *i;		/* InfluxDB session handle */
 	influx_config_t influx_config;
 	int read_interval;
 	int write_interval;
 	list mq;			/* incoming message queue */
-	list mh;			/* Message handlers */
 	uint16_t state;			/* States */
 	int pretty;			/* Format json messages for readability (uses more mem) */
 	char instance_name[SOLARD_NAME_LEN]; /* Agent instance name */
 #ifdef JS
 	JSEngine *js;			/* JavaScript engine */
+	int rtsize;
+	int stksize;
 	JSPropertySpec *props;
 #endif
 	char script_dir[SOLARD_PATH_MAX];
@@ -71,7 +73,7 @@ struct solard_agent {
 #define SOLARD_AGENT_RUNNING 0x01
 #define SOLARD_AGENT_CONFIG_DIRTY 0x10
 
-solard_agent_t *agent_init(int argc, char **argv, opt_proctab_t *agent_opts,
+solard_agent_t *agent_init(int, char **, char *, opt_proctab_t *,
 		solard_driver_t *, void *, config_property_t *, config_function_t *);
 int agent_run(solard_agent_t *ap);
 void agent_mktopic(char *topic, int topicsz, solard_agent_t *ap, char *name, char *func);
@@ -80,6 +82,7 @@ int agent_pub(solard_agent_t *ap, char *func, char *message, int retain);
 int agent_pubinfo(solard_agent_t *ap, int disp);
 int agent_reply(solard_agent_t *ap, char *topic, int status, char *message);
 int agent_set_callback(solard_agent_t *, solard_agent_callback_t *, void *);
+int agent_clear_callback(solard_agent_t *);
 void agent_add_msghandler(solard_agent_t *, solard_msghandler_t *, void *);
 
 void *agent_get_handle(solard_agent_t *);
@@ -90,6 +93,7 @@ int agent_script_exists(solard_agent_t *ap, char *name);
 #include "config.h"
 
 #ifdef JS
+JSObject *JSAgent(JSContext *cx, void *priv);
 int agent_jsinit(JSEngine *e, void *);
 #endif
 

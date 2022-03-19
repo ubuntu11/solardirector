@@ -74,7 +74,7 @@ int rdev_send(socket_t fd, uint8_t opcode, uint8_t unit, uint32_t control, void 
 
 	/* Send the buf */
 	if (buf && buflen) {
-		if (debug >= 1) bindump("SENDING",buf,buflen);
+//		if (debug >= 1) bindump("SENDING",buf,buflen);
 		bytes = send(fd,buf,buflen,0);
 		dprintf(dlevel,"bytes: %d\n", bytes);
 		if (bytes < 0) return -1;
@@ -130,7 +130,7 @@ int rdev_recv(socket_t fd, uint8_t *opcode, uint8_t *unit, uint32_t *control, vo
 		bytes = recv(fd, buf, readlen, 0);
 		dprintf(dlevel,"bytes: %d\n", bytes);
 		if (bytes < 0) return -1;
-		if (debug >= 1) bindump("RECEIVED",buf,bytes);
+//		if (debug >= 1) bindump("RECEIVED",buf,bytes);
 		/* XXX */
 //		if (bytes != readlen) return 0;
 	} else {

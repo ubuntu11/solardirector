@@ -113,7 +113,7 @@ char *stredit(char *string, char *list) {
 		*(dest+1) = '\0';
 	}
 	if (edit_funcs.uncomment) {
-		for(src = (char *)&return_info; src != '\0'; src++) {
+		for(src = (char *)&return_info; *src != '\0'; src++) {
 			if (*src == '!') {
 				*src = '\0';
 				break;

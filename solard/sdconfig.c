@@ -3,6 +3,8 @@
 
 #define dlevel 1
 
+extern char *sd_version_string;
+
 #define AGENTINFO_PROPS(info) \
 	{ "agent_name", DATA_TYPE_STRING, (info)->agent, sizeof((info)->agent)-1, "", 0, 0, 0, 0, 0, 0, 0, 1, 0 }, \
 	{ "agent_path", DATA_TYPE_STRING, (info)->path, sizeof((info)->path)-1, "", 0, 0, 0, 0, 0, 0, 0, 1, 0 }, \
@@ -137,7 +139,7 @@ int solard_agent_init(int argc, char **argv, opt_proctab_t *sd_opts, solard_conf
 		{0}
 	};
 
-	conf->ap = agent_init(argc,argv,sd_opts,&sd_driver,conf,sd_props,sd_funcs);
+	conf->ap = agent_init(argc,argv,sd_version_string,sd_opts,&sd_driver,conf,sd_props,sd_funcs);
 	dprintf(1,"ap: %p\n",conf->ap);
 	return (conf->ap ? 0 : 1);
 }

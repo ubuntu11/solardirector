@@ -152,8 +152,10 @@ static JSBool jsget(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval
 		sprintf(s->errmsg,"SMANET.get: not connected");
 		goto jsget_error;
 	}
+#ifdef SMANET_THREADSAFE
 	dprintf(dlevel,"locking...\n");
 	smanet_lock(s);
+#endif
 	dprintf(dlevel,"argc: %d\n", argc);
 	if (argc != 1) {
 		sprintf(s->errmsg,"SMANET.get: 1 argument is required");
@@ -180,13 +182,17 @@ static JSBool jsget(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval
 	} else {
 		JS_NewDoubleValue(cx, d, rval);
 	}
+#ifdef SMANET_THREADSAFE
 	dprintf(dlevel,"unlocking...\n");
 	smanet_unlock(s);
+#endif
 	return JS_TRUE;
 
 jsget_error:
+#ifdef SMANET_THREADSAFE
 	dprintf(dlevel,"unlocking...\n");
 	smanet_unlock(s);
+#endif
 	*rval = JSVAL_VOID;
 	return JS_TRUE;
 }
@@ -208,8 +214,10 @@ static JSBool jsset(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval
 		sprintf(s->errmsg,"SMANET.set: not connected");
 		goto jsset_error;
 	}
+#ifdef SMANET_THREADSAFE
 	dprintf(dlevel,"locking...\n");
 	smanet_lock(s);
+#endif
 	dprintf(dlevel,"argc: %d\n", argc);
 	if (argc != 2) {
 		sprintf(s->errmsg,"SMANET.set: 2 arguments are required");
@@ -238,12 +246,17 @@ static JSBool jsset(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval
 		goto jsset_error;
 	}
 	*rval = BOOLEAN_TO_JSVAL(false);
+#ifdef SMANET_THREADSAFE
 	dprintf(dlevel,"unlocking...\n");
 	smanet_unlock(s);
+#endif
 	return JS_TRUE;
 
 jsset_error:
+#ifdef SMANET_THREADSAFE
+	dprintf(dlevel,"unlocking...\n");
 	smanet_unlock(s);
+#endif
 	return JS_TRUE;
 }
 

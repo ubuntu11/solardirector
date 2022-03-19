@@ -7,7 +7,7 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#define DEBUG_CAN 1
+#define DEBUG_CAN 0
 #define dlevel 4
 
 #ifdef DEBUG
@@ -65,6 +65,7 @@ static int can_config_clear_filter(can_session_t *s) {
 		dprintf(dlevel,"r: %d\n", r);
 		free(s->filters);
 		s->filters = 0;
+		if (r < 0) return 1;
 	}
 	return 0;
 }
@@ -1201,16 +1202,15 @@ static void *can_recv_thread(void *handle) {
 	return 0;
 }
 
-static int can_read_direct(can_session_t *s, uint32_t *control, void *buf, int buflen) {
+static int can_read_direct(can_session_t *s, uint32_t *id, void *buf, int buflen) {
 	struct can_frame *frame = buf;
-	int bytes,id;
+	int bytes;
 
 	dprintf(dlevel,"fd: %d\n", s->fd);
 	if (s->fd < 0) return -1;
 
-	if (!control) return 0;
-	id = *control;
-	dprintf(dlevel,"id: %03x\n", id);
+	if (!id) return 0;
+	dprintf(dlevel,"id: %03x\n", *id);
 
 	/* Keep reading until we get our ID */
 	do {
@@ -1221,12 +1221,12 @@ static int can_read_direct(can_session_t *s, uint32_t *control, void *buf, int b
 			if (errno != EAGAIN) bytes = -1;
 			break;
 		}
-		if (bytes < sizeof(*frame)) {
-			fprintf(stderr, "read: incomplete CAN frame\n");
+		if (bytes != sizeof(struct can_frame)) {
+			log_error("can_read_direct: incomplete CAN frame\n");
 			continue;
 		}
 		dprintf(8,"id: %x, frame->can_id: %x\n", id, frame->can_id);
-	} while(id != 0xFFFF && frame->can_id != id);
+	} while(*id != 0xFFFF && frame->can_id != *id);
 #ifdef DEBUG
 	if (bytes > 0 && debug >= 8) bindump("FROM DEVICE",buf,sizeof(struct can_frame));
 #endif

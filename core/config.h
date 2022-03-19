@@ -91,7 +91,9 @@ typedef struct config config_t;
 config_t *config_init(char *, config_property_t *,config_function_t *);
 char *config_get_errmsg(config_t *);
 void config_dump(config_t *cp);
+config_property_t *config_combine_props(config_property_t *p1, config_property_t *p2);
 void config_add_props(config_t *, char *, config_property_t *, int flags);
+config_function_t *config_combine_funcs(config_function_t *f1, config_function_t *f2);
 void config_add_funcs(config_t *, config_function_t *);
 int config_add_info(config_t *, json_object_t *);
 
@@ -106,6 +108,8 @@ config_property_t *config_section_dup_property(config_section_t *, config_proper
 config_section_t *config_get_section(config_t *,char *);
 config_section_t *config_create_section(config_t *,char *,int);
 config_property_t *config_get_property(config_t *cp, char *sname, char *name);
+int config_delete_property(config_t *cp, char *sname, char *name);
+int config_set_property(config_t *cp, char *sname, char *name, int type, void *src, int len);
 config_property_t *config_section_get_property(config_section_t *s, char *name);
 int config_section_get_properties(config_section_t *s, config_property_t *props);
 config_property_t *config_section_add_property(config_t *cp, config_section_t *s, config_property_t *p, int flags);
@@ -114,7 +118,7 @@ config_property_t *config_section_add_props(config_t *cp, config_section_t *s, c
 config_function_t *config_function_get(config_t *, char *name);
 int config_function_set(config_t *, char *name, config_function_t *);
 
-json_value_t *config_to_json(config_t *cp, int noflags);
+json_value_t *config_to_json(config_t *cp, int noflags, int dirty);
 int config_from_json(config_t *cp, json_value_t *v);
 int config_write(config_t *);
 int config_add(config_t *cp,char *section, char *label, char *value);
@@ -139,6 +143,7 @@ void config_build_propmap(config_t *cp);
 JSPropertySpec *config_to_props(config_t *cp, char *name, JSPropertySpec *add);
 JSBool config_jsgetprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval, config_t *, JSPropertySpec *);
 JSBool config_jssetprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval, config_t *, JSPropertySpec *);
+JSObject *JSConfig(JSContext *cx, void *priv);
 int config_jsinit(JSEngine *e, config_t *cp);
 #endif
 
