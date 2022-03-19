@@ -1,4 +1,3 @@
-/* Example using log10 by TechOnTheNet.com */
 
 #include <stdio.h>
 #include <math.h>

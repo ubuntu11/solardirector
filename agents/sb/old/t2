@@ -1,6 +1,0 @@
-while read line
-do
-#	echo "line: >${line}<"
-	t=$(echo "$line" | sed 's/:/,/' | sed 's:,$::')
-	echo "	{ ${t} },"
-done < sma_objects.json

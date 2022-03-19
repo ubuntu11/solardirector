@@ -1,6 +1,7 @@
 
 #include "solard.h"
 
+#if 0
 #ifdef JS
 #include "solard_agentinfo_propid.h"
 
@@ -307,3 +308,4 @@ int solard_jsinit(solard_config_t *conf) {
 	return r;
 }
 #endif /* JS */
+#endif

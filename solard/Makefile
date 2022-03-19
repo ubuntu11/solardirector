@@ -1,5 +1,5 @@
 
 PROGNAME=$(shell basename $(shell pwd))
-SRCS=main.c info.c sdconfig.c control.c agentinfo.c agents.c battery.c inverter.c monitor.c jsfuncs.c
+SRCS=main.c info.c sdconfig.c agentinfo.c agents.c jsfuncs.c
 
 include ../Makefile.sd
