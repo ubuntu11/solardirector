@@ -1,6 +1,6 @@
 
 #define DEBUG_OBJECTS 1
-#define dlevel 4
+#define dlevel 6
 
 #ifdef DEBUG
 #undef DEBUG

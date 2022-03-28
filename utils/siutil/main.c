@@ -360,6 +360,7 @@ int main(int argc, char **argv) {
 						}
 					} else {
 						dprintf(1,"value: %s, text: %s\n", value, text);
+						if (strcmp(text,"---") == 0) text = "Auto";
 						if (strcmp(value,text) != 0 || force_flag) {
 							if (ver_flag && !force_flag) printf("%s %s != %s\n",label,text,value);
 							else if (smanet_set_value(s->smanet,label,0,value))
@@ -486,17 +487,18 @@ int main(int argc, char **argv) {
 				if (!mr) return 1;
 
 				for(i=0; i < argc; i++) mr[i].name = argv[i];
-				for(i=0; i < argc; i++) dprintf(0,"mr[%d]: %s\n", i, mr[i].name);
+				for(i=0; i < argc; i++) dprintf(1,"mr[%d]: %s\n", i, mr[i].name);
 				if (smanet_get_multvalues(s->smanet,mr,argc)) {
-					log_error(0,"error getting multi values: %s\n", s->smanet->errmsg);
+					log_error("error getting multi values: %s\n", s->smanet->errmsg);
 					free(mr);
 					return 1;
 				}
 				for(i=0; i < argc; i++) {
 					dprintf(1,"mr[%d]: value: %f, text: %s\n", i, mr[i].value, mr[i].text);
-					if (text) dstr(argv[0],"%s",mr[i].text);
-					else if (double_isint(mr[i].value)) dint(argv[i],"%d",(int)mr[i].value);
-					else dfloat(argv[i],"%f",mr[i].value);
+					dprintf(1,"text: %p\n", text);
+					if (mr[i].text) dstr(mr[i].name,"%s",mr[i].text);
+					else if (double_isint(mr[i].value)) dint(mr[i].name,"%d",(int)mr[i].value);
+					else dfloat(mr[i].name,"%f",mr[i].value);
 				}
 
 			} else {

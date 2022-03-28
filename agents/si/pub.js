@@ -19,9 +19,6 @@ function pub_main() {
 	var fields = inverter_fields.concat(charger_fields).unique().sort();
 	//printf("fields: %s\n", fields);
 
-	delobj(data);
-	var data = si.data;
-
 	function addstat(str,val,text) {
 		if (val) str += "[" + text + "]";
 		return str;
@@ -38,7 +35,6 @@ function pub_main() {
 	//printf("status: %s\n", status);
 	fields.push("status");
 
-	var mydata = {};
 	//fields: battery_current,battery_level,battery_power,battery_temp,battery_voltage,capabilities,charge_current,charge_mode,charge_power,charge_voltage,input_current,input_frequency,input_power,input_voltage,load,output_current,output_frequency,output_power,output_voltage
 	var tab = [
 			[ "battery_voltage",	data.battery_voltage ],
@@ -61,9 +57,10 @@ function pub_main() {
 			[ "load_power",		data.load_power ],
 			[ "status",		status ],
 	];
+	var mydata = {};
 	for(j=0; j < tab.length; j++) mydata[tab[j][0]] = tab[j][1];
 	//for(key in mydata) printf("%20.20s: %s\n", key, mydata[key]);
-	tab = null;
+//	tab = null;
 
 	var format = 0;
 	switch(format) {
@@ -86,9 +83,8 @@ function pub_main() {
 
 	j = JSON.stringify(mydata,fields,4);
 	//printf("j: %s\n", j);
-	fields = null;
 
-	mqtt.pub(SOLARD_TOPIC_ROOT+"/Agents/"+agent.name+"/"+SOLARD_FUNC_DATA,j,0);
+	si.agent.mqtt.pub(SOLARD_TOPIC_ROOT+"/Agents/"+si.agent.name+"/"+SOLARD_FUNC_DATA,j,0);
 
-	influx.write("test",j);
+	si.agent.influx.write("test",j);
 }

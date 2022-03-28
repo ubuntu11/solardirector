@@ -246,12 +246,17 @@ struct si_session {
 	jsval agent_val;
 	JSPropertySpec *data_props;
 	jsval data_val;
+	jsval can_val;
+	jsval smanet_val;
 	int interval;
 	int readonly;
+	int readonly_warn;
 	si_current_source_t input;
 	si_current_source_t output;
 //	bool feed;
 	char last_out[128];
+	int disable_si_read;
+	int disable_si_write;
 };
 typedef struct si_session si_session_t;
 

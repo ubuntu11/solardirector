@@ -9,6 +9,7 @@ SHARED?=no
 STATIC?=no
 PAHO?=yes
 JS?=yes
+CURL?=yes
 ID:=$(shell id -u)
 
 ifneq "$(findstring win,$(TARGET))" ""
@@ -65,10 +66,6 @@ ifeq ($(JS),yes)
 	LIBS+=-L$(SRC_ROOT)/js -ljs$(SUFFIX) -lm 
 	DEPS+=$(SRC_ROOT)/js/libjs$(SUFFIX)$(LIBEXT)
 endif
-
-#ifeq ($(JS),yes)
-#	LIBS+=-L$(SRC_ROOT)/js -ljs$(SUFFIX) -lm
-#endif
 
 ifneq ($(LIBNAME),transports)
 	LIBS+=-L$(SRC_ROOT)/transports -ltransports$(SUFFIX)

@@ -10,6 +10,8 @@ LICENSE file in the root directory of this source tree.
 #ifndef __JBD_H
 #define __JBD_H
 
+#define TARGET_ENDIAN BIG_ENDIAN
+
 #include <pthread.h>
 #include "agent.h"
 #include "jbd_regs.h"
@@ -66,6 +68,9 @@ struct jbd_session {
 #ifdef JS
 	JSPropertySpec *props;
 	JSPropertySpec *data_props;
+	jsval data_val;
+	jsval hw_val;
+	jsval agent_val;
 #endif
 };
 typedef struct jbd_session jbd_session_t;
@@ -164,7 +169,10 @@ int jbd_config(void *h, int req, ...);
 /* jsfuncs.c */
 int jbd_jsinit(jbd_session_t *s);
 
-#define jbd_getshort(p) ((short) ((*((p)) << 8) | *((p)+1) ))
-#define jbd_putshort(p,v) { float tmp; *((p)) = ((int)(tmp = v) >> 8); *((p+1)) = (int)(tmp = v); }
+//#define jbd_getshort(p) ((short) ((*((p)) << 8) | *((p)+1) ))
+//#define jbd_putshort(p,v) { float tmp; *((p)) = ((int)(tmp = v) >> 8); *((p+1)) = (int)(tmp = v); }
+
+#define jbd_getshort _gets16
+#define jbd_putshort _puts16
 
 #endif

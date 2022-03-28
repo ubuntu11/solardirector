@@ -36,13 +36,13 @@ int solard_read(void *handle, uint32_t *control, void *buf, int buflen) {
 		p = client_getagentrole(ap);
 		if (!p) continue;
 //		dprintf(0,"role: %s, name: %s, count: %d\n", p, ap->name, list_count(ap->mq));
-		if (strcmp(p,SOLARD_ROLE_BATTERY) == 0) getpack(conf,ap);
-		else if (strcmp(p,SOLARD_ROLE_BATTERY) == 0) getinv(conf,ap);
+//		if (strcmp(p,SOLARD_ROLE_BATTERY) == 0) getpack(conf,ap);
+//		else if (strcmp(p,SOLARD_ROLE_BATTERY) == 0) getinv(conf,ap);
 		else list_purge(ap->mq);
 	}
 
 	check_agents(conf);
-	solard_monitor(conf);
+//	solard_monitor(conf);
 	agent_start_script(conf->ap,"monitor.js");
 	time(&conf->last_check);
 	return 0;
@@ -54,7 +54,7 @@ int main(int argc,char **argv) {
 		OPTS_END
 	};
 #if TESTING
-	char *args[] = { "solard", "-d", "0", "-e", "agent.script_dir=\".\"; agent.libdir=\"../../\";", "-c", "sdtest.conf" };
+	char *args[] = { "solard", "-d", "4", "-c", "sdtest.json" };
 	argc = (sizeof(args)/sizeof(char *));
 	argv = args;
 #endif
@@ -80,7 +80,7 @@ int main(int argc,char **argv) {
 
 	if (solard_agent_init(argc,argv,sd_opts,conf)) return 1;
 
-//	conf->ap->read_interval = conf->ap->write_interval = -1;
+	conf->ap->read_interval = conf->ap->write_interval = 15;
 
 	/* We're not only the president but a client too! */
 	dprintf(1,"calling client_init...\n");

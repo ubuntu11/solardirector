@@ -92,12 +92,6 @@ static void _setraw(si_session_t *s) {
 	rdp->GdFeedPwr = SDATA(10,4);
 }
 
-#define GETFVAL(val) (float)_gets16(val)
-#define GETFS100(val) (((float)_gets16(val))*100)
-#define GETF100(val) (((float)_gets16(val))*100)
-#define GETD10(val) (((float)_gets16(val))/10)
-#define GETD100(val) (((float)_gets16(val))/100)
-
 static int _getcur(si_session_t *s, char *what, si_current_source_t *spec, float *dest) {
 	uint8_t data[8];
 	float val;
@@ -178,6 +172,12 @@ void si_can_get_relays(si_session_t *s) {
 	RB2(FeedSelfC,	0x0800);
 	RB2(Esave,	0x1000);
 }
+
+#define GETFVAL(val) (float)_gets16(val)
+#define GETFS100(val) (((float)_gets16(val))*100)
+#define GETF100(val) (((float)_gets16(val))*100)
+#define GETD10(val) (((float)_gets16(val))/10)
+#define GETD100(val) (((float)_gets16(val))/100)
 
 int si_can_get_data(si_session_t *s) {
 	si_raw_data_t *rdp = &s->raw_data;
@@ -513,13 +513,26 @@ int si_can_write(si_session_t *s, uint32_t id, uint8_t *data, int data_len) {
 
 	dprintf(dlevel,"id: %03x, data: %p, data_len: %d\n",id,data,data_len);
 
-//	bindump("write data",data,data_len);
 	dprintf(dlevel,"readonly: %d\n", s->readonly);
-	if (s->readonly) return data_len;
+	if (s->readonly) {
+		if (!s->readonly_warn) {
+			log_warning("readonly is true, not writing!\n");
+			s->readonly_warn = true;
+		}
+		return data_len;
+	}
 
-	/* XXX disabled */
-	printf("*** NOT WRITING ***\n");
+#if 1
+	if (1) {
+		char str[32],*p;
+		int i;
+		p = str;
+		for(i=0; i < data_len; i++) p += sprintf(p,"%02x ",data[i]);
+		log_info("==> can_write: can_id: 0x%03x, data: %s\n",id,str);
+	}
+	log_error("*** NOT WRITING ***\n");
 	return data_len;
+#endif
 
 	len = data_len > 8 ? 8 : data_len;
 

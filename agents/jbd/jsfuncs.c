@@ -4,9 +4,6 @@
 
 #define dlevel 5
 
-static JSBool jbd_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval);
-static JSBool jbd_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval);
-
 enum JBD_HW_PROPERTY_ID {
 	JBD_HW_PROPERTY_ID_MF,
 	JBD_HW_PROPERTY_ID_MODEL,
@@ -24,16 +21,16 @@ static JSBool jbd_hw_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval
 		dprintf(dlevel,"prop_id: %d\n", prop_id);
 		switch(prop_id) {
 		case JBD_HW_PROPERTY_ID_MF:
-			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,hwinfo->manufacturer));
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,hwinfo->manufacturer,strlen(hwinfo->manufacturer));
 			break;
 		case JBD_HW_PROPERTY_ID_MODEL:
-			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,hwinfo->model));
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,hwinfo->model,strlen(hwinfo->model));
 			break;
 		case JBD_HW_PROPERTY_ID_DATE:
-			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,hwinfo->mfgdate));
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,hwinfo->mfgdate,strlen(hwinfo->mfgdate));
 			break;
 		case JBD_HW_PROPERTY_ID_VER:
-			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,hwinfo->version));
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,hwinfo->version,strlen(hwinfo->version));
 			break;
 		default:
 			JS_ReportError(cx, "property not found");
@@ -46,7 +43,7 @@ static JSBool jbd_hw_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval
 }
 
 static JSClass jbd_hw_class = {
-	"jbd_hw",		/* Name */
+	"jbd_hw_info",		/* Name */
 	JSCLASS_HAS_PRIVATE,	/* Flags */
 	JS_PropertyStub,	/* addProperty */
 	JS_PropertyStub,	/* delProperty */
@@ -59,7 +56,7 @@ static JSClass jbd_hw_class = {
 	JSCLASS_NO_OPTIONAL_MEMBERS
 };
 
-JSObject *JSJBDHWInfo(JSContext *cx, void *priv) {
+JSObject *js_jbd_hw_new(JSContext *cx, JSObject *parent, void *priv) {
 	JSPropertySpec jbd_hw_props[] = {
 		{ "manufacturer", JBD_HW_PROPERTY_ID_MF, JSPROP_ENUMERATE | JSPROP_READONLY },
 		{ "model", JBD_HW_PROPERTY_ID_MODEL, JSPROP_ENUMERATE | JSPROP_READONLY },
@@ -70,7 +67,7 @@ JSObject *JSJBDHWInfo(JSContext *cx, void *priv) {
 	JSObject *obj;
 
 	dprintf(dlevel,"defining %s object\n",jbd_hw_class.name);
-	obj = JS_InitClass(cx, JS_GetGlobalObject(cx), 0, &jbd_hw_class, 0, 0, jbd_hw_props, 0, 0, 0);
+	obj = JS_InitClass(cx, parent, 0, &jbd_hw_class, 0, 0, jbd_hw_props, 0, 0, 0);
 	if (!obj) {
 		JS_ReportError(cx,"unable to initialize %s", jbd_hw_class.name);
 		return 0;
@@ -82,13 +79,49 @@ JSObject *JSJBDHWInfo(JSContext *cx, void *priv) {
 
 /*************************************************************************/
 
+static JSBool jbd_data_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp) {
+	jbd_session_t *s;
+
+	s = JS_GetPrivate(cx,obj);
+	if (JSVAL_IS_INT(id)) {
+		int prop_id = JSVAL_TO_INT(id);
+		config_property_t *p;
+
+		dprintf(dlevel,"prop_id: %d\n", prop_id);
+		p = CONFIG_GETMAP(s->ap->cp,prop_id);
+		if (!p) p = config_get_propbyid(s->ap->cp,prop_id);
+		if (!p) {
+			JS_ReportError(cx, "property not found");
+			return JS_FALSE;
+		}
+		dprintf(4,"p: name: %s, type: %d(%s)\n", p->name, p->type, typestr(p->type));
+		if (strcmp(p->name,"temps") == 0) {
+			dprintf(4,"ntemps: %d\n", s->data.ntemps);
+			p->len = s->data.ntemps;
+		}
+		else if (strcmp(p->name,"cellvolt") == 0) {
+			dprintf(4,"ncells: %d\n", s->data.ncells);
+			p->len = s->data.ncells;
+		}
+		*vp = type_to_jsval(cx,p->type,p->dest,p->len);
+	}
+	return JS_TRUE;
+}
+
+static JSBool jbd_data_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp) {
+	jbd_session_t *s;
+
+	s = JS_GetPrivate(cx,obj);
+	return config_jssetprop(cx, obj, id, vp, s->ap->cp, s->data_props);
+}
+
 static JSClass jbd_data_class = {
 	"jbd_data",		/* Name */
 	JSCLASS_HAS_PRIVATE,	/* Flags */
 	JS_PropertyStub,	/* addProperty */
 	JS_PropertyStub,	/* delProperty */
-	jbd_getprop,		/* getProperty */
-	JS_PropertyStub,	/* setProperty */
+	jbd_data_getprop,	/* getProperty */
+	jbd_data_setprop,	/* setProperty */
 	JS_EnumerateStub,	/* enumerate */
 	JS_ResolveStub,		/* resolve */
 	JS_ConvertStub,		/* convert */
@@ -96,13 +129,14 @@ static JSClass jbd_data_class = {
 	JSCLASS_NO_OPTIONAL_MEMBERS
 };
 
-JSObject *JSJBDData(JSContext *cx, jbd_session_t *s) {
+JSObject *js_jbd_data_new(JSContext *cx, JSObject *parent, jbd_session_t *s) {
 	JSAliasSpec jbd_data_aliases[] = {
 		{ 0 }
 	};
 	JSObject *obj;
 
 	if (!s->data_props) {
+		/* section name must match used in jbd_config_add_jbd_data() */
 		s->data_props = config_to_props(s->ap->cp, "jbd_data", 0);
 		dprintf(dlevel,"info->props: %p\n",s->data_props);
 		if (!s->data_props) {
@@ -112,7 +146,7 @@ JSObject *JSJBDData(JSContext *cx, jbd_session_t *s) {
 	}
 
 	dprintf(dlevel,"defining %s object\n",jbd_data_class.name);
-	obj = JS_InitClass(cx, JS_GetGlobalObject(cx), 0, &jbd_data_class, 0, 0, s->data_props, 0, 0, 0);
+	obj = JS_InitClass(cx, parent, 0, &jbd_data_class, 0, 0, s->data_props, 0, 0, 0);
 	if (!obj) {
 		JS_ReportError(cx,"unable to initialize %s", jbd_data_class.name);
 		return 0;
@@ -129,8 +163,11 @@ JSObject *JSJBDData(JSContext *cx, jbd_session_t *s) {
 
 /*************************************************************************/
 
-#define	JBD_PROPERTY_ID_DATA 1024
-#define JBD_PROPERTY_ID_HW 1025
+enum JBD_PROPERTY_ID {
+	JBD_PROPERTY_ID_DATA=1024,
+	JBD_PROPERTY_ID_HW,
+	JBD_PROPERTY_ID_AGENT,
+};
 
 static JSBool jbd_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 	int prop_id;
@@ -147,10 +184,13 @@ static JSBool jbd_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 		dprintf(dlevel,"prop_id: %d\n", prop_id);
 		switch(prop_id) {
 		case JBD_PROPERTY_ID_DATA:
-			*rval = OBJECT_TO_JSVAL(JSJBDData(cx,s));
+			*rval = s->data_val;
 			break;
 		case JBD_PROPERTY_ID_HW:
-			*rval = OBJECT_TO_JSVAL(JSJBDHWInfo(cx,&s->hwinfo));
+			*rval = s->hw_val;
+			break;
+		case JBD_PROPERTY_ID_AGENT:
+			*rval = s->agent_val;
 			break;
 		default:
 			p = CONFIG_GETMAP(s->ap->cp,prop_id);
@@ -159,9 +199,7 @@ static JSBool jbd_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 				JS_ReportError(cx, "property not found");
 				return JS_FALSE;
 			}
-//			dprintf(1,"p: type: %d(%s), name: %s\n", p->type, typestr(p->type), p->name);
-			if (strcmp(p->name,"temps") == 0) p->len = s->data.ntemps;
-			else if (strcmp(p->name,"cellvolt") == 0) p->len = s->data.ncells;
+//			dprintf(4,"p: name: %s, type: %d(%s)\n", p->name, p->type, typestr(p->type));
 			*rval = type_to_jsval(cx,p->type,p->dest,p->len);
 			break;
 		}
@@ -194,10 +232,11 @@ static JSClass jbd_class = {
 	JSCLASS_NO_OPTIONAL_MEMBERS
 };
 
-JSObject *JSJBD(JSContext *cx, void *priv) {
+int js_jbd_init(JSContext *cx, JSObject *parent, void *priv) {
 	JSPropertySpec jbd_props[] = {
 		{ "data", JBD_PROPERTY_ID_DATA, JSPROP_ENUMERATE | JSPROP_READONLY },
 		{ "hw", JBD_PROPERTY_ID_HW, JSPROP_ENUMERATE | JSPROP_READONLY },
+		{ "agent", JBD_PROPERTY_ID_AGENT, JSPROP_ENUMERATE | JSPROP_READONLY },
 		{ 0 }
 	};
 	JSConstantSpec jbd_consts[] = {
@@ -208,34 +247,43 @@ JSObject *JSJBD(JSContext *cx, void *priv) {
 		JS_NUMCONST(JBD_MAX_CELLS),
 		{ 0 }
 	};
-	JSObject *obj;
+	JSObject *obj,*global = JS_GetGlobalObject(cx);
 	jbd_session_t *s = priv;
 
 	if (!s->props) {
 		s->props = config_to_props(s->ap->cp, s->ap->section_name, jbd_props);
 		if (!s->props) {
 			log_error("unable to create props: %s\n", config_get_errmsg(s->ap->cp));
-			return 0;
+			return 1;
 		}
 	}
 
 	dprintf(dlevel,"defining %s object\n",jbd_class.name);
-	obj = JS_InitClass(cx, JS_GetGlobalObject(cx), 0, &jbd_class, 0, 0, s->props, 0, 0, 0);
+	obj = JS_InitClass(cx, parent, 0, &jbd_class, 0, 0, s->props, 0, 0, 0);
 	if (!obj) {
-		JS_ReportError(cx,"unable to initialize si class");
-		return 0;
+		JS_ReportError(cx,"unable to initialize %s class, jbd_class.name");
+		return 1;
 	}
 	JS_SetPrivate(cx,obj,priv);
-	if (!JS_DefineConstants(cx, JS_GetGlobalObject(cx), jbd_consts)) {
+	if (!JS_DefineConstants(cx, global, jbd_consts)) {
 		JS_ReportError(cx,"unable to add jbd constants");
-		return 0;
+		return 1;
 	}
+
+	s->data_val = OBJECT_TO_JSVAL(js_jbd_data_new(cx,obj,s));
+	s->hw_val = OBJECT_TO_JSVAL(js_jbd_hw_new(cx,obj,&s->hwinfo));
+	s->agent_val = OBJECT_TO_JSVAL(jsagent_new(cx,obj,s->ap));
+
+	/* Create the global convenience objects */
+	JS_DefineProperty(cx, global, "jbd", OBJECT_TO_JSVAL(obj), 0, 0, 0);
+	JS_DefineProperty(cx, global, "data", s->data_val, 0, 0, 0);
+
 	dprintf(dlevel,"done!\n");
-	return obj;
+	return 0;
 }
 
 int jbd_jsinit(jbd_session_t *s) {
-	return JS_EngineAddInitFunc(s->ap->js, s->ap->section_name, JSJBD, s);
+	return JS_EngineAddInitFunc(s->ap->js, s->ap->section_name, js_jbd_init, s);
 }
 
 #endif

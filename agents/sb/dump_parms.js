@@ -5,7 +5,6 @@
 //
 
 include("dump.js")
-agent.debug = 0;
 
 // Open the sunny boy
 if (sb.open()) {

@@ -184,7 +184,8 @@ static void script_error(JSContext *cx, const char *message, JSErrorReport *repo
 JSContext *JS_EngineNewContext(JSEngine *e) {
 	JSContext *cx;
 	js_initfuncinfo_t *f;
-	JSObject *gobj,*newobj;
+	JSObject *gobj;
+	int r;
 
 	if ((cx = JS_NewContext(e->rt, e->stacksize)) == 0) {
 		dprintf(dlevel,"error creating context!\n");
@@ -206,13 +207,14 @@ JSContext *JS_EngineNewContext(JSEngine *e) {
 	list_reset(e->initfuncs);
 	while((f = list_get_next(e->initfuncs)) != 0) {
 		dprintf(dlevel,"calling: init for %s\n",f->name);
-		if (f->type == 0) newobj = f->func(cx, f->priv);
-		else if (f->type == 1) newobj = f->class(cx, gobj);
-		if (!newobj) {
+		r = 0;
+		if (f->type == 0) r = f->func(cx, gobj, f->priv);
+		else if (f->type == 1) r = (f->class(cx, gobj) ? 0 : 1);
+		if (r) {
 			char msg[128];
 
-			sprintf(msg,"JSInitFunc %s failed!\n",f->name);
-			log_error(msg);
+			sprintf(msg,"%s init%s failed!\n",f->name,f->type ? "class" : "func");
+//			log_error(msg);
 			JS_ReportError(cx,msg);
 			goto JS_EngineNewContext_error;
 		}
@@ -319,7 +321,7 @@ static char *load_file(char *filename) {
         FILE *fp;
 	char *buf;
 
-	dprintf(0,"filename: %s\n", filename);
+	dprintf(dlevel,"filename: %s\n", filename);
 
 	buf = 0;
         fp = fopen(filename,"rb");
@@ -328,19 +330,19 @@ static char *load_file(char *filename) {
                 struct stat sb;
 
                 fd = fileno(fp);
-                dprintf(0,"fd: %d\n", fd);
+                dprintf(dlevel,"fd: %d\n", fd);
                 if (fstat(fd, &sb) == 0) {
-                        dprintf(0,"st_size: %d\n", sb.st_size);
+                        dprintf(dlevel,"st_size: %d\n", sb.st_size);
                         if (sb.st_size > 0) {
 				buf = malloc(sb.st_size);
-				dprintf(0,"buf: %p\n", buf);
+				dprintf(dlevel,"buf: %p\n", buf);
 				if (!buf) return 0;
 				fread(buf,1,sb.st_size,fp);
                         }
                 }
                 fclose(fp);
         }
-	dprintf(0,"buf: %p\n", buf);
+	dprintf(dlevel,"buf: %p\n", buf);
 	return buf;
 }
 #endif
@@ -357,6 +359,22 @@ int JS_EngineAddInitClass(JSEngine *e, char *name, js_initclass_t *class) {
 	newfunc.class = class;
 	list_add(e->initfuncs, &newfunc, sizeof(newfunc));
 	return 0;
+}
+
+jsval js_get_function(JSContext *cx, JSObject *obj, char *name) {
+	jsval fval;
+	JSBool ok;
+
+	/* See if the func exists */
+	ok = JS_GetProperty(cx, obj, name, &fval);
+	dprintf(dlevel,"getprop ok: %d\n", ok);
+	if (ok) {
+		dprintf(dlevel,"fval type: %s\n", jstypestr(cx,fval));
+		if (strcmp(jstypestr(cx,fval),"function") == 0) {
+			return fval;
+		}
+	}
+	return JSVAL_NULL;
 }
 
 int _JS_EngineExec(JSEngine *e, char *filename, JSContext *cx, char *function_name) {
@@ -399,25 +417,29 @@ int _JS_EngineExec(JSEngine *e, char *filename, JSContext *cx, char *function_na
 
 	if (ok && function_name) {
 		jsval fval;
-		
-		/* See if the func exists */
-		ok = JS_GetProperty(cx, JS_GetGlobalObject(cx), function_name, &fval);
-		dprintf(dlevel,"getprop ok: %d\n", ok);
+
+		dprintf(dlevel,"function_name: %s\n", function_name);
+
+		/* Get the function */
+		fval = js_get_function(cx,JS_GetGlobalObject(cx),function_name);
+		dprintf(dlevel,"fval: %s\n", jstypestr(cx,fval));
+		if (fval == JSVAL_NULL) {
+			status = 1;
+			goto _JS_EngineExec_done;
+		}
+
+		/* Call the function */
+		ok = JS_CallFunctionValue(cx, JS_GetGlobalObject(cx), fval, 0, NULL, &rval);
+		dprintf(dlevel,"call ok: %d\n", ok);
 		if (ok) {
-			dprintf(dlevel,"fval type: %s\n", jstypestr(cx,fval));
-			if (strcmp(jstypestr(cx,fval),"function") == 0) {
-//				printf("==> %s\n", function_name);
-				ok = JS_CallFunctionValue(cx, JS_GetGlobalObject(cx), fval, 0, NULL, &rval);
-				if (ok) {
-					dprintf(dlevel,"rval type: %s\n", jstypestr(cx,rval));
-					if (strcmp(jstypestr(cx,rval),"number") == 0) {
-						JS_ValueToInt32(cx,rval,&status);
-						dprintf(dlevel,"status: %d\n", status);
-						return status;
-					}
-				}
+			dprintf(dlevel,"rval type: %s\n", jstypestr(cx,rval));
+			if (strcmp(jstypestr(cx,rval),"number") == 0) {
+				JS_ValueToInt32(cx,rval,&status);
+				dprintf(dlevel,"status: %d\n", status);
+				return status;
 			}
 		}
+
 	}
 #if !SCRIPT_CACHE
 	JS_DestroyScript(cx, script);
@@ -440,12 +462,13 @@ int _JS_EngineExec(JSEngine *e, char *filename, JSContext *cx, char *function_na
 		}
 	}
 
+_JS_EngineExec_done:
 	dprintf(dlevel,"status: %d\n", status);
 	return status;
 
 }
 
-int JS_EngineExec(JSEngine *e, char *filename, int newcx) {
+int JS_EngineExec(JSEngine *e, char *filename, char *function_name, int newcx) {
 	JSContext *cx;
 	char local_filename[256],fname[256],*p;
 	int r;
@@ -465,13 +488,17 @@ int JS_EngineExec(JSEngine *e, char *filename, int newcx) {
 	else cx = _getcx(e);
 	dprintf(dlevel,"cx: %p\n", cx);
 	if (!cx) goto JS_EngineExec_error;
-	strncpy(fname,basename(local_filename),sizeof(fname)-1);
-	while(1) {
-		p = strrchr(fname,'.');
-		if (!p) break;
-		*p = 0;
+	if (!function_name || !strlen(function_name)) {
+		strncpy(fname,basename(local_filename),sizeof(fname)-1);
+		while(1) {
+			p = strrchr(fname,'.');
+			if (!p) break;
+			*p = 0;
+		}
+		strcat(fname,"_main");
+	} else {
+		strncpy(fname,function_name,sizeof(fname)-1);
 	}
-	strcat(fname,"_main");
 	r = _JS_EngineExec(e, filename, cx, fname);
 
 JS_EngineExec_error:

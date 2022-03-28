@@ -6,7 +6,7 @@
 #include "list.h"
 #include <pthread.h>
 
-typedef JSObject *(js_initfunc_t)(JSContext *,void *);
+typedef int (js_initfunc_t)(JSContext *,JSObject *,void *);
 typedef JSObject *(js_initclass_t)(JSContext *, JSObject *);
 
 struct js_initfuncinfo {
@@ -40,7 +40,7 @@ int JS_EngineDestroy(JSEngine *);
 int JS_EngineAddInitFunc(JSEngine *, char *name, js_initfunc_t *func, void *priv);
 int JS_EngineAddInitClass(JSEngine *, char *name, js_initclass_t *func);
 int _JS_EngineExec(JSEngine *e, char *filename, JSContext *cx, char *fname);
-int JS_EngineExec(JSEngine *, char *, int);
+int JS_EngineExec(JSEngine *e, char *filename, char *function_name, int newcx);
 int JS_EngineSetStacksize(JSEngine *,int);
 JSBool JS_EngineExecString(JSEngine *e, char *string);
 JSContext *JS_EngineNewContext(JSEngine *e);

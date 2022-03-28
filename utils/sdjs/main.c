@@ -102,6 +102,15 @@ int shell(JSContext *cx) {
 	return 0;
 }
 
+static int js_init(JSContext *cx, JSObject *parent, void *priv) {
+	jsval agent_val;
+
+//	client_jsinit(ap->js,0);
+	agent_val = OBJECT_TO_JSVAL(jsagent_new(cx,parent,priv));
+	JS_DefineProperty(cx, parent, "agent", agent_val, 0, 0, 0);
+	return 0;
+}
+
 int sdjs_config(void *h, int req, ...) {
 	solard_agent_t *ap;
 	va_list va;
@@ -115,8 +124,8 @@ int sdjs_config(void *h, int req, ...) {
 		dprintf(1,"**** CONFIG INIT *******\n");
 		/* 1st arg is AP */
 		ap = va_arg(va,solard_agent_t *);
+		JS_EngineAddInitFunc(ap->js, "js", js_init, ap);
 		smanet_jsinit(ap->js);
-		client_jsinit(ap->js,0);
 		r = 0;
 		break;
 	case SOLARD_CONFIG_GET_INFO:
@@ -133,13 +142,14 @@ int sdjs_config(void *h, int req, ...) {
 }
 
 int main(int argc, char **argv) {
-	char script[256];
+	char script[256],func[128];
 	opt_proctab_t opts[] = {
 		{ "%|script",&script,DATA_TYPE_STRING,sizeof(script)-1,0,"" },
+		{ ":|func",&func,DATA_TYPE_STRING,sizeof(func)-1,0,"" },
 		{ 0 }
 	};
 #if TESTING
-	char *args[] = { "sdjs", "-d", "7", "json.js" };
+	char *args[] = { "js", "-d", "7", "json.js" };
 	argc = (sizeof(args)/sizeof(char *));
 	argv = args;
 #endif
@@ -149,17 +159,18 @@ int main(int argc, char **argv) {
 	driver.name = "sdjs";
 	driver.config = sdjs_config;
 
+	*script = *func = 0;
 	ap = agent_init(argc,argv,"1.0",opts,&driver,0,0,0);
 	if (!ap) return 1;
 
         smanet_jsinit(ap->js);
-	printf("==> SCRIPT: %s\n", script);
+//	printf("==> SCRIPT: %s, func: %s\n", script, func);
 	dprintf(1,"script: %s\n", script);
 	if (*script) {
 		if (access(script,0) < 0) {
 			printf("%s: %s\n",script,strerror(errno));
 		} else {
-			if (JS_EngineExec(ap->js,script,0)) {
+			if (JS_EngineExec(ap->js,script,func,1)) {
 				char *msg = JS_EngineGetErrmsg(ap->js);
 				printf("%s: %s\n",script,strlen(msg) ? msg : "error executing script");
 			}

@@ -1,7 +1,7 @@
 
 PROGNAME=jbd
 SRCS=main.c jbd.c config.c info.c jsfuncs.c
-SCRIPTS=read.js
+SCRIPTS=*.js
 
 #BLUETOOTH=yes
 

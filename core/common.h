@@ -142,7 +142,6 @@ typedef struct solard_startup_info solard_startup_info_t;
 
 int solard_common_init(int argc,char **argv,char *ver,opt_proctab_t *add_opts,int start_opts);
 int solard_common_config(cfg_info_t *,char *);
-//int solard_common_startup(solard_startup_info_t *);
 int solard_common_startup(config_t **cp, char *sname, char *configfile,
                         config_property_t *props, config_function_t *funcs,
                         mqtt_session_t **m, mqtt_callback_t *getmsg, void *mctx,
@@ -152,6 +151,5 @@ int solard_common_startup(config_t **cp, char *sname, char *configfile,
 
 
 void common_add_props(config_t *, char *);
-int common_jsinit(JSEngine *e);
 
 #endif

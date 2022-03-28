@@ -237,7 +237,7 @@ static void _addchans(si_session_t *s) {
 	if (!sec) return;
 
 #if 0
-	dprintf(1,"locking...\n");
+	dprintf(dlevel+1,"locking...\n");
 	smanet_lock(s->smanet);
 #endif
 
@@ -245,12 +245,12 @@ static void _addchans(si_session_t *s) {
 		c = &ss->chans[i];
 		dprintf(dlevel,"c->mask: %04x, CH_PARA: %04x\n", c->mask, CH_PARA);
 		if ((c->mask & CH_PARA) == 0) continue;
-		dprintf(4,"adding chan: %s\n", c->name);
+		dprintf(dlevel+1,"adding chan: %s\n", c->name);
 		memset(&newp,0,sizeof(newp));
 		newp.name = c->name;
 		newp.flags = SI_CONFIG_FLAG_SMANET;
 		step = 1;
-		dprintf(1,"c->format: %08x\n", c->format);
+		dprintf(dlevel+1,"c->format: %08x\n", c->format);
 		switch(c->format & 0xf) {
 		case CH_BYTE:
 			newp.type = DATA_TYPE_BYTE;
@@ -292,7 +292,7 @@ static void _addchans(si_session_t *s) {
 			printf("SMANET: unknown format: %04x\n", c->format & 0xf);
 			break;
 		}
-		dprintf(1,"c->mask: %08x\n", c->mask);
+		dprintf(dlevel+1,"c->mask: %08x\n", c->mask);
 		if (c->mask & CH_PARA && c->mask & CH_ANALOG) {
 			/* XXX values must be same type as item */
 			float tmp[3];
@@ -344,7 +344,7 @@ static void _addchans(si_session_t *s) {
 		config_property_t *p;
 
 		sec = config_get_section(s->ap->cp,"smanet");
-		dprintf(0,"sec: %p\n", sec);
+		dprintf(dlevel+1,"sec: %p\n", sec);
 		if (!sec) exit(1);
 		list_reset(sec->items);
 		while((p = list_get_next(sec->items)) != 0) {
@@ -353,7 +353,7 @@ static void _addchans(si_session_t *s) {
 //		exit(0);
 	}
 #if 0
-	dprintf(1,"unlocking...\n");
+	dprintf(dlevel+1,"unlocking...\n");
 	smanet_unlock(s->smanet);
 #endif
 }

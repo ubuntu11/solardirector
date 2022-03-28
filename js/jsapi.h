@@ -2680,7 +2680,7 @@ JSObject *js_InitCANClass(JSContext *cx, JSObject *);
 JSObject *js_InitClassClass(JSContext *cx, JSObject *);
 JSObject *js_InitSerialClass(JSContext *cx, JSObject *);
 JSObject *js_InitBluetoothClass(JSContext *cx, JSObject *);
-JSObject *jscan_new(JSContext *cx, void *tp, void *handle, char *transport, char *target, char *topts, int *conn);
+JSObject *jscan_new(JSContext *cx, JSObject *parent, void *tp, void *handle, char *transport, char *target, char *topts, int *conn);
 
 static inline jsval js_number_to_jsval(JSContext *cx, double n) {
 	jsval v;

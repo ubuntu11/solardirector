@@ -155,7 +155,8 @@
 #define SecondsPerHour  (MinutesPerHour * SecondsPerMinute)
 #define SecondsPerMinute 60.0
 
-#if defined(XP_WIN) || defined(XP_OS2)
+#if 0
+//#if defined(XP_WIN) || defined(XP_OS2)
 /* Work around msvc double optimization bug by making these runtime values; if
  * they're available at compile time, msvc optimizes division by them by
  * computing the reciprocal and multiplying instead of dividing - this loses
@@ -165,12 +166,13 @@ static jsdouble msPerSecond = 1000.0;
 static jsdouble msPerDay = SecondsPerDay * 1000.0;
 static jsdouble msPerHour = SecondsPerHour * 1000.0;
 static jsdouble msPerMinute = SecondsPerMinute * 1000.0;
-#else
+//#else
+#endif
 #define msPerDay        (SecondsPerDay * msPerSecond)
 #define msPerHour       (SecondsPerHour * msPerSecond)
 #define msPerMinute     (SecondsPerMinute * msPerSecond)
 #define msPerSecond     1000.0
-#endif
+//#endif
 
 #define Day(t)          floor((t) / msPerDay)
 
@@ -182,6 +184,12 @@ TimeWithinDay(jsdouble t)
     if (result < 0)
         result += msPerDay;
     return result;
+}
+
+static inline int
+IsLeapYear(jsint year)
+{
+    return year % 4 == 0 && (year % 100 || (year % 400 == 0));
 }
 
 #define DaysInYear(y)   ((y) % 4 == 0 && ((y) % 100 || ((y) % 400 == 0))  \
@@ -223,6 +231,15 @@ static jsdouble firstDayOfMonth[2][12] = {
 };
 
 #define DayFromMonth(m, leap) firstDayOfMonth[leap][(intN)m];
+
+static intN
+DaysInMonth(jsint year, jsint month)
+{
+    int leap = IsLeapYear(year);
+//    intN result = (DayFromMonth(month, leap)) - (DayFromMonth(month-1, leap));
+    intN result = firstDayOfMonth[leap][month] - firstDayOfMonth[leap][month-1];
+    return result;
+}
 
 static intN
 MonthFromTime(jsdouble t)
@@ -415,7 +432,7 @@ DaylightSavingTA(jsdouble t)
     return result;
 }
 
-
+#if 1
 #define AdjustTime(t)   fmod(LocalTZA + DaylightSavingTA(t), msPerDay)
 
 #define LocalTime(t)    ((t) + AdjustTime(t))
@@ -425,6 +442,27 @@ UTC(jsdouble t)
 {
     return t - AdjustTime(t - LocalTZA);
 }
+#else
+static jsdouble
+AdjustTime(jsdouble date, JSContext *cx)
+{
+    jsdouble t = DaylightSavingTA(date, cx) + LocalTZA;
+    t = (LocalTZA >= 0) ? fmod(t, msPerDay) : -fmod(msPerDay - t, msPerDay);
+    return t;
+}
+
+static jsdouble
+LocalTime(jsdouble t, JSContext *cx)
+{
+    return t + AdjustTime(t, cx);
+}
+
+static jsdouble
+UTC(jsdouble t, JSContext *cx)
+{
+    return t - AdjustTime(t - LocalTZA, cx);
+}
+#endif
 
 static intN
 HourFromTime(jsdouble t)
@@ -604,7 +642,6 @@ date_msecFromArgs(JSContext *cx, uintN argc, jsval *argv, jsdouble *rval)
     return JS_TRUE;
 }
 
-
 /*
  * See ECMA 15.9.4.[3-10];
  */
@@ -621,7 +658,262 @@ date_UTC(JSContext *cx, uintN argc, jsval *vp)
     return js_NewNumberInRootedValue(cx, msec_time, vp);
 }
 
+/*
+ * Read and convert decimal digits from s[*i] into *result
+ * while *i < limit. 
+ * 
+ * Succeed if any digits are converted. Advance *i only
+ * as digits are consumed.
+ */
 static JSBool
+digits(size_t *result, const jschar *s, size_t *i, size_t limit)
+{
+    size_t init = *i;
+    *result = 0;
+    while (*i < limit && 
+           ('0' <= s[*i] && s[*i] <= '9')) {
+        *result *= 10;
+        *result += (s[*i] - '0');
+        ++(*i);
+    }
+    return (*i != init);
+}
+
+/* 
+ * Read and convert decimal digits to the right of a decimal point,
+ * representing a fractional integer, from s[*i] into *result
+ * while *i < limit. 
+ * 
+ * Succeed if any digits are converted. Advance *i only
+ * as digits are consumed.
+ */
+static JSBool
+fractional(jsdouble *result, const jschar *s, size_t *i, size_t limit)
+{
+    jsdouble factor = 0.1;
+    size_t init = *i;
+    *result = 0.0;
+    while (*i < limit && 
+           ('0' <= s[*i] && s[*i] <= '9')) {
+        *result += (s[*i] - '0') * factor;
+        factor *= 0.1;
+        ++(*i);
+    }
+    return (*i != init);
+}
+
+/* 
+ * Read and convert exactly n decimal digits from s[*i] 
+ * to s[min(*i+n,limit)] into *result. 
+ *
+ * Succeed if exactly n digits are converted. Advance *i only
+ * on success.
+ */
+static JSBool
+ndigits(size_t n, size_t *result, const jschar *s, size_t* i, size_t limit)
+{
+    size_t init = *i;
+
+    if (digits(result, s, i, JS_MIN(limit, init+n)))
+        return ((*i - init) == n);
+    
+    *i = init;
+    return JS_FALSE;
+}
+
+/* 
+ * Parse a string in one of the date-time formats given by the W3C
+ * "NOTE-datetime" specification. These formats make up a restricted
+ * profile of the ISO 8601 format. Quoted here:
+ *
+ *   The formats are as follows. Exactly the components shown here
+ *   must be present, with exactly this punctuation. Note that the "T"
+ *   appears literally in the string, to indicate the beginning of the
+ *   time element, as specified in ISO 8601.
+ *
+ *   Any combination of the date formats with the time formats is
+ *   allowed, and also either the date or the time can be missing.
+ *
+ *   The specification is silent on the meaning when fields are
+ *   ommitted so the interpretations are a guess, but hopefully a
+ *   reasonable one. We default the month to January, the day to the
+ *   1st, and hours minutes and seconds all to 0. If the date is
+ *   missing entirely then we assume 1970-01-01 so that the time can
+ *   be aded to a date later. If the time is missing then we assume
+ *   00:00 UTC.  If the time is present but the time zone field is
+ *   missing then we use local time.
+ * 
+ * Date part:
+ *
+ *  Year:
+ *     YYYY (eg 1997)
+ *
+ *  Year and month:
+ *     YYYY-MM (eg 1997-07)
+ *
+ *  Complete date:
+ *     YYYY-MM-DD (eg 1997-07-16)
+ *
+ * Time part:
+ *
+ *  Hours and minutes:
+ *     Thh:mmTZD (eg T19:20+01:00)
+ * 
+ *  Hours, minutes and seconds:
+ *     Thh:mm:ssTZD (eg T19:20:30+01:00)
+ *
+ *  Hours, minutes, seconds and a decimal fraction of a second:
+ *     Thh:mm:ss.sTZD (eg T19:20:30.45+01:00)
+ *
+ * where:
+ *
+ *   YYYY = four-digit year or six digit year as +YYYYYY or -YYYYYY
+ *   MM   = two-digit month (01=January, etc.)
+ *   DD   = two-digit day of month (01 through 31)
+ *   hh   = two digits of hour (00 through 23) (am/pm NOT allowed)
+ *   mm   = two digits of minute (00 through 59)
+ *   ss   = two digits of second (00 through 59)
+ *   s    = one or more digits representing a decimal fraction of a second
+ *   TZD  = time zone designator (Z or +hh:mm or -hh:mm or missing for local)
+ */
+
+static JSBool
+date_parseISOString(JSString *str, jsdouble *result)
+{
+    jsdouble msec;
+
+    const jschar *s;
+    size_t limit;
+    size_t i = 0;
+    int tzMul = 1;
+    int dateMul = 1;
+    size_t year = 1970;
+    size_t month = 1;
+    size_t day = 1;
+    size_t hour = 0;
+    size_t min = 0;
+    size_t sec = 0;
+    jsdouble frac = 0;
+    int isLocalTime = JS_FALSE;
+    size_t tzHour = 0;
+    size_t tzMin = 0;
+
+#define PEEK(ch) (i < limit && s[i] == ch)
+
+#define NEED(ch)                                                     \
+    JS_BEGIN_MACRO                                                   \
+        if (i >= limit || s[i] != ch) { goto syntax; } else { ++i; } \
+    JS_END_MACRO 
+
+#define DONE_DATE_UNLESS(ch)                                            \
+    JS_BEGIN_MACRO                                                      \
+        if (i >= limit || s[i] != ch) { goto done_date; } else { ++i; } \
+    JS_END_MACRO 
+
+#define DONE_UNLESS(ch)                                            \
+    JS_BEGIN_MACRO                                                 \
+        if (i >= limit || s[i] != ch) { goto done; } else { ++i; } \
+    JS_END_MACRO 
+
+#define NEED_NDIGITS(n, field)                                      \
+    JS_BEGIN_MACRO                                                  \
+        if (!ndigits(n, &field, s, &i, limit)) { goto syntax; }     \
+    JS_END_MACRO 
+
+    JSSTRING_CHARS_AND_LENGTH(str, s, limit);
+//    s = str->chars();
+//    limit = str->length();
+
+    if (PEEK('+') || PEEK('-')) {
+        if (PEEK('-'))
+            dateMul = -1;
+        ++i;
+        NEED_NDIGITS(6, year);
+    } else if (!PEEK('T')) {
+        NEED_NDIGITS(4, year);
+    }
+    DONE_DATE_UNLESS('-');
+    NEED_NDIGITS(2, month);
+    DONE_DATE_UNLESS('-');
+    NEED_NDIGITS(2, day);
+
+ done_date:
+    DONE_UNLESS('T');
+    NEED_NDIGITS(2, hour);
+    NEED(':');
+    NEED_NDIGITS(2, min);
+
+    if (PEEK(':')) {
+        ++i;
+        NEED_NDIGITS(2, sec);
+        if (PEEK('.')) {
+            ++i;
+            if (!fractional(&frac, s, &i, limit))
+                goto syntax;
+        }
+    }
+
+    if (PEEK('Z')) {
+        ++i;
+    } else if (PEEK('+') || PEEK('-')) {
+        if (PEEK('-'))
+            tzMul = -1;
+        ++i;
+        NEED_NDIGITS(2, tzHour);
+        NEED(':');
+        NEED_NDIGITS(2, tzMin);
+    } else {
+        isLocalTime = JS_TRUE;
+    }
+
+ done:
+    if (year > 275943 // ceil(1e8/365) + 1970
+        || (month == 0 || month > 12)
+        || (day == 0 || day > (size_t)DaysInMonth(year,month))
+        || hour > 24 
+        || ((hour == 24) && (min > 0 || sec > 0))
+        || min > 59 
+        || sec > 59
+        || tzHour > 23
+        || tzMin > 59) 
+        goto syntax;
+
+    if (i != limit)
+        goto syntax;
+
+    month -= 1; /* convert month to 0-based */
+
+    msec = date_msecFromDate(dateMul * (jsdouble)year, month, day,
+                             hour, min, sec,
+                             frac * 1000.0);;
+
+    if (isLocalTime) {
+//        msec = UTC(msec, cx);
+        msec = UTC(msec);
+    } else {
+        msec -= ((tzMul) * ((tzHour * msPerHour) 
+                            + (tzMin * msPerMinute)));
+    }
+
+    if (msec < -8.64e15 || msec > 8.64e15)
+        goto syntax;
+
+    *result = msec;
+
+    return JS_TRUE;
+
+ syntax:
+    /* syntax error */
+    *result = 0;
+    return JS_FALSE;
+
+#undef PEEK
+#undef NEED
+#undef DONE_UNLESS
+#undef NEED_NDIGITS
+}
+
+JSBool
 date_parseString(JSString *str, jsdouble *result)
 {
     jsdouble msec;
@@ -642,6 +934,9 @@ date_parseString(JSString *str, jsdouble *result)
     JSBool seenplusminus = JS_FALSE;
     int temp;
     JSBool seenmonthname = JS_FALSE;
+
+    if (date_parseISOString(str, result))
+        return JS_TRUE;
 
     JSSTRING_CHARS_AND_LENGTH(str, s, limit);
     if (limit == 0)

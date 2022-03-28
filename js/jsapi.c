@@ -1345,6 +1345,8 @@ JS_InitStandardClasses(JSContext *cx, JSObject *obj)
 		FUNC(js_InitCANClass),
 		FUNC(js_InitClassClass),
 #if 0
+		FUNC(js_InitMQTTClass),
+		FUNC(js_InitInfluxClass),
 		FUNC(js_InitSerialClass),
 		FUNC(js_InitBluetoothClass),
 #endif

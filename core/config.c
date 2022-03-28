@@ -173,8 +173,9 @@ config_property_t *config_combine_props(config_property_t *p1, config_property_t
 	config_property_t *pp,*newp,*npp;
 	int count,size;
 
-	if (!p1) return p2;
-	if (!p2) return p1;
+	if (!p1 && p2) return p2;
+	if (p1 && !p2) return p1;
+	if (!p1 && !p2) return 0;
 	for(pp=p1; pp->name; pp++) count++;
 	for(pp=p2; pp->name; pp++) count++;
 	size = (count + 1) * sizeof(config_property_t);
@@ -266,18 +267,18 @@ config_section_t *config_get_section(config_t *cp,char *name) {
 	if (!cp) return 0;
 
 	/* Find the section */
-	dprintf(dlevel,"looking for section: %s", name);
+	dprintf(dlevel,"looking for section: %s\n", name);
 	list_reset(cp->sections);
 	while( (section = list_get_next(cp->sections)) != 0) {
-		dprintf(dlevel,"name: %s", section->name);
+		dprintf(dlevel,"name: %s\n", section->name);
 		if (strcasecmp(section->name,name)==0) {
-			dprintf(dlevel,"found");
+			dprintf(dlevel,"found\n");
 			*cp->errmsg = 0;
 			return section;
 		}
 	}
-	dprintf(dlevel,"NOT found!");
-	sprintf(cp->errmsg,"unable to find config section: %s\n", name);
+	dprintf(dlevel,"NOT found!\n");
+	sprintf(cp->errmsg,"unable to find config section: %s", name);
 	return 0;
 }
 
@@ -921,6 +922,7 @@ config_property_t *config_get_propbyid(config_t *cp, int id) {
 	config_section_t *s;
 	config_property_t *p;
 
+	if (cp) {
 	dprintf(dlevel,"checking map...\n");
 	if (cp->map && id >= 0 && id < cp->map_maxid && cp->map[id]) {
 		dprintf(dlevel,"found: %s\n", cp->map[id]->name);
@@ -939,6 +941,7 @@ config_property_t *config_get_propbyid(config_t *cp, int id) {
 				return p;
 			}
 		}
+	}
 	}
 	dprintf(dlevel,"NOT found\n");
 	return 0;
@@ -1459,11 +1462,11 @@ JSBool config_jsgetprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval, con
 
 	if (!cp) return JS_TRUE;
 
-	dprintf(dlevel,"id type: %s\n", jstypestr(cx,id));
+	dprintf(4,"id type: %s\n", jstypestr(cx,id));
 	p = 0;
 	if(JSVAL_IS_INT(id)) {
 		prop_id = JSVAL_TO_INT(id);
-		dprintf(dlevel,"prop_id: %d\n", prop_id);
+		dprintf(4,"prop_id: %d\n", prop_id);
 		p = CONFIG_GETMAP(cp,prop_id);
 		if (!p) p = config_get_propbyid(cp,prop_id);
 		if (!p) {
@@ -1476,11 +1479,11 @@ JSBool config_jsgetprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval, con
 
 		sname = (char *)classp->name;
 		name = (char *)js_GetStringBytes(cx, JSVAL_TO_STRING(id));
-		dprintf(dlevel,"sname: %s, name: %s\n", sname, name);
+		dprintf(4,"sname: %s, name: %s\n", sname, name);
 		if (classp && name) p = config_get_property(cp, sname, name);
 	}
 	if (p && p->dest) {
-		dprintf(dlevel,"p->name: %s, type: %s\n", p->name, typestr(p->type));
+		dprintf(4,"p->name: %s, type: %s\n", p->name, typestr(p->type));
 		*rval = type_to_jsval(cx,p->type,p->dest,p->len);
 	}
 	return JS_TRUE;
@@ -1700,7 +1703,7 @@ enum CONFIG_PROPERTY_ID {
 	CONFIG_PROPERTY_ID_ERRMSG
 };
 
-static JSBool config_lgetprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
+static JSBool js_config_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 	config_t *cp;
 	int prop_id;
 
@@ -1726,7 +1729,8 @@ static JSBool config_lgetprop(JSContext *cx, JSObject *obj, jsval id, jsval *rva
 					list_reset(s->items);
 					while( (p = list_next(s->items)) != 0) {
 						if (p->flags & CONFIG_FLAG_NOID) continue;
-						node = OBJECT_TO_JSVAL(JSConfigProperty(cx,p));
+						if (p->jsval == JSVAL_NULL) p->jsval = OBJECT_TO_JSVAL(JSConfigProperty(cx,p));
+						node = p->jsval;
 						JS_SetElement(cx, rows, i++, &node);
 					}
 				}
@@ -1750,7 +1754,7 @@ static JSBool config_lgetprop(JSContext *cx, JSObject *obj, jsval id, jsval *rva
 	return JS_TRUE;
 }
 
-static JSBool config_lsetprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
+static JSBool js_config_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp) {
 	config_t *cp;
 	int prop_id;
 
@@ -1762,26 +1766,26 @@ static JSBool config_lsetprop(JSContext *cx, JSObject *obj, jsval id, jsval *rva
 		dprintf(dlevel,"prop_id: %d\n", prop_id);
 		switch(prop_id) {
 		case CONFIG_PROPERTY_ID_FILENAME:
-			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,cp->filename));
+			jsval_to_type(DATA_TYPE_STRING,cp->filename,sizeof(cp->filename),cx,*vp);
 			break;
 		case CONFIG_PROPERTY_ID_FILE_FORMAT:
-			*rval = INT_TO_JSVAL(cp->file_format);
+			jsval_to_type(DATA_TYPE_INT,&cp->file_format,0,cx,*vp);
 			break;
 		default:
 			JS_ReportError(cx, "property not found");
-			return JS_FALSE;
+			break;
 		}
 	}
 	return JS_TRUE;
 }
 
 static JSClass config_class = {
-	"config",		/* Name */
+	"SDConfig",		/* Name */
 	JSCLASS_HAS_PRIVATE,	/* Flags */
 	JS_PropertyStub,	/* addProperty */
 	JS_PropertyStub,	/* delProperty */
-	config_lgetprop,		/* getProperty */
-	config_lsetprop,		/* setProperty */
+	js_config_getprop,	/* getProperty */
+	js_config_setprop,	/* setProperty */
 	JS_EnumerateStub,	/* enumerate */
 	JS_ResolveStub,		/* resolve */
 	JS_ConvertStub,		/* convert */
@@ -1915,7 +1919,7 @@ static JSBool config_jsdel(JSContext *cx, JSObject *obj, uintN argc, jsval *argv
 	return JS_TRUE;
 }
 
-JSObject *JSConfig(JSContext *cx, void *priv) {
+JSObject *jsconfig_new(JSContext *cx, JSObject *parent, config_t *cp) {
 	JSPropertySpec config_props[] = {
 		{ "sections", CONFIG_PROPERTY_ID_SECTIONS,  JSPROP_ENUMERATE | JSPROP_READONLY },
 		{ "filename", CONFIG_PROPERTY_ID_FILENAME,  JSPROP_ENUMERATE },
@@ -1946,7 +1950,7 @@ JSObject *JSConfig(JSContext *cx, void *priv) {
 	JSObject *obj;
 
 	dprintf(dlevel,"defining %s object\n",config_class.name);
-	obj = JS_InitClass(cx, JS_GetGlobalObject(cx), 0, &config_class, 0, 0, config_props, config_funcs, 0, 0);
+	obj = JS_InitClass(cx, parent, 0, &config_class, 0, 0, config_props, config_funcs, 0, 0);
 	if (!obj) {
 		JS_ReportError(cx,"unable to initialize %s class", config_class.name);
 		return 0;
@@ -1956,12 +1960,8 @@ JSObject *JSConfig(JSContext *cx, void *priv) {
 		JS_ReportError(cx,"unable to define constants for class: %s", config_class.name);
 		return 0;
 	}
-	JS_SetPrivate(cx,obj,priv);
+	JS_SetPrivate(cx,obj,cp);
 	dprintf(dlevel,"done!\n");
 	return obj;
-}
-
-int config_jsinit(JSEngine *e, config_t *cp) {
-	return JS_EngineAddInitFunc(e, "config", JSConfig, cp);
 }
 #endif

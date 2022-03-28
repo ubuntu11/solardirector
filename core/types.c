@@ -118,7 +118,7 @@ static JSBool jstypes_typestr(JSContext *cx, uintN argc, jsval *vp) {
 	return JS_TRUE;
 }
 
-JSObject *JSTypes(JSContext *cx, void *priv) {
+static int jstypes_init(JSContext *cx, JSObject *parent, void *priv) {
 	JSObject *obj = JS_GetGlobalObject(cx);
 	char *name;
 	int i,count,namesz;
@@ -130,14 +130,14 @@ JSObject *JSTypes(JSContext *cx, void *priv) {
 
 	if (!JS_DefineFunctions(cx, obj, funcs)) {
 		dprintf(1,"error defining types funcs\n");
-		return 0;
+		return 1;
 	}
 
 	for(i=count=0; type_info[i].name; i++) count++;
 	consts = malloc((count+1)*sizeof(JSConstantSpec));
 	if (!consts) {
 		log_syserror("JSTypes: malloc");
-		return 0;
+		return 1;
 	}
 #define PREFIX "DATA_TYPE_"
 	for(i=0; i < count; i++) {
@@ -152,12 +152,11 @@ JSObject *JSTypes(JSContext *cx, void *priv) {
 	consts[i].name = 0;
 	if(!JS_DefineConstants(cx, obj, consts)) {
 		dprintf(1,"error defining types constants\n");
-		return 0;
+		return 1;
 	}
-	return obj;
+	return 0;
 }
 
 int types_jsinit(JSEngine *e) {
-	dprintf(1,"registering types initfunc...\n");
-	return JS_EngineAddInitFunc(e, "types", JSTypes, 0);
+	return JS_EngineAddInitFunc(e, "types", jstypes_init, 0);
 }

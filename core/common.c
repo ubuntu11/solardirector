@@ -26,6 +26,8 @@ char SOLARD_LOGDIR[SOLARD_PATH_MAX];
 #define CFG 1
 #define dlevel 4
 
+static int common_jsinit(JSEngine *e);
+
 #if defined(__WIN32) && !defined(__WIN64)
 #include <windows.h>
 BOOL InitOnceExecuteOnce(
@@ -301,18 +303,6 @@ int solard_common_init(int argc,char **argv,char *version,opt_proctab_t *add_opt
 	return 0;
 }
 
-#if 0
-int solard_common_config(cfg_info_t *cfg, char *section_name) {
-	char home[256];
-
-	dprintf(dlevel,"cfg: %p, section_name: %s\n", cfg, section_name);
-
-	gethomedir(home,sizeof(home)-1);
-	dprintf(dlevel,"home: %s\n",home);
-	return solard_get_dirs(cfg,section_name,home,0);
-}
-#endif
-
 int solard_common_startup(config_t **cp, char *sname, char *configfile,
 			config_property_t *props, config_function_t *funcs,
 			mqtt_session_t **m, mqtt_callback_t *getmsg, void *mctx,
@@ -331,14 +321,6 @@ int solard_common_startup(config_t **cp, char *sname, char *configfile,
 		return 1;
 	}
 	dprintf(dlevel,"m: %p\n", *m);
-
-	/* Create InfluxDB session */
-	*i = influx_new();
-	if (!*i) {
-		log_syserror("unable to create InfluxDB session\n");
-		return 1;
-	}
-	dprintf(dlevel,"i: %p\n", *i);
 
 	/* Init the config */
 	*cp = config_init(sname, props, funcs);
@@ -391,17 +373,35 @@ int solard_common_startup(config_t **cp, char *sname, char *configfile,
 	sprintf(mqtt_info,"%s/%s/%s",SOLARD_TOPIC_ROOT,SOLARD_TOPIC_CLIENTS,mc->clientid);
 	mqtt_sub(*m,mqtt_info);
 
+	/* Create InfluxDB session */
+	if (strlen(influx_info)) influx_parse_config(ic, influx_info);
+	*i = influx_new(ic);
+	if (!*i) {
+		log_syserror("unable to create InfluxDB session\n");
+		return 1;
+	}
+	dprintf(dlevel,"i: %p\n", *i);
+
 #ifdef JS
-	/* Init js scripting */
 	*js = JS_EngineInit(rtsize, stksize, jsout);
 	common_jsinit(*js);
 	types_jsinit(*js);
-	config_jsinit(*js, *cp);
-	mqtt_jsinit(*js, *m);
-	influx_jsinit(*js, *i);
 #endif
 
 	return 0;
+}
+
+void common_add_props(config_t *cp, char *name) {
+	config_property_t common_props[] = {
+		{ "bindir", DATA_TYPE_STRING, SOLARD_BINDIR, sizeof(SOLARD_BINDIR)-1, 0 },
+		{ "etcdir", DATA_TYPE_STRING, SOLARD_ETCDIR, sizeof(SOLARD_ETCDIR)-1, 0 },
+		{ "libdir", DATA_TYPE_STRING, SOLARD_LIBDIR, sizeof(SOLARD_LIBDIR)-1, 0 },
+		{ "logdir", DATA_TYPE_STRING, SOLARD_LOGDIR, sizeof(SOLARD_LOGDIR)-1, 0 },
+		{ "debug", DATA_TYPE_INT, &debug, 0, 0, 0,
+			"range", 3, (int []){ 0, 99, 1 }, 1, (char *[]) { "debug level" }, 0, 1, 0 },
+		{ 0 }
+	};
+	config_add_props(cp, name, common_props, 0);
 }
 
 #ifdef JS
@@ -422,16 +422,16 @@ static JSBool common_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval
 		dprintf(dlevel,"prop_id: %d\n", prop_id);
 		switch(prop_id) {
 		case COMMON_PROPERTY_ID_BINDIR:
-			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,SOLARD_BINDIR));
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,SOLARD_BINDIR,strlen(SOLARD_BINDIR));
 			break;
 		case COMMON_PROPERTY_ID_ETCDIR:
-			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,SOLARD_ETCDIR));
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,SOLARD_ETCDIR,strlen(SOLARD_ETCDIR));
 			break;
 		case COMMON_PROPERTY_ID_LIBDIR:
-			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,SOLARD_LIBDIR));
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,SOLARD_LIBDIR,strlen(SOLARD_LIBDIR));
 			break;
 		case COMMON_PROPERTY_ID_LOGDIR:
-			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,SOLARD_LOGDIR));
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,SOLARD_LOGDIR,strlen(SOLARD_LOGDIR));
 			break;
 		default:
 			dprintf(1,"not found\n");
@@ -474,10 +474,10 @@ static JSBool common_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp) 
 }
 
 
-JSObject *JSCommon(JSContext *cx, void *priv) {
+static int jscommon_init(JSContext *cx, JSObject *parent, void *priv) {
 #define COMMON_FLAGS JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_EXPORTED
 	JSPropertySpec common_props[] = {
-		{ "SOLARD_BINDIR", COMMON_PROPERTY_ID_BINDIR, COMMON_FLAGS, common_getprop, &common_setprop },
+		{ "SOLARD_BINDIR", COMMON_PROPERTY_ID_BINDIR, COMMON_FLAGS, common_getprop, common_setprop },
 		{ "SOLARD_ETCDIR", COMMON_PROPERTY_ID_ETCDIR, COMMON_FLAGS, common_getprop, common_setprop },
 		{ "SOLARD_LIBDIR", COMMON_PROPERTY_ID_LIBDIR, COMMON_FLAGS, common_getprop, common_setprop },
 		{ "SOLARD_LOGDIR", COMMON_PROPERTY_ID_LOGDIR, COMMON_FLAGS, common_getprop, common_setprop },
@@ -500,29 +500,18 @@ JSObject *JSCommon(JSContext *cx, void *priv) {
 	dprintf(1,"Defining common properties...\n");
 	if(!JS_DefineProperties(cx, obj, common_props)) {
 		dprintf(1,"error defining common properties\n");
-		return 0;
+		return 1;
 	}
 	if(!JS_DefineConstants(cx, obj, common_consts)) {
 		dprintf(1,"error defining common constants\n");
-		return 0;
+		return 1;
 	}
-	return obj;
+	return 0;
 }
 
-void common_add_props(config_t *cp, char *name) {
-	config_property_t common_props[] = {
-		{ "bindir", DATA_TYPE_STRING, SOLARD_BINDIR, sizeof(SOLARD_BINDIR)-1, 0 },
-		{ "etcdir", DATA_TYPE_STRING, SOLARD_ETCDIR, sizeof(SOLARD_ETCDIR)-1, 0 },
-		{ "libdir", DATA_TYPE_STRING, SOLARD_LIBDIR, sizeof(SOLARD_LIBDIR)-1, 0 },
-		{ "logdir", DATA_TYPE_STRING, SOLARD_LOGDIR, sizeof(SOLARD_LOGDIR)-1, 0 },
-		{ "debug", DATA_TYPE_INT, &debug, 0, 0, 0,
-			"range", 3, (int []){ 0, 99, 1 }, 1, (char *[]) { "debug level" }, 0, 1, 0 },
-		{ 0 }
-	};
-	config_add_props(cp, name, common_props, 0);
+static int common_jsinit(JSEngine *e) {
+	/* Init js scripting */
+	return JS_EngineAddInitFunc(e, "common", jscommon_init, 0);
 }
 
-int common_jsinit(JSEngine *e) {
-	return JS_EngineAddInitFunc(e, "common", JSCommon, 0);
-}
 #endif

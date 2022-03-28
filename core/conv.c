@@ -160,6 +160,8 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_U64_ARRAY:
 		case DATA_TYPE_F64_ARRAY:
 		case DATA_TYPE_STRING_ARRAY:
+			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
+			break;
 		case DATA_TYPE_STRING_LIST:
 		    {
 			int first,dlen,slen;

@@ -70,7 +70,7 @@ json_value_t *jbd_get_info(jbd_session_t *s) {
 	dprintf(1,"s: %p\n", s);
 	if (!s) return 0;
 
-
+#if 1
 	/* Get the info */
 	if (jbd_open(s) < 0) return 0;
 	have_info = (jbd_get_hwinfo(s) ? 0 : 1);
@@ -88,6 +88,7 @@ json_value_t *jbd_get_info(jbd_session_t *s) {
 	else
 		s->balancing = 0;
 	jbd_eeprom_close(s);
+#endif
 
 	mem_start = mem_used();
 	dprintf(1,"mem_start: %ld\n",mem_start);

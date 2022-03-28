@@ -85,7 +85,6 @@ static JSBool js_print(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, js
 
 	e = JS_GetPrivate(cx, obj);
 
-printf("used: %d\n", (int)JS_ArenaTotalBytes());
 	for (i = 0; i < argc; i++) {
 //		dprintf(0,"argv[%d]: %s\n", i, jstypestr(cx,argv[i]));
 		str = JS_ValueToString(cx, argv[i]);
@@ -94,7 +93,6 @@ printf("used: %d\n", (int)JS_ArenaTotalBytes());
 		if (bytes) e->output("%s",bytes);
 		JS_free(cx, bytes);
 	}
-printf("used: %d\n", (int)JS_ArenaTotalBytes());
 
 	return JS_TRUE;
 }
@@ -180,7 +178,7 @@ static JSBool js_exit(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsv
 	dprintf(dlevel,"argc: %d\n", argc);
 
 	if (argc != 0) {
-		dprintf(1,"defining prop...\n");
+		dprintf(dlevel,"defining prop...\n");
 		JS_DefineProperty(cx, JS_GetGlobalObject(cx), "exit_code", argv[0] ,NULL,NULL,JSPROP_ENUMERATE|JSPROP_READONLY);
 	} else {
 		*rval = JSVAL_VOID;
@@ -429,7 +427,7 @@ JSObject *JS_CreateGlobalObject(JSContext *cx, void *priv) {
 		{0}
 	};
 	JSAliasSpec global_aliases[] = {
-	//	{ "include", "load" },
+//		{ "this", "global" },
 		{ 0 },
 	};
 	JSObject *obj;

@@ -1,0 +1,121 @@
+
+include("../../core/utils.js");
+function display_results(results) {
+	for(i=0; i < results.length; i++) {
+		var series = results[i];
+		var columns = series.columns;
+	//	dprintf(0,"columns.length: %d\n", columns.length);
+		for(j=0; j < columns.length; j++) printf("column[%d]: %s\n", j, columns[j]);
+		var values = series.values;
+	//	dprintf(0,"values.length: %d\n", values.length);
+		for(j=0; j < values.length; j++) {
+			for(k=0; k < columns.length; k++) {
+	//			printf("values[%d][%d] type: %s\n", j,k,typeof(values[j][k]));
+				printf("values[%d][%d]: %s\n", j,k,values[j][k]);
+			}
+		}
+	}
+}
+//influx.endpoint = "http://localhost:8086"
+//influx.verbose = true;
+//var results = influx.query("CREATE DATABASE \"power\"");
+r1 = influx.query("select value from solar limit 10");
+if (!r1) printf("influx error: %s\n", influx.errmsg);
+rsave = clone(r1);
+influx.convert_time = true;
+r2 = influx.query("select last(value) from solar");
+if (!r2) printf("influx error: %s\n", influx.errmsg);
+display_results(rsave);
+display_results(r2);
+//dprintf(0,"results.length: %d\n", results.length);
+//printf("solar output: %d\n", results[0].values[0][1]);
+exit(0);
+/*
+Copyright (c) 2022, Stephen P. Shoecraft
+All rights reserved.
+
+This source code is licensed under the BSD-style license found in the
+LICENSE file in the root directory of this source tree.
+*/
+
+var rec = { color:"blue", another:"gold" };
+//si.agent.influx.write("test",rec);
+si.agent.influx.write("test",JSON.stringify(rec));
+//si.smanet.connect();
+//si.smanet.load_channels("/opt/sd/lib/si_channels.json");
+//var vals = si.smanet.get("GdManStr","GnManStr");
+//for(i=0; i < vals.length; i++) printf("%s: %s\n", vals[i][0], vals[i][1]);
+exit(0);
+
+printf("connected: %s\n", si.smanet.connected);
+si.smanet.connect();
+printf("connected: %s\n", si.smanet.connected);
+if (!si.smanet.connected) exit(1);
+si.smanet.load_channels("/opt/sd/lib/si_channels.json");
+                var names = [ "ExtCur","ExtCurSlv1","ExtCurSlv2","ExtCurSlv3","TotExtCur","InvCur","InvCurSlv1","InvCurSlv2","InvCurSlv3","TotInvCur" ];
+                var vals = si.smanet.get(names);
+                var data = {};
+                for(i=0; i < vals.length; i++) {
+                        printf("%-20.20s: %s\n", names[i], vals[i]);
+			data[names[i]] = vals[i];
+                }
+//              si.agent.influx.write("current");
+                printf("data: %s\n", data);
+		for(key in data) {
+			printf("data[%d]: name: %s, value: %s\n", i, key, data[key]);
+		}
+		si.agent.influx.write("current",data);
+exit(0);
+
+/*
+Copyright (c) 2022, Stephen P. Shoecraft
+All rights reserved.
+
+This source code is licensed under the BSD-style license found in the
+LICENSE file in the root directory of this source tree.
+*/
+
+include(dirname(script_name)+"/../../core/init.js");
+
+function getshort(data,index) {
+	var s = (data[index] & 0xF0) << 8 | data[index+1] & 0x0F;
+	return s;
+}
+
+function putshort(data,index,num) {
+	var hex = sprintf("%04x",num);
+	data[index++] = "0x" + hex.slice(2,4);
+	data[index++] = "0x" + hex.slice(0,2);
+};
+
+function putlong(data,index,num) {
+	var hex = sprintf("%08x",num);
+//	dprintf(1,"hex: %s\n", hex);
+	data[index++] = "0x" + hex.slice(6,8);
+	data[index++] = "0x" + hex.slice(4,6);
+	data[index++] = "0x" + hex.slice(2,4);
+	data[index++] = "0x" + hex.slice(0,2);
+};
+
+function si_isvrange(v) { return ((v >= SI_VOLTAGE_MIN) && (v  <= SI_VOLTAGE_MAX)) }
+function HOURS(n) { return(n * 3600); }
+function MINUTES(n) { return(n * 60); }
+function float_equals(n1,n2) { return(n1 === n2); }
+
+// info is a global variable (JSON data)
+info = si.info;
+
+function init_main() {
+	// Call init funcs
+	var script_dir = dirname(script_name);
+	var init_funcs = [
+		"charge",
+		"sim",
+//		"read",
+		"write"
+	];
+	for(i=0; i < init_funcs.length; i++) {
+		if (run(script_dir+"/"+init_funcs[i]+".js",init_funcs[i]+"_init"))
+			exit(1);
+	}
+}

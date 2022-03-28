@@ -55,6 +55,8 @@ js_InitDateClass(JSContext *cx, JSObject *obj);
  * These functions provide a C interface to the date/time object
  */
 
+JSBool date_parseString(JSString *str, jsdouble *result);
+
 /*
  * Construct a new Date Object from a time value given in milliseconds UTC
  * since the epoch.

@@ -13,9 +13,6 @@
 #include "jsjson.h"
 #include "jsprintf.h"
 
-static JSBool si_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval);
-static JSBool si_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval);
-
 static JSBool si_data_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp) {
 	si_session_t *s;
 
@@ -51,7 +48,7 @@ static JSBool refresh_si_data(JSContext *cx, uintN argc, jsval *vp) {
 	return JS_TRUE;
 }
 
-JSObject *js_InitSIDataClass(JSContext *cx, si_session_t *s) {
+JSObject *jssi_data_new(JSContext *cx, JSObject *parent, si_session_t *s) {
 	JSAliasSpec si_data_aliases[] = {
 		{ "battery_soc", "battery_level" },
 		{ "ac1_voltage", "output_voltage" },
@@ -81,7 +78,7 @@ JSObject *js_InitSIDataClass(JSContext *cx, si_session_t *s) {
 	}
 
 	dprintf(dlevel,"defining %s object\n",si_data_class.name);
-	obj = JS_InitClass(cx, JS_GetGlobalObject(cx), 0, &si_data_class, 0, 0, s->data_props, si_data_funcs, 0, 0);
+	obj = JS_InitClass(cx, parent, 0, &si_data_class, 0, 0, s->data_props, si_data_funcs, 0, 0);
 	if (!obj) {
 		JS_ReportError(cx,"unable to initialize %s", si_data_class.name);
 		return 0;
@@ -101,7 +98,9 @@ JSObject *js_InitSIDataClass(JSContext *cx, si_session_t *s) {
 enum SI_PROPERTY_ID {
 	SI_PROPERTY_ID_DATA=1024,
 	SI_PROPERTY_ID_INFO,
-	SI_PROPERTY_ID_AGENT
+	SI_PROPERTY_ID_AGENT,
+	SI_PROPERTY_ID_CAN,
+	SI_PROPERTY_ID_SMANET,
 };
 
 static JSBool si_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
@@ -110,6 +109,7 @@ static JSBool si_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 	config_property_t *p;
 
 	s = JS_GetPrivate(cx,obj);
+//	dprintf(0,"s: %p\n", s);
 	if (!s) {
 		JS_ReportError(cx,"private is null!");
 		return JS_FALSE;
@@ -168,6 +168,12 @@ static JSBool si_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 		case SI_PROPERTY_ID_AGENT:
 			*rval = s->agent_val;
 			break;
+		case SI_PROPERTY_ID_CAN:
+			*rval = s->can_val;
+			break;
+		case SI_PROPERTY_ID_SMANET:
+			*rval = s->smanet_val;
+			break;
 		default:
 			p = CONFIG_GETMAP(s->ap->cp,prop_id);
 			if (!p) p = config_get_propbyid(s->ap->cp,prop_id);
@@ -207,7 +213,7 @@ static JSBool si_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 
 
 static JSClass si_class = {
-	"si",			/* Name */
+	"si",		/* Name */
 	JSCLASS_GLOBAL_FLAGS | JSCLASS_HAS_PRIVATE,	/* Flags */
 	JS_PropertyStub,	/* addProperty */
 	JS_PropertyStub,	/* delProperty */
@@ -220,7 +226,7 @@ static JSClass si_class = {
 	JSCLASS_NO_OPTIONAL_MEMBERS
 };
 
-static JSBool jscan_read(JSContext *cx, uintN argc, jsval *vp) {
+static JSBool jssi_can_read(JSContext *cx, uintN argc, jsval *vp) {
 	si_session_t *s;
 	uint8_t data[8];
 	int id,len,r;
@@ -237,6 +243,11 @@ static JSBool jscan_read(JSContext *cx, uintN argc, jsval *vp) {
 		return JS_FALSE;
 	}
 
+#if 0
+	/* Get the args*/
+	if (!JS_ConvertArguments(cx, argc, JS_ARGV(cx,vp), "u d", &can_id, &len)) return JS_FALSE;
+	dprintf(dlevel,"can_id: %d, len: %d\n", can_id, len);
+#endif
 
 	if (!jsval_to_type(DATA_TYPE_INT,&id,0,cx,argv[0])) return JS_FALSE;
 	dprintf(dlevel,"id: 0x%03x\n", id);
@@ -252,29 +263,34 @@ static JSBool jscan_read(JSContext *cx, uintN argc, jsval *vp) {
 	return JS_TRUE;
 }
 
-static JSBool jscan_write(JSContext *cx, uintN argc, jsval *vp) {
+static JSBool jssi_can_write(JSContext *cx, uintN argc, jsval *vp) {
 	si_session_t *s;
 	uint8_t data[8];
-	int id,len,r;
-	jsval *argv = vp + 2;
+	struct can_frame frame;
+	int len,r;
+	uint32_t can_id;
 	JSObject *obj;
 	JSClass *classp;
 
 	obj = JS_THIS_OBJECT(cx, vp);
 	if (!obj) return JS_FALSE;
 	s = JS_GetPrivate(cx, obj);
+	dprintf(0,"s: %p\n", s);
+	if (!s) {
+		JS_ReportError(cx, "can_write: internal error: private is null!\n");
+		return JS_FALSE;
+	}
 
 	if (argc != 2) {
 		JS_ReportError(cx,"can_write requires 2 arguments (id: number, data: array)\n");
 		return JS_FALSE;
 	}
 
-	dprintf(dlevel,"isobj: %d\n", JSVAL_IS_OBJECT(argv[1]));
-	if (!JSVAL_IS_OBJECT(argv[1])) {
-		JS_ReportError(cx, "can_write: 2nd argument must be array\n");
-		return JS_FALSE;
-	}
-	obj = JSVAL_TO_OBJECT(argv[1]);
+	/* Get the args*/
+	if (!JS_ConvertArguments(cx, argc, JS_ARGV(cx,vp), "u o", &can_id, &obj)) return JS_FALSE;
+	dprintf(dlevel,"can_id: %d, obj: %p\n", can_id, obj);
+
+	/* Make sure the object is an array */
 	classp = OBJ_GET_CLASS(cx,obj);
 	if (!classp) {
 		JS_ReportError(cx, "can_write: 2nd argument must be array\n");
@@ -286,41 +302,20 @@ static JSBool jscan_write(JSContext *cx, uintN argc, jsval *vp) {
 		return JS_FALSE;
 	}
 
-	dprintf(dlevel,"id: 0x%03x\n", id);
+	/* Convert the JS array to C array */
+	len = jsval_to_type(DATA_TYPE_U8_ARRAY,data,8,cx,OBJECT_TO_JSVAL(obj));
 
-	if (!jsval_to_type(DATA_TYPE_INT,&id,0,cx,argv[0])) return JS_FALSE;
-	len = jsval_to_type(DATA_TYPE_U8_ARRAY,data,8,cx,argv[1]);
-	dprintf(dlevel,"len: %d\n", len);
-//	if (debug >= dlevel+1) bindump("data",data,len);
-	r = si_can_write(s,id,data,len);
+        memset(&frame,0,sizeof(frame));
+        frame.can_id = can_id;
+        frame.can_dlc = len;
+        memcpy(&frame.data,data,len);
+	r = si_can_write(s,can_id,data,len);
 	dprintf(dlevel,"r: %d\n", r);
 	*vp = INT_TO_JSVAL(r);
 	return JS_TRUE;
 }
 
-static JSBool jsinit_can(JSContext *cx, uintN argc, jsval *vp) {
-	si_session_t *s;
-	JSObject *obj;
-
-	obj = JS_THIS_OBJECT(cx, vp);
-	if (!obj) return JS_FALSE;
-	s = JS_GetPrivate(cx, obj);
-	*vp = BOOLEAN_TO_JSVAL(si_can_init(s));
-	return JS_TRUE;
-}
-
-static JSBool jsinit_smanet(JSContext *cx, uintN argc, jsval *vp) {
-	si_session_t *s;
-	JSObject *obj;
-
-	obj = JS_THIS_OBJECT(cx, vp);
-	if (!obj) return JS_FALSE;
-	s = JS_GetPrivate(cx, obj);
-	*vp = BOOLEAN_TO_JSVAL(si_smanet_init(s));
-	return JS_TRUE;
-}
-
-static JSBool jsnotify(JSContext *cx, uintN argc, jsval *vp) {
+static JSBool jssi_notify(JSContext *cx, uintN argc, jsval *vp) {
 	jsval val;
 	char *str;
 	si_session_t *s;
@@ -337,21 +332,7 @@ static JSBool jsnotify(JSContext *cx, uintN argc, jsval *vp) {
 	return JS_TRUE;
 }
 
-static JSObject *js_InitSIClass(JSContext *cx, si_session_t *s);
-JSObject *js_init_si(JSContext *cx, void *priv) {
-	si_session_t *s = priv;
-	JSObject *newobj;
-
-	newobj = js_InitSIClass(cx,s);
-	JS_SetPrivate(cx,newobj,s);
-	JS_DefineProperty(cx, JS_GetGlobalObject(cx), "si", OBJECT_TO_JSVAL(newobj), 0, 0, 0);
-
-	/* Create the si_data object here */
-	s->data_val = OBJECT_TO_JSVAL(js_InitSIDataClass(cx,s));
-	s->agent_val = OBJECT_TO_JSVAL(JSAgent(cx,s->ap));
-	return newobj;
-}
-
+#if 0
 JSObject *js_init_candev(JSContext *cx, void *priv) {
 	si_session_t *s = priv;
 	JSObject *newobj;
@@ -374,41 +355,28 @@ JSObject *js_init_smanetdev(JSContext *cx, void *priv) {
 	JS_DefineProperty(cx, JS_GetGlobalObject(cx), "smanet", val, 0, 0, 0);
 	return newobj;
 }
+#endif
 
-static JSBool si_ctor(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
-	si_session_t *s;
-	JSObject *newobj,*gobj;
-
-	printf("===> SI_CTOR CALLED!\n");
-
-	s = si_driver.new(0,0);
-	if (!s) {
-		JS_ReportError(cx,"error allocating memory");
-		return JS_FALSE;
-	}
-
-	gobj = JS_GetGlobalObject(cx);
-	newobj = JS_InitClass(cx, gobj, gobj, &si_class, 0, 0, 0, 0, 0, 0);
-	JS_SetPrivate(cx,newobj,s);
-	*rval = OBJECT_TO_JSVAL(newobj);
-	return JS_TRUE;
-}
-
-static JSObject *js_InitSIClass(JSContext *cx, si_session_t *s) {
+static int jssi_init(JSContext *cx, JSObject *parent, void *priv) {
+	si_session_t *s = priv;
 	JSPropertySpec si_props[] = {
 		{ "data", SI_PROPERTY_ID_DATA, JSPROP_ENUMERATE },
 		{ "info", SI_PROPERTY_ID_INFO, JSPROP_ENUMERATE | JSPROP_READONLY },
 		{ "agent", SI_PROPERTY_ID_AGENT, JSPROP_ENUMERATE | JSPROP_READONLY },
+		{ "can", SI_PROPERTY_ID_CAN, JSPROP_ENUMERATE | JSPROP_READONLY },
+		{ "smanet", SI_PROPERTY_ID_SMANET, JSPROP_ENUMERATE | JSPROP_READONLY },
 		{ 0 }
 	};
 	JSFunctionSpec si_funcs[] = {
-		JS_FN("can_read",jscan_read,1,1,0),
-		JS_FN("can_write",jscan_write,2,2,0),
+		JS_FN("can_read",jssi_can_read,1,1,0),
+		JS_FN("can_write",jssi_can_write,2,2,0),
+#if 0
 		JS_FN("smanet_get",jscan_read,1,1,0),
 		JS_FN("smanet_set",jscan_read,1,1,0),
 		JS_FN("can_init",jsinit_can,0,0,0),
 		JS_FN("smanet_init",jsinit_smanet,0,0,0),
-		JS_FN("notify",jsnotify,0,0,0),
+#endif
+		JS_FN("notify",jssi_notify,0,0,0),
 		{ 0 }
 	};
 	JSAliasSpec si_aliases[] = {
@@ -431,7 +399,7 @@ static JSObject *js_InitSIClass(JSContext *cx, si_session_t *s) {
 		JS_NUMCONST(CURRENT_TYPE_WATTS),
 		{ 0 }
 	};
-	JSObject *obj,*gobj;
+	JSObject *obj,*global = JS_GetGlobalObject(cx);
 
 	dprintf(dlevel,"s->props: %p, cp: %p\n",s->props,s->ap->cp);
 	if (!s->props) {
@@ -445,29 +413,47 @@ static JSObject *js_InitSIClass(JSContext *cx, si_session_t *s) {
 	}
 
 	dprintf(dlevel,"Defining %s object\n",si_class.name);
-	gobj = JS_GetGlobalObject(cx);
-	obj = JS_InitClass(cx, gobj, gobj, &si_class, si_ctor, 1, s->props, si_funcs, 0, 0);
+	obj = JS_InitClass(cx, parent, 0, &si_class, 0, 0, s->props, si_funcs, 0, 0);
 	if (!obj) {
 		JS_ReportError(cx,"unable to initialize si class");
-		return 0;
+		return 1;
 	}
 	dprintf(dlevel,"Defining %s aliases\n",si_class.name);
 	if (!JS_DefineAliases(cx, obj, si_aliases)) {
 		JS_ReportError(cx,"unable to define aliases");
-		return 0;
+		return 1;
 	}
 	dprintf(dlevel,"Defining %s constants\n",si_class.name);
-	if (!JS_DefineConstants(cx, JS_GetGlobalObject(cx), si_constants)) {
+	if (!JS_DefineConstants(cx, global, si_constants)) {
 		JS_ReportError(cx,"unable to define constants");
-		return 0;
+		return 1;
 	}
 	dprintf(dlevel,"done!\n");
-	return obj;
+	JS_SetPrivate(cx,obj,s);
+
+	s->data_val = OBJECT_TO_JSVAL(jssi_data_new(cx,obj,s));
+	s->agent_val = OBJECT_TO_JSVAL(jsagent_new(cx,obj,s->ap));
+	s->can_val = OBJECT_TO_JSVAL(jscan_new(cx,obj,s->can,s->can_handle,s->can_transport,s->can_target,s->can_topts,&s->can_connected));
+	s->smanet_val = OBJECT_TO_JSVAL(jssmanet_new(cx,obj,s->smanet,s->smanet_transport,s->smanet_target,s->smanet_topts));
+#if 0
+	s->data_val = OBJECT_TO_JSVAL(jssi_data_new(cx,obj,s));
+	s->agent_val = OBJECT_TO_JSVAL(jsagent_new(cx,obj,s->ap));
+	s->can_val = OBJECT_TO_JSVAL(jscan_new(cx,obj,s->can,s->can_handle,s->can_transport,s->can_target,s->can_topts,&s->can_connected));
+	s->smanet_val = OBJECT_TO_JSVAL(jssmanet_new(cx,obj,s->smanet,s->smanet_transport,s->smanet_target,s->smanet_topts));
+#endif
+
+	/* Create the global convenience objects */
+//	JS_DefineProperty(cx, global, "si", OBJECT_TO_JSVAL(obj), 0, 0, 0);
+	JS_DefineProperty(cx, global, "data", s->data_val, 0, 0, 0);
+	JS_DefineProperty(cx, global, "agent", s->agent_val, 0, 0, 0);
+	JS_DefineProperty(cx, global, "can", s->can_val, 0, 0, 0);
+	JS_DefineProperty(cx, global, "smanet", s->smanet_val, 0, 0, 0);
+	JS_DefineProperty(cx, global, "influx", s->ap->influx_val, 0, 0, 0);
+	JS_DefineProperty(cx, global, "mqtt", s->ap->mqtt_val, 0, 0, 0);
+	return 0;
 }
 
 int si_jsinit(si_session_t *s) {
-	JS_EngineAddInitFunc(s->ap->js, "si", js_init_si, s);
-	JS_EngineAddInitFunc(s->ap->js, "can", js_init_candev, s);
-	JS_EngineAddInitFunc(s->ap->js, "smanet", js_init_smanetdev, s);
+	JS_EngineAddInitFunc(s->ap->js, "si", jssi_init, s);
 	return 0;
 }

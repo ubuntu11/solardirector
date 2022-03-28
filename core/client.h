@@ -43,6 +43,7 @@ struct solard_client {
 	mqtt_config_t mc;			/* MQTT config */
 	int mqtt_init;
 	list mq;				/* Messages */
+	int config_from_mqtt;
 	influx_session_t *i;			/* Influx session */
 	influx_config_t ic;			/* Influx config */
 	config_t *cp;				/* Config */
@@ -50,7 +51,11 @@ struct solard_client {
 //	cfg_info_t *cfg;
 	JSPropertySpec *props;
 	int rtsize;
+	int stacksize;
 	JSEngine *js;
+	jsval config_val;
+	jsval mqtt_val;
+	jsval influx_val;
 	char script_dir[SOLARD_PATH_MAX];
 	char init_script[SOLARD_PATH_MAX];
 	char start_script[SOLARD_PATH_MAX];

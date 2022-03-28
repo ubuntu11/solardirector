@@ -78,6 +78,9 @@ static int si_close(void *handle) {
 static int si_read(void *handle, uint32_t *control, void *buf, int buflen) {
 	si_session_t *s = handle;
 
+	dprintf(1,"disable_si_read: %d\n", s->disable_si_read);
+	if (s->disable_si_read) return 0;
+
 	dprintf(1,"can_connected: %d, smanet_connected: %d\n", s->can_connected, s->smanet_connected);
 
 	if (!s->can_connected) {
@@ -195,7 +198,7 @@ static void si_pub(si_session_t *s) {
 	v = json_from_tab(tab);
 	p = json_dumps(v,0);
 	dprintf(2,"sending mqtt data...\n");
-	agent_mktopic(topic,sizeof(topic)-1,s->ap,s->ap->instance_name,SOLARD_FUNC_DATA);
+	agent_mktopic(topic,sizeof(topic)-1,s->ap->instance_name,SOLARD_FUNC_DATA);
 	dprintf(2,"topic: %s\n", topic);
 	if (mqtt_pub(s->ap->m, topic, p, 1, 0)) log_error("si_pub: error sending mqtt message!\n");
 	free(p);
@@ -205,6 +208,9 @@ static void si_pub(si_session_t *s) {
 
 static int si_write(void *handle, uint32_t *control, void *buffer, int len) {
 	si_session_t *s = handle;
+
+	dprintf(1,"disable_si_write: %d\n", s->disable_si_write);
+	if (s->disable_si_write) return 0;
 
 	/* Charging controlled by JS */
 	if (agent_script_exists(s->ap,"charge.js")) agent_start_script(s->ap,"charge.js");

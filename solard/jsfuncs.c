@@ -1,15 +1,9 @@
 
 #include "solard.h"
+#include "jsstr.h"
+#include "jsprintf.h"
 
-#if 0
-#ifdef JS
-#include "solard_agentinfo_propid.h"
-
-enum SOLARD_AGENTINFO_PROPERTY_ID {
-	SOLARD_AGENTINFO_PROPIDS
-};
-
-#include "solard_agentinfo_getprop.h"
+#define dlevel 1
 
 static JSBool agentinfo_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 	solard_agentinfo_t *info;
@@ -27,7 +21,6 @@ static JSBool agentinfo_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *r
 		prop_id = JSVAL_TO_INT(id);
 		dprintf(1,"prop_id: %d\n", prop_id);
 		switch(prop_id) {
-		SOLARD_AGENTINFO_GETPROP
 		default:
 			*rval = JSVAL_NULL;
 			break;
@@ -35,8 +28,6 @@ static JSBool agentinfo_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *r
 	}
 	return JS_TRUE;
 }
-
-#include "solard_agentinfo_setprop.h"
 
 static JSBool agentinfo_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp) {
 	solard_agentinfo_t *info;
@@ -54,7 +45,6 @@ static JSBool agentinfo_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *v
 		prop_id = JSVAL_TO_INT(id);
 		dprintf(1,"prop_id: %d\n", prop_id);
 		switch(prop_id) {
-		SOLARD_AGENTINFO_SETPROP
 		default:
 			*vp = JSVAL_NULL;
 			break;
@@ -77,11 +67,8 @@ static JSClass agentinfo_class = {
 	JSCLASS_NO_OPTIONAL_MEMBERS
 };
 
-#include "solard_agentinfo_propspec.h"
-
 JSObject *JSAgentInfo(JSContext *cx, solard_agentinfo_t *info) {
 	JSPropertySpec agentinfo_props[] = { 
-		SOLARD_AGENTINFO_PROPSPEC
 		{0}
 	};
 	JSFunctionSpec agentinfo_funcs[] = {
@@ -99,26 +86,6 @@ JSObject *JSAgentInfo(JSContext *cx, solard_agentinfo_t *info) {
 	dprintf(1,"done!\n");
 	return obj;
 }
-
-#if 0
-        char name[SOLARD_NAME_LEN];             /* Site name */
-        solard_agent_t *ap;
-        list inverters;
-        list batteries;
-        list producers;
-        list consumers;
-        list agents;
-        int state;
-        int interval;                           /* Agent check interval */
-        int agent_warning;                      /* Warning, in seconds, when agent dosnt respond */
-        int agent_error;                        /* In seconds, when agent considered lost */
-        int agent_notify;                       /* In seconds, when monitoring should notify */
-        int status;
-        char errmsg[128];
-        time_t last_check;                      /* Last time agents were checked */
-        long start;
-        char notify_path[256];
-#endif
 
 enum SOLARD_PROPERTY_ID {
 	SOLARD_PROPERTY_ID_NONE,
@@ -138,26 +105,6 @@ enum SOLARD_PROPERTY_ID {
 	SOLARD_PROPERTY_ID_START,
 };
 
-#if 0
-struct solard_jsconfig {
-        char *name;
-        solard_agent_t *ap;
-        list jsinv;
-        list jsbat;
-        list jsagents;
-        int state;
-        int interval;                           /* Agent check interval */
-        int agent_warning;                      /* Warning, in seconds, when agent dosnt respond */
-        int agent_error;                        /* In seconds, when agent considered lost */
-        int agent_notify;                       /* In seconds, when monitoring should notify */
-        int status;
-        char errmsg[128];
-        time_t last_check;                      /* Last time agents were checked */
-        long start;
-        char notify_path[256];
-};
-#endif
-
 static JSBool solard_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 	int prop_id;
 	solard_config_t *conf;
@@ -175,11 +122,6 @@ static JSBool solard_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval
 		prop_id = JSVAL_TO_INT(id);
 		dprintf(1,"prop_id: %d\n", prop_id);
 		switch(prop_id) {
-#if 0
-		case SOLARD_PROPERTY_ID_SITE_NAME:
-			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,conf->name));
-			break;
-#endif
 		case SOLARD_PROPERTY_ID_AGENTS:
 			{
 				solard_agentinfo_t *info;
@@ -251,8 +193,8 @@ static JSBool solard_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval
 	return JS_TRUE;
 }
 
-static JSClass solard_class = {
-	"sd",
+static JSClass sd_class = {
+	"SolarDirector",
 	JSCLASS_HAS_PRIVATE,
 	JS_PropertyStub,
 	JS_PropertyStub,
@@ -265,47 +207,84 @@ static JSClass solard_class = {
 	JSCLASS_NO_OPTIONAL_MEMBERS
 };
 
-JSObject *JSSolard(JSContext *cx, void *priv) {
-	JSPropertySpec solard_props[] = { 
+static JSBool jssd_notify(JSContext *cx, uintN argc, jsval *vp) {
+	jsval val;
+	char *str;
+//	solard_config_t *conf;
+	JSObject *obj;
+
+	obj = JS_THIS_OBJECT(cx, vp);
+	if (!obj) return JS_FALSE;
+//	conf = JS_GetPrivate(cx, obj);
+
+	JS_SPrintf(cx, JS_GetGlobalObject(cx), argc, JS_ARGV(cx, vp), &val);
+	str = (char *)js_GetStringBytes(cx, JSVAL_TO_STRING(val));
+	dprintf(dlevel,"str: %s\n", str);
+//	sd_notify(conf,"%s",str);
+	return JS_TRUE;
+}
+
+static int jssd_init(JSContext *cx, JSObject *parent, void *priv) {
+	solard_config_t *conf = priv;
+	JSPropertySpec sd_props[] = {
 		{ "name",		SOLARD_PROPERTY_ID_SITE_NAME,	JSPROP_ENUMERATE | JSPROP_READONLY },
 		{ "agents",		SOLARD_PROPERTY_ID_AGENTS,	JSPROP_ENUMERATE },
 		{ "batteries",		SOLARD_PROPERTY_ID_BATTERIES,	JSPROP_ENUMERATE | JSPROP_READONLY },
 		{ "inverters",		SOLARD_PROPERTY_ID_INVERTERS,	JSPROP_ENUMERATE | JSPROP_READONLY },
 		{ "interval",		SOLARD_PROPERTY_ID_INTERVAL,	JSPROP_ENUMERATE },
-		{0}
-	};
-	JSFunctionSpec solard_funcs[] = {
 		{ 0 }
 	};
-	JSObject *obj;
-#if 0
-	solard_config_t *conf = priv;
+	JSFunctionSpec sd_funcs[] = {
+		JS_FN("notify",jssd_notify,0,0,0),
+		{ 0 }
+	};
+	JSAliasSpec sd_aliases[] = {
+		{ "charge_amps", "charge_current" },
+		{ 0 }
+	};
+	JSConstantSpec sd_constants[] = {
+		{ 0 }
+	};
+	JSObject *obj,*global = JS_GetGlobalObject(cx);
 
+	dprintf(dlevel,"conf->props: %p, cp: %p\n",conf->props,conf->ap->cp);
 	if (!conf->props) {
-		conf->props = config_to_props(conf->ap->cp, "solard", 0);
+
+		conf->props = config_to_props(conf->ap->cp, "si", sd_props);
+		dprintf(dlevel,"conf->props: %p\n",conf->props);
 		if (!conf->props) {
 			log_error("unable to create props: %s\n", config_get_errmsg(conf->ap->cp));
 			return 0;
 		}
 	}
-#endif
 
-	dprintf(1,"defining %s object\n",solard_class.name);
-	obj = JS_InitClass(cx, JS_GetGlobalObject(cx), 0, &solard_class, 0, 0, solard_props, solard_funcs, 0, 0);
+	dprintf(dlevel,"Defining %s object\n",sd_class.name);
+	obj = JS_InitClass(cx, parent, 0, &sd_class, 0, 0, conf->props, sd_funcs, 0, 0);
 	if (!obj) {
 		JS_ReportError(cx,"unable to initialize si class");
-		return 0;
+		return 1;
 	}
-//	JS_DefineProperties(cx, obj, solard_props);
-	JS_SetPrivate(cx,obj,priv);
-	dprintf(1,"done!\n");
-	return obj;
+	dprintf(dlevel,"Defining %s aliases\n",sd_class.name);
+	if (!JS_DefineAliases(cx, obj, sd_aliases)) {
+		JS_ReportError(cx,"unable to define aliases");
+		return 1;
+	}
+	dprintf(dlevel,"Defining %s constants\n",sd_class.name);
+	if (!JS_DefineConstants(cx, global, sd_constants)) {
+		JS_ReportError(cx,"unable to define constants");
+		return 1;
+	}
+	dprintf(dlevel,"done!\n");
+	JS_SetPrivate(cx,obj,conf);
+
+//	conf->agents_val = OBJECT_TO_JSVAL(jsagent_new(cx,obj,conf->ap));
+
+	/* Create the global convenience objects */
+	JS_DefineProperty(cx, global, "sd", OBJECT_TO_JSVAL(obj), 0, 0, 0);
+//	JS_DefineProperty(cx, global, "data", conf->data_val, 0, 0, 0);
+	return 0;
 }
 
 int solard_jsinit(solard_config_t *conf) {
-	int r;
-	r = JS_EngineAddInitFunc(conf->ap->js, "solard", JSSolard, conf);
-	return r;
+	return JS_EngineAddInitFunc(conf->ap->js, "solard", jssd_init, conf);
 }
-#endif /* JS */
-#endif

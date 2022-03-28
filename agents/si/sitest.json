@@ -1,6 +1,7 @@
 {
     "si": {
-        "bms_mode": false,
+        "bms_mode": true,
+	"readonly": true,
         "min_voltage": 37.799999237060547,
         "max_voltage": 58.099998474121094,
         "can_transport": "rdev",

@@ -7,8 +7,8 @@
 #include "jsobj.h"
 #include "jsarray.h"
 
-#define DEBUG_JSCONV 0
-#define dlevel 4
+#define DEBUG_JSCONV 1
+#define dlevel 6
 
 #ifdef DEBUG
 #undef DEBUG
@@ -18,8 +18,10 @@
 
 #define TYPEOF(cx,v)    (JSVAL_IS_NULL(v) ? JSTYPE_NULL : JS_TypeOfValue(cx,v))
 
-char *jstypestr(JSContext *cx, jsval vp) {
-	return (char *)JS_GetTypeName(cx, JS_TypeOfValue(cx, vp));
+char *jstypestr(JSContext *cx, jsval val) {
+//	printf("val: %d\n", val);
+	if (!val) return "null";
+	return (char *)JS_GetTypeName(cx, JS_TypeOfValue(cx, val));
 }
 
 jsval type_to_jsval(JSContext *cx, int type, void *src, int len) {

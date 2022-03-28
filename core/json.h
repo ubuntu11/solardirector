@@ -72,6 +72,7 @@ json_object_t *json_value_get_object(json_value_t *);
 json_array_t *json_value_get_array(json_value_t *);
 int json_value_get_boolean(json_value_t *);
 int json_destroy_value(json_value_t *);
+json_value_t *json_value_dotget_value(json_value_t *, char *);
 
 /* Objects */
 json_object_t *json_create_object(void);

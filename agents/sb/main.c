@@ -28,7 +28,10 @@ int main(int argc, char **argv) {
 	if (!s) return 1;
 
 	/* Agent init */
-	if (sb_agent_init(s,argc,argv)) return 1;
+	if (sb_agent_init(s,argc,argv)) {
+		sb_driver.close(s);
+		return 1;
+	}
 
 #if 0
 	/* -E takes precedence over config */
@@ -46,7 +49,7 @@ int main(int argc, char **argv) {
 	}
 #endif
 
-	sb_driver.read(s,0,0,0);
+//	sb_driver.read(s,0,0,0);
 
 	/* Main loop */
 	dprintf(1,"norun_flag: %d", s->norun_flag);

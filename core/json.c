@@ -57,6 +57,32 @@ json_array_t *json_value_get_array(json_value_t *v) { return (json_array_t *) pa
 int json_value_get_boolean(json_value_t *v) { return parson_boolean(VAL(v)); }
 int json_destroy_value(json_value_t *v);
 
+json_value_t *json_value_dotget_value(json_value_t *v, char *spec) {
+	json_object_t *o;
+	json_array_t *a;
+	int i,type;
+
+	if (!spec) return v;
+	dprintf(0,"spec: %s\n", spec);
+	type = json_value_get_type(v);
+	dprintf(0,"type: %s\n", json_typestr(type));
+	switch(type) {
+	case JSON_TYPE_OBJECT:
+		o = json_value_get_object(v);
+		for(i=0; i < o->count; o++) {
+			dprintf(0,"type{%d]: %s\n", i, json_typestr(json_value_get_type(o->values[i])));
+		}
+		break;
+	case JSON_TYPE_ARRAY:
+		a = json_value_get_array(v);
+		for(i=0; i < a->count; o++) {
+			dprintf(0,"type{%d]: %s\n", i, json_typestr(json_value_get_type(a->items[i])));
+		}
+		break;
+	}
+	return 0;
+}
+
 /* Objects */
 /*****************************************************/
 /* json_object */
@@ -79,6 +105,7 @@ json_array_t *json_object_dotget_array(json_object_t *o,char *n) {
 json_value_t *json_object_dotget_value(json_object_t *o, char *n) {
 	return (json_value_t *)parson_object_dotget_value(OBJ(o), n);
 }
+
 int json_object_delete_value(json_object_t *o, char *name) {
 	return parson_object_remove_internal(OBJ(o), name, 1);
 }

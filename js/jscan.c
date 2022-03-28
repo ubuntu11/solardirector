@@ -30,11 +30,6 @@ struct can_private {
 	char *transport;
 	char *target;
 	char *topts;
-#if 0
-	char transport[DRIVER_TRANSPORT_SIZE];
-	char target[DRIVER_TARGET_SIZE];
-	char topts[DRIVER_TOPTS_SIZE];
-#endif
 	solard_driver_t *tp;
 	void *tp_handle;
 	bool *connected;
@@ -64,103 +59,15 @@ static JSBool can_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
                 case CAN_PROPERTY_ID_CONNECTED:
                         *rval = BOOLEAN_TO_JSVAL(*p->connected);
                         break;
-#if 0
-                case CAN_PROPERTY_ID_AUTOCONNECT:
-                        *rval = BOOLEAN_TO_JSVAL(p->autoconnect);
-                        break;
-		case CAN_PROPERTY_ID_NAME:
-			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,bp->name));
-			*rval = type_to_jsval(cx, DATA_TYPE_STRING, bp->name, strlen(bp->name));
+		case CAN_PROPERTY_ID_TRANSPORT:
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,p->transport,strlen(p->transport));
 			break;
-		case CAN_PROPERTY_ID_CAPACITY:
-			JS_NewDoubleValue(cx, bp->capacity, rval);
+		case CAN_PROPERTY_ID_TARGET:
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,p->target,strlen(p->target));
 			break;
-		case CAN_PROPERTY_ID_VOLTAGE:
-			JS_NewDoubleValue(cx, bp->voltage, rval);
+		case CAN_PROPERTY_ID_TOPTS:
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,p->topts,strlen(p->topts));
 			break;
-		case CAN_PROPERTY_ID_CURRENT:
-			JS_NewDoubleValue(cx, bp->current, rval);
-			break;
-		case CAN_PROPERTY_ID_NTEMPS:
-			dprintf(4,"ntemps: %d\n", bp->ntemps);
-			*rval = INT_TO_JSVAL(bp->ntemps);
-			break;
-		case CAN_PROPERTY_ID_TEMPS:
-		       {
-				JSObject *rows;
-				jsval val;
-
-//				dprintf(4,"ntemps: %d\n", bp->ntemps);
-				rows = JS_NewArrayObject(cx, bp->ntemps, NULL);
-				for(i=0; i < bp->ntemps; i++) {
-//					dprintf(4,"temps[%d]: %f\n", i, bp->temps[i]);
-					JS_NewDoubleValue(cx, bp->temps[i], &val);
-					JS_SetElement(cx, rows, i, &val);
-				}
-				*rval = OBJECT_TO_JSVAL(rows);
-			}
-			break;
-		case CAN_PROPERTY_ID_NCELLS:
-			dprintf(4,"ncells: %d\n", bp->ncells);
-			*rval = INT_TO_JSVAL(bp->ncells);
-			break;
-		case CAN_PROPERTY_ID_CELLVOLT:
-		       {
-				JSObject *rows;
-				jsval val;
-
-				rows = JS_NewArrayObject(cx, bp->ncells, NULL);
-				for(i=0; i < bp->ncells; i++) {
-					JS_NewDoubleValue(cx, bp->cells[i].voltage, &val);
-					JS_SetElement(cx, rows, i, &val);
-				}
-				*rval = OBJECT_TO_JSVAL(rows);
-			}
-			break;
-		case CAN_PROPERTY_ID_CELLRES:
-		       {
-				JSObject *rows;
-				jsval val;
-
-				rows = JS_NewArrayObject(cx, bp->ncells, NULL);
-				for(i=0; i < bp->ncells; i++) {
-					JS_NewDoubleValue(cx, bp->cells[i].resistance, &val);
-					JS_SetElement(cx, rows, i, &val);
-				}
-				*rval = OBJECT_TO_JSVAL(rows);
-			}
-			break;
-		case CAN_PROPERTY_ID_CELL_MIN:
-			JS_NewDoubleValue(cx, bp->cell_min, rval);
-			break;
-		case CAN_PROPERTY_ID_CELL_MAX:
-			JS_NewDoubleValue(cx, bp->cell_max, rval);
-			break;
-		case CAN_PROPERTY_ID_CELL_DIFF:
-			JS_NewDoubleValue(cx, bp->cell_diff, rval);
-			break;
-		case CAN_PROPERTY_ID_CELL_AVG:
-			JS_NewDoubleValue(cx, bp->cell_avg, rval);
-			break;
-		case CAN_PROPERTY_ID_CELL_TOTAL:
-			JS_NewDoubleValue(cx, bp->cell_total, rval);
-			break;
-		case CAN_PROPERTY_ID_BALANCEBITS:
-			*rval = INT_TO_JSVAL(bp->balancebits);
-			break;
-		case CAN_PROPERTY_ID_ERRCODE:
-			*rval = INT_TO_JSVAL(bp->errcode);
-			break;
-		case CAN_PROPERTY_ID_ERRMSG:
-			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,bp->errmsg));
-			break;
-		case CAN_PROPERTY_ID_STATE:
-			*rval = INT_TO_JSVAL(bp->state);
-			break;
-		case CAN_PROPERTY_ID_LAST_UPDATE:
-			*rval = INT_TO_JSVAL(bp->last_update);
-			break;
-#endif
 		default:
 			JS_ReportError(cx, "not a property");
 			*rval = JSVAL_NULL;
@@ -216,25 +123,31 @@ static JSBool jscan_write(JSContext *cx, uintN argc, jsval *vp) {
 	uint8_t data[8];
 	struct can_frame frame;
 	int len,bytes;
-	uint32_t id;
-	jsval *argv = vp + 2;
-	JSObject *obj, *array = 0;
+	uint32_t can_id;
+	JSObject *obj;
 	JSClass *classp;
+//	jsval *argv = vp + 2;
+//	JSObject *obj, *array = 0;
 
 	obj = JS_THIS_OBJECT(cx, vp);
 	if (!obj) return JS_FALSE;
 	p = JS_GetPrivate(cx, obj);
+	dprintf(0,"p: %p\n", p);
+	if (!p) {
+		JS_ReportError(cx, "can_write: internal error: private is null!\n");
+		return JS_FALSE;
+	}
 
 	if (argc != 2) {
 		JS_ReportError(cx,"can_write requires 2 arguments (id: number, data: array)\n");
 		return JS_FALSE;
 	}
 
-	if (!JSVAL_IS_OBJECT(argv[1])) {
-		JS_ReportError(cx, "can_write: 2nd argument must be array\n");
-		return JS_FALSE;
-	}
-	obj = JSVAL_TO_OBJECT(argv[1]);
+	/* Get the args*/
+	if (!JS_ConvertArguments(cx, argc, JS_ARGV(cx,vp), "u o", &can_id, &obj)) return JS_FALSE;
+	dprintf(dlevel,"can_id: %d, obj: %p\n", can_id, obj);
+
+	/* Make sure the object is an array */
 	classp = OBJ_GET_CLASS(cx,obj);
 	if (!classp) {
 		JS_ReportError(cx, "can_write: 2nd argument must be array\n");
@@ -246,18 +159,15 @@ static JSBool jscan_write(JSContext *cx, uintN argc, jsval *vp) {
 		return JS_FALSE;
 	}
 
-	dprintf(dlevel,"id: %d, array: %p\n", id, array);
-
-	if (!jsval_to_type(DATA_TYPE_U32,&id,0,cx,argv[0])) return JS_FALSE;
-	len = jsval_to_type(DATA_TYPE_U8_ARRAY,data,8,cx,argv[1]);
-	dprintf(dlevel,"id: %03x, len: %d\n", len);
+	/* Convert the JS array to C array */
+	len = jsval_to_type(DATA_TYPE_U8_ARRAY,data,8,cx,OBJECT_TO_JSVAL(obj));
 
         memset(&frame,0,sizeof(frame));
-        frame.can_id = id;
+        frame.can_id = can_id;
         frame.can_dlc = len;
         memcpy(&frame.data,data,len);
-        bytes = p->tp->write(p->tp_handle,&id,&frame,sizeof(frame));
-        dprintf(dlevel,"bytes: %d\n", bytes);
+        bytes = p->tp->write(p->tp_handle,&can_id,&frame,sizeof(frame));
+	dprintf(0,"bytes: %d\n", bytes);
 	if (bytes != 16) *p->connected = false;
 	*vp = BOOLEAN_TO_JSVAL(bytes != 16);
 	return JS_TRUE;
@@ -342,7 +252,7 @@ static JSBool can_ctor(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, js
 	return r;
 }
 
-JSObject *jscan_new(JSContext *cx, void *tp, void *handle, char *transport, char *target, char *topts, int *con) {
+JSObject *jscan_new(JSContext *cx, JSObject *parent, void *tp, void *handle, char *transport, char *target, char *topts, int *con) {
 	can_private_t *p;
 	JSObject *newobj;
 
@@ -358,18 +268,17 @@ JSObject *jscan_new(JSContext *cx, void *tp, void *handle, char *transport, char
 	p->topts = topts;
 	p->connected = con;
 
-	newobj = js_InitCANClass(cx,JS_GetGlobalObject(cx));
+	newobj = js_InitCANClass(cx,parent);
 	JS_SetPrivate(cx,newobj,p);
 	return newobj;
 }
 
-JSObject *js_InitCANClass(JSContext *cx, JSObject *gobj) {
+JSObject *js_InitCANClass(JSContext *cx, JSObject *parent) {
 	JSPropertySpec can_props[] = { 
-		{ "connected", CAN_PROPERTY_ID_CONNECTED, JSPROP_ENUMERATE | JSPROP_READONLY },
-//		{ "autoconnect", CAN_PROPERTY_ID_AUTOCONNECT, JSPROP_ENUMERATE },
 		{ "transport",CAN_PROPERTY_ID_TRANSPORT,JSPROP_ENUMERATE },
 		{ "target",CAN_PROPERTY_ID_TARGET,JSPROP_ENUMERATE | JSPROP_READONLY  },
 		{ "topts",CAN_PROPERTY_ID_TOPTS,JSPROP_ENUMERATE | JSPROP_READONLY  },
+		{ "connected", CAN_PROPERTY_ID_CONNECTED, JSPROP_ENUMERATE | JSPROP_READONLY },
 		{0}
 	};
 	JSFunctionSpec can_funcs[] = {
@@ -381,7 +290,7 @@ JSObject *js_InitCANClass(JSContext *cx, JSObject *gobj) {
 	JSObject *obj;
 
 	dprintf(5,"defining %s object\n",can_class.name);
-	obj = JS_InitClass(cx, gobj, gobj, &can_class, can_ctor, 3, can_props, can_funcs, 0, 0);
+	obj = JS_InitClass(cx, parent, 0, &can_class, can_ctor, 3, can_props, can_funcs, 0, 0);
 	if (!obj) {
 		JS_ReportError(cx,"unable to initialize can class");
 		return 0;

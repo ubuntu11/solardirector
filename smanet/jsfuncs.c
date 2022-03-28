@@ -4,12 +4,13 @@
 #include "jsengine.h"
 #include "debug.h"
 #include "transports.h"
+#include "jsobj.h"
+#include "jsarray.h"
 
 #define dlevel 6
 
 enum SMANET_PROPERTY_ID {
 	SMANET_PROPERTY_ID_CONNECTED,
-	SMANET_PROPERTY_ID_AUTOCONNECT,
 	SMANET_PROPERTY_ID_CHANNELS,
 	SMANET_PROPERTY_ID_TRANSPORT,
 	SMANET_PROPERTY_ID_TARGET,
@@ -36,20 +37,24 @@ static JSBool smanet_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval
 		prop_id = JSVAL_TO_INT(id);
 		dprintf(dlevel,"prop_id: %d", prop_id);
 		switch(prop_id) {
+		case SMANET_PROPERTY_ID_TRANSPORT:
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,s->transport,strlen(s->transport));
+			break;
+		case SMANET_PROPERTY_ID_TARGET:
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,s->target,strlen(s->target));
+			break;
+		case SMANET_PROPERTY_ID_TOPTS:
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,s->topts,strlen(s->topts));
+			break;
 		case SMANET_PROPERTY_ID_CONNECTED:
 			*rval = BOOLEAN_TO_JSVAL(s->connected);
 			break;
-		case SMANET_PROPERTY_ID_AUTOCONNECT:
-//			*rval = BOOLEAN_TO_JSVAL(s->autoconnect);
-			break;
 		case SMANET_PROPERTY_ID_CHANNELS:
+			/* XXX TODO */
 			*rval = JSVAL_VOID;
 			break;
 		case SMANET_PROPERTY_ID_SERIAL:
 			*rval = INT_TO_JSVAL(s->serial);
-			break;
-		case SMANET_PROPERTY_ID_TRANSPORT:
-			type_to_jsval(cx,DATA_TYPE_STRING,rval,0);
 			break;
 		case SMANET_PROPERTY_ID_TYPE:
 			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,s->type));
@@ -73,6 +78,7 @@ static JSBool smanet_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval
 	return JS_TRUE;
 }
 
+#if 0
 static JSBool smanet_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp) {
 	smanet_session_t *s;
 	int r,prop_id;
@@ -84,10 +90,6 @@ static JSBool smanet_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp) 
 		prop_id = JSVAL_TO_INT(id);
 		dprintf(dlevel,"smanet_setprop: prop_id: %d", prop_id);
 		switch(prop_id) {
-		case SMANET_PROPERTY_ID_AUTOCONNECT:
-			jsval_to_type(DATA_TYPE_BOOLEAN,&s->connected,0,cx,*vp);
-			r = 0;
-			break;
 		default:
 			break;
 		}
@@ -96,6 +98,7 @@ smanet_setprop_done:
 	*vp = BOOLEAN_TO_JSVAL(r);
 	return JS_TRUE;
 }
+#endif
 
 JSClass smanet_class = {
 	"SMANET",		/* Name */
@@ -103,7 +106,7 @@ JSClass smanet_class = {
 	JS_PropertyStub,	/* addProperty */
 	JS_PropertyStub,	/* delProperty */
 	smanet_getprop,		/* getProperty */
-	smanet_setprop,		/* setProperty */
+	JS_PropertyStub,	/* setProperty */
 	JS_EnumerateStub,	/* enumerate */
 	JS_ResolveStub,		/* resolve */
 	JS_ConvertStub,		/* convert */
@@ -136,51 +139,204 @@ static JSBool jssave_channels(JSContext *cx, JSObject *obj, uintN argc, jsval *a
 	return JS_FALSE;
 }
 
-static JSBool jsget(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
+static char *js_string(JSContext *cx, jsval val) {
 	JSString *str;
-	char *name;
-	smanet_session_t *s;
-	double d;
-	char *p;
+	char *bytes;
 
+	str = JS_ValueToString(cx, val);
+	if (!str) return 0;
+	bytes = JS_EncodeString(cx, str);
+	if (!bytes) return 0;
+	return bytes;
+}
+
+#if 0
+/* Create an object of the results? */
+static JSClass js_mr_class = {
+	"SMANETResults",	/* Name */
+	JSCLASS_HAS_PRIVATE,	/* Flags */
+	JS_PropertyStub,	/* addProperty */
+	JS_PropertyStub,	/* delProperty */
+	js_mr_getprop,		/* getProperty */
+	JS_PropertyStub,	/* setProperty */
+	JS_EnumerateStub,	/* enumerate */
+	JS_ResolveStub,		/* resolve */
+	JS_ConvertStub,		/* convert */
+	JS_FinalizeStub,	/* finalize */
+	JSCLASS_NO_OPTIONAL_MEMBERS
+};
+#endif
+
+static jsval _mr_to_array(JSContext *cx, smanet_multreq_t *mr, int count) {
+	JSObject *arr,*ea;
+	jsval ae,ne,ve;
+	int i;
+
+//	obj = js_NewObject(cx, &js_mr_class, NULL, NULL, 0);
+
+	arr = JS_NewArrayObject(cx, count, NULL);
+	for(i=0; i < count; i++) {
+		/* Create a sub array of [ name, value ] */
+		ea = JS_NewArrayObject(cx, 2, NULL);
+		dprintf(1,"mr[%d]: value: %f, text: %s\n", i, mr[i].value, mr[i].text);
+		ne = type_to_jsval(cx,DATA_TYPE_STRING,mr[i].name,strlen(mr[i].name));
+		JS_SetElement(cx, ea, 0, &ne);
+		if (mr[i].text) {
+			ve = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,mr[i].text));
+		} else {
+			JS_NewNumberValue(cx, mr[i].value, &ve);
+		}
+		JS_SetElement(cx, ea, 1, &ve);
+		ae = OBJECT_TO_JSVAL(ea);
+		JS_SetElement(cx, arr, i, &ae);
+	}
+	return OBJECT_TO_JSVAL(arr);
+}
+
+static smanet_multreq_t *_array_to_mr(JSContext *cx, JSObject *obj, unsigned int *count) {
+	smanet_multreq_t *mr;
+	JSString *str;
+	jsval element;
+	int i,size;
+
+	if (!js_GetLengthProperty(cx, obj, count)) return 0;
+
+	size = *count*sizeof(smanet_multreq_t);
+	mr = malloc(size);
+	if (!mr) {
+		log_syserror("_array_to_mr: malloc(%d)",size);
+		return 0;
+	}
+	for(i=0; i < *count; i++) {
+		JS_GetElement(cx, obj, (jsint)i, &element);
+		str = JS_ValueToString(cx,element);
+		if (!str) continue;
+		mr[i].name = JS_EncodeString(cx, str);
+		if (!mr[i].name) continue;
+		dprintf(1,"====> element[%d]: %s\n", i, mr[i].name);
+	}
+
+	return mr;
+}
+
+static JSBool js_smanet_get(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
+	smanet_session_t *s;
+	int i;
+
+	/* There are 2 forms to the get call: first, all strings ("a","b","c") 
+	   OR a single array (["a","b","c"]) */
 	s = JS_GetPrivate(cx, obj);
 	if (!s) {
-		JS_ReportError(cx,"SMANET private is null!");
-		goto jsget_error;
+		sprintf(s->errmsg,"SMANET private is null!");
+		goto js_smanet_get_error;
 	}
 	if (!s->connected) {
 		sprintf(s->errmsg,"SMANET.get: not connected");
-		goto jsget_error;
+		goto js_smanet_get_error;
 	}
 #ifdef SMANET_THREADSAFE
 	dprintf(dlevel,"locking...\n");
 	smanet_lock(s);
 #endif
 	dprintf(dlevel,"argc: %d\n", argc);
-	if (argc != 1) {
-		sprintf(s->errmsg,"SMANET.get: 1 argument is required");
-		goto jsget_error;
+	if (argc < 1) {
+		sprintf(s->errmsg,"SMANET.get: at least 1 argument is required");
+		goto js_smanet_get_error;
 	}
-	str = JS_ValueToString(cx, argv[0]);
-	if (!str) {
-		sprintf(s->errmsg,"SMANET.get: unable to get string");
-		goto jsget_error;
-	}
-	name = JS_EncodeString(cx, str);
-	if (!name) {
-		sprintf(s->errmsg,"SMANET.get: unable to get name");
-		goto jsget_error;
-	}
-	dprintf(dlevel,"name: %s\n", name);
-	if (smanet_get_value(s, name, &d, &p)) {
-		JS_ReportError(cx, "error getting value: %s",s->errmsg);
-		goto jsget_error;
-	}
-	dprintf(dlevel,"d: %f, p: %s\n", d, p);
-	if (p) {
-		*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,p));
+	/* if more than 1 arg ... make sure they're all strings */
+	if (argc > 1) {
+		smanet_multreq_t *mr;
+		int mr_size;
+
+		int allstr = 1;
+		for(i = 0; i < argc; i++) {
+//			printf("==> argv[%d]: %s\n", i,jstypestr(cx,argv[i]));
+			if (!JSVAL_IS_STRING(argv[i])) {
+				allstr = 0;
+				break;
+			}
+		}
+		if (!allstr) {
+			sprintf(s->errmsg,"SMANET.get: if more than 1 argument, they must all be strings");
+			goto js_smanet_get_error;
+		}
+
+		/* Alloc the MR struct */
+		mr_size = argc * sizeof(smanet_multreq_t);
+		dprintf(1,"mr_size: %d\n", mr_size);
+		mr = malloc(mr_size);
+		if (!mr) {
+			sprintf(s->errmsg,"SMANET.get: malloc(%d): %s\n", mr_size, strerror(errno));
+			goto js_smanet_get_error;
+		}
+		for(i=0; i < argc; i++) mr[i].name = js_string(cx, argv[i]);
+		if (smanet_get_multvalues(s,mr,argc)) {
+			free(mr);
+			sprintf(s->errmsg,"SMANET.get: error calling smanet_get_multvalues");
+			goto js_smanet_get_error;
+		}
+		*rval = _mr_to_array(cx,mr,argc);
+		for(i=0; i < argc; i++) JS_free(cx, mr[i].name);
+		free(mr);
 	} else {
-		JS_NewDoubleValue(cx, d, rval);
+//		printf("==> argv[%d]: %s\n", 0,jstypestr(cx,argv[0]));
+		if (JSVAL_IS_STRING(argv[0])) {
+			char *name,*text;
+			double value;
+
+			name = js_string(cx,argv[0]);
+			if (!name) {
+				sprintf(s->errmsg,"SMANET.get: unable to get name");
+				goto js_smanet_get_error;
+			}
+			dprintf(dlevel,"name: %s\n", name);
+			if (smanet_get_value(s, name, &value, &text)) {
+				JS_ReportError(cx, "error getting value: %s",s->errmsg);
+				goto js_smanet_get_error;
+			}
+			dprintf(dlevel,"value: %f, text: %s\n", value, text);
+			if (text) {
+				*rval = type_to_jsval(cx,DATA_TYPE_STRING,text,strlen(text));
+			} else {
+				JS_NewDoubleValue(cx, value, rval);
+			}
+		} else if (JSVAL_IS_OBJECT(argv[0])) {
+			JSObject *arr;
+			JSClass *classp;
+			smanet_multreq_t *mr;
+			unsigned int count;
+
+			/* Get the object */
+			arr = JSVAL_TO_OBJECT(argv[0]);
+
+			/* Make sure the object is an array */
+			classp = OBJ_GET_CLASS(cx,arr);
+			if (!classp) {
+				sprintf(s->errmsg, "SMANET.get: object is not an array");
+				goto js_smanet_get_error;
+			}
+			dprintf(dlevel,"class: %s\n", classp->name);
+			if (classp && strcmp(classp->name,"Array")) {
+				sprintf(s->errmsg, "SMANET.get: object is not an array");
+				goto js_smanet_get_error;
+			}
+			mr = _array_to_mr(cx,arr,&count);
+			if (!mr) {
+				sprintf(s->errmsg,"SMANET.get: error getting array values");
+				goto js_smanet_get_error;
+			}
+			if (smanet_get_multvalues(s,mr,count)) {
+				free(mr);
+				sprintf(s->errmsg,"SMANET.get: error calling smanet_get_multvalues");
+				goto js_smanet_get_error;
+			}
+			*rval = _mr_to_array(cx,mr,count);
+			for(i=0; i < count; i++) JS_free(cx, mr[i].name);
+			free(mr);
+		} else {
+			sprintf(s->errmsg,"SMANET.get: single argument must be string or array");
+			goto js_smanet_get_error;
+		}
 	}
 #ifdef SMANET_THREADSAFE
 	dprintf(dlevel,"unlocking...\n");
@@ -188,11 +344,12 @@ static JSBool jsget(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval
 #endif
 	return JS_TRUE;
 
-jsget_error:
+js_smanet_get_error:
 #ifdef SMANET_THREADSAFE
 	dprintf(dlevel,"unlocking...\n");
 	smanet_unlock(s);
 #endif
+	JS_ReportError(cx,"%s",s->errmsg);
 	*rval = JSVAL_VOID;
 	return JS_TRUE;
 }
@@ -262,8 +419,6 @@ jsset_error:
 
 static JSBool jsconnect(JSContext *cx, uintN argc, jsval *vp) {
 	smanet_session_t *s;
-	char *transport, *target, *topts;
-//	jsval *argv = JS_ARGV(cx,vp);
 	JSObject *obj;
 	int r;
 
@@ -272,18 +427,18 @@ static JSBool jsconnect(JSContext *cx, uintN argc, jsval *vp) {
 	s = JS_GetPrivate(cx, obj);
 	if (!s) return JS_FALSE;
 
-	if (argc > 2) {
-		if (!JS_ConvertArguments(cx, argc, JS_ARGV(cx,vp), "s s s", &transport, &target, &topts))
+	if (argc == 3) {
+		if (!JS_ConvertArguments(cx, argc, JS_ARGV(cx,vp), "s s s", &s->transport, &s->target, &s->topts))
 			return JS_FALSE;
 	}
-	dprintf(dlevel,"transport: %s, target: %s, topts:%s\n", transport, target, topts);
+	dprintf(dlevel,"transport: %s, target: %s, topts:%s\n", s->transport, s->target, s->topts);
 
-	if (!transport || !target) {
-		JS_ReportError(cx, "smanet_connect: transport not set");
+	if (!s->transport || !s->target) {
+		JS_ReportError(cx, "smanet_connect: transport and/or target not set");
 		return JS_FALSE;
 	}
 
-	r = smanet_connect(s, transport, target, topts);
+	r = smanet_connect(s, s->transport, s->target, s->topts);
 	*vp = BOOLEAN_TO_JSVAL(r);
 	return JS_TRUE;
 }
@@ -318,24 +473,24 @@ static JSBool smanet_ctor(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
 	return JS_TRUE;
 }
 
-JSObject *jssmanet_new(JSContext *cx, smanet_session_t *s, char *transport, char *target, char *topts) {
+JSObject *jssmanet_new(JSContext *cx, JSObject *parent, smanet_session_t *s, char *transport, char *target, char *topts) {
 	JSObject *newobj;
 
-#if 0
 	s->transport = transport;
 	s->target = target;
 	s->topts = topts;
-#endif
 	dprintf(dlevel,"s: %p\n", s);
-	newobj = js_InitSMANETClass(cx,JS_GetGlobalObject(cx));
+	newobj = js_InitSMANETClass(cx,parent);
 	JS_SetPrivate(cx,newobj,s);
 	return newobj;
 }
 
 JSObject *js_InitSMANETClass(JSContext *cx, JSObject *gobj) {
 	JSPropertySpec smanet_props[] = { 
+		{ "transport", SMANET_PROPERTY_ID_TRANSPORT, JSPROP_ENUMERATE | JSPROP_READONLY },
+		{ "target", SMANET_PROPERTY_ID_TARGET, JSPROP_ENUMERATE | JSPROP_READONLY },
+		{ "topts", SMANET_PROPERTY_ID_TOPTS, JSPROP_ENUMERATE | JSPROP_READONLY },
 		{ "connected", SMANET_PROPERTY_ID_CONNECTED, JSPROP_ENUMERATE | JSPROP_READONLY },
-		{ "autoconnect", SMANET_PROPERTY_ID_AUTOCONNECT, JSPROP_ENUMERATE },
 		{ "channels", SMANET_PROPERTY_ID_CHANNELS, JSPROP_ENUMERATE | JSPROP_READONLY },
 		{ "serial",SMANET_PROPERTY_ID_SERIAL,JSPROP_ENUMERATE | JSPROP_READONLY  },
 		{ "type",SMANET_PROPERTY_ID_TYPE,JSPROP_ENUMERATE | JSPROP_READONLY  },
@@ -346,19 +501,19 @@ JSObject *js_InitSMANETClass(JSContext *cx, JSObject *gobj) {
 		{0}
 	};
 	JSFunctionSpec smanet_funcs[] = {
-		JS_FN("connect",jsconnect,0,0,0),
+		JS_FN("connect",jsconnect,3,3,0),
 		JS_FN("disconnect",jsdisconnect,0,0,0),
 		JS_FN("get_channels",jsget_channels,0,0,0),
 		JS_FN("load_channels",jsload_channels,1,1,0),
 		JS_FN("save_channels",jssave_channels,1,1,0),
-		JS_FS("get",jsget,1,1,0),
+		JS_FS("get",js_smanet_get,1,1,0),
 		JS_FS("set",jsset,2,2,0),
 		{ 0 }
 	};
 	JSObject *obj;
 
 	dprintf(dlevel,"creating %s class...\n",smanet_class.name);
-	obj = JS_InitClass(cx, gobj, gobj, &smanet_class, smanet_ctor, 3, smanet_props, smanet_funcs, 0, 0);
+	obj = JS_InitClass(cx, gobj, 0, &smanet_class, smanet_ctor, 3, smanet_props, smanet_funcs, 0, 0);
 	if (!obj) {
 		JS_ReportError(cx,"unable to initialize smanet class");
 		return 0;

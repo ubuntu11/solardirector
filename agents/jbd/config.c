@@ -9,8 +9,6 @@ LICENSE file in the root directory of this source tree.
 
 #define dlevel 1
 
-#include <string.h>
-#include "agent.h"
 #include "jbd.h"
 #include "jbd_regs.h"
 

@@ -104,6 +104,7 @@ struct sb_session {
 	bool norun_flag;
 	bool inc_flag;
 	bool use_internal_strings;
+	jsval agent_val;
 };
 typedef struct sb_session sb_session_t;
 

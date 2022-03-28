@@ -307,6 +307,7 @@ int jbd_set_mosfet(jbd_session_t *s, int val) {
 int jbd_reset(void *h, int nargs, char **args, char *errmsg) {
 	jbd_session_t *s = h;
 	uint8_t payload[2];
+	uint16_t val;
 	int opened,r;
 
 	dprintf(1,"locking...\n");
@@ -318,10 +319,12 @@ int jbd_reset(void *h, int nargs, char **args, char *errmsg) {
 		}
 		opened = 1;
 	}
-	jbd_putshort(payload,0x4321);
+	val = 0x4321;
+	jbd_putshort(payload,val);
 	r = jbd_rw(s, JBD_CMD_WRITE, JBD_REG_RESET, payload, sizeof(payload));
 	if (!r) {
-		jbd_putshort(payload,0x1881);
+		val = 0x1881;
+		jbd_putshort(payload,val);
 		r = jbd_rw(s, JBD_CMD_WRITE, JBD_REG_FRESET, payload, sizeof(payload));
 	}
 	if (opened) jbd_close(s);
@@ -598,6 +601,9 @@ int jbd_read(void *handle, uint32_t *what, void *buf, int buflen) {
 	s->data.cell_total = tot;
 	if (s->balancing) solard_set_state(s,JBD_STATE_BALANCING);
 	else solard_clear_state(s,JBD_STATE_BALANCING);
+
+	if (agent_script_exists(s->ap,"pub.js")) agent_start_script(s->ap,"pub.js");
+
 	return 0;
 }
 /*

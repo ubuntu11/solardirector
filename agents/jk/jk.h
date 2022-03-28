@@ -68,6 +68,9 @@ struct jk_session {
 	JSPropertySpec *props;
 	JSPropertySpec *data_props;
 	char topic[SOLARD_TOPIC_SIZE];
+	jsval data_val;
+	jsval hw_val;
+	jsval agent_val;
 };
 typedef struct jk_session jk_session_t;
 

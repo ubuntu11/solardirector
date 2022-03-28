@@ -1,0 +1,8 @@
+{
+    "sb": {
+        "endpoint": "https:\/\/192.168.1.175",
+        "password": "Bgt56yhn!",
+        "objects": "objects.json",
+        "script_dir": "."
+    }
+}

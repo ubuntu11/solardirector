@@ -239,9 +239,10 @@ static int si_cf_smanet_init(void *ctx, list args, char *errmsg) {
 int si_agent_init(int argc, char **argv, opt_proctab_t *si_opts, si_session_t *s) {
 	config_property_t si_props[] = {
 		{ "bms_mode", DATA_TYPE_BOOL, &s->bms_mode, 0, "no", 0, 0, 0, 0, 0, 0, 0, 1, 0 },
-		{ "readonly", DATA_TYPE_BOOL, &s->readonly, 0, "yes", 0, 0, 0, 0, 0, 0, 0, 1, 0 },
+		{ "readonly", DATA_TYPE_BOOL, &s->readonly, 0, "no", 0, 0, 0, 0, 0, 0, 0, 1, 0 },
 		{ "charge_mode", DATA_TYPE_INT, &s->charge_mode, 0, "0", CONFIG_FLAG_NOPUB | CONFIG_FLAG_NOSAVE,
 			"select", 3, (int []){ 0, 1, 2 }, 3, (char *[]){ "Off","On","CV" }, 0, 1, 0 },
+		{ "charge_voltage", DATA_TYPE_FLOAT, &s->charge_voltage, 0, 0, CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOPUB },
 		{ "charge_amps", DATA_TYPE_FLOAT, &s->charge_amps, 0, 0, CONFIG_FLAG_NOPUB | CONFIG_FLAG_NOSAVE,
 			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Charge amps" }, "A", 1, 0 },
 		{ "min_voltage", DATA_TYPE_FLOAT, &s->min_voltage, 0, 0, 0,
@@ -267,13 +268,29 @@ int si_agent_init(int argc, char **argv, opt_proctab_t *si_opts, si_session_t *s
 			"range", 3, (int []){ 0, 10000, 1 }, 1, (char *[]) { "Interval" }, "S", 1, 0 },
 		{ "notify", DATA_TYPE_STRING, &s->notify_path, sizeof(s->notify_path)-1, 0, 0,
 			0, 0, 0, 1, (char *[]){ "Notify program" }, 0, 1, 0 },
+		{ "disable_si_read", DATA_TYPE_BOOL, &s->disable_si_read, 0, 0, 0,
+			"select", 2, (bool []){ 0, 1 }, 1, (char *[]){ "disable native read function" }, 0, 1, 0 },
+		{ "disable_si_write", DATA_TYPE_BOOL, &s->disable_si_write, 0, 0, 0,
+			"select", 2, (bool []){ 0, 1 }, 1, (char *[]){ "disable native write function" }, 0, 1, 0 },
+
+
+
+
+
 #if 0
-		{ "sim", DATA_TYPE_BOOL, &s->sim, 0, "N", 0,
-			0, 0, 0, 1, (char *[]){ "Run simulation" }, 0, 0 },
-		{ "grid_connected", DATA_TYPE_BOOL, &s->grid_connected, 0, 0, CONFIG_FLAG_NOSAVE },
-		{ "gen_connected", DATA_TYPE_BOOL, &s->gen_connected, 0, 0, CONFIG_FLAG_NOSAVE },
+		{ "have_grid", DATA_TYPE_BOOL, &s->have_grid, 0, "-1", 0,
+			"range", 3, (int []){ -1, 0, 1 }, 
+			3, (char *[]){ "Not set", "No", "Yes" }, 0, 1, 0 },
+		{ "charge_max_amps", DATA_TYPE_FLOAT, &s->charge_max_amps, 0, 0, 0,
+			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Maximum charge current" }, "A", 1, 0 },
+		{ "charge_min_amps", DATA_TYPE_FLOAT, &s->charge_min_amps, 0, 0, 0,
+			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Minimum charge current" }, "A", 1, 0 },
 		{ "grid_charge_amps", DATA_TYPE_FLOAT, &s->grid_charge_amps, 0, 0, 0,
 			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Charge amps when grid is connected" }, "A", 1, 0 },
+		{ "gen_charge_amps", DATA_TYPE_FLOAT, &s->gen_charge_amps, 0, 0, 0,
+			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Charge amps when gen is connected" }, "A", 1, 0 },
+		{ "grid_connected", DATA_TYPE_BOOL, &s->grid_connected, 0, 0, CONFIG_FLAG_NOSAVE },
+		{ "gen_connected", DATA_TYPE_BOOL, &s->gen_connected, 0, 0, CONFIG_FLAG_NOSAVE },
 		{ "charge_start_voltage", DATA_TYPE_FLOAT, &s->charge_start_voltage, 0, 0, 0,
 			"range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 }, 1, (char *[]){ "Start charging at this voltage" }, "V", 1, 0 },
 		{ "charge_end_voltage", DATA_TYPE_FLOAT, &s->charge_end_voltage, 0, 0, 0,
@@ -297,13 +314,6 @@ int si_agent_init(int argc, char **argv, opt_proctab_t *si_opts, si_session_t *s
 			"range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 },
 			1, (char *[]){ "Stop charging at this voltage" }, "V", 1, 0 },
 #endif
-		{ "charge_min_amps", DATA_TYPE_FLOAT, &s->charge_min_amps, 0, 0, 0,
-			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Minimum charge current" }, "A", 1, 0 },
-		{ "charge_max_amps", DATA_TYPE_FLOAT, &s->charge_max_amps, 0, 0, 0,
-			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Maximum charge current" }, "A", 1, 0 },
-		{ "have_grid", DATA_TYPE_BOOL, &s->have_grid, 0, "-1", 0,
-			"range", 3, (int []){ -1, 0, 1 }, 
-			3, (char *[]){ "Not set", "No", "Yes" }, 0, 1, 0 },
 		{ "charge_from_grid", DATA_TYPE_BOOL, &s->charge_from_grid, 0, "-1", 0,
 			"range", 3, (int []){ -1, 0, 1 }, 
 			3, (char *[]){ "Not set", "No", "Yes" }, 0, 1, 0 },
@@ -320,8 +330,6 @@ int si_agent_init(int argc, char **argv, opt_proctab_t *si_opts, si_session_t *s
 		{ "gen_soc_stop", DATA_TYPE_FLOAT, &s->gen_soc_stop, 0, "-1", 0,
 			"range", 3, (float []){ 0.0, 100.0, .1 },
 			1, (char *[]){ "Stop charging at this SoC" }, "%", 1, 1 },
-		{ "gen_charge_amps", DATA_TYPE_FLOAT, &s->gen_charge_amps, 0, 0, 0,
-			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Charge amps when gen is connected" }, "A", 1, 0 },
 
 		{ "charge_at_max", DATA_TYPE_BOOL, &s->charge_at_max, 0, 0, 0,
 			0, 0, 0, 1, (char *[]){ "Charge at max_voltage" }, 0, 0 },
@@ -338,7 +346,6 @@ int si_agent_init(int argc, char **argv, opt_proctab_t *si_opts, si_session_t *s
 		{ "have_battery_temp", DATA_TYPE_BOOL, &s->have_battery_temp, 0, "N", 0,
 			0, 0, 0, 1, (char *[]){ "Is battery temp available" }, 0, 0 },
 		{ "state", DATA_TYPE_SHORT, &s->state, 0, 0, 0 },
-		{ "charge_voltage", DATA_TYPE_FLOAT, &s->charge_voltage, 0, 0, CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOPUB },
 		{ "charge_amps_temp_modifier", DATA_TYPE_FLOAT, &s->charge_amps_temp_modifier, 0, "1.0", CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOPUB },
 		{ "charge_amps_soc_modifier", DATA_TYPE_FLOAT, &s->charge_amps_soc_modifier, 0, "1.0", CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOPUB },
 		{ "charge_amps", DATA_TYPE_FLOAT, &s->charge_amps, 0, 0, CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOPUB },

@@ -4,9 +4,6 @@
 
 #define dlevel 5
 
-static JSBool jk_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval);
-static JSBool jk_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval);
-
 enum JK_HW_PROPERTY_ID {
 	JK_HW_PROPERTY_ID_MF,
 	JK_HW_PROPERTY_ID_MODEL,
@@ -59,7 +56,7 @@ static JSClass jk_hw_class = {
 	JSCLASS_NO_OPTIONAL_MEMBERS
 };
 
-JSObject *JSJKHWInfo(JSContext *cx, void *priv) {
+JSObject *js_jk_hw_new(JSContext *cx, JSObject *parent, void *priv) {
 	JSPropertySpec jk_hw_props[] = {
 		{ "manufacturer", JK_HW_PROPERTY_ID_MF, JSPROP_ENUMERATE | JSPROP_READONLY },
 		{ "model", JK_HW_PROPERTY_ID_MODEL, JSPROP_ENUMERATE | JSPROP_READONLY },
@@ -70,7 +67,7 @@ JSObject *JSJKHWInfo(JSContext *cx, void *priv) {
 	JSObject *obj;
 
 	dprintf(dlevel,"defining %s object\n",jk_hw_class.name);
-	obj = JS_InitClass(cx, JS_GetGlobalObject(cx), 0, &jk_hw_class, 0, 0, jk_hw_props, 0, 0, 0);
+	obj = JS_InitClass(cx, parent, 0, &jk_hw_class, 0, 0, jk_hw_props, 0, 0, 0);
 	if (!obj) {
 		JS_ReportError(cx,"unable to initialize %s", jk_hw_class.name);
 		return 0;
@@ -82,13 +79,51 @@ JSObject *JSJKHWInfo(JSContext *cx, void *priv) {
 
 /*************************************************************************/
 
+static JSBool js_jk_data_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp) {
+	jk_session_t *s;
+
+	s = JS_GetPrivate(cx,obj);
+	if (JSVAL_IS_INT(id)) {
+		int prop_id = JSVAL_TO_INT(id);
+		config_property_t *p;
+
+		dprintf(dlevel,"prop_id: %d\n", prop_id);
+		p = CONFIG_GETMAP(s->ap->cp,prop_id);
+		if (!p) p = config_get_propbyid(s->ap->cp,prop_id);
+		if (!p) {
+			JS_ReportError(cx, "property not found");
+			return JS_FALSE;
+		}
+		dprintf(4,"p: name: %s, type: %d(%s)\n", p->name, p->type, typestr(p->type));
+		if (strcmp(p->name,"temps") == 0) {
+			dprintf(4,"ntemps: %d\n", s->data.ntemps);
+			p->len = s->data.ntemps;
+		} else if (strcmp(p->name,"cellvolt") == 0) {
+			dprintf(4,"ncells: %d\n", s->data.ncells);
+			p->len = s->data.ncells;
+		} else if (strcmp(p->name,"cellres") == 0) {
+			dprintf(4,"ncells: %d\n", s->data.ncells);
+			p->len = s->data.ncells;
+		}
+		*vp = type_to_jsval(cx,p->type,p->dest,p->len);
+	}
+	return JS_TRUE;
+}
+
+static JSBool js_jk_data_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp) {
+	jk_session_t *s;
+
+	s = JS_GetPrivate(cx,obj);
+	return config_jssetprop(cx, obj, id, vp, s->ap->cp, s->data_props);
+}
+
 static JSClass jk_data_class = {
 	"jk_data",		/* Name */
 	JSCLASS_HAS_PRIVATE,	/* Flags */
 	JS_PropertyStub,	/* addProperty */
 	JS_PropertyStub,	/* delProperty */
-	jk_getprop,		/* getProperty */
-	JS_PropertyStub,	/* setProperty */
+	js_jk_data_getprop,	/* getProperty */
+	js_jk_data_setprop,	/* setProperty */
 	JS_EnumerateStub,	/* enumerate */
 	JS_ResolveStub,		/* resolve */
 	JS_ConvertStub,		/* convert */
@@ -96,7 +131,7 @@ static JSClass jk_data_class = {
 	JSCLASS_NO_OPTIONAL_MEMBERS
 };
 
-JSObject *JSJKData(JSContext *cx, jk_session_t *s) {
+JSObject *js_jk_data_new(JSContext *cx, JSObject *parent, jk_session_t *s) {
 	JSAliasSpec jk_data_aliases[] = {
 		{ 0 }
 	};
@@ -112,7 +147,7 @@ JSObject *JSJKData(JSContext *cx, jk_session_t *s) {
 	}
 
 	dprintf(dlevel,"defining %s object\n",jk_data_class.name);
-	obj = JS_InitClass(cx, JS_GetGlobalObject(cx), 0, &jk_data_class, 0, 0, s->data_props, 0, 0, 0);
+	obj = JS_InitClass(cx, parent, 0, &jk_data_class, 0, 0, s->data_props, 0, 0, 0);
 	if (!obj) {
 		JS_ReportError(cx,"unable to initialize %s", jk_data_class.name);
 		return 0;
@@ -129,8 +164,11 @@ JSObject *JSJKData(JSContext *cx, jk_session_t *s) {
 
 /*************************************************************************/
 
-#define	JK_PROPERTY_ID_DATA 1024
-#define JK_PROPERTY_ID_HW 1025
+enum JK_PROPERTY_ID {
+	JK_PROPERTY_ID_DATA=1024,
+	JK_PROPERTY_ID_HW,
+	JK_PROPERTY_ID_AGENT,
+};
 
 static JSBool jk_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 	int prop_id;
@@ -147,10 +185,13 @@ static JSBool jk_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 		dprintf(dlevel,"prop_id: %d\n", prop_id);
 		switch(prop_id) {
 		case JK_PROPERTY_ID_DATA:
-			*rval = OBJECT_TO_JSVAL(JSJKData(cx,s));
+			*rval = s->data_val;
 			break;
 		case JK_PROPERTY_ID_HW:
-			*rval = OBJECT_TO_JSVAL(JSJKHWInfo(cx,&s->hwinfo));
+			*rval = s->hw_val;
+			break;
+		case JK_PROPERTY_ID_AGENT:
+			*rval = s->agent_val;
 			break;
 		default:
 			p = CONFIG_GETMAP(s->ap->cp,prop_id);
@@ -195,10 +236,11 @@ static JSClass jk_class = {
 	JSCLASS_NO_OPTIONAL_MEMBERS
 };
 
-JSObject *JSJK(JSContext *cx, void *priv) {
+int js_init_jk(JSContext *cx, JSObject *parent, void *priv) {
 	JSPropertySpec jk_props[] = {
 		{ "data", JK_PROPERTY_ID_DATA, JSPROP_ENUMERATE | JSPROP_READONLY },
 		{ "hw", JK_PROPERTY_ID_HW, JSPROP_ENUMERATE | JSPROP_READONLY },
+		{ "agent", JK_PROPERTY_ID_AGENT, JSPROP_ENUMERATE | JSPROP_READONLY },
 		{ 0 }
 	};
 	JSConstantSpec jk_consts[] = {
@@ -209,34 +251,43 @@ JSObject *JSJK(JSContext *cx, void *priv) {
 		JS_NUMCONST(JK_MAX_CELLS),
 		{ 0 }
 	};
-	JSObject *obj;
+	JSObject *obj, *global = JS_GetGlobalObject(cx);
 	jk_session_t *s = priv;
 
 	if (!s->props) {
 		s->props = config_to_props(s->ap->cp, s->ap->section_name, jk_props);
 		if (!s->props) {
 			log_error("unable to create props: %s\n", config_get_errmsg(s->ap->cp));
-			return 0;
+			return 1;
 		}
 	}
 
 	dprintf(dlevel,"defining %s object\n",jk_class.name);
-	obj = JS_InitClass(cx, JS_GetGlobalObject(cx), 0, &jk_class, 0, 0, s->props, 0, 0, 0);
+	obj = JS_InitClass(cx, parent, 0, &jk_class, 0, 0, s->props, 0, 0, 0);
 	if (!obj) {
 		JS_ReportError(cx,"unable to initialize si class");
-		return 0;
+		return 1;
 	}
 	JS_SetPrivate(cx,obj,priv);
-	if (!JS_DefineConstants(cx, JS_GetGlobalObject(cx), jk_consts)) {
+	if (!JS_DefineConstants(cx, global, jk_consts)) {
 		JS_ReportError(cx,"unable to add jk constants");
-		return 0;
+		return 1;
 	}
+
+	/* Create jsvals */
+	s->data_val = OBJECT_TO_JSVAL(js_jk_data_new(cx,obj,s));
+	s->hw_val = OBJECT_TO_JSVAL(js_jk_hw_new(cx,obj,&s->hwinfo));
+	s->agent_val = OBJECT_TO_JSVAL(jsagent_new(cx,obj,s->ap));
+
+	/* Create the global convenience objects */
+	JS_DefineProperty(cx, global, "data", s->data_val, 0, 0, 0);
+
 	dprintf(dlevel,"done!\n");
-	return obj;
+	return 0;
 }
 
 int jk_jsinit(jk_session_t *s) {
-	return JS_EngineAddInitFunc(s->ap->js, s->ap->section_name, JSJK, s);
+	return JS_EngineAddInitFunc(s->ap->js, s->ap->section_name, js_init_jk, s);
 }
 
 #endif

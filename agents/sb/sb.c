@@ -260,7 +260,7 @@ static size_t wrfunc(void *ptr, size_t size, size_t nmemb, void *ctx) {
 	sb_session_t *s = ctx;
 	int bytes,newidx;
 
-	printf("%s\n",(char *)ptr);
+//	printf("%s\n",(char *)ptr);
 
 	bytes = size*nmemb;
 //	dprintf(dlevel,"bytes: %d, bufidx: %d, bufsize: %d\n", bytes, s->bufidx, s->bufsize);
@@ -373,6 +373,7 @@ void *sb_new(void *driver, void *driver_handle) {
 	s->results = list_create();
 //	curl_easy_setopt(s->curl, CURLOPT_VERBOSE, 1L);
 	curl_easy_setopt(s->curl, CURLOPT_SSL_VERIFYPEER, 0L);
+	curl_easy_setopt(s->curl, CURLOPT_SSL_VERIFYHOST, 0L);
 	curl_easy_setopt(s->curl, CURLOPT_HTTPHEADER, hs);
 	curl_easy_setopt(s->curl, CURLOPT_WRITEFUNCTION, wrfunc);
 	curl_easy_setopt(s->curl, CURLOPT_WRITEDATA, s);

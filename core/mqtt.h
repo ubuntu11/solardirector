@@ -50,16 +50,17 @@ int mqtt_sub(mqtt_session_t *s, char *topic);
 int mqtt_unsub(mqtt_session_t *s, char *topic);
 int mqtt_setcb(mqtt_session_t *s, void *ctx, MQTTClient_connectionLost *cl, MQTTClient_messageArrived *ma, MQTTClient_deliveryComplete *dc);
 int mqtt_pub(mqtt_session_t *s, char *topic, char *message, int wait, int retain);
+void mqtt_set_lwt(mqtt_session_t *s, char *new_topic);
 
 int mqtt_dosend(mqtt_session_t *m, char *topic, char *message);
 int mqtt_fullsend(char *address, char *clientid, char *message, char *topic, char *user, char *pass);
 
+void mqtt_add_props(config_t *, mqtt_config_t *, char *, mqtt_config_t *);
+
 #ifdef JS
 #include "jsapi.h"
 #include "jsengine.h"
-void mqtt_add_props(config_t *, mqtt_config_t *, char *, mqtt_config_t *);
-JSObject *JSMQTT(JSContext *cx, void *priv);
-int mqtt_jsinit(JSEngine *, mqtt_session_t *);
+JSObject *jsmqtt_new(JSContext *, JSObject *, mqtt_session_t *);
 #endif
 
 #endif

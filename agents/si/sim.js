@@ -9,6 +9,7 @@ LICENSE file in the root directory of this source tree.
 
 function sim_init() {
 	var flags = CONFIG_FLAG_NOPUB|CONFIG_FLAG_NOSAVE;
+	var config = si.agent.config;
 	var sim = new Class("sim",config,flags);
 	config.add("sim","enable",DATA_TYPE_BOOL,"false",flags);
 	config.add("sim","step_up",DATA_TYPE_FLOAT,"2.4",flags);
@@ -18,7 +19,9 @@ function sim_init() {
 	config.add("sim","cv_time_step",DATA_TYPE_INT,"1800",flags);
 	sim.volts = si.charge_start_voltage;
 	sim.amps = -50;
-	si.agent.read_interval = si.agent.write_interval = 5;
+	sim.grid_connected = false;
+	sim.gen_connected = false;
+//	si.agent.read_interval = si.agent.write_interval = 5;
 }
 
 function sim_main() {
@@ -45,4 +48,7 @@ function sim_main() {
 	}
 	if (si.data.battery_voltage > si.max_voltage) si.data.battery_voltage = si.max_voltage;
 	sim.previous_mode = si.charge_mode;
+
+	data.GdOn = sim.grid_connected;
+	data.GnOn = sim.gen_connected;
 }

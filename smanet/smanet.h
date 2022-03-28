@@ -82,6 +82,9 @@ struct smanet_session {
 	smanet_value_t values[1024];
 	solard_driver_t *tp;
 	void *tp_handle;
+	char *transport;
+	char *target;
+	char *topts;
 	bool connected;
 	long serial;
 	char type[32];
@@ -138,7 +141,7 @@ int smanet_unlock(smanet_session_t *);
 #ifdef JS
 #include "jsengine.h"
 JSObject *js_InitSMANETClass(JSContext *cx, JSObject *global);
-JSObject *jssmanet_new(JSContext *cx, smanet_session_t *s,char *transport, char *target, char *topts);
+JSObject *jssmanet_new(JSContext *cx, JSObject *parent, smanet_session_t *s,char *transport, char *target, char *topts);
 int smanet_jsinit(JSEngine *js);
 #endif
 

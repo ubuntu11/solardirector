@@ -21,8 +21,8 @@ int sb_agent_init(sb_session_t *s, int argc, char **argv) {
 	opt_proctab_t opts[] = {
 		/* Spec, dest, type len, reqd, default val, have */
 		{ "-E::url|endpoint",&s->endpoint,DATA_TYPE_STRING,sizeof(s->endpoint)-1,0,"" },
-		{ "-U::|user",s->user,DATA_TYPE_STRING,sizeof(s->user)-1,0,"usr",fix_user },
-		{ "-P::|password",s->password,DATA_TYPE_STRING,sizeof(s->password)-1,0,"" },
+		{ "-u::|user",s->user,DATA_TYPE_STRING,sizeof(s->user)-1,0,"usr",fix_user },
+		{ "-p::|password",s->password,DATA_TYPE_STRING,sizeof(s->password)-1,0,"" },
 		{ "-S::|specify strings file",&s->strings_filename,DATA_TYPE_STRING,sizeof(s->strings_filename)-1,0,"" },
 		{ "-O::|specify objects file",&s->objects_filename,DATA_TYPE_STRING,sizeof(s->objects_filename)-1,0,"" },
 		{ "-w#|write flag",&s->write_flag,DATA_TYPE_BOOL,0,0,"" },

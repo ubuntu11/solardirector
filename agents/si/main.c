@@ -21,7 +21,7 @@ LICENSE file in the root directory of this source tree.
 #define _ST_DEBUG 0
 #endif
 
-char *si_version_string = "1.0-" STRINGIFY(__SD_BUILD);
+char *si_version_string = "2.0-" STRINGIFY(__SD_BUILD);
 
 int main(int argc, char **argv) {
 	char cantpinfo[256];
@@ -35,7 +35,8 @@ int main(int argc, char **argv) {
 	time_t start,end,diff;
 
 #if TESTING
-	char *args[] = { "si", "-d", STRINGIFY(TESTLVL), "-c", "sitest.json" };
+//	char *args[] = { "si", "-d", STRINGIFY(TESTLVL), "-c", "sitest.json" };
+	char *args[] = { "si", "-d", STRINGIFY(TESTLVL), "-c", "sitest.json", "-X", "none" };
 	argc = (sizeof(args)/sizeof(char *));
 	argv = args;
 #endif
@@ -73,12 +74,12 @@ int main(int argc, char **argv) {
 		strncat(s->smanet_topts,strele(2,",",smatpinfo),sizeof(s->smanet_topts)-1);
         }
 
-	sprintf(cantpinfo,"%s/%s",SOLARD_TOPIC_ROOT,s->ap->mqtt_config.clientid);
-	mqtt_sub(s->ap->m, cantpinfo);
-
 	time(&end);
 	diff = end - start;
 	dprintf(1,"--> startup time: %d\n", diff);
+
+//influx_query(s->ap->i, "select value from solar limit 10; select last(value) from solar");
+//return 0;
 
 	/* Go */
 	agent_run(s->ap);

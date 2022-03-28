@@ -1,4 +1,12 @@
 
+/*
+Copyright (c) 2022, Stephen P. Shoecraft
+All rights reserved.
+
+This source code is licensed under the BSD-style license found in the
+LICENSE file in the root directory of this source tree.
+*/
+
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
@@ -41,6 +49,7 @@ struct config_property {
 	int len;			/* actual length of storage */
 	int id;				/* Property ID */
 	int dirty;			/* Has been updated since last write */
+	jsval jsval;			/* JSVal of this property object */
 };
 typedef struct config_property config_property_t;
 
@@ -135,7 +144,7 @@ int config_process(config_t *cp, char *req);
 
 void config_build_propmap(config_t *cp);
 
-#define CONFIG_GETMAP(cp,id) ((cp->map && id >= 0 && id < cp->map_maxid && cp->map[id]) ? cp->map[id] : 0)
+#define CONFIG_GETMAP(cp,id) ((cp && cp->map && id >= 0 && id < cp->map_maxid && cp->map[id]) ? cp->map[id] : 0)
 
 #ifdef JS
 #include "jsapi.h"
@@ -143,8 +152,9 @@ void config_build_propmap(config_t *cp);
 JSPropertySpec *config_to_props(config_t *cp, char *name, JSPropertySpec *add);
 JSBool config_jsgetprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval, config_t *, JSPropertySpec *);
 JSBool config_jssetprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval, config_t *, JSPropertySpec *);
-JSObject *JSConfig(JSContext *cx, void *priv);
-int config_jsinit(JSEngine *e, config_t *cp);
+//JSObject *JSConfig(JSContext *cx, void *priv);
+//int config_jsinit(JSEngine *e, config_t *cp);
+JSObject *jsconfig_new(JSContext *cx, JSObject *parent, config_t *cp);
 #endif
 
 #endif

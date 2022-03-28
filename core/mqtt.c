@@ -35,6 +35,7 @@ struct mqtt_session {
 	void *ctx;
 	MQTTClient_SSLOptions *ssl_opts;
 	list subs;
+	int connected;
 };
 typedef struct mqtt_session mqtt_session_t;
 
@@ -266,6 +267,7 @@ int mqtt_connect(mqtt_session_t *s, int interval) {
 	} else if (strlen(s->config.lwt_topic)) {
 		mqtt_pub(s,s->config.lwt_topic,"Online",1,1);
 	}
+	s->connected = 1;
 	return 0;
 }
 
@@ -277,6 +279,7 @@ int mqtt_disconnect(mqtt_session_t *s, int timeout) {
 	if (!s) return 1;
 	rc = MQTTClient_disconnect5(s->c, timeout, MQTTREASONCODE_SUCCESS, 0);
 	dprintf(dlevel,"rc: %d\n", rc);
+	s->connected = 0;
 	return rc;
 }
 
@@ -290,6 +293,34 @@ int mqtt_reconnect(mqtt_session_t *s) {
 	while((topic = list_get_next(s->subs)) != 0) mqtt_sub(s,topic);
 	dprintf(dlevel,"reconnect done!\n");
 	return 0;
+}
+
+void mqtt_set_lwt(mqtt_session_t *s, char *new_topic) {
+	char *old_topic;
+
+	/* If no change, dont bother */
+	dprintf(dlevel,"old topic: %s, new topic: %s\n", s->config.lwt_topic, new_topic);
+	if (strcmp(s->config.lwt_topic,new_topic) == 0) return;
+
+	/* Save old topic */
+	old_topic = malloc(strlen(s->config.lwt_topic)+1);
+	if (!old_topic) {
+		log_syserror("mqtt_set_lwt: malloc new topic (%d)", strlen(s->config.lwt_topic)+1);
+		return;
+	}
+	strcpy(old_topic,s->config.lwt_topic);
+
+	if (s->connected) {
+		dprintf(dlevel,"disconnecting...\n");
+		mqtt_disconnect(s,5);
+	}
+
+	dprintf(dlevel,"connecting...\n");
+	strncpy(s->config.lwt_topic,new_topic,sizeof(s->config.lwt_topic)-1);
+	mqtt_connect(s,s->interval);
+
+	mqtt_pub(s,old_topic,0,1,0);
+	return;
 }
 
 int mqtt_destroy(mqtt_session_t *s) {
@@ -435,6 +466,46 @@ int mqtt_unsubmany(mqtt_session_t *s, int count, char **topic) {
 	return rc;
 }
 
+void mqtt_add_props(config_t *cp, mqtt_config_t *gconf, char *name, mqtt_config_t *conf) {
+	config_property_t mqtt_props[] = {
+		{ "host", DATA_TYPE_STRING, conf->host, sizeof(conf->host)-1, "localhost", 0,
+                        0, 0, 0, 1, (char *[]){ "MQTT host" }, 0, 1, 0 },
+		{ "port", DATA_TYPE_INT, &conf->port, 0, "1883", 0,
+			0, 0, 0, 1, (char *[]){ "MQTT port" }, 0, 1, 0 },
+		{ "clientid", DATA_TYPE_STRING, conf->clientid, sizeof(conf->clientid)-1, "", 0,
+                        0, 0, 0, 1, (char *[]){ "MQTT clientid" }, 0, 1, 0 },
+		{ "username", DATA_TYPE_STRING, conf->username, sizeof(conf->username)-1, "", 0,
+                        0, 0, 0, 1, (char *[]){ "MQTT username" }, 0, 1, 0 },
+		{ "password", DATA_TYPE_STRING, conf->password, sizeof(conf->password)-1, "", 0,
+                        0, 0, 0, 1, (char *[]){ "MQTT password" }, 0, 1, 0 },
+		{ 0 }
+	};
+	dprintf(1,"adding mqtt...\n");
+
+	config_add_props(cp, "mqtt", mqtt_props, CONFIG_FLAG_NOID);
+#if 0
+	/* Add the mqtt props to the instance config */
+	{
+		char *names[] = { "mqtt_host", "mqtt_port", "mqtt_clientid", "mqtt_username", "mqtt_password", 0 };
+		config_section_t *s;
+		config_property_t *p;
+		int i;
+
+		s = config_get_section(cp, name);
+		if (!s) {
+			log_error("%s section does not exist?!?\n", name);
+			return;
+		}
+		for(i=0; names[i]; i++) {
+			p = config_section_dup_property(s, &mqtt_props[i], names[i]);
+			if (!p) continue;
+			dprintf(dlevel,"p->name: %s\n",p->name);
+			config_section_add_property(cp, s, p, CONFIG_FLAG_NOID);
+		}
+	}
+#endif
+}
+
 #ifdef JS
 #include "jsengine.h"
 
@@ -558,7 +629,7 @@ static JSBool mqtt_jspub(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, 
     	return JS_TRUE;
 }
 
-JSObject *JSMQTT(JSContext *cx, void *priv) {
+JSObject *jsmqtt_new(JSContext *cx, JSObject *parent, mqtt_session_t *m) {
 	JSPropertySpec mqtt_props[] = { 
 		{ "host",		MQTT_PROPERTY_ID_HOST,	JSPROP_ENUMERATE | JSPROP_READONLY },
 		{ "port",		MQTT_PROPERTY_ID_PORT,	JSPROP_ENUMERATE | JSPROP_READONLY },
@@ -572,57 +643,14 @@ JSObject *JSMQTT(JSContext *cx, void *priv) {
 	};
 	JSObject *obj;
 
-	obj = JS_InitClass(cx, JS_GetGlobalObject(cx), 0, &mqtt_class, 0, 0, mqtt_props, mqtt_funcs, 0, 0);
+	dprintf(dlevel,"Creating mqtt class...\n");
+	obj = JS_InitClass(cx, parent, 0, &mqtt_class, 0, 0, mqtt_props, mqtt_funcs, 0, 0);
 	if (!obj) {
 		JS_ReportError(cx,"unable to initialize mqtt class");
 		return 0;
 	}
-	JS_AliasProperty(cx, JS_GetGlobalObject(cx), "MQTT", "mqtt");
-	JS_SetPrivate(cx,obj,priv);
+	JS_SetPrivate(cx,obj,m);
+	dprintf(dlevel,"done!\n");
 	return obj;
-}
-
-void mqtt_add_props(config_t *cp, mqtt_config_t *gconf, char *name, mqtt_config_t *conf) {
-	config_property_t mqtt_props[] = {
-		{ "host", DATA_TYPE_STRING, conf->host, sizeof(conf->host)-1, "localhost", 0,
-                        0, 0, 0, 1, (char *[]){ "MQTT host" }, 0, 1, 0 },
-		{ "port", DATA_TYPE_INT, &conf->port, 0, "1883", 0,
-			0, 0, 0, 1, (char *[]){ "MQTT port" }, 0, 1, 0 },
-		{ "clientid", DATA_TYPE_STRING, conf->clientid, sizeof(conf->clientid)-1, "", 0,
-                        0, 0, 0, 1, (char *[]){ "MQTT clientid" }, 0, 1, 0 },
-		{ "username", DATA_TYPE_STRING, conf->username, sizeof(conf->username)-1, "", 0,
-                        0, 0, 0, 1, (char *[]){ "MQTT username" }, 0, 1, 0 },
-		{ "password", DATA_TYPE_STRING, conf->password, sizeof(conf->password)-1, "", 0,
-                        0, 0, 0, 1, (char *[]){ "MQTT password" }, 0, 1, 0 },
-		{ 0 }
-	};
-	dprintf(1,"adding mqtt...\n");
-
-	config_add_props(cp, "mqtt", mqtt_props, CONFIG_FLAG_NOID);
-#if 0
-	/* Add the mqtt props to the instance config */
-	{
-		char *names[] = { "mqtt_host", "mqtt_port", "mqtt_clientid", "mqtt_username", "mqtt_password", 0 };
-		config_section_t *s;
-		config_property_t *p;
-		int i;
-
-		s = config_get_section(cp, name);
-		if (!s) {
-			log_error("%s section does not exist?!?\n", name);
-			return;
-		}
-		for(i=0; names[i]; i++) {
-			p = config_section_dup_property(s, &mqtt_props[i], names[i]);
-			if (!p) continue;
-			dprintf(dlevel,"p->name: %s\n",p->name);
-			config_section_add_property(cp, s, p, CONFIG_FLAG_NOID);
-		}
-	}
-#endif
-}
-
-int mqtt_jsinit(JSEngine *js, mqtt_session_t *m) {
-	return JS_EngineAddInitFunc(js, "mqtt", JSMQTT, m);
 }
 #endif

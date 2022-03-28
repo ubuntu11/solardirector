@@ -40,12 +40,10 @@ struct solard_agent {
 	uint16_t state;			/* States */
 	int pretty;			/* Format json messages for readability (uses more mem) */
 	char instance_name[SOLARD_NAME_LEN]; /* Agent instance name */
-#ifdef JS
 	JSEngine *js;			/* JavaScript engine */
 	int rtsize;
 	int stksize;
 	JSPropertySpec *props;
-#endif
 	char script_dir[SOLARD_PATH_MAX];
 	char init_script[SOLARD_PATH_MAX];
 	char start_script[SOLARD_PATH_MAX];
@@ -67,6 +65,9 @@ struct solard_agent {
 	int close_after_read;
 	int open_before_write;
 	int close_after_write;
+	jsval config_val;
+	jsval mqtt_val;
+	jsval influx_val;
 };
 
 /* Agent states */
@@ -76,7 +77,7 @@ struct solard_agent {
 solard_agent_t *agent_init(int, char **, char *, opt_proctab_t *,
 		solard_driver_t *, void *, config_property_t *, config_function_t *);
 int agent_run(solard_agent_t *ap);
-void agent_mktopic(char *topic, int topicsz, solard_agent_t *ap, char *name, char *func);
+void agent_mktopic(char *topic, int topicsz, char *name, char *func);
 int agent_sub(solard_agent_t *ap, char *name, char *func);
 int agent_pub(solard_agent_t *ap, char *func, char *message, int retain);
 int agent_pubinfo(solard_agent_t *ap, int disp);
@@ -92,9 +93,10 @@ int agent_script_exists(solard_agent_t *ap, char *name);
 
 #include "config.h"
 
-#ifdef JS
-JSObject *JSAgent(JSContext *cx, void *priv);
-int agent_jsinit(JSEngine *e, void *);
+#if 0
+JSObject *js_InitAgentClass(JSContext *cx, void *priv);
+int agent_jsinit(JSEngine *e, solard_agent_t *);
 #endif
+JSObject *jsagent_new(JSContext *cx, JSObject *parent, solard_agent_t *ap);
 
 #endif /* __SD_AGENT_H */

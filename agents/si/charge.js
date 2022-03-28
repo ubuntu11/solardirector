@@ -89,11 +89,8 @@ function si_check_config() {
 /* Init the charging modules */
 function charge_init() {
 
-	var data = si.data;
-
-	charge = new Class("charge", null, 0);
-
-//	config.add("si","charge_data",DATA_TYPE_INT,4,0);
+	var agent = si.agent;
+	var config = agent.config;
 
 	CHARGE_METHOD_FAST = 0;
 	CHARGE_METHOD_CCCV = 1;
@@ -105,7 +102,7 @@ function charge_init() {
 	/* Make sure all our variables are defined */
 	var flags = CONFIG_FLAG_NOPUB | CONFIG_FLAG_NOSAVE;
 	var jstypes = [
-		[ "charge_voltage", DATA_TYPE_INT, si.data.battery_voltage, flags ],
+		[ "charge_voltage", DATA_TYPE_FLOAT, 0, flags ],
 		[ "charge_amps_temp_modifier", DATA_TYPE_INT, "1", flags ],
 		[ "charge_amps_soc_modifier", DATA_TYPE_INT, "1", flags ],
 		[ "charge_state", DATA_TYPE_INT, 0, flags ],
@@ -116,18 +113,6 @@ function charge_init() {
 		[ "cv_cutoff", DATA_TYPE_INT, "30", 0 ],
 		[ "cv_timeout", DATA_TYPE_BOOL, "true", 0 ],
 	];
-/*
-                { "charge_method", DATA_TYPE_INT, "1", 0,
-                        "select", 2, (int []){ 0, 1 }, 2, (char *[]){ "CC/CV","oneshot" }, 0, 1, 0 },
-                { "cv_method", DATA_TYPE_INT, &s->cv_method, 0, STRINGIFY(CV_METHOD_AMPS), 0,
-                        "select", 2, (int []){ 0, 1 }, 2, (char *[]){ "time","amps" }, 0, 1, 0 },
-                { "cv_time", DATA_TYPE_INT, &s->cv_time, 0, "120", 0,
-                        "range", 3, (int []){ 0, 1440, 1 }, 1, (char *[]){ "CV Time" }, "minutes", 1, 0 },
-                { "cv_cutoff", DATA_TYPE_FLOAT, &s->cv_cutoff, 0, "5", 0,
-                        0, 0, 0, 1, (char *[]){ "CV Cutoff" }, "V", 1, 0 },
-                { "cv_timeout", DATA_TYPE_BOOL, &s->cv_timeout, 0, "true" },
-*/
-
 
 	for(j=0; j < jstypes.length; j++) {
 		if (typeof(si[jstypes[j][0]]) == "undefined")
@@ -239,7 +224,7 @@ function charge_stop(rep) {
 
 function charge_start(rep) {
 
-	if (!si.data.Run) return;
+	if (!data.Run) return;
 
 	if (si.charge_mode) return;
 	if (si_check_config()) {
@@ -248,7 +233,7 @@ function charge_start(rep) {
 		return;
 	}
 
-	if (si.have_battery_temp && si.data.battery_temp <= 0.0) {
+	if (si.have_battery_temp && data.battery_temp <= 0.0) {
 		log_warning("battery_temp <= 0.0, not starting charge\n");
 		return;
 	}
@@ -263,7 +248,7 @@ function charge_start(rep) {
 	si.charge_mode = 1;
 	si.charge_amps_soc_modifier = 1.0;
 	si.charge_amps_temp_modifier = 1.0;
-//	si.start_temp = si.data.battery_temp;
+//	si.start_temp = data.battery_temp;
 }
 
 function cvremain(start, end) {
@@ -286,7 +271,7 @@ function cvremain(start, end) {
 
 function charge_start_cv(rep) {
 
-	if (!si.data.Run) return;
+	if (!data.Run) return;
 
 //	charge_stop(0);
 	if (si_check_config()) {
@@ -299,7 +284,7 @@ function charge_start_cv(rep) {
 	si.charge_voltage = si.charge_end_voltage;
 	si.charge_amps = si.charge_max_amps;
 	si.cv_start_time = time();
-	si.start_temp = si.data.battery_temp;
+	si.start_temp = data.battery_temp;
 	si.baidx = si.bafull = 0;
 }
 
@@ -322,12 +307,12 @@ function charge_control(mode,rep) {
 function incvolt() {
 	var battery_amps;
 
-	battery_amps = si.data.battery_current * -1;;
+	battery_amps = data.battery_current * -1;;
 	dprintf(0,"battery_amps: %.1f, charge_amps: %.1f, pct: %f\n", battery_amps, si.charge_amps, pct(battery_amps,si.charge_amps));
 //	if (battery_amps >= si.charge_amps) return;
 	if (pct(battery_amps,si.charge_amps) > -5.0) return;
-	dprintf(0,"ac1_frequency: %.1f\n", si.data.ac1_frequency);
-	if (si.data.ac1_frequency > 0.0 && (si.data.ac1_frequency < 50.0 || si.data.ac1_frequency < 60.0)) return;
+	dprintf(0,"ac1_frequency: %.1f\n", data.ac1_frequency);
+	if (data.ac1_frequency > 0.0 && (data.ac1_frequency < 50.0 || data.ac1_frequency < 60.0)) return;
 	dprintf(0,"charge_voltage: %.1f, max_voltage: %.1f\n", si.charge_voltage, si.max_voltage);
 	if ((si.charge_voltage + 0.1) >= si.max_voltage) return;
 	si.charge_voltage += 0.1;
@@ -343,7 +328,9 @@ function charge_grid_start() {
 		si.grid_save = "Auto";
 		si.charge_state = CHARGE_STATE_GRIDWAITON;
 		si.grid_op_time = time();
-		return false;
+		sim.grid_connected = true;
+		si.GdOn = true;
+		return true;
 	} else if (si.smanet_connected) {
 		si.grid_save = smanet.get("GdManStr");
 		if (typeof(si.grid_save) == "undefined") {
@@ -372,7 +359,10 @@ function charge_grid_start() {
 
 function charge_grid_stop() {
 	printf("*** STOPPING GRID ***\n");
-	if (!sim.enable && si.smanet_connected) {
+	if (sim.enable) {
+		sim.grid_connected = false;
+		si.GdOn = false;
+	} else if (si.smanet_connected) {
 		/* Restore GdManStr value */
 		if (smanet_set_value(si.smanet,"GdManStr",0,si.grid_save))
 			log_error("unable to restore grid state to: %s\n",si.grid_save);
@@ -388,6 +378,9 @@ function charge_gen_start() {
 		si.gen_save = "Auto";
 		si.charge_state = CHARGE_STATE_GENWAITON;
 		si.gen_op_time = time();
+		sim.gen_connected = true;
+		si.GnOn = true;
+		return true;
 	} else if (si.smanet_connected) {
 		/* Save current val */
 		si.gen_save = smanet.get("GnManStr");
@@ -417,7 +410,10 @@ function charge_gen_start() {
 
 function charge_gen_stop() {
 	printf("*** STOPPING GEN ***\n");
-	if (!sim.enable && si.smanet_connected) {
+	if (sim.enable) {
+		sim.gen_connected = false;
+		si.GnOn = false;
+	} else if (si.smanet_connected) {
 		/* Restore GnManStr value */
 		if (smanet_set_value(si.smanet,"GnManStr",0,si.gen_save))
 			log_error("unable to restore gen state to: %s\n",si.gen_save);
@@ -429,39 +425,42 @@ function charge_gen_stop() {
 
 function charge_main()  {
 
+	if (typeof(charging_initialized) == "undefined") charge_init();
+
+if (0) {
 	var checking = true;
 	while(checking) {
 		dprintf(0,"state: %s\n", statestr(si.charge_state));
 		checking = false;
 		switch(si.charge_state) {
 		case CHARGE_STATE_NONE:
-			dprintf(1,"si.data.battery_voltage: %.1f, si.charge_start_voltage: %.1f\n",
-				si.data.battery_voltage, si.charge_start_voltage);
-			if ((si.data.battery_voltage-0.0001) <= si.charge_start_voltage) {
+			dprintf(1,"data.battery_voltage: %.1f, si.charge_start_voltage: %.1f\n",
+				data.battery_voltage, si.charge_start_voltage);
+			if ((data.battery_voltage-0.0001) <= si.charge_start_voltage) {
 				/* Start the charge asap */
 				charge_start(1);
 
 				/* If we have no AC2 freq */
-				dprintf(0,"ac2_frequency: %.1f\n", si.data.ac2_frequency);
-				if (si.data.ac2_frequency < 10.0) {
+				dprintf(0,"ac2_frequency: %.1f\n", data.ac2_frequency);
+				if (data.ac2_frequency < 10.0) {
 					/* Do we have a gen? */
 					if (si.smanet_connected) {
 						dprintf(1,"ExtSrc: %s\n", si.ExtSrc);
 						if (!strstr(si.ExtSrc,"Gen")) {
 							si.notify("ERROR: voltage (%.1f) below EC threshold (%.1f) and no grid/gen!", 
-								si.data.battery_voltage, si.charge_start_voltage);
+								data.battery_voltage, si.charge_start_voltage);
 							si.charge_state = CHARGE_STATE_CHARGING;
 						}
 					} else {
 						si.charge_state = CHARGE_STATE_GENSTART;
 						checking = true;
 					}
-				} else if (!si.data.GdOn) {
+				} else if (!data.GdOn) {
 					si.charge_state = CHARGE_STATE_GRIDSTART;
 					checking = true;
 				}
 			// Failsafe
-			} else if (si.data.battery_voltage >= (si.max_voltage-0.0001)) {
+			} else if (data.battery_voltage >= (si.max_voltage-0.0001)) {
 				si.charge_state = CHARGE_STATE_CHARGING;
 				checking = true;
 			}
@@ -470,9 +469,9 @@ function charge_main()  {
 			checking = charge_gen_start();
 			break;
 		case CHARGE_STATE_GENWAITON:
-			printf("*** GENWAIT: GnOn: %d\n", si.data.GnOn);
-			dprintf(1,"GnOn: %d\n", si.data.GnOn);
-			if (si.data.GnOn) {
+			printf("*** GENWAIT: GnOn: %d\n", data.GnOn);
+			dprintf(1,"GnOn: %d\n", data.GnOn);
+			if (data.GnOn) {
 				/* Gen is running, connect it */
 				si.gen_started = 1;
 				si.charge_state = CHARGE_STATE_CHARGING;
@@ -498,7 +497,7 @@ function charge_main()  {
 				printf("*** RESTORING GEN\n");
 				if (smanet_set_value(si.smanet,"GnManStr",0,si.gen_save))
 					log_error("unable to restore Gen state to: %s\n",si.gen_save);
-				if (si.data.GnOn)
+				if (data.GnOn)
 					si.charge_state = CHARGE_STATE_GENWAITOFF;
 				else
 					si.charge_state = CHARGE_STATE_NONE;
@@ -507,9 +506,9 @@ function charge_main()  {
 			}
 			break;
 		case CHARGE_STATE_GENWAITOFF:
-			if (sim.enable) si.data.GnOn = false;
-			dprintf(1,"GnOn: %d\n", si.data.GnOn);
-			if (si.data.GnOn) {
+			if (sim.enable) data.GnOn = false;
+			dprintf(1,"GnOn: %d\n", data.GnOn);
+			if (data.GnOn) {
 				/* Timeout expired? */
 				diff = time() - si.gen_op_time;
 				dprintf(1,"diff: %d, gen_stop_timeout: %d\n", diff, si.gen_stop_timeout);
@@ -524,9 +523,9 @@ function charge_main()  {
 			checking = charge_grid_start();
 			break;
 		case CHARGE_STATE_GRIDWAITON:
-			if (sim.enable) si.data.GdOn = true;
-			dprintf(0,"GdOn: %d\n", si.data.GdOn);
-			if (si.data.GdOn) {
+			if (sim.enable) data.GdOn = true;
+			dprintf(0,"GdOn: %d\n", data.GdOn);
+			if (data.GdOn) {
 				/* Grid is running, connect it */
 				si.grid_started = 1;
 				si.charge_state = CHARGE_STATE_CHARGING;
@@ -548,6 +547,7 @@ function charge_main()  {
 			break;
 		case CHARGE_STATE_CHARGING:
 			/* Has the charge completed? */
+			printf("charge_mode: %d\n", si.charge_mode);
 			if (si.charge_mode == 0) {
 				if (si.gen_started)
 					si.charge_state = CHARGE_STATE_GENSTOP;
@@ -560,41 +560,43 @@ function charge_main()  {
 		}
 	}
 
-	// In case of data errors
-	if (si.data.battery_voltage < si.min_voltage) return;
-
 	// If not charging leave now 
 	if (!si.charge_mode) return 0;
+}
 
-if (0 == 1) {
+	// In case of data errors
+	if (!si_isvrange(data.battery_voltage)) {
+		log_error("battery voltage of range, aborting charge check\n");
+		return 0;
+	}
+
 	dprintf(1,"battery_voltage: %.1f, charge_start_voltage: %.1f, charge_end_voltage: %.1f\n",
-		si.data.battery_voltage, si.charge_start_voltage, si.charge_end_voltage);
-	if ((si.data.battery_voltage-0.0001) <= si.charge_start_voltage) {
+		data.battery_voltage, si.charge_start_voltage, si.charge_end_voltage);
+	if ((data.battery_voltage-0.0001) <= si.charge_start_voltage) {
 		/* Start charging */
 		charge_start(1);
 	}
-}
 
 	if (si.charge_mode != 0) {
-//		if (si.charge_voltage != si.last_charge_voltage || si.data.battery_current != si.last_battery_amps) {
-//			dprintf(1,"Charge Voltage: %.1f, Battery Amps: %.1f\n",si.charge_voltage,si.data.battery_current);
+//		if (si.charge_voltage != si.last_charge_voltage || data.battery_current != si.last_battery_amps) {
+//			dprintf(1,"Charge Voltage: %.1f, Battery Amps: %.1f\n",si.charge_voltage,data.battery_current);
 //			si.last_charge_voltage = si.charge_voltage;
-//			si.last_battery_amps = si.data.battery_current;
+//			si.last_battery_amps = data.battery_current;
 //		}
 		if (si.have_battery_temp) {
 			/* If battery temp is <= 0, stop charging immediately */
-			dprintf(1,"battery_temp: %2.1f\n", si.data.battery_temp);
-			if (si.data.battery_temp <= 0.0) {
+			dprintf(1,"battery_temp: %2.1f\n", data.battery_temp);
+			if (data.battery_temp <= 0.0) {
 				charge_stop(1);
 				return;
 			}
 			/* If battery temp <= 5C, reduce charge rate by 1/4 */
-			if (si.data.battery_temp <= 5.0) si.charge_amps /= 4.0;
+			if (data.battery_temp <= 5.0) si.charge_amps /= 4.0;
 
 			/* Watch for rise in battery temp, anything above 5 deg C is an error */
 			/* We could lower charge amps until temp goes down and then set that as max amps */
-			if (pct(si.data.battery_temp,si.start_temp) > 5) {
-				log_error("current_temp: %.1f, start_temp: %.1f\n", si.data.battery_temp, si.start_temp);
+			if (pct(data.battery_temp,si.start_temp) > 5) {
+				log_error("current_temp: %.1f, start_temp: %.1f\n", data.battery_temp, si.start_temp);
 				charge_stop(1);
 				return;
 			}
@@ -603,7 +605,7 @@ if (0 == 1) {
 		/* CC */
 		if (si.charge_mode == CHARGE_MODE_CC) {
 			dprintf(1,"charge_at_max: %d, charge_creep: %d\n", si.charge_at_max, si.charge_creep);
-			if ((si.data.battery_voltage+0.0001) >= si.charge_end_voltage) {
+			if ((data.battery_voltage+0.0001) >= si.charge_end_voltage) {
 				if (si.charge_method == CHARGE_METHOD_CCCV) charge_start_cv(1);
 				else charge_stop(1);
 			} else if (!si.charge_at_max && si.charge_creep) {
@@ -625,7 +627,7 @@ if (0 == 1) {
 				var amps,avg;
 				var i;
 
-				amps = si.data.battery_current * -1;
+				amps = data.battery_current * -1;
 				dprintf(0,"battery_amps: %f, charge_amps: %f\n", amps, si.charge_amps);
 
 				/* Amps < 0 (battery drain) will clear the hist */

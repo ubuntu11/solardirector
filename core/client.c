@@ -1,3 +1,4 @@
+
 /*
 Copyright (c) 2021, Stephen P. Shoecraft
 All rights reserved.
@@ -649,7 +650,55 @@ int client_set_config(solard_client_t *cp, char *op, char *target, char *param, 
 }
 #endif
 
-solard_client_t *client_init(int argc,char **argv,char *client_version,opt_proctab_t *client_opts,char *Cname,
+void client_mktopic(char *topic, int topicsz, char *name, char *func) {
+	register char *p;
+
+	dprintf(dlevel,"name: %s, func: %s\n", name, func);
+
+	p = topic;
+	p += snprintf(p,topicsz-strlen(topic),"%s/%s",SOLARD_TOPIC_ROOT,SOLARD_TOPIC_CLIENTS);
+	if (name) p += snprintf(p,topicsz-strlen(topic),"/%s",name);
+	if (func) p += snprintf(p,topicsz-strlen(topic),"/%s",func);
+}
+
+static int client_startup(solard_client_t *c, char *configfile, char *mqtt_info, char *influx_info,
+		config_property_t *prog_props, config_function_t *prog_funcs) {
+	config_property_t client_props[] = {
+		{ "name", DATA_TYPE_STRING, c->name, sizeof(c->name)-1, 0 },
+//		{ "rtsize", DATA_TYPE_INT, &c->rtsize, 0, 0, CONFIG_FLAG_READONLY },
+//		{ "stacksize", DATA_TYPE_INT, &c->stacksize, 0, 0, CONFIG_FLAG_READONLY },
+		{ "script_dir", DATA_TYPE_STRING, c->script_dir, sizeof(c->script_dir)-1, 0 },
+		{ "init_script", DATA_TYPE_STRING, c->init_script, sizeof(c->init_script)-1, "init.js", 0 },
+		{ "start_script", DATA_TYPE_STRING, c->start_script, sizeof(c->start_script)-1, "start.js", 0 },
+		{ "stop_script", DATA_TYPE_STRING, c->stop_script, sizeof(c->stop_script)-1, "stop.js", 0 },
+		{0}
+	};
+	config_property_t *props;
+	config_function_t *funcs;
+	config_function_t client_funcs[] = {
+		{ 0 }
+	};
+
+        props = config_combine_props(prog_props,client_props);
+        funcs = config_combine_funcs(prog_funcs,client_funcs);
+
+        /* Call common startup */
+	if (solard_common_startup(&c->cp, c->section_name, configfile, props, funcs, &c->m, client_getmsg, c, mqtt_info, &c->mc, c->config_from_mqtt, &c->i, influx_info, &c->ic, &c->js, c->rtsize, c->stacksize, (js_outputfunc_t *)log_info)) return 1;
+
+	/* Set script_dir if empty */
+	dprintf(dlevel,"script_dir(%d): %s\n", strlen(c->script_dir), c->script_dir);
+	if (!strlen(c->script_dir)) {
+		sprintf(c->script_dir,"%s/clients/%s",SOLARD_LIBDIR,c->name);
+		fixpath(c->script_dir,sizeof(c->script_dir));
+		dprintf(dlevel,"NEW script_dir(%d): %s\n", strlen(c->script_dir), c->script_dir);
+	}
+
+        config_add_props(c->cp, c->name, client_props, 0);
+	config_add_props(c->cp, "client", client_props, CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOID);
+	return 0;
+}
+
+solard_client_t *client_init(int argc,char **argv,char *version,opt_proctab_t *client_opts,char *Cname,
 			config_property_t *props,config_function_t *funcs) {
 	solard_client_t *c;
 	char mqtt_info[200],influx_info[200];
@@ -678,14 +727,12 @@ solard_client_t *client_init(int argc,char **argv,char *client_version,opt_proct
 		OPTS_END
 	}, *opts;
 	int logopts = LOG_INFO|LOG_WARNING|LOG_ERROR|LOG_SYSERR|_ST_DEBUG;
-//	time_t start,now;
-//	solard_startup_info_t info;
 
 	opts = opt_addopts(std_opts,client_opts);
 	if (!opts) return 0;
-	*mqtt_info = *configfile = 0;
+	*jsexec = *script = *mqtt_info = *configfile = 0;
 	dprintf(1,"argv: %p\n", argv);
-	if (argv && solard_common_init(argc,argv,client_version,opts,logopts)) return 0;
+	if (argv && solard_common_init(argc,argv,version,opts,logopts)) return 0;
 
 	dprintf(1,"creating session...\n");
 	c = calloc(1,sizeof(*c));
@@ -705,23 +752,7 @@ solard_client_t *client_init(int argc,char **argv,char *client_version,opt_proct
 
 	dprintf(1,"argc: %d, argv: %p, opts: %p, name: %s\n", argc, argv, opts, name);
 
-//	if (solard_common_startup(&info)) goto client_init_error;
-	/* call the common startup */
-	if (solard_common_startup(&c->cp, sname, configfile, props, funcs, &c->m, client_getmsg, c, mqtt_info, &c->mc, config_from_mqtt, &c->i, influx_info, &c->ic, &c->js, rtsize, stksize, (js_outputfunc_t *)log_info)) goto client_init_error;
-
-	{
-		config_property_t client_props[] = {
-			{ "name", DATA_TYPE_STRING, c->name, sizeof(c->name)-1, 0 },
-#ifdef JS
-			{ "script_dir", DATA_TYPE_STRING, c->script_dir, sizeof(c->script_dir)-1, 0 },
-			{ "start_script", DATA_TYPE_STRING, c->start_script, sizeof(c->start_script)-1, "start.js", 0 },
-			{ "stop_script", DATA_TYPE_STRING, c->stop_script, sizeof(c->stop_script)-1, "stop.js", 0 },
-#endif
-			{0}
-		};
-	        config_add_props(c->cp, c->name, client_props, 0);
-		config_add_props(c->cp, "client", client_props, CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOID);
-	}
+	if (client_startup(c,configfile,mqtt_info,influx_info,props,funcs)) goto client_init_error;
 
 #ifdef JS
 	/* Execute any command-line javascript code */
@@ -733,12 +764,12 @@ solard_client_t *client_init(int argc,char **argv,char *client_version,opt_proct
 
 	/* Start the init script */
 	snprintf(jsexec,sizeof(jsexec)-1,"%s/%s",c->script_dir,c->init_script);
-	if (access(jsexec,0)) JS_EngineExec(c->js,jsexec,0);
+	if (access(jsexec,0)) JS_EngineExec(c->js,jsexec,0,0);
 
 	/* if specified, Execute javascript file then exit */
 	dprintf(dlevel,"script: %s\n", script);
 	if (strlen(script)) {
-		JS_EngineExec(c->js,script,0);
+		JS_EngineExec(c->js,script,0,0);
 		free(c);
 		return 0;
 	}
@@ -759,6 +790,12 @@ client_init_error:
 }
 
 #ifdef JS
+enum CLIENT_PROPERTY_ID {
+	CLIENT_PROPERTY_ID_CONFIG=1024,
+	CLIENT_PROPERTY_ID_MQTT,
+	CLIENT_PROPERTY_ID_INFLUX
+};
+
 static JSBool client_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 	solard_client_t *c;
 
@@ -776,7 +813,7 @@ static JSBool client_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp) 
 }
 
 static JSClass client_class = {
-	"client",		/* Name */
+	"SDClient",		/* Name */
 	JSCLASS_HAS_PRIVATE,	/* Flags */
 	JS_PropertyStub,	/* addProperty */
 	JS_PropertyStub,	/* delProperty */
@@ -789,7 +826,7 @@ static JSClass client_class = {
 	JSCLASS_NO_OPTIONAL_MEMBERS
 };
 
-static JSBool client_jsmktopic(JSContext *cx, uintN argc, jsval *vp) {
+static JSBool jsclient_mktopic(JSContext *cx, uintN argc, jsval *vp) {
 //	solard_client_t *c;
 	char topic[SOLARD_TOPIC_SIZE], *name, *func;
 	int topicsz = SOLARD_TOPIC_SIZE;
@@ -821,6 +858,7 @@ static JSBool client_jsmktopic(JSContext *cx, uintN argc, jsval *vp) {
 	return JS_TRUE;
 }
 
+#if 0
 JSObject *JSClient(JSContext *cx, void *priv);
 
 static JSBool client_ctor(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
@@ -875,10 +913,9 @@ JSObject *jsclient_new(JSContext *cx, void *tp, void *handle, char *transport, c
 	return 0;
 }
 
-JSObject *JSClient(JSContext *cx, void *priv) {
+int jsclient_init(JSContext *cx, JSObject *parent, void *priv) {
 	JSFunctionSpec client_funcs[] = {
 		JS_FN("mktopic",client_jsmktopic,1,1,0),
-//		JS_FN("run",client_jsrun,1,1,0),
 		{ 0 }
 	};
 	JSObject *obj;
@@ -896,17 +933,67 @@ JSObject *JSClient(JSContext *cx, void *priv) {
 	}
 
 	dprintf(dlevel,"creating %s object\n",client_class.name);
-	obj = JS_InitClass(cx, JS_GetGlobalObject(cx), 0, &client_class, client_ctor, 1, props, client_funcs, 0, 0);
+	obj = JS_InitClass(cx, parent, 0, &client_class, client_ctor, 1, props, client_funcs, 0, 0);
 	if (!obj) {
 		JS_ReportError(cx,"unable to initialize %s class", client_class.name);
-		return 0;
+		return 1;
 	}
 	JS_SetPrivate(cx,obj,priv);
+
+	/* Create our child objects */
+	c->config_val = OBJECT_TO_JSVAL(jsconfig_new(cx,obj,c->cp));
+	c->mqtt_val = OBJECT_TO_JSVAL(jsmqtt_new(cx,obj,c->m));
+	c->influx_val = OBJECT_TO_JSVAL(jsinflux_new(cx,obj,c->i));
+
 	dprintf(dlevel,"done!\n");
-	return obj;
+	return 0;
+}
+#endif
+
+int jsclient_init(JSContext *cx, JSObject *parent, void *priv) {
+	JSPropertySpec client_props[] = {
+		{ "config", CLIENT_PROPERTY_ID_CONFIG, JSPROP_ENUMERATE },
+		{ "mqtt", CLIENT_PROPERTY_ID_MQTT, JSPROP_ENUMERATE },
+		{ "influx", CLIENT_PROPERTY_ID_INFLUX, JSPROP_ENUMERATE },
+		{ 0 }
+	};
+	JSFunctionSpec client_funcs[] = {
+		JS_FN("mktopic",jsclient_mktopic,1,1,0),
+		{ 0 }
+	};
+	JSObject *obj;
+	solard_client_t *c = priv;
+	JSPropertySpec *props;
+
+	props = 0;
+	if (c && c->cp && !c->props) {
+		c->props = config_to_props(c->cp, c->section_name, client_props);
+		if (!c->props) {
+			log_error("unable to create props: %s\n", config_get_errmsg(c->cp));
+			return 1;
+		}
+		props = c->props;
+	}
+	dprintf(dlevel,"client props: %p\n", props);
+
+	dprintf(dlevel,"creating %s object\n",client_class.name);
+	obj = JS_InitClass(cx, parent, 0, &client_class, 0, 0, props, client_funcs, 0, 0);
+	if (!obj) {
+		JS_ReportError(cx,"unable to initialize %s class", client_class.name);
+		return 1;
+	}
+	JS_SetPrivate(cx,obj,c);
+
+	/* Create our child objects */
+	c->config_val = OBJECT_TO_JSVAL(jsconfig_new(cx,obj,c->cp));
+	c->mqtt_val = OBJECT_TO_JSVAL(jsmqtt_new(cx,obj,c->m));
+	c->influx_val = OBJECT_TO_JSVAL(jsinflux_new(cx,obj,c->i));
+
+	dprintf(dlevel,"done!\n");
+	return 0;
 }
 
 int client_jsinit(JSEngine *e, void *priv) {
-	return JS_EngineAddInitFunc(e, "client", JSClient, priv);
+	return JS_EngineAddInitFunc(e, "client", jsclient_init, priv);
 }
 #endif

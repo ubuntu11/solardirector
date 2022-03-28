@@ -273,7 +273,7 @@ int smanet_get_chanvalue(smanet_session_t *s, smanet_channel_t *c, double *dest,
 	/* Get the text value, if any */
 	if (text) *text = 0;
 	dprintf(smanet_dlevel,"c->mask & CH_STATUS: %d\n", c->mask & CH_STATUS);
-	if (c->mask & CH_STATUS && text) {
+	if ((c->mask & CH_STATUS) && text) {
 		register char *p;
 		register int i;
 
@@ -288,6 +288,7 @@ int smanet_get_chanvalue(smanet_session_t *s, smanet_channel_t *c, double *dest,
 			i++;
 		}
 	}
+	if (text) dprintf(dlevel,"text: %p\n", *text);
 	return 0;
 }
 

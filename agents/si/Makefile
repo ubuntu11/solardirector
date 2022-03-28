@@ -3,7 +3,7 @@ SMANET=yes
 
 PROGNAME=si
 SRCS=main.c can.c smanet.c info.c si.c siconfig.c jsfuncs.c
-SCRIPTS=init.js charge.js pub.js
+SCRIPTS=*.js
 
 include ../../Makefile.sd
 

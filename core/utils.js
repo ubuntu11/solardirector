@@ -1,4 +1,12 @@
 
+/*
+Copyright (c) 2022, Stephen P. Shoecraft
+All rights reserved.
+
+This source code is licensed under the BSD-style license found in the
+LICENSE file in the root directory of this source tree.
+*/
+
 //include(dirname(script_name)+"/underscore-min.js");
 
 function arrayUnique(array) {
@@ -146,4 +154,17 @@ function rtest(obj) { return JSON.parse(JSON.stringify(obj)); }
 function delobj(obj) {
 	for(key in obj) delete obj[key];
 	delete obj;
+}
+
+dumpobj = function(obj) {
+        if (0 == 1) {
+        printf("%s keys:\n",objname(obj));
+        for(key in obj) printf("key: %s\n",key);
+        printf("\n");
+        return;
+        }
+        for(key in obj) {
+                if (obj[key] && typeof obj[key] === 'function') continue;
+                printf("%-30.30s: %s\n", key, obj[key]);
+        }
 }
