@@ -117,9 +117,11 @@ int typesize(int);
 #define _puts32(p,v) *((int32_t *)(p)) = (v)
 #define _puts64(p,v)  *((int64_t *)(p)) = (v)
 #define _putu8(p,v) *((uint8_t *)(p)) = (v)
+//#define _putu16(p,v) { float tmp; *((p+1)) = ((uint16_t)(tmp = v) >> 8); *((p)) = (uint16_t)(tmp = v); }
+//#define _putu16(p,v) { uint16_t n; *((uint16_t *)(p)) = (n = v); }
 #define _putu16(p,v) *((uint16_t *)(p)) = (v)
 #define _putu32(p,v) *((uint32_t *)(p)) = (v)
-#define _putu64(p,v)  *(u(int64_t *)(p)) = (v)
+#define _putu64(p,v)  *((uint64_t *)(p)) = (v)
 #define _putf32(p,v) *((float *)(p)) = (v)
 #define _putf64(p,v) *((double *)(p)) = (v)
 
@@ -148,8 +150,8 @@ static inline float _getf64(unsigned char *v) {
 #define _puts32(p,v) { float t; *((p+1)) = ((long)(t = v) >> 24); *((p+1)) = ((long)(t = v) >> 16); *((p+1)) = ((long)(t = v) >> 8); *((p)) = (long)(t = v); }
 #define _puts64(p,v) { double t; *((p+1)) = ((long long)(t = v) >> 56); *((p+1)) = ((long long)(t = v) >> 48); *((p+1)) = ((long long)(t = v) >> 40); *((p+1)) = ((long long)(t = v) >> 32); *((p+1)) = ((long long)(t = v) >> 24); *((p+1)) = ((long long)(t = v) >> 16); *((p+1)) = ((long long)(t = v) >> 8); *((p)) = (long long)(t = v); }
 #define _putu8(p,v) *((uint8_t *)(p)) = (v)
-#define _putu16(p,v) { float t; *((p+1)) = ((unsigned short)(t = v) >> 8); *((p)) = (unsigned short)(t = v); }
-#define _putu32(p,v) { float t; *((p+1)) = ((unsigned long)(t = v) >> 24); *((p+1)) = ((unsigned long)(t = v) >> 16); *((p+1)) = ((unsigned long)(t = v) >> 8); *((p)) = (unsigned long)(t = v); }
+#define _putu16(p,v) { float t; *((p+1)) = ((uint16_t)(t = v) >> 8); *((p)) = (uint16_t)(t = v); }
+#define _putu32(p,v) { float t; *((p+1)) = ((uint32_t)(t = v) >> 24); *((p+1)) = ((uint32_t)(t = v) >> 16); *((p+1)) = ((uint32_t)(t = v) >> 8); *((p)) = (uint32_t)(t = v); }
 #define _putu64(p,v) { double t; *((p+1)) = ((unsigned long long)(t = v) >> 56); *((p+1)) = ((unsigned long long)(t = v) >> 48); *((p+1)) = ((unsigned long long)(t = v) >> 40); *((p+1)) = ((unsigned long long)(t = v) >> 32); *((p+1)) = ((unsigned long long)(t = v) >> 24); *((p+1)) = ((unsigned long long)(t = v) >> 16); *((p+1)) = ((unsigned long long)(t = v) >> 8); *((p)) = (unsigned long long)(t = v); }
 #define _putf32(p,v) _putu32(p,v)
 #define _putf64(p,v) _putu64(p,v)
@@ -221,7 +223,16 @@ static inline float _getf64(unsigned char *v) {
 #define _putlong(p,v) _puts32(p,v)
 #define _putfloat(p,v) _putf32(p,v)
 
+#ifndef true
+#define true 1
+#endif
+#ifndef false
+#define false 0
+#endif
+
+#ifdef JS
 #include "jsengine.h"
 int types_jsinit(JSEngine *e);
+#endif
 
 #endif /* __SD_TYPES_H */

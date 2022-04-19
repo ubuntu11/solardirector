@@ -95,7 +95,8 @@ struct smanet_session {
 #ifdef SMANET_THREADSAFE
 	pthread_mutex_t lock;
 #endif
-	char errmsg[128];
+	bool doarray;
+	char errmsg[256];
 };
 typedef struct smanet_session smanet_session_t;
 
@@ -120,6 +121,7 @@ int smanet_get_value(smanet_session_t *, char *, double *, char **);
 int smanet_get_chanvalue(smanet_session_t *, smanet_channel_t *, double *, char **);
 int smanet_set_value(smanet_session_t *, char *, double, char *);
 int smanet_reset_value(smanet_session_t *, char *);
+int smanet_set_and_verify_option(smanet_session_t *, char *, char *);
 
 #if 0
 //int smanet_get_value(smanet_session_t *, smanet_channel_t *, double *);

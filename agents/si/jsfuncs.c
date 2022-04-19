@@ -1,4 +1,5 @@
 
+#ifdef JS
 #define DEBUG_JSFUNCS 1
 #define dlevel 5
 
@@ -275,7 +276,7 @@ static JSBool jssi_can_write(JSContext *cx, uintN argc, jsval *vp) {
 	obj = JS_THIS_OBJECT(cx, vp);
 	if (!obj) return JS_FALSE;
 	s = JS_GetPrivate(cx, obj);
-	dprintf(0,"s: %p\n", s);
+	dprintf(dlevel,"s: %p\n", s);
 	if (!s) {
 		JS_ReportError(cx, "can_write: internal error: private is null!\n");
 		return JS_FALSE;
@@ -315,6 +316,24 @@ static JSBool jssi_can_write(JSContext *cx, uintN argc, jsval *vp) {
 	return JS_TRUE;
 }
 
+#if 0
+static JSBool js_si_can_write_va(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
+	si_session_t *s;
+	int r;
+
+	s = JS_GetPrivate(cx, obj);
+	if (!s) {
+		JS_ReportError(cx, "can_write: internal error: private is null!\n");
+		return JS_FALSE;
+	}
+
+	r = si_can_write_va(s);
+	dprintf(0,"r: %d\n", r);
+	*rval = INT_TO_JSVAL(r);
+	return JS_TRUE;
+}
+#endif
+
 static JSBool jssi_notify(JSContext *cx, uintN argc, jsval *vp) {
 	jsval val;
 	char *str;
@@ -324,11 +343,41 @@ static JSBool jssi_notify(JSContext *cx, uintN argc, jsval *vp) {
 	obj = JS_THIS_OBJECT(cx, vp);
 	if (!obj) return JS_FALSE;
 	s = JS_GetPrivate(cx, obj);
+	if (!s) {
+		JS_ReportError(cx, "can_write: internal error: private is null!\n");
+		return JS_FALSE;
+	}
 
 	JS_SPrintf(cx, JS_GetGlobalObject(cx), argc, JS_ARGV(cx, vp), &val);
 	str = (char *)js_GetStringBytes(cx, JSVAL_TO_STRING(val));
 	dprintf(dlevel,"str: %s\n", str);
 	si_notify(s,"%s",str);
+	return JS_TRUE;
+}
+
+static JSBool js_si_register(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
+	si_session_t *s;
+	char *name, *func;
+
+	s = JS_GetPrivate(cx, obj);
+	if (!s) {
+		JS_ReportError(cx, "can_write: internal error: private is null!\n");
+		return JS_FALSE;
+	}
+
+	if (argc != 2) {
+		JS_ReportError(cx,"register requires 2 arguments (script_name:string, function:string)\n");
+		return JS_FALSE;
+	}
+
+	name = func = 0;
+	if (!JS_ConvertArguments(cx, argc, argv, "s s", &name, &func)) return JS_FALSE;
+	dprintf(0,"name: %s, func: %s\n", name, func);
+
+	s->eh.enabled = true;
+	strncpy(s->eh.name,name,sizeof(s->eh.name)-1);
+	strncpy(s->eh.func,func,sizeof(s->eh.func)-1);
+
 	return JS_TRUE;
 }
 
@@ -370,7 +419,9 @@ static int jssi_init(JSContext *cx, JSObject *parent, void *priv) {
 	JSFunctionSpec si_funcs[] = {
 		JS_FN("can_read",jssi_can_read,1,1,0),
 		JS_FN("can_write",jssi_can_write,2,2,0),
+		JS_FS("register",js_si_register,2,2,0),
 #if 0
+		JS_FS("can_write_va",js_si_can_write_va,0,0,0),
 		JS_FN("smanet_get",jscan_read,1,1,0),
 		JS_FN("smanet_set",jscan_read,1,1,0),
 		JS_FN("can_init",jsinit_can,0,0,0),
@@ -435,12 +486,6 @@ static int jssi_init(JSContext *cx, JSObject *parent, void *priv) {
 	s->agent_val = OBJECT_TO_JSVAL(jsagent_new(cx,obj,s->ap));
 	s->can_val = OBJECT_TO_JSVAL(jscan_new(cx,obj,s->can,s->can_handle,s->can_transport,s->can_target,s->can_topts,&s->can_connected));
 	s->smanet_val = OBJECT_TO_JSVAL(jssmanet_new(cx,obj,s->smanet,s->smanet_transport,s->smanet_target,s->smanet_topts));
-#if 0
-	s->data_val = OBJECT_TO_JSVAL(jssi_data_new(cx,obj,s));
-	s->agent_val = OBJECT_TO_JSVAL(jsagent_new(cx,obj,s->ap));
-	s->can_val = OBJECT_TO_JSVAL(jscan_new(cx,obj,s->can,s->can_handle,s->can_transport,s->can_target,s->can_topts,&s->can_connected));
-	s->smanet_val = OBJECT_TO_JSVAL(jssmanet_new(cx,obj,s->smanet,s->smanet_transport,s->smanet_target,s->smanet_topts));
-#endif
 
 	/* Create the global convenience objects */
 //	JS_DefineProperty(cx, global, "si", OBJECT_TO_JSVAL(obj), 0, 0, 0);
@@ -448,8 +493,9 @@ static int jssi_init(JSContext *cx, JSObject *parent, void *priv) {
 	JS_DefineProperty(cx, global, "agent", s->agent_val, 0, 0, 0);
 	JS_DefineProperty(cx, global, "can", s->can_val, 0, 0, 0);
 	JS_DefineProperty(cx, global, "smanet", s->smanet_val, 0, 0, 0);
-	JS_DefineProperty(cx, global, "influx", s->ap->influx_val, 0, 0, 0);
+	JS_DefineProperty(cx, global, "config", s->ap->config_val, 0, 0, 0);
 	JS_DefineProperty(cx, global, "mqtt", s->ap->mqtt_val, 0, 0, 0);
+	JS_DefineProperty(cx, global, "influx", s->ap->influx_val, 0, 0, 0);
 	return 0;
 }
 
@@ -457,3 +503,4 @@ int si_jsinit(si_session_t *s) {
 	JS_EngineAddInitFunc(s->ap->js, "si", jssi_init, s);
 	return 0;
 }
+#endif

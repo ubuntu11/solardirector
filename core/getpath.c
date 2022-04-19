@@ -7,10 +7,67 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
+#define dlevel 4
+
 #include "common.h"
 #include <ctype.h>
 
 #define _MAX_PATHLEN 1024
+
+static struct _sdpaths {
+	char *name;
+	char *path;
+} sdpaths[] = {
+	{ "SOLARD_BINDIR", SOLARD_BINDIR },
+	{ "SOLARD_ETCDIR", SOLARD_ETCDIR },
+	{ "SOLARD_LIBDIR", SOLARD_LIBDIR },
+	{ "SOLARD_LOGDIR", SOLARD_LOGDIR },
+	{ 0 }
+};
+
+void path2conf(char *dest, int size, char *src) {
+	struct _sdpaths *sdp;
+	int found,len;
+
+	dprintf(dlevel,"src: %s\n", src);
+
+	found = 0;
+	for(sdp = sdpaths; sdp->path; sdp++) {
+		len = strlen(sdp->path);
+		dprintf(dlevel,"sdp->path(%d): %s, src: %s\n", len, sdp->path, src);
+		if (len && strncmp(sdp->path, src, len) == 0) {
+			snprintf(dest,size,"%%%s%%%s",sdp->name,src + len);
+			found = 1;
+			break;
+		}
+	}
+	if (!found) strcpy(dest,src);
+	dprintf(dlevel,"dest: %s\n", dest);
+	return;
+}
+
+void conf2path(char *dest, int size, char *src) {
+	struct _sdpaths *sdp;
+	char temp[1024];
+	int found,len;
+
+	dprintf(dlevel,"src: %s\n", src);
+
+	found = 0;
+	for(sdp = sdpaths; sdp->path; sdp++) {
+		/* look for ^%NAME% */
+		sprintf(temp,"%%%s%%",sdp->name);
+		len = strlen(temp);
+//		dprintf(dlevel,"temp(%d): %s\n", len, temp);
+		if (len && strncmp(temp, src, len) == 0) {
+			snprintf(dest,size,"%s%s",sdp->path,src+len);
+			found = 1;
+			break;
+		}
+	}
+	if (!found) strcpy(dest,src);
+	dprintf(dlevel,"dest: %s\n", dest);
+}
 
 void fixpath(char *string, int stringsz) {
 	char newstr[2048],temp[128],last_ch,*e;
@@ -30,7 +87,7 @@ void fixpath(char *string, int stringsz) {
 				e = os_getenv(temp);
 				dprintf(9,"e: %p\n", e);
 				if (e) {
-					strncpy(&newstr[newidx],e,strlen(e));
+					strncpy(&newstr[newidx],e,sizeof(newstr) - strlen(newstr));
 					newidx += strlen(e);
 				} else {
 					newidx += sprintf(&newstr[newidx],"%%%s%%",temp);
@@ -106,7 +163,6 @@ static int _checkpath(char *path, int pathlen, char *prog, char *dest, int dest_
 
 /* Search the path for an executable */
 int solard_get_path(char *prog, char *dest, int dest_len) {
-//	char temp[256],*path,*s,*e;
 	char *path,*s,*e;
 	int len;
 
@@ -121,7 +177,7 @@ int solard_get_path(char *prog, char *dest, int dest_len) {
 	if (!path) return 1;
 	s = e = path;
 	while(1) {
-#ifdef __WIN32
+#ifdef WINDOWS
 		if (*e == 0 || *e == ';') {
 #else
 		if (*e == 0 || *e == ':') {

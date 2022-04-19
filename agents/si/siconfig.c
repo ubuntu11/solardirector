@@ -16,16 +16,30 @@ extern solard_driver_t si_driver;
 #define dlevel 1
 
 static void _getsource(si_session_t *s, si_current_source_t *spec) {
-	char line[128],*p,*v;
+	char line[128],method[64],*p,*v;
 	int i;
 
+	/* method,interval,<method-specific> */
+
 	i = 0;
-	p = strele(i++,",",spec->text);
+	strncpy(method,strele(i++,",",spec->text),sizeof(method)-1);
 	v = line;
 	v += sprintf(v,"spec: text: %s, ", spec->text);
-	if (strcasecmp(p,"calculated") == 0) {
+	if (strcasecmp(method,"none") == 0) {
+		spec->source = CURRENT_SOURCE_NONE;
+	} else if (strcasecmp(method,"calculated") == 0) {
 		spec->source = CURRENT_SOURCE_CALCULATED;
-	} else if (strcasecmp(p,"can") == 0) {
+	} else if (strcasecmp(method,"influx") == 0) {
+		spec->source = CURRENT_SOURCE_INFLUX;
+		p = strele(i++,",",spec->text);
+		spec->query = malloc(strlen(p)+1);
+		if (!spec->query) {
+			log_syserror("_getsource: malloc query");
+			spec->source = CURRENT_SOURCE_NONE;
+			return;
+		}
+		strcpy(spec->query,p);
+	} else if (strcasecmp(method,"can") == 0) {
 		/* can,can_id,byte offset,number of bytes */
 		spec->source = CURRENT_SOURCE_CAN;
 		v += sprintf(v,"source: %d, ", spec->source);
@@ -36,12 +50,15 @@ static void _getsource(si_session_t *s, si_current_source_t *spec) {
 		p = strele(i++,",",spec->text);
 		conv_type(DATA_TYPE_U8,&spec->can.size,0,DATA_TYPE_STRING,p,strlen(p));
 		v += sprintf(v,"id: %03x, offset: %d, size: %d, ", spec->can.id, spec->can.offset, spec->can.size);
-	} else if (strcasecmp(p,"smanet") == 0) {
-		/* smanet name */
+#if 0
+	// XXX cannot use SMANET - it only returns unsigned data
+	} else if (strcasecmp(method,"smanet") == 0) {
+		/* smanet,<name> */
 		spec->source = CURRENT_SOURCE_SMANET;
 		p = strele(i++,",",spec->text);
 		strncpy(spec->name,p,sizeof(spec->name)-1);
 		v += sprintf(v,"source: %d, name: %s, ", spec->source, spec->name);
+#endif
 	} else {
 		log_warning("invalid current source: %s, ignored.\n", s->input.text);
 	}
@@ -150,6 +167,10 @@ static int si_set_value(void *ctx, list args, char *errmsg) {
 			sprintf(errmsg,"property %s not found",name);
 			return 1;
 		}
+		if (strcasecmp(value,"default")==0) {
+			if (p->def) value = p->def;
+			else value = "";
+		}
 		if (!solard_check_bit(p->flags,SI_CONFIG_FLAG_SMANET)) {
 			smanet_channel_t *c;
 
@@ -193,6 +214,7 @@ static int si_set_value(void *ctx, list args, char *errmsg) {
 		p->dirty = 1;
 		if (strcmp(p->name,"input_current_source") == 0) _getsource(s,&s->input);
 		if (strcmp(p->name,"output_current_source") == 0) _getsource(s,&s->output);
+		config_write(s->ap->cp);
 	}
 	return 0;
 }
@@ -236,19 +258,91 @@ static int si_cf_smanet_init(void *ctx, list args, char *errmsg) {
 	return 0;
 }
 
+static int si_charge(void *ctx, list args, char *errmsg) {
+	si_session_t *s = ctx;
+	char *arg;
+
+	/* We take 1 arg: start/stop */
+	list_reset(args);
+	arg = list_get_next(args);
+	dprintf(dlevel,"arg: %s\n", arg);
+#ifdef JS
+	if (strcmp(arg,"start") == 0 || strcasecmp(arg,"on") == 0)
+		agent_start_jsfunc(s->ap, "charge.js", "charge_start");
+	else if (strcmp(arg,"stop") == 0 || strcasecmp(arg,"off") == 0)
+		agent_start_jsfunc(s->ap, "charge.js", "charge_stop");
+	else {
+		strcpy(errmsg,"invalid charge mode");
+		return 1;
+	}
+#endif
+	return 0;
+}
+
+static int si_feed(void *ctx, list args, char *errmsg) {
+	si_session_t *s = ctx;
+	char *arg;
+
+	if (!s->smanet->connected) {
+		strcpy(errmsg,"unable to set feed: smanet not connected");
+		return 1;
+	}
+
+	/* We take 1 arg: start/stop */
+	list_reset(args);
+	arg = list_get_next(args);
+	if (strcasecmp(arg,"start") == 0 || strcasecmp(arg,"on") == 0) {
+		if (smanet_set_and_verify_option(s->smanet,"GdMod","GridFeed")) {
+			strcpy(errmsg,"error setting GdMod to GridFeed");
+			return 1;
+		}
+		if (smanet_set_and_verify_option(s->smanet,"GdManStr","Start")) {
+			smanet_set_and_verify_option(s->smanet,"GdMod","GridCharge");
+			strcpy(errmsg,"error setting GdManStr to Start");
+			return 1;
+		}
+		s->feeding = true;
+	} else if (strcasecmp(arg,"stop") == 0 || strcasecmp(arg,"off") == 0) {
+		if (smanet_set_and_verify_option(s->smanet,"GdManStr","Auto")) {
+			strcpy(errmsg,"error setting GdManStr to Auto");
+			return 1;
+		}
+		if (smanet_set_and_verify_option(s->smanet,"GdMod","GridCharge")) {
+			strcpy(errmsg,"error setting GdMod to GridCharge");
+			return 1;
+		}
+		s->feeding = false;
+	} else {
+		strcpy(errmsg,"invalid feed mode");
+		return 1;
+	}
+	return 0;
+}
+
 int si_agent_init(int argc, char **argv, opt_proctab_t *si_opts, si_session_t *s) {
 	config_property_t si_props[] = {
 		{ "bms_mode", DATA_TYPE_BOOL, &s->bms_mode, 0, "no", 0, 0, 0, 0, 0, 0, 0, 1, 0 },
 		{ "readonly", DATA_TYPE_BOOL, &s->readonly, 0, "no", 0, 0, 0, 0, 0, 0, 0, 1, 0 },
-		{ "charge_mode", DATA_TYPE_INT, &s->charge_mode, 0, "0", CONFIG_FLAG_NOPUB | CONFIG_FLAG_NOSAVE,
+		{ "charge_mode", DATA_TYPE_INT, &s->charge_mode, 0, "0", 0,
 			"select", 3, (int []){ 0, 1, 2 }, 3, (char *[]){ "Off","On","CV" }, 0, 1, 0 },
 		{ "charge_voltage", DATA_TYPE_FLOAT, &s->charge_voltage, 0, 0, CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOPUB },
 		{ "charge_amps", DATA_TYPE_FLOAT, &s->charge_amps, 0, 0, CONFIG_FLAG_NOPUB | CONFIG_FLAG_NOSAVE,
 			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Charge amps" }, "A", 1, 0 },
+		{ "soc", DATA_TYPE_FLOAT, &s->soc, 0, 0, CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOPUB },
+		{ "grid_charge_amps", DATA_TYPE_FLOAT, &s->grid_charge_amps, 0, 0, 0,
+			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Charge amps when grid is connected" }, "A", 1, 0 },
+		{ "gen_charge_amps", DATA_TYPE_FLOAT, &s->gen_charge_amps, 0, 0, 0,
+			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Charge amps when gen is connected" }, "A", 1, 0 },
+		{ "solar_charge_amps", DATA_TYPE_FLOAT, &s->solar_charge_amps, 0, 0, 0,
+			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Charge amps to use when neither grid or gen connected" }, "A", 1, 0 },
 		{ "min_voltage", DATA_TYPE_FLOAT, &s->min_voltage, 0, 0, 0,
 			"range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 }, 1, (char *[]){ "Min Battery Voltage" }, "V", 1, 0 },
 		{ "max_voltage", DATA_TYPE_FLOAT, &s->max_voltage, 0, 0, 0,
 			"range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 }, 1, (char *[]){ "Max Battery Voltage" }, "V", 1, 0 },
+		{ "min_charge_amps", DATA_TYPE_FLOAT, &s->min_charge_amps, 0, 0, 0,
+			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Minimum charge amps" }, "A", 1, 0 },
+		{ "max_charge_amps", DATA_TYPE_FLOAT, &s->max_charge_amps, 0, "1200", 0,
+			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Maxiumum charge amps" }, "A", 1, 0 },
 		{ "can_transport", DATA_TYPE_STRING, s->can_transport, sizeof(s->can_transport)-1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 },
 		{ "can_target", DATA_TYPE_STRING, s->can_target, sizeof(s->can_target)-1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 },
 		{ "can_topts", DATA_TYPE_STRING, s->can_topts, sizeof(s->can_topts)-1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 },
@@ -260,24 +354,32 @@ int si_agent_init(int argc, char **argv, opt_proctab_t *si_opts, si_session_t *s
 		{ "smanet_connected", DATA_TYPE_BOOL, &s->smanet_connected, 0, "N", CONFIG_FLAG_NOSAVE },
 		{ "battery_type", DATA_TYPE_STRING, &s->battery_type, sizeof(s->battery_type)-1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 },
 		{ "input_current_source", DATA_TYPE_STRING, &s->input.text, sizeof(s->input.text)-1, 0, 0,
-			0, 0, 0, 1, (char *[]){ "Source of input current data" }, 0, 1, 0 },
+			0, 0, 0, 1, (char *[]){ "Input current source spec" }, 0, 1, 0 },
 		{ "output_current_source", DATA_TYPE_STRING, &s->output.text, sizeof(s->output.text)-1, 0, 0,
-			0, 0, 0, 1, (char *[]){ "Source of output current data" }, 0, 1, 0 },
-		{ "startup", DATA_TYPE_INT, &s->startup, 0, 0, 0 },
-		{ "interval", DATA_TYPE_INT, &s->interval, 0, "30", 0,
-			"range", 3, (int []){ 0, 10000, 1 }, 1, (char *[]) { "Interval" }, "S", 1, 0 },
+			0, 0, 0, 1, (char *[]){ "Output current source spec" }, 0, 1, 0 },
+		{ "input_source", DATA_TYPE_INT, &s->input.source, 0, 0, CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOPUB },
+		{ "output_source", DATA_TYPE_INT, &s->output.source, 0, 0, CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOPUB },
+		{ "startup", DATA_TYPE_INT, &s->startup, 0, 0, CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOPUB },
 		{ "notify", DATA_TYPE_STRING, &s->notify_path, sizeof(s->notify_path)-1, 0, 0,
 			0, 0, 0, 1, (char *[]){ "Notify program" }, 0, 1, 0 },
 		{ "disable_si_read", DATA_TYPE_BOOL, &s->disable_si_read, 0, 0, 0,
 			"select", 2, (bool []){ 0, 1 }, 1, (char *[]){ "disable native read function" }, 0, 1, 0 },
 		{ "disable_si_write", DATA_TYPE_BOOL, &s->disable_si_write, 0, 0, 0,
 			"select", 2, (bool []){ 0, 1 }, 1, (char *[]){ "disable native write function" }, 0, 1, 0 },
-
-
-
-
+		{ "feeding", DATA_TYPE_BOOL, &s->feeding, 0, 0, 0,
+			"select", 2, (bool []){ 0, 1 }, 1, (char *[]){ "feeding data to utility grid" }, 0, 1, 0 },
+		{ "dynfeed", DATA_TYPE_BOOL, &s->dynfeed, 0, "yes", 0,
+			"select", 2, (bool []){ 0, 1 }, 1, (char *[]){ "Dynamic feed" }, 0, 1, 0 },
+		{ "discharge_amps", DATA_TYPE_FLOAT, &s->discharge_amps, 0, "1200", 0,
+			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Discharge Amps" }, "A", 1, 0 },
+		{ "user_soc", DATA_TYPE_FLOAT, &s->user_soc, 0, "-1", CONFIG_FLAG_NOSAVE,
+			"range", 3, (float []){ 0, 100, .1 }, 1, (char *[]){ "User-set State of Charge" }, 0, 1, 1 },
+		{ "gen_hold_soc", DATA_TYPE_FLOAT, &s->gen_hold_soc, 0, "-1", 0,
+			"range", 3, (float []){ 0, 100, .1 }, 1, (char *[]){ "Hold SOC to this value when gen is running and we're charging" }, 0, 1, 1 },
 
 #if 0
+		{ "grid_connected", DATA_TYPE_BOOL, &s->grid_connected, 0, "-1", CONFIG_FLAG_NOSAVE },
+		{ "gen_connected", DATA_TYPE_BOOL, &s->gen_connected, 0, "-1", CONFIG_FLAG_NOSAVE },
 		{ "have_grid", DATA_TYPE_BOOL, &s->have_grid, 0, "-1", 0,
 			"range", 3, (int []){ -1, 0, 1 }, 
 			3, (char *[]){ "Not set", "No", "Yes" }, 0, 1, 0 },
@@ -285,12 +387,6 @@ int si_agent_init(int argc, char **argv, opt_proctab_t *si_opts, si_session_t *s
 			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Maximum charge current" }, "A", 1, 0 },
 		{ "charge_min_amps", DATA_TYPE_FLOAT, &s->charge_min_amps, 0, 0, 0,
 			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Minimum charge current" }, "A", 1, 0 },
-		{ "grid_charge_amps", DATA_TYPE_FLOAT, &s->grid_charge_amps, 0, 0, 0,
-			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Charge amps when grid is connected" }, "A", 1, 0 },
-		{ "gen_charge_amps", DATA_TYPE_FLOAT, &s->gen_charge_amps, 0, 0, 0,
-			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Charge amps when gen is connected" }, "A", 1, 0 },
-		{ "grid_connected", DATA_TYPE_BOOL, &s->grid_connected, 0, 0, CONFIG_FLAG_NOSAVE },
-		{ "gen_connected", DATA_TYPE_BOOL, &s->gen_connected, 0, 0, CONFIG_FLAG_NOSAVE },
 		{ "charge_start_voltage", DATA_TYPE_FLOAT, &s->charge_start_voltage, 0, 0, 0,
 			"range", 3, (float []){ SI_VOLTAGE_MIN, SI_VOLTAGE_MAX, .1 }, 1, (char *[]){ "Start charging at this voltage" }, "V", 1, 0 },
 		{ "charge_end_voltage", DATA_TYPE_FLOAT, &s->charge_end_voltage, 0, 0, 0,
@@ -339,10 +435,6 @@ int si_agent_init(int argc, char **argv, opt_proctab_t *si_opts, si_session_t *s
 			0, 0, 0, 1, (char *[]){ "Fallback to NULL driver if CAN init fails" }, 0, 0 },
 		{ "sim_step", DATA_TYPE_FLOAT, &s->sim_step, 0, "0.1", 0,
 			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "SIM Voltage Step" }, 0, 1, 1 },
-		{ "discharge_amps", DATA_TYPE_FLOAT, &s->discharge_amps, 0, "1200", 0,
-			"range", 3, (float []){ 0, 5000, .1 }, 1, (char *[]){ "Discharge Amps" }, "A", 1, 0 },
-		{ "soc", DATA_TYPE_FLOAT, &s->soc, 0, 0, CONFIG_FLAG_NOSAVE,
-			"range", 3, (float []){ 0, 100, .1 }, 1, (char *[]){ "State of Charge" }, 0, 1, 1 },
 		{ "have_battery_temp", DATA_TYPE_BOOL, &s->have_battery_temp, 0, "N", 0,
 			0, 0, 0, 1, (char *[]){ "Is battery temp available" }, 0, 0 },
 		{ "state", DATA_TYPE_SHORT, &s->state, 0, 0, 0 },
@@ -371,6 +463,8 @@ int si_agent_init(int argc, char **argv, opt_proctab_t *si_opts, si_session_t *s
 		{ "set", si_set_value, s, 2 },
 		{ "can_init", si_cf_can_init, s, 3 },
 		{ "smanet_init", si_cf_smanet_init, s, 3 },
+		{ "charge", si_charge, s, 1 },
+		{ "feed", si_feed, s, 1 },
 		{0}
 	};
 
@@ -475,14 +569,13 @@ int si_config(void *h, int req, ...) {
 		/* Add si_data to config */
 		si_config_add_si_data(s);
 
+#if 0
 		/* Interval cannot be more than 30s */
-		if (s->interval > 30) {
-			log_warning("interval reduced to 30s (was: %d)\n",s->interval);
-			s->interval = 30;
+		if (s->ap->interval > 30) {
+			log_warning("interval reduced to 30s (was: %d)\n",s->ap->interval);
+			s->ap->interval = 30;
 		}
-
-		/* Read and write intervals are the same */
-		s->ap->read_interval = s->ap->write_interval = s->interval;
+#endif
 
 		/* Set startup flag */
 		s->startup = 1;

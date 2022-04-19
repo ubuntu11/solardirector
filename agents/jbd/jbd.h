@@ -14,6 +14,7 @@ LICENSE file in the root directory of this source tree.
 
 #include <pthread.h>
 #include "agent.h"
+#include "battery.h"
 #include "jbd_regs.h"
 #include "can.h"
 
@@ -21,6 +22,7 @@ LICENSE file in the root directory of this source tree.
 #define JBD_MAX_TEMPS 8
 #define JBD_MAX_CELLS 32
 
+#if 0
 struct jbd_data {
 	float capacity;			/* Battery pack capacity, in AH */
 	float voltage;			/* Pack voltage */
@@ -37,6 +39,9 @@ struct jbd_data {
 	uint32_t balancebits;		/* Balance bitmask */
 };
 typedef struct jbd_data jbd_data_t;
+#else
+#define jbd_data_t solard_battery_t
+#endif
 
 struct jbd_hwinfo {
 	char manufacturer[32];		/* Model name */
@@ -54,8 +59,7 @@ struct jbd_session {
 	char topts[SOLARD_TOPTS_LEN];
 	solard_driver_t *tp;		/* Our transport */
 	void *tp_handle;		/* Our transport handle */
-	int (*can_get)(struct jbd_session *s, int id, uint8_t *data, int datasz);
-	int (*reader)(struct jbd_session *);
+	int (*reader)(struct jbd_session *); /* Read can format or std (serial/bt) */
 	jbd_hwinfo_t hwinfo;
 	uint16_t state;			/* Pack state */
 	jbd_data_t data;
@@ -63,11 +67,11 @@ struct jbd_session {
 	uint8_t balancing;		/* 0=off, 1=on, 2=only when charging */
 	int errcode;			/* error indicator */
 	char errmsg[256];		/* Error message if errcode !0 */
-//	pthread_mutex_t lock;
+	config_property_t *data_props;
 	bool flatten;
 #ifdef JS
-	JSPropertySpec *props;
-	JSPropertySpec *data_props;
+	JSPropertySpec *propspec;
+	JSPropertySpec *data_propspec;
 	jsval data_val;
 	jsval hw_val;
 	jsval agent_val;
@@ -143,14 +147,14 @@ int jbd_rw(jbd_session_t *s, uint8_t action, uint8_t reg, uint8_t *data, int dat
 int jbd_eeprom_open(jbd_session_t *s);
 int jbd_eeprom_close(jbd_session_t *s);
 int jbd_set_mosfet(jbd_session_t *s, int val);
-int jbd_reset(void *h, int nargs, char **args, char *errmsg);
+int jbd_get_balance(jbd_session_t *s);
+int jbd_set_balance(jbd_session_t *s, int newbits);
+int jbd_reset(jbd_session_t *s);
 int jbd_can_get_fetstate(struct jbd_session *s);
 int jbd_can_read(struct jbd_session *s);
 int jbd_std_read(jbd_session_t *s);
 int jbd_get_fetstate(jbd_session_t *s);
 int jbd_read(void *handle, uint32_t *, void *buf, int buflen);
-int jbd_get_local_can_data(jbd_session_t *s, int id, uint8_t *data, int datasz);
-int jbd_get_remote_can_data(jbd_session_t *s, int id, uint8_t *data, int datasz);
 int jbd_open(void *handle);
 int jbd_close(void *handle);
 int jbd_free(void *handle);

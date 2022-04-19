@@ -520,23 +520,6 @@ int jk_get_hwinfo(jk_session_t *s) {
 	return r;
 }
 
-int jk_pub(jk_session_t *s) {
-	solard_battery_t *pp = &s->data;
-	char *p;
-	json_value_t *v;
-
-	strcpy(pp->name,s->ap->instance_name);
-	if (s->flatten) v = battery_to_flat_json(pp);
-	else v = battery_to_json(pp);
-	if (!v) return 1;
-	p = json_dumps(v,0);
-	dprintf(2,"sending mqtt data...\n");
-	if (mqtt_pub(s->ap->m, s->topic, p, 1, 0)) log_error("error sending mqtt message!\n");
-	free(p);
-	json_destroy_value(v);
-	return 0;
-}
-
 static int jk_read(void *handle, uint32_t *control, void *buf, int buflen) {
 	jk_session_t *s = handle;
 	float v,min,max,avg,tot;
@@ -571,11 +554,18 @@ static int jk_read(void *handle, uint32_t *control, void *buf, int buflen) {
         if (s->balancing) solard_set_state(s,JK_STATE_BALANCING);
         else solard_clear_state(s,JK_STATE_BALANCING);
 
-	if (agent_script_exists(s->ap,"pub.js")) {
-		agent_start_script(s->ap,"pub.js");
-	} else {
-		jk_pub(s);
+#ifndef JS
+#ifdef INFLUX
+	if (influx_connected(s->ap->i)) {
+		json_value_t *v = battery_to_flat_json(&s->data);
+		dprintf(2,"v: %p\n", v);
+		if (v) {
+			influx_write_json(s->ap->i, "battery", v);
+			json_destroy_value(v);
+		}
 	}
+#endif
+#endif
 	return 0;
 }
 

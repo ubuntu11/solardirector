@@ -77,6 +77,8 @@ int solard_checkpid(int pid, int *status);
 int solard_kill(int);
 void solard_notify_list(char *,list);
 void solard_notify(char *,char *,...);
+void path2conf(char *dest, int size, char *src);
+void conf2path(char *dest, int size, char *src);
 void fixpath(char *,int);
 int solard_get_path(char *prog, char *dest, int dest_len);
 void tmpdir(char *, int);

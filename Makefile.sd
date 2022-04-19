@@ -2,14 +2,6 @@
 #TARGET=pi3
 #TARGET=win64
 
-DEBUG?=yes
-DEBUG_MEM?=no
-PTHREADS?=yes
-SHARED?=no
-STATIC?=no
-PAHO?=yes
-JS?=yes
-CURL?=yes
 ID:=$(shell id -u)
 
 ifneq "$(findstring win,$(TARGET))" ""
@@ -27,33 +19,40 @@ endif
 current_makefile := $(lastword $(MAKEFILE_LIST))
 SRC_ROOT=$(shell echo $$(dirname $(current_makefile)))
 
+include $(SRC_ROOT)/make.opts
+
+
 TOOLS?=$(SRC_ROOT)/tools
 
 CFLAGS+=-I.
 
+ifeq ($(SHARED),yes)
+	ifeq ($(ISWIN),yes)
+		LIBEXT=.dll
+	else
+		LIBEXT=.so
+	endif
+else
+	LIBEXT=.a
+endif
+
 # Uses libsmanet? must be included before sdcore as it refs
 ifeq ($(SMANET),yes)
 	CFLAGS+=-I$(SRC_ROOT)/smanet
-	LIBS+=-L$(SRC_ROOT)/smanet -lsmanet$(SUFFIX)
-	DEPS+=$(SRC_ROOT)/smanet/libsmanet$(SUFFIX)$(LIBEXT)
+	LIBS+=-L$(SRC_ROOT)/smanet -lsmanet
+	DEPS+=$(SRC_ROOT)/smanet/libsmanet$(LIBEXT)
 endif
-
-#ifneq ($(LIBNAME),roles)
-#	CFLAGS+=-I$(SRC_ROOT)/roles
-#	LIBS+=-L$(SRC_ROOT)/roles -lroles$(SUFFIX)
-#	DEPS+=$(SRC_ROOT)/roles/libroles$(SUFFIX)$(LIBEXT)
-#endif
 
 ifneq ($(LIBNAME),core)
 	CFLAGS+=-I$(SRC_ROOT)/core
-	LIBS+=-L$(SRC_ROOT)/core -lcore$(SUFFIX)
-	DEPS+=$(SRC_ROOT)/core/libcore$(SUFFIX)$(LIBEXT)
+	LIBS+=-L$(SRC_ROOT)/core -lcore
+	DEPS+=$(SRC_ROOT)/core/libcore$(LIBEXT)
 endif
 
 ifneq ($(LIBNAME),transports)
 	CFLAGS+=-I$(SRC_ROOT)/transports
-	LIBS+=-L$(SRC_ROOT)/transports -ltransports$(SUFFIX)
-	DEPS+=$(SRC_ROOT)/transports/libtransports$(SUFFIX)$(LIBEXT)
+	LIBS+=-L$(SRC_ROOT)/transports -ltransports
+	DEPS+=$(SRC_ROOT)/transports/libtransports$(LIBEXT)
 endif
 
 ifeq ($(JS),yes)
@@ -63,20 +62,25 @@ ifeq ($(JS),yes)
 	else
 		CFLAGS+=-DXP_UNIX
 	endif
-	LIBS+=-L$(SRC_ROOT)/js -ljs$(SUFFIX) -lm 
-	DEPS+=$(SRC_ROOT)/js/libjs$(SUFFIX)$(LIBEXT)
+	LIBS+=-L$(SRC_ROOT)/js -ljs -lm 
+	DEPS+=$(SRC_ROOT)/js/libjs$(LIBEXT)
 endif
 
 ifneq ($(LIBNAME),transports)
-	LIBS+=-L$(SRC_ROOT)/transports -ltransports$(SUFFIX)
+	LIBS+=-L$(SRC_ROOT)/transports -ltransports
 endif
 
 ifneq ($(LIBNAME),core)
-	LIBS+=-L$(SRC_ROOT)/core -lcore$(SUFFIX)
+	LIBS+=-L$(SRC_ROOT)/core -lcore -lm
+endif
+
+ifneq ($(LIBNAME),transports)
+	LIBS+=-L$(SRC_ROOT)/transports -ltransports
 endif
 
 # Paho MQTT
-ifeq ($(PAHO),yes)
+ifeq ($(MQTT),yes)
+	CFLAGS+=-DMQTT
 	ifeq ($(STATIC),yes)
 		_PAHOLDADD=-lssl -lcrypto -lz -ldl
 		ifeq ($(TARGET),win32)
@@ -85,29 +89,24 @@ ifeq ($(PAHO),yes)
 		else ifeq ($(TARGET),win64)
 			_PAHOSTATIC=-static
 			_PAHOLDADD+=-lgdi32 -lcrypt32 -lrpcrt4
-# -lcrypt32 -lrpcrt4 -lkernel32
 		endif
 	endif
 	LIBS+=-lpaho-mqtt3c$(_PAHOSTATIC) $(_PAHOLDADD)
 endif
 
-#ifneq ($(TRANSPORTS),)
-#CFLAGS+=-I$(SRC_ROOT)/transports
-#SRCS+=$(TRANSPORTS)
-#vpath %.c $(SRC_ROOT)/transports
-#endif
+ifeq ($(INFLUX),yes)
+	CURL=yes
+	CFLAGS+=-DINFLUX
+endif
 
 # Bluetooth
 ifeq ($(BLUETOOTH),yes)
-ifneq ($(ISWIN),yes)
-CFLAGS+=-DBLUETOOTH
-LIBS+=-lgattlib -lglib-2.0 -lgobject-2.0 -lgio-2.0 -lbluetooth
+	ifneq ($(ISWIN),yes)
+		CFLAGS+=-DBLUETOOTH
+		LIBS+=-lgattlib -lglib-2.0 -lgobject-2.0 -lgio-2.0 -lbluetooth
+	endif
 endif
-#else
-#ifneq ($(TRANSPORTS),)
-#_TMPVAR := $(TRANSPORTS)
-#TRANSPORTS = $(filter-out bt.c, $(_TMPVAR))
-#endif
-endif
+
+PTHREADS=yes
 
 include $(SRC_ROOT)/Makefile.inc

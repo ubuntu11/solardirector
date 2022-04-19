@@ -112,7 +112,7 @@ static JSBool jbd_data_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp
 	jbd_session_t *s;
 
 	s = JS_GetPrivate(cx,obj);
-	return config_jssetprop(cx, obj, id, vp, s->ap->cp, s->data_props);
+	return js_config_common_setprop(cx, obj, id, vp, s->ap->cp, s->data_propspec);
 }
 
 static JSClass jbd_data_class = {
@@ -135,18 +135,18 @@ JSObject *js_jbd_data_new(JSContext *cx, JSObject *parent, jbd_session_t *s) {
 	};
 	JSObject *obj;
 
-	if (!s->data_props) {
+	if (!s->data_propspec) {
 		/* section name must match used in jbd_config_add_jbd_data() */
-		s->data_props = config_to_props(s->ap->cp, "jbd_data", 0);
-		dprintf(dlevel,"info->props: %p\n",s->data_props);
-		if (!s->data_props) {
+		s->data_propspec = config_to_props(s->ap->cp, "jbd_data", 0);
+		dprintf(dlevel,"data_propspec: %p\n",s->data_propspec);
+		if (!s->data_propspec) {
 			log_error("unable to create jbd_data props: %s\n", config_get_errmsg(s->ap->cp));
 			return 0;
 		}
 	}
 
 	dprintf(dlevel,"defining %s object\n",jbd_data_class.name);
-	obj = JS_InitClass(cx, parent, 0, &jbd_data_class, 0, 0, s->data_props, 0, 0, 0);
+	obj = JS_InitClass(cx, parent, 0, &jbd_data_class, 0, 0, s->data_propspec, 0, 0, 0);
 	if (!obj) {
 		JS_ReportError(cx,"unable to initialize %s", jbd_data_class.name);
 		return 0;
@@ -215,7 +215,7 @@ static JSBool jbd_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 		JS_ReportError(cx,"private is null!");
 		return JS_FALSE;
 	}
-	return config_jssetprop(cx, obj, id, rval, s->ap->cp, s->props);
+	return js_config_common_setprop(cx, obj, id, rval, s->ap->cp, s->propspec);
 }
 
 static JSClass jbd_class = {
@@ -250,16 +250,16 @@ int js_jbd_init(JSContext *cx, JSObject *parent, void *priv) {
 	JSObject *obj,*global = JS_GetGlobalObject(cx);
 	jbd_session_t *s = priv;
 
-	if (!s->props) {
-		s->props = config_to_props(s->ap->cp, s->ap->section_name, jbd_props);
-		if (!s->props) {
+	if (!s->propspec) {
+		s->propspec = config_to_props(s->ap->cp, s->ap->section_name, jbd_props);
+		if (!s->propspec) {
 			log_error("unable to create props: %s\n", config_get_errmsg(s->ap->cp));
 			return 1;
 		}
 	}
 
 	dprintf(dlevel,"defining %s object\n",jbd_class.name);
-	obj = JS_InitClass(cx, parent, 0, &jbd_class, 0, 0, s->props, 0, 0, 0);
+	obj = JS_InitClass(cx, parent, 0, &jbd_class, 0, 0, s->propspec, 0, 0, 0);
 	if (!obj) {
 		JS_ReportError(cx,"unable to initialize %s class, jbd_class.name");
 		return 1;
@@ -275,8 +275,12 @@ int js_jbd_init(JSContext *cx, JSObject *parent, void *priv) {
 	s->agent_val = OBJECT_TO_JSVAL(jsagent_new(cx,obj,s->ap));
 
 	/* Create the global convenience objects */
-	JS_DefineProperty(cx, global, "jbd", OBJECT_TO_JSVAL(obj), 0, 0, 0);
+//	JS_DefineProperty(cx, global, "jbd", OBJECT_TO_JSVAL(obj), 0, 0, 0);
 	JS_DefineProperty(cx, global, "data", s->data_val, 0, 0, 0);
+	JS_DefineProperty(cx, global, "agent", s->agent_val, 0, 0, 0);
+	JS_DefineProperty(cx, global, "config", s->ap->config_val, 0, 0, 0);
+	JS_DefineProperty(cx, global, "mqtt", s->ap->mqtt_val, 0, 0, 0);
+	JS_DefineProperty(cx, global, "influx", s->ap->influx_val, 0, 0, 0);
 
 	dprintf(dlevel,"done!\n");
 	return 0;

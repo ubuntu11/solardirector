@@ -22,7 +22,7 @@ json_value_t *si_get_info(si_session_t *s) {
 
 	o = json_create_object();
 	if (!o) return 0;
-	json_object_set_string(o,"agent_id",s->ap->mqtt_config.clientid);
+//	json_object_set_string(o,"agent_id",s->ap->m->clientid);
 	json_object_set_string(o,"agent_name","si");
 	json_object_set_string(o,"agent_role","Inverter");
 //	agent_mktopic(temp,sizeof(temp)-1,s->ap,s->ap->instance_name,0);

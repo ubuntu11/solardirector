@@ -102,8 +102,10 @@ int sb_config(void *h, int req, ...) {
 		/* Add si_data to config */
 //		if (si_config_add_si_data(s)) goto config_error;
 
+#ifdef JS
 		/* Init JS */
 		sb_jsinit(s);
+#endif
 
 		r = 0;
 		break;

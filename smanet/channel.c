@@ -181,7 +181,7 @@ int smanet_read_channels(smanet_session_t *s) {
 
 //	sprintf(name,"%s/%s.dat",SOLARD_LIBDIR,s->type);
 	sprintf(name,"/tmp/%s.dat",s->type);
-	dprintf(1,"name: %s\n", name);
+	dprintf(dlevel,"name: %s\n", name);
 	if (stat(name,&sb) == 0) {
 		uint8_t *data;
 		int r;
@@ -289,24 +289,32 @@ int smanet_load_channels(smanet_session_t *s, char *filename) {
 	smanet_channel_t *c;
 	char *n;
 
+	dprintf(dlevel,"filename: %s\n", filename);
+	s->chancount = 0;
 	rv = json_parse_file(filename);
 	if (!rv) {
 		sprintf(s->errmsg,"unable to load channels: %s\n", strerror(errno));
 		return 1;
 	}
+	dprintf(dlevel,"rv type: %s\n", json_typestr(json_value_get_type(rv)));
 	if (json_value_get_type(rv) != JSON_TYPE_ARRAY) {
 		sprintf(s->errmsg,"invalid json format");
 		return 1;
 	}
 	a = json_value_get_array(rv);
 	size = sizeof(smanet_channel_t)*a->count;
+	dprintf(dlevel,"size: %d\n", size);
 	s->chans = malloc(size);
+	dprintf(dlevel,"chans: %p\n", s->chans);
 	if (!s->chans) {
 		log_syserror("smanet_load_channels: malloc(%d)", size);
+		sprintf(s->errmsg,"memory allocation error");
 		return 1;
 	}
 	memset(s->chans,0,size);
+	dprintf(dlevel,"a->count: %d\n", a->count);
 	for(i=0; i < a->count; i++) {
+//		dprintf(dlevel,"item[%d] type: %s\n", i, json_typestr(json_value_get_type(a->items[i])));
 		if (json_value_get_type(a->items[i]) != JSON_TYPE_OBJECT) {
 			sprintf(s->errmsg,"invalid json format");
 			free(s->chans);
@@ -338,8 +346,10 @@ int smanet_load_channels(smanet_session_t *s, char *filename) {
 		}
 //		printf("chan: id: %d, name: %s, index: %02x, mask: %04x, format: %04x, level: %d, type: %d(%s), count: %d\n", c->id, c->name, c->index, c->mask, c->format, c->level, c->type, typestr(c->type), c->count);
 	}
-	json_destroy_value(rv);
+	dprintf(dlevel,"destroying rv\n");
 	s->chancount = a->count;
+	dprintf(dlevel,"new chancount: %d\n", s->chancount);
+	json_destroy_value(rv);
 	return 0;
 }
 

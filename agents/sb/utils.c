@@ -74,12 +74,20 @@ void sb_destroy_results(sb_session_t *s) {
 
 	list_reset(s->results);
 	while((res = list_get_next(s->results)) != 0) {
-		list_reset(res->values);
-		while((vp = list_get_next(res->values)) != 0) free(vp->data);
-		list_destroy(res->values);
+		if (res->selects) list_destroy(res->selects);
+		if (res->values) {
+			list_reset(res->values);
+			while((vp = list_get_next(res->values)) != 0) {
+				if (vp->data) free(vp->data);
+			}
+			list_destroy(res->values);
+		}
 	}
 	list_destroy(s->results);
 	s->results = 0;
+#ifdef JS
+	s->results_val = 0;
+#endif
 }
 
 int sb_get_result(sb_session_t *s, int dt, void *dest, int dl, char *key) {

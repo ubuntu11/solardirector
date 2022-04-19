@@ -75,6 +75,30 @@ static int si_close(void *handle) {
 	return r;
 }
 
+#ifdef INFLUX
+static float _get_influx_value(influx_session_t *s, char *query) {
+	influx_series_t *sp;
+	influx_value_t *vp;
+	float value;
+	list results;
+
+	if (influx_query(s, query)) return 0;
+	results = influx_get_results(s);
+	dprintf(2,"results: %p\n", results);
+	if (!results) return 0;
+	dprintf(2,"results count: %d\n", list_count(results));
+	list_reset(results);
+	sp = list_get_next(results);
+	if (!sp) return 0;
+	dprintf(2,"sp->values: %p\n", sp->values);
+	if (!sp->values) return 0;
+	vp = &sp->values[0][1];
+	conv_type(DATA_TYPE_FLOAT,&value,0,vp->type,vp->data,vp->len);
+	dprintf(2,"value: %f\n", value);
+	return value;
+}
+#endif
+
 static int si_read(void *handle, uint32_t *control, void *buf, int buflen) {
 	si_session_t *s = handle;
 
@@ -117,6 +141,34 @@ static int si_read(void *handle, uint32_t *control, void *buf, int buflen) {
 	}
 	if (s->smanet_connected && si_smanet_read_data(s)) return 1;
 
+	dprintf(2,"input.source: %d\n", s->input.source);
+#ifdef INFLUX
+	if (s->input.source == CURRENT_SOURCE_INFLUX) {
+		float value = _get_influx_value(s->ap->i,s->input.query);
+		if (s->input.type == CURRENT_TYPE_WATTS) {
+			s->data.ac2_power = value;
+			s->data.ac2_current = s->data.ac2_power / s->data.ac2_voltage_l1;
+		} else {
+			s->data.ac2_current = value;
+			s->data.ac2_power = s->data.ac2_current * s->data.ac2_voltage_l1;
+		}
+		dprintf(2,"ac2_current: %.1f, ac2_power: %.1f\n", s->data.ac2_current, s->data.ac2_power);
+	}
+
+	dprintf(2,"output.source: %d\n", s->output.source);
+	if (s->output.source == CURRENT_SOURCE_INFLUX) {
+		float value = _get_influx_value(s->ap->i,s->output.query);
+		if (s->output.type == CURRENT_TYPE_WATTS) {
+			s->data.ac1_power = value;
+			s->data.ac1_current = s->data.ac1_power / s->data.ac1_voltage_l1;
+		} else {
+			s->data.ac1_current = value;
+			s->data.ac1_power = s->data.ac1_current * s->data.ac1_voltage_l1;
+		}
+		dprintf(2,"ac1_current: %.1f, ac1_power: %.1f\n", s->data.ac1_current, s->data.ac1_power);
+	}
+#endif
+
 	/* Auto set bms_mode if BatTyp is BMS */
 	if (!s->bms_mode && s->can_connected && s->smanet_connected && !strlen(s->battery_type)) {
 		char *t;
@@ -145,14 +197,21 @@ static int si_read(void *handle, uint32_t *control, void *buf, int buflen) {
 	}
 
 	/* Calculate SOC */
-	dprintf(4,"battery_voltage: %.1f, min_voltage: %.1f, max_voltage: %.1f\n", s->data.battery_voltage, s->min_voltage, s->max_voltage);
-	s->soc = ( ( s->data.battery_voltage - s->min_voltage) / (s->max_voltage - s->min_voltage) ) * 100.0;
+	dprintf(4,"user_soc: %.1f\n", s->user_soc);
+	if (s->user_soc >= 0) {
+		s->soc = s->user_soc;
+	} else {
+		dprintf(4,"battery_voltage: %.1f, min_voltage: %.1f, max_voltage: %.1f\n", s->data.battery_voltage, s->min_voltage, s->max_voltage);
+		s->soc = ( ( s->data.battery_voltage - s->min_voltage) / (s->max_voltage - s->min_voltage) ) * 100.0;
+	}
 	dprintf(4,"SoC: %f\n", s->soc);
 	s->soh = 100.0;
 
 	return 0;
 }
 
+#if 0
+/* Left here as an example how to pub from C */
 static void si_pub(si_session_t *s) {
 	char out[128],status[64];
 	json_proctab_t tab[] = {
@@ -169,7 +228,7 @@ static void si_pub(si_session_t *s) {
 		{ "battery_current",DATA_TYPE_FLOAT,&s->data.battery_current,0,0 }, 
 		{ "battery_power",DATA_TYPE_FLOAT,&s->data.battery_power,0,0 }, 
 		{ "battery_temp",DATA_TYPE_FLOAT,&s->data.battery_temp,0,0 }, 
-		{ "battery_level",DATA_TYPE_FLOAT,&s->data.battery_soc,0,0 }, 
+		{ "battery_level",DATA_TYPE_FLOAT,&s->soc,0,0 }, 
 		{ "status",DATA_TYPE_STRING,&status,sizeof(status),0 }, 
 		{ 0 }
 	};
@@ -205,21 +264,13 @@ static void si_pub(si_session_t *s) {
 	json_destroy_value(v);
 	return;
 }
+#endif
 
 static int si_write(void *handle, uint32_t *control, void *buffer, int len) {
 	si_session_t *s = handle;
 
 	dprintf(1,"disable_si_write: %d\n", s->disable_si_write);
 	if (s->disable_si_write) return 0;
-
-	/* Charging controlled by JS */
-	if (agent_script_exists(s->ap,"charge.js")) agent_start_script(s->ap,"charge.js");
-
-	/* We publish here */
-	if (agent_script_exists(s->ap,"pub.js"))
-		agent_start_script(s->ap,"pub.js");
-	else
-		si_pub(s);
 
 	dprintf(1,"can_connected: %d, bms_mode: %d\n", s->can_connected, s->bms_mode);
 	if (s->can_connected && s->bms_mode) {

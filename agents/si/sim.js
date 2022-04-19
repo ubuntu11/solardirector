@@ -25,6 +25,9 @@ function sim_init() {
 }
 
 function sim_main() {
+
+//	printf("==> sim_main\n");
+
 	if (sim.ba_amps >= 0) sim.ba_amps = -100;
 	if (si.charge_mode == 0) {
 		dprintf(0,"battery_voltage: %.1f, sim.volts: %.1f, step_down: %.1f\n",

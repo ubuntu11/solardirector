@@ -11,7 +11,8 @@ LICENSE file in the root directory of this source tree.
 #include "transports.h"
 #include "__sd_build.h"
 
-#define TESTING 0
+#define TESTING 1
+#define TESTLVL 5
 
 #if DEBUG_STARTUP
 #define _ST_DEBUG LOG_DEBUG
@@ -24,37 +25,26 @@ char *sd_version_string = "1.0-" STRINGIFY(__SD_BUILD);
 solard_driver_t sd_driver;
 
 int solard_read(void *handle, uint32_t *control, void *buf, int buflen) {
-	solard_config_t *conf = handle;
-	list agents = conf->c->agents;
-	client_agentinfo_t *ap;
-	char *p;
+	solard_instance_t *sd = handle;
+	solard_agentinfo_t *info;
+//	char *p;
 
-	/* Update the agents */
-//	dprintf(0,"agent count: %d\n", list_count(agents));
-	list_reset(agents);
-	while((ap = list_get_next(agents)) != 0) {
-		p = client_getagentrole(ap);
-		if (!p) continue;
-//		dprintf(0,"role: %s, name: %s, count: %d\n", p, ap->name, list_count(ap->mq));
-//		if (strcmp(p,SOLARD_ROLE_BATTERY) == 0) getpack(conf,ap);
-//		else if (strcmp(p,SOLARD_ROLE_BATTERY) == 0) getinv(conf,ap);
-		else list_purge(ap->mq);
-	}
+        dprintf(1,"checking agents... count: %d\n", list_count(sd->agents));
+        list_reset(sd->agents);
+        while((info = list_get_next(sd->agents)) != 0) agent_check(sd,info);
 
-	check_agents(conf);
-//	solard_monitor(conf);
-	agent_start_script(conf->ap,"monitor.js");
-	time(&conf->last_check);
+//	agent_start_script(sd->ap,"monitor.js");
+	time(&sd->last_check);
 	return 0;
 }
 
 int main(int argc,char **argv) {
-	solard_config_t *conf;
+	solard_instance_t *sd;
 	opt_proctab_t sd_opts[] = {
 		OPTS_END
 	};
 #if TESTING
-	char *args[] = { "solard", "-d", "4", "-c", "sdtest.json" };
+	char *args[] = { "solard", "-d", STRINGIFY(TESTLVL), "-c", "sdtest.conf" };
 	argc = (sizeof(args)/sizeof(char *));
 	argv = args;
 #endif
@@ -68,26 +58,19 @@ int main(int argc,char **argv) {
 	sd_driver.read = solard_read;
 	sd_driver.config = solard_config;
 
-	conf = calloc(1,sizeof(*conf));
-	if (!conf) {
-		log_syserror("calloc(%d)",sizeof(*conf));
+	sd = calloc(sizeof(*sd),1);
+	if (!sd) {
+		log_syserror("calloc(%d)",sizeof(*sd));
 		return 0;
 	}
-	dprintf(1,"conf: %p\n", conf);
-	conf->agents = list_create();
-	conf->batteries = list_create();
-	conf->inverters = list_create();
+	dprintf(1,"sd: %p\n", sd);
+	sd->names = list_create();
+	sd->agents = list_create();
 
-	if (solard_agent_init(argc,argv,sd_opts,conf)) return 1;
+	if (solard_agent_init(argc,argv,sd_opts,sd)) return 1;
 
-	conf->ap->read_interval = conf->ap->write_interval = 15;
+	sd->ap->interval = 15;
 
-	/* We're not only the president but a client too! */
-	dprintf(1,"calling client_init...\n");
-	conf->c = client_init(0,0,sd_version_string,0,sd_driver.name,0,0);
-	dprintf(1,"c: %p\n", conf->c);
-	if (!conf->c) return 1;
-
-	agent_run(conf->ap);
+	agent_run(sd->ap);
 	return 0;
 }

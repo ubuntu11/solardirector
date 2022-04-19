@@ -26,7 +26,7 @@ int rdev_add_device(rdev_config_t *conf, char *name) {
 	};
 	rdev_device_t dev;
 	solard_driver_t *mp;
-	void *mp_handle;
+//	void *mp_handle;
 
 	dprintf(dlevel,"reading...\n");
 	cfg_get_tab(conf->cfg,tab);

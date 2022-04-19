@@ -12,15 +12,15 @@ LICENSE file in the root directory of this source tree.
 
 #ifdef DEBUG
 #undef DEBUG
-#endif
 #define DEBUG DEBUG_OPTS
+#endif
+#include "debug.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include "opts.h"
 #include "utils.h"
-#include "debug.h"
 
 #if defined(__WIN64) || defined(__arm__)
 extern int opterr;
@@ -127,18 +127,19 @@ int conv_type(int dtype,void *dest,int dlen,int stype,void *src,int slen) {
 }
 #endif
 
+#if 1
 static void opt_addopt(list lp, opt_proctab_t *newopt) {
 	opt_proctab_t *opt;
 //	char k1,k2;
 	char *p, kw1[32],kw2[32];
 
 	p = strele(0,"|",newopt->keyword);
-	if (p) strncpy(kw1,p,sizeof(kw1)-1);
+	if (*p) strncpy(kw1,p,sizeof(kw1)-1);
 	else strncpy(kw1,newopt->keyword,sizeof(kw1)-1);
 	list_reset(lp);
 	while((opt = list_get_next(lp)) != 0) {
 		p = strele(0,"|",opt->keyword);
-		if (p) strncpy(kw2,p,sizeof(kw2)-1);
+		if (*p) strncpy(kw2,p,sizeof(kw2)-1);
 		else strncpy(kw2,opt->keyword,sizeof(kw2)-1);
 		dprintf(dlevel,"kw1: %s, kw2: %s\n", kw1, kw2);
 		if (strncmp(kw1,kw2,2) == 0) {
@@ -173,11 +174,12 @@ static void opt_addopt(list lp, opt_proctab_t *newopt) {
 	dprintf(dlevel,"adding\n");
 	list_add(lp,newopt,sizeof(*newopt));
 }
+#endif
 
 opt_proctab_t *opt_addopts(opt_proctab_t *std_opts,opt_proctab_t *add_opts) {
-	opt_proctab_t *opts,*opt;
-//	int scount,acount;
-//	register int x,y;
+	opt_proctab_t *opts;
+#if 1
+	opt_proctab_t *opt;
 	register int i;
 	list lp;
 
@@ -193,7 +195,7 @@ opt_proctab_t *opt_addopts(opt_proctab_t *std_opts,opt_proctab_t *add_opts) {
 //	for(i=0; std_opts[i].keyword; i++) list_add(lp, &std_opts[i], sizeof(opt_proctab_t));
 //	for(i=0; add_opts[i].keyword; i++) list_add(lp, &add_opts[i], sizeof(opt_proctab_t));
 
-	opts = mem_alloc(sizeof(*opt)*(list_count(lp)+1),1);
+	opts = calloc(sizeof(*opt)*(list_count(lp)+1),1);
 	if (!opts) {
 		log_write(LOG_SYSERR,"opt_addopts: malloc");
 		return 0;
@@ -209,15 +211,17 @@ opt_proctab_t *opt_addopts(opt_proctab_t *std_opts,opt_proctab_t *add_opts) {
 
 	dprintf(dlevel,"returning: %p\n", opts);
 	return opts;
-#if 0
+#else
+	int scount,acount;
+	register int x,y;
 
 	scount = acount = 0;
 	for(x=0; std_opts[x].keyword; x++) scount++;
 	for(x=0; add_opts[x].keyword; x++) acount++;
 	dprintf(dlevel,"scount: %d, acount: %d", scount,acount);
-	opts = mem_alloc((scount + acount + 1) * sizeof(opt_proctab_t),1);
+	opts = calloc((scount + acount + 1) * sizeof(opt_proctab_t),1);
 	if (!opts) {
-		log_write(LOG_SYSERR,"opt_addopts: mem_alloc");
+		log_write(LOG_SYSERR,"opt_addopts: malloc");
 		return 0;
 	}
 
@@ -264,7 +268,7 @@ int opt_getopt(int argc, char **argv, char *optstr) {
 	static char *place = EMSG;		/* option letter processing */
 	char *oli;				/* option letter list index */
 
-	dprintf(dlevel,"optstr: %s", optstr);
+	dprintf(dlevel,"optstr: %s\n", optstr);
 	if (!*place) {				/* update scanning pointer */
 		if (optind >= argc || *(place = argv[optind]) != '-') {
 			place = EMSG;
@@ -286,7 +290,7 @@ int opt_getopt(int argc, char **argv, char *optstr) {
 		if (optopt == (int)'-') return (EOF);
 		if (!*place) ++optind;
 		if (opterr && *optstr != ':') {
-			(void)fprintf(stderr, "%s: illegal option -- %c\n", argv[0], optopt);
+			log_error("%s: illegal option -- %c\n", argv[0], optopt);
 		}
 		return (BADCH);
 	}
@@ -301,7 +305,7 @@ int opt_getopt(int argc, char **argv, char *optstr) {
 			if (*optstr == ':')
 				return (BADARG);
 			if (opterr)
-				(void)fprintf(stderr, "%s: option requires an argument -- %c\n", argv[0], optopt);
+				log_error("%s: option requires an argument -- %c\n", argv[0], optopt);
 			return (BADCH);
 		} else {
 			optarg = argv[optind];
@@ -341,8 +345,9 @@ void opt_init(opt_proctab_t *opts) {
 	return;
 }
 
+#define GOS_SIZE 64
 int opt_process(int argc,char **argv,opt_proctab_t *opts) {
-	char name[32],getoptstr[32];
+	char name[32],getoptstr[GOS_SIZE];
 	register opt_proctab_t *opt;
 	register int i;
 
@@ -350,7 +355,7 @@ int opt_process(int argc,char **argv,opt_proctab_t *opts) {
 	if (argv && argv[0]) strncat(name,argv[0],sizeof(name)-1);
 
 	/* Create the getopt string */
-	dprintf(dlevel,"opt_process: creating getopt string...");
+	dprintf(dlevel,"opt_process: creating getopt string...\n");
 
 	getoptstr[0] = ':';
 	i = 1;
@@ -360,17 +365,21 @@ int opt_process(int argc,char **argv,opt_proctab_t *opts) {
 			if (opt->keyword[2] == ':')
 				getoptstr[i++] = ':';
 		}
+		if (i >= GOS_SIZE) {
+			log_error("opt_process: getoptstr overflow!\n");
+			return 1;
+		}
 	}
 	getoptstr[i] = 0;
 
 	/* Get the options */
 	while( (i = opt_getopt(argc,argv,getoptstr)) != EOF) {
 		if (i == ':') {
-			log_write(LOG_ERROR,"the -%c option " "requires an argmument.", optopt);
+			log_error("the -%c option " "requires an argmument.", optopt);
 			opt_usage(name,opts);
 			return 1;
 		} else if (i == '?') {
-			fprintf(stderr,"error: invalid option: -%c\n",optopt);
+			log_error("invalid option: -%c\n",optopt);
 			opt_usage(name,opts);
 			return 1;
 		}
@@ -384,15 +393,15 @@ int opt_process(int argc,char **argv,opt_proctab_t *opts) {
 	}
 
 	/* Now get the other arguments */
-	dprintf(dlevel,"opt_process: getting other arguments...");
+	dprintf(dlevel,"opt_process: getting other arguments...\n");
 	argc--;
 	for(opt = opts; opt->keyword; opt++) {
 		if (opt->keyword[0] != '-') {
-			dprintf(dlevel,"opt_process: " "op: %c, argc: %d, optind: %d", opt->keyword[0],argc,optind);
+			dprintf(dlevel,"opt_process: " "op: %c, argc: %d, optind: %d\n", opt->keyword[0],argc,optind);
 			/* If we don't have an arg & one's reqd, error */
 			if (argc < optind) {
 				if (opt->reqd) {
-					fprintf(stderr, "error: insufficient arguments.\n");
+					log_error("insufficient arguments.\n");
 					opt_usage(name,opts);
 					return 1;
 				}
@@ -403,12 +412,12 @@ int opt_process(int argc,char **argv,opt_proctab_t *opts) {
 	}
 
 	/* Check to make sure we have all the reqd args */
-	dprintf(dlevel,"opt_process: checking for reqd args...");
+	dprintf(dlevel,"opt_process: checking for reqd args...\n");
 	for(opt = opts; opt->keyword; opt++) {
 		if (!opt->reqd) continue;
-		dprintf(dlevel,"opt_process: " "keyword: %s, reqd: %d, have: %d", opt->keyword,opt->reqd,opt->have);
+		dprintf(dlevel,"opt_process: " "keyword: %s, reqd: %d, have: %d\n", opt->keyword,opt->reqd,opt->have);
 		if (!opt->have) {
-			fprintf(stderr,"error: insufficient arguments.\n");
+			log_error("insufficient arguments.\n");
 			opt_usage(name,opts);
 			return 1;
 		}
@@ -512,18 +521,15 @@ static char *get_type(char *s) {
 }
 
 void opt_usage(char *name, opt_proctab_t *opts) {
-	char temp[128],*ptr;
+	char out[1024],temp[128],*ptr,*op;
 	register opt_proctab_t *opt;
 	register int i;
 
-#if 0
-	fprintf(stderr,"%s, %s\n",descrip_string,version_string);
-	fprintf(stderr,"%s\n",COPYRIGHT_NOTICE);
-	fprintf(stderr,"%s\n",RIGHTS_NOTICE);
-	fprintf(stderr,"\n");
-#endif
+	*out = 0;
+	op = out;
+
 //	ptr = (os_config.prog.dev ? os_config.prog.dev : os_config.prog.name);
-	fprintf(stderr,"usage: %s ",name);
+	op += sprintf(op,"usage: %s ",name);
 
 	/* Do the not-req opts w/o args */
 	i = 0;
@@ -531,19 +537,19 @@ void opt_usage(char *name, opt_proctab_t *opts) {
 		if (opt->reqd) continue;
 		if (opt->keyword[0] == '-' && !has_arg(opt->keyword)) {
 			if (!i) {
-				fprintf(stderr,"[-");
+				op += sprintf(op,"[-");
 				i++;
 			}
-			fprintf(stderr,"%c",opt->keyword[1]);
+			log_info("%c",opt->keyword[1]);
 		}
 	}
-	if (i) fprintf(stderr,"] ");
+	if (i) op += sprintf(op,"] ");
 
 	/* Do the not-req opts with args */
 	for(opt = opts; opt->keyword; opt++) {
 		if (opt->reqd) continue;
 		if (opt->keyword[0] == '-' && has_arg(opt->keyword))
-			fprintf(stderr,"[-%c <%s>] ",opt->keyword[1],
+			op += sprintf(op,"[-%c <%s>] ",opt->keyword[1],
 				get_type(&opt->keyword[3]));
 	}
 
@@ -553,10 +559,10 @@ void opt_usage(char *name, opt_proctab_t *opts) {
 		if (!opt->reqd) continue;
 		if (opt->keyword[0] == '-' && !has_arg(opt->keyword)) {
 			if (!i) {
-				fprintf(stderr,"-");
+				op += sprintf(op,"-");
 				i++;
 			}
-			fprintf(stderr,"%c",opt->keyword[1]);
+			op += sprintf(op,"%c",opt->keyword[1]);
 		}
 	}
 
@@ -564,7 +570,7 @@ void opt_usage(char *name, opt_proctab_t *opts) {
 	for(opt = opts; opt->keyword; opt++) {
 		if (!opt->reqd) continue;
 		if (opt->keyword[0] == '-' && has_arg(opt->keyword))
-			fprintf(stderr,"-%c <%s> ",opt->keyword[1],
+			op += sprintf(op,"-%c <%s> ",opt->keyword[1],
 				get_type(&opt->keyword[3]));
 	}
 
@@ -580,19 +586,19 @@ void opt_usage(char *name, opt_proctab_t *opts) {
 			strcpy(temp,ptr);
 		}
 		if (opt->reqd)
-			fprintf(stderr,"<%s> ",temp);
+			op += sprintf(op,"<%s> ",temp);
 		else
-			fprintf(stderr,"[<%s>] ",temp);
+			op += sprintf(op,"[<%s>] ",temp);
 	}
-	fprintf(stderr,"\n");
+	op += sprintf(op,"\n");
 
-	fprintf(stderr,"where:\n");
-	fprintf(stderr,"\t[]\t\toptional arguments\n");
-	fprintf(stderr,"\t<>\t\targument type\n");
-	fprintf(stderr,"options:\n");
+	op += sprintf(op,"where:\n");
+	op += sprintf(op,"\t[]\t\toptional arguments\n");
+	op += sprintf(op,"\t<>\t\targument type\n");
+	op += sprintf(op,"options:\n");
 	for(opt = opts; opt->keyword; opt++) {
 		if (opt->keyword[0] == '-') {
-			fprintf(stderr,"\t-%c\t\t",opt->keyword[1]);
+			op += sprintf(op,"\t-%c\t\t",opt->keyword[1]);
 			i = 2;
 		}
 		else {
@@ -604,22 +610,23 @@ void opt_usage(char *name, opt_proctab_t *opts) {
 			} else {
 				strcpy(temp,ptr);
 			}
-			fprintf(stderr,"\t<%s>\t",temp);
-			if (strlen(temp)+2 < 8) fprintf(stderr,"\t");
+			op += sprintf(op,"\t<%s>\t",temp);
+			if (strlen(temp)+2 < 8) op += sprintf(op,"\t");
 			i = 1;
 		}
 		ptr = strchr(opt->keyword,'|');
 		if (ptr) {
 			ptr++;
-			fprintf(stderr,"%s\n",ptr);
+			op += sprintf(op,"%s\n",ptr);
 		}
 		else {
 			if (opt->keyword[i] == ':')
-				fprintf(stderr,"a %s\n",
+				op += sprintf(op,"a %s\n",
 					get_type(&opt->keyword[i+1]));
 			else
-				fprintf(stderr,"is unknown.\n");
+				op += sprintf(op,"is unknown.\n");
 		}
 	}	
+	log_info("%s",out);
 	return;
 }

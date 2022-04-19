@@ -97,7 +97,6 @@ static const char *CodeToken[] = {
 #undef OPDEF
 };
 
-#ifdef DEBUG
 /*
  * Array of JS bytecode names used by DEBUG-only js_Disassemble.
  */
@@ -107,7 +106,6 @@ const char *js_CodeName[] = {
 #include "jsopcode.tbl"
 #undef OPDEF
 };
-#endif
 
 /************************************************************************/
 

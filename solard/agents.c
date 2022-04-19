@@ -17,73 +17,133 @@ LICENSE file in the root directory of this source tree.
 #define STATFUNC stat
 #endif
 
-solard_agentinfo_t *agent_find(solard_config_t *conf, char *name) {
-	solard_agentinfo_t *info;
+#define AGENTINFO_PROPS(path,conf,log,info) \
+	{ "path", DATA_TYPE_STRING, path, sizeof(path)-1, "", 0 }, \
+	{ "conf", DATA_TYPE_STRING, conf, sizeof(conf)-1, "", 0 }, \
+	{ "log", DATA_TYPE_STRING, log, sizeof(log)-1, "", 0 }, \
+	{ "append_log", DATA_TYPE_BOOL, &info->append, 0, "yes", 0 }, \
+	{ "managed", DATA_TYPE_BOOL, &info->managed, 0, "yes", 0 }, \
+	{ "action", DATA_TYPE_INT, &info->action, 0, "0", 0 }, \
+	{ "enabled", DATA_TYPE_BOOL, &info->enabled, 0, "yes", 0 }, \
+	{ "monitor_topic", DATA_TYPE_BOOL, &info->monitor_topic, 0, "yes", 0 }, \
+	{ "topic", DATA_TYPE_STRING, info->topic, sizeof(info->topic)-1, "", 0 }, \
+	{ 0 }
+
+void agentinfo_dump(solard_agentinfo_t *info) {
+	config_property_t props[] = { AGENTINFO_PROPS(info->path,info->conf,info->log,info) };
+	config_property_t *p;
+	char value[1024];
+
+	dprintf(0,"%-30.30s: %s\n", "name", info->name);
+	for(p = props; p->name; p++) {
+		conv_type(DATA_TYPE_STRING,value,sizeof(value),p->type,p->dest,p->len);
+		dprintf(0,"%-30.30s: %s\n", p->name, value);
+	}
+}
+
+int agent_get_config(solard_instance_t *sd, solard_agentinfo_t *info) {
+	char path[256],conf[256],log[256];
+	config_property_t props[] = { AGENTINFO_PROPS(path,conf,log,info) };
+	config_section_t *s;
+
+	s = config_get_section(sd->ap->cp,info->name);
+	dprintf(1,"s: %p\n", s);
+	if (!s) return 0;
+
+	config_section_get_properties(s, props);
+	conf2path(info->path,sizeof(info->path),path);
+	conf2path(info->conf,sizeof(info->conf),conf);
+	conf2path(info->log,sizeof(info->log),log);
+	agentinfo_dump(info);
+	return 0;
+}
+
+int agent_set_config(solard_instance_t *sd, solard_agentinfo_t *info) {
+	char path[256],conf[256],log[256];
+	config_property_t props[] = { AGENTINFO_PROPS(path,conf,log,info) };
+	config_section_t *s;
+
+	s = config_get_section(sd->ap->cp,info->name);
+	dprintf(1,"s: %p\n", s);
+	if (!s) s = config_create_section(sd->ap->cp,info->name,0);
+	if (!s) {
+		log_error("agent_set_config(%s): unable to get/create config section",info->name);
+		return 1;
+	}
+
+	path2conf(path,sizeof(path),info->path);
+	path2conf(conf,sizeof(conf),info->conf);
+	path2conf(log,sizeof(log),info->log);
+	config_section_set_properties(sd->ap->cp, s, props, 1, 0);
+	return 0;
+}
+
+solard_agentinfo_t *agent_find(solard_instance_t *s, char *name) {
+	solard_agentinfo_t *ap;
 
 	dprintf(5,"name: %s\n",name);
-	list_reset(conf->agents);
-	while((info = list_get_next(conf->agents)) != 0) {
-		dprintf(6,"info->name: %s\n",info->name);
-		if (strcmp(info->name,name)==0) return info;
+	list_reset(s->agents);
+	while((ap = list_get_next(s->agents)) != 0) {
+		dprintf(6,"ap->name: %s\n",ap->name);
+		if (strcmp(ap->name,name)==0) return ap;
 	}
 	return 0;
 }
 
-int agent_start(solard_config_t *conf, solard_agentinfo_t *info) {
-	char logfile[256],*args[64],dval[16];
+int agent_start(solard_instance_t *s, solard_agentinfo_t *info) {
+	char *args[64],prog[256],configfile[256],logfile[256];
+#ifdef MQTT
+	char mqtt_info[128];
+#endif
+#if 0
+	char dval[16];
+#endif
 	int i;
 
-//	if (!conf->ap->cfg && solard_write_config(conf)) return 1;
-
-	log_info("Starting agent: %s/%s\n", info->role, info->name);
-
-	/* Do we have a config file? */
-	/* logfile */
-	sprintf(logfile,"%s/%s.log",SOLARD_LOGDIR,info->name);
-	dprintf(5,"logfile: %s\n", logfile);
+	log_info("Starting agent: %s\n", info->name);
 
 	/* Exec the agent */
 	i = 0;
-#if 0
-	strncpy(prog,info->path,sizeof(prog)-1);
-#ifdef __WIN32
-	strcat(prog,".exe");
-#endif
+	conf2path(prog,sizeof(prog),info->path);
 	args[i++] = prog;
-#endif
-	args[i++] = info->path;
+#if 0
 	if (debug) {
 		args[i++] = "-d";
 		sprintf(dval,"%d",debug);
 		args[i++] = dval;
 	}
-//	if (conf->ap->cfg->filename) {
-	if (0) {
+#endif
+	args[i++] = "-n";
+	args[i++] = info->name;
+	if (strlen(info->conf)) {
+		conf2path(configfile,sizeof(configfile),info->conf);
 		args[i++] = "-c";
-//		args[i++] = conf->ap->cfg->filename;
-		args[i++] = "-s";
-		args[i++] = info->id;
-	} else {
-		char temp[128];
-
-		sprintf(temp,"%s,%s",info->transport,info->target);
-		if (strlen(info->topts)) {
-			strcat(temp,",");
-			strcat(temp,info->topts);
-		}
-		args[i++] = "-t";
-		args[i++] = temp;
-		args[i++] = "-n";
-		args[i++] = info->name;
-		args[i++] = "-m";
-		args[i++] = conf->ap->mqtt_config.host;
+		args[i++] = configfile;
 	}
+#ifdef MQTT
+	if (!os_exists(configfile,0)) {
+		/* Specify the mqtt hosts */
+		if (strlen(s->ap->m->host)) {
+			snprintf(mqtt_info,sizeof(mqtt_info),"\"%s,%s,%s,%s\"",s->ap->m->host,s->ap->m->clientid,s->ap->m->username,s->ap->m->password);
+			args[i++] = "-m";
+			args[i++] = mqtt_info;
+		}
+		if (s->ap->config_from_mqtt) args[i++] = "-M";
+	}
+#endif
+	if (strlen(info->log)) {
+		conf2path(logfile,sizeof(logfile),info->log);
+	} else {
+		sprintf(logfile,"%s/%s.log",SOLARD_LOGDIR,info->name);
+	}
+	dprintf(5,"logfile: %s\n", logfile);
 	args[i++] = "-l";
 	args[i++] = logfile;
-	args[i++] = "-a";
+	if (info->append) args[i++] = "-a";
 	args[i++] = 0;
 	dprintf(4,"calling solard_exec...\n");
-	info->pid = solard_exec(info->path,args,0,0);
+	for(i=0; args[i]; i++) dprintf(0,"arg[%d]: %s\n", i, args[i]);
+	info->pid = solard_exec(prog,args,0,0);
 	dprintf(4,"pid: %d\n", info->pid);
 	if (info->pid < 0) {
 		log_write(LOG_SYSERR,"agent_start: exec");
@@ -94,7 +154,7 @@ int agent_start(solard_config_t *conf, solard_agentinfo_t *info) {
 	return 0;
 }
 
-int agent_stop(solard_config_t *conf, solard_agentinfo_t *info) {
+int agent_stop(solard_instance_t *s, solard_agentinfo_t *info) {
 	int status,r;
 
 	/* If running, kill it */
@@ -111,35 +171,35 @@ int agent_stop(solard_config_t *conf, solard_agentinfo_t *info) {
 	return r;
 }
 
-void agent_warning(solard_config_t *conf, solard_agentinfo_t *info, int num) {
+void agent_warning(solard_instance_t *s, solard_agentinfo_t *info, int num) {
 	solard_set_state(info,AGENTINFO_STATUS_WARNED);
-	log_write(LOG_WARNING,"%s/%s has not reported in %d seconds\n",info->role,info->name,num);
+	log_write(LOG_WARNING,"Agent %s has not reported in %d seconds\n",info->name,num);
 }
 
-void agent_error(solard_config_t *conf, solard_agentinfo_t *info, int secs) {
+void agent_error(solard_instance_t *s, solard_agentinfo_t *info, int secs) {
 	solard_set_state(info,AGENTINFO_STATUS_ERROR);
 	if (!info->managed || info->pid < 1) {
-		log_write(LOG_ERROR,"%s/%s has not reported in %d seconds, considered lost\n",
-			info->role,info->name,secs);
+		log_write(LOG_ERROR,"%s has not reported in %d seconds, considered lost\n", info->name,secs);
 		return;
 	}
-	log_write(LOG_ERROR,"%s/%s has not reported in %d seconds, killing\n",info->role,info->name,secs);
+	log_write(LOG_ERROR,"%s has not reported in %d seconds, killing\n",info->name,secs);
 	solard_kill(info->pid);
 }
 
-static time_t get_updated(solard_config_t *conf, solard_agentinfo_t *info) {
+#if 0
+static time_t get_updated(solard_instance_t *s, solard_agentinfo_t *info) {
 	time_t last_update;
 
-	dprintf(5,"name: %s\n", info->name);
+	dprintf(5,"name: %s\n", ap->name);
 
 	last_update = 0;
 	if (strcmp(info->role,SOLARD_ROLE_BATTERY)==0) {
 		solard_battery_t *bp;
 
-		list_reset(conf->batteries);
-		while((bp = list_get_next(conf->batteries)) != 0) {
+		list_reset(s->batteries);
+		while((bp = list_get_next(s->batteries)) != 0) {
 			dprintf(7,"bp->name: %s\n", bp->name);
-			if (strcmp(bp->name,info->name) == 0) {
+			if (strcmp(bp->name,ap->name) == 0) {
 				dprintf(7,"found!\n");
 				last_update = bp->last_update;
 				break;
@@ -148,8 +208,8 @@ static time_t get_updated(solard_config_t *conf, solard_agentinfo_t *info) {
 	} else if (strcmp(info->role,SOLARD_ROLE_INVERTER)==0) {
 		solard_inverter_t *inv;
 
-		list_reset(conf->inverters);
-		while((inv = list_get_next(conf->inverters)) != 0) {
+		list_reset(s->inverters);
+		while((inv = list_get_next(s->inverters)) != 0) {
 			dprintf(7,"inv->name: %s\n", inv->name);
 			if (strcmp(inv->name,info->name) == 0) {
 				dprintf(7,"found!\n");
@@ -161,60 +221,57 @@ static time_t get_updated(solard_config_t *conf, solard_agentinfo_t *info) {
 	dprintf(5,"returning: %ld\n",last_update);
 	return last_update;
 }
+#endif
 
-int check_agents(void *ctx) {
-	solard_config_t *conf = ctx;
-	solard_agentinfo_t *info;
+void agent_check(solard_instance_t *s, solard_agentinfo_t *info) {
 	time_t cur,diff,last;
 
-	dprintf(1,"checking agents... count: %d\n", list_count(conf->agents));
-	list_reset(conf->agents);
-	while((info = list_get_next(conf->agents)) != 0) {
-		time(&cur);
-		dprintf(2,"name: %s\n",info->name);
-		if (info->managed) {
-			/* Give it a little bit to start up */
-			if ((cur - info->started) < 31) continue;
-			if (info->pid < 1) {
-				if (agent_start(conf,info))
-					log_write(LOG_ERROR,"unable to start agent!");
-				continue;
-			} else {
-				int status;
+	time(&cur);
+	dprintf(2,"name: %s, managed: %d\n",info->name,info->managed);
+	if (info->managed) {
+		/* Give it a little bit to start up */
+		if ((cur - info->started) < 31) return;
+		if (info->pid < 1) {
+			if (agent_start(s,info)) log_write(LOG_ERROR,"unable to start agent!");
+			return;
+		} else {
+			int status;
 
-				/* Check if the process exited */
-				dprintf(5,"pid: %d\n", info->pid);
-				if (solard_checkpid(info->pid, &status)) {
-					dprintf(5,"status: %d\n", status);
+			/* Check if the process exited */
+			dprintf(5,"pid: %d\n", info->pid);
+			if (solard_checkpid(info->pid, &status)) {
+				dprintf(5,"status: %d\n", status);
 
-					/* XXX if process exits normally do we restart?? */
-					/* XXX Number of restart attempts in a specific time */
+				/* XXX if process exits normally do we restart?? */
+				/* XXX Number of restart attempts in a specific time */
 
-					/* Re-start agent */
-					if (agent_start(conf,info))
-						log_write(LOG_ERROR,"unable to re-start agent!");
-					continue;
-				}
+				/* Re-start agent */
+				if (agent_start(s,info)) log_write(LOG_ERROR,"unable to re-start agent!");
+				return;
 			}
 		}
-		last = get_updated(conf,info);
+	}
+	dprintf(2,"monitor_topic: %d, topic: %s\n", info->monitor_topic, info->topic);
+	if (info->monitor_topic && strlen(info->topic)) {
+//		last = get_updated(s,info);
+		last = 0;
 		dprintf(5,"last: %d\n", (int)last);
-		if (last < 0) continue;
+		if (last < 0) return;
 		diff = cur - last;
 		dprintf(5,"diff: %d\n", (int)diff);
-//		dprintf(1,"agent_error: %d, agent_warning: %d\n", conf->agent_error, conf->agent_warning);
+//		dprintf(1,"agent_error: %d, agent_warning: %d\n", s->agent_error, s->agent_warning);
 //		dprintf(1,"AGENTINFO_STATUS_ERROR: %d\n", solard_check_state(info,AGENTINFO_STATUS_ERROR));
 //		dprintf(1,"AGENTINFO_STATUS_WARNED: %d\n", solard_check_state(info,AGENTINFO_STATUS_WARNED));
 //		dprintf(1,"last_action: %d\n",cur - info->last_action);
-		if (conf->agent_error && diff >= conf->agent_error && !solard_check_state(info,AGENTINFO_STATUS_ERROR))
-			agent_error(conf,info,diff);
-		else if (conf->agent_warning && diff >= conf->agent_warning && !solard_check_state(info,AGENTINFO_STATUS_WARNED))
-			agent_warning(conf,info,diff);
+		if (s->agent_error && diff >= s->agent_error && !solard_check_state(info,AGENTINFO_STATUS_ERROR))
+			agent_error(s,info,diff);
+		else if (s->agent_warning && diff >= s->agent_warning && !solard_check_state(info,AGENTINFO_STATUS_WARNED))
+			agent_warning(s,info,diff);
 	}
-	return 0;
 }
 
-int agent_get_role(solard_config_t *conf, solard_agentinfo_t *info) {
+#if 0
+int agent_get_role(solard_instance_t *s, solard_agentinfo_t *info) {
 	char temp[128],configfile[256],logfile[256],*args[32], *output, *p;
 	cfg_info_t *cfg;
 	json_value_t *v;
@@ -330,8 +387,8 @@ int agent_get_role(solard_config_t *conf, solard_agentinfo_t *info) {
 	strncat(info->role,p,sizeof(info->role)-1);
 
 	/* If we have this in our conf already, update it */
-//	section = cfg_get_section(conf->ap->cfg,info->id);
-//	if (section) agentinfo_setcfg(conf->ap->cfg,info->id,info);
+//	section = cfg_get_section(s->ap->cfg,info->id);
+//	if (section) agentinfo_setcfg(s->ap->cfg,info->id,info);
 
 	r = 0;
 agent_get_role_error:
@@ -340,3 +397,4 @@ agent_get_role_error:
 	if (output) free(output);
 	return r;
 }
+#endif

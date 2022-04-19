@@ -7,7 +7,8 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-include(dirname(script_name)+"/../../core/init.js");
+script_dir = dirname(script_name);
+include(script_dir+"/../../core/init.js");
 
 function getshort(data,index) {
 	var s = (data[index] & 0xF0) << 8 | data[index+1] & 0x0F;
@@ -37,7 +38,6 @@ function float_equals(n1,n2) { return(n1 === n2); }
 
 /* global vars */
 info = si.info;
-script_dir = dirname(script_name);
 
 function init_main() {
 	// Call init funcs
@@ -45,10 +45,11 @@ function init_main() {
 		"charge",
 		"sim",
 //		"read",
-		"write"
+//		"write"
 	];
 	for(i=0; i < init_funcs.length; i++) {
 		if (run(script_dir+"/"+init_funcs[i]+".js",init_funcs[i]+"_init"))
 			exit(1);
 	}
+	return 0;
 }

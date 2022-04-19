@@ -24,26 +24,23 @@ typedef int (solard_agent_callback_t)(void *);
 struct solard_agent {
 	char name[SOLARD_NAME_LEN];
 	config_t *cp;
-//	cfg_info_t *cfg;
 	char section_name[CFG_SECTION_NAME_SIZE];
 	solard_driver_t *driver;
 	void *handle;
-	json_value_t *driver_info;
-	mqtt_session_t *m;		/* MQTT Session handle */
-	mqtt_config_t mqtt_config;
+	json_value_t *info;
+#ifdef MQTT
+	mqtt_session_t *m;
 	bool config_from_mqtt;
-	influx_session_t *i;		/* InfluxDB session handle */
-	influx_config_t influx_config;
-	int read_interval;
-	int write_interval;
+	char mqtt_topic[SOLARD_TOPIC_SIZE];
 	list mq;			/* incoming message queue */
+#endif
+#ifdef INFLUX
+	influx_session_t *i;
+#endif
+	int interval;
 	uint16_t state;			/* States */
 	int pretty;			/* Format json messages for readability (uses more mem) */
 	char instance_name[SOLARD_NAME_LEN]; /* Agent instance name */
-	JSEngine *js;			/* JavaScript engine */
-	int rtsize;
-	int stksize;
-	JSPropertySpec *props;
 	char script_dir[SOLARD_PATH_MAX];
 	char init_script[SOLARD_PATH_MAX];
 	char start_script[SOLARD_PATH_MAX];
@@ -55,48 +52,51 @@ struct solard_agent {
 		solard_agent_callback_t *func;	/* Called between read and write */
 		void *ctx;
 	} callback;
-#ifdef DEBUG_MEM
-	int mem_start;
-	int mem_last;
-#endif
 	char errmsg[128];
 	int mqtt_init;
 	int open_before_read;
 	int close_after_read;
 	int open_before_write;
 	int close_after_write;
+#ifdef JS
+	JSEngine *js;			/* JavaScript engine */
+	int rtsize;
+	int stksize;
+	JSPropertySpec *props;
 	jsval config_val;
 	jsval mqtt_val;
 	jsval influx_val;
+	bool initial_gc;
+#endif
+	void *private;			/* Per-instance private data */
 };
 
 /* Agent states */
 #define SOLARD_AGENT_RUNNING 0x01
 #define SOLARD_AGENT_CONFIG_DIRTY 0x10
 
+solard_agent_t *agent_new(void);
 solard_agent_t *agent_init(int, char **, char *, opt_proctab_t *,
 		solard_driver_t *, void *, config_property_t *, config_function_t *);
 int agent_run(solard_agent_t *ap);
+#ifdef MQTT
 void agent_mktopic(char *topic, int topicsz, char *name, char *func);
 int agent_sub(solard_agent_t *ap, char *name, char *func);
 int agent_pub(solard_agent_t *ap, char *func, char *message, int retain);
 int agent_pubinfo(solard_agent_t *ap, int disp);
 int agent_reply(solard_agent_t *ap, char *topic, int status, char *message);
+#endif
 int agent_set_callback(solard_agent_t *, solard_agent_callback_t *, void *);
 int agent_clear_callback(solard_agent_t *);
-void agent_add_msghandler(solard_agent_t *, solard_msghandler_t *, void *);
-
-void *agent_get_handle(solard_agent_t *);
-int agent_start_script(solard_agent_t *ap, char *name);
-int agent_script_exists(solard_agent_t *ap, char *name);
-#define agent_run_script(a,n) agent_start_script(a,n,0)
 
 #include "config.h"
 
-#if 0
-JSObject *js_InitAgentClass(JSContext *cx, void *priv);
-int agent_jsinit(JSEngine *e, solard_agent_t *);
-#endif
+#ifdef JS
+int agent_start_script(solard_agent_t *ap, char *name);
+int agent_start_jsfunc(solard_agent_t *ap, char *name, char *func);
+int agent_script_exists(solard_agent_t *ap, char *name);
+#define agent_run_script(a,n) agent_start_script(a,n,0)
 JSObject *jsagent_new(JSContext *cx, JSObject *parent, solard_agent_t *ap);
+#endif
 
 #endif /* __SD_AGENT_H */

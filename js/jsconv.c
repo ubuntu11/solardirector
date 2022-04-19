@@ -24,6 +24,19 @@ char *jstypestr(JSContext *cx, jsval val) {
 	return (char *)JS_GetTypeName(cx, JS_TypeOfValue(cx, val));
 }
 
+#if 0
+char *jstypestr(JSContext *cx, jsval v) {
+	if (JSVAL_IS_NULL(v)) return "null";
+	else if (JSVAL_IS_VOID(v)) return "void";
+	else if (JSVAL_IS_OBJECT(v)) return "object";
+	else if (JSVAL_IS_INT(v)) return "int";
+	else if (JSVAL_IS_DOUBLE(v)) return "double";
+	else if (JSVAL_IS_STRING(v)) return "string";
+	else if (JSVAL_IS_BOOLEAN(v)) return "bool";
+	else return "unknown";
+}
+#endif
+
 jsval type_to_jsval(JSContext *cx, int type, void *src, int len) {
 	jsval val;
 
@@ -199,7 +212,7 @@ int jsval_to_type(int dtype, void *dest, int dlen, JSContext *cx, jsval val) {
 					if (!str) continue;
 					values[i] = JS_EncodeString(cx, str);
 					if (!values[i]) continue;
-					dprintf(1,"====> element[%d]: %s\n", i, values[i]);
+//					dprintf(1,"====> element[%d]: %s\n", i, values[i]);
 				}
 				/* Convert it */
 				r = conv_type(dtype,dest,dlen,DATA_TYPE_STRING_ARRAY,values,count);

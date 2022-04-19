@@ -21,6 +21,8 @@ enum SMANET_PROPERTY_ID {
 	SMANET_PROPERTY_ID_DEST,
 	SMANET_PROPERTY_ID_TIMEOUTS,
 	SMANET_PROPERTY_ID_COMMANDS,
+	SMANET_PROPERTY_ID_ERRMSG,
+	SMANET_PROPERTY_ID_DOARRAY,
 };
 
 static JSBool smanet_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
@@ -71,6 +73,12 @@ static JSBool smanet_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval
 		case SMANET_PROPERTY_ID_COMMANDS:
 			*rval = INT_TO_JSVAL(s->commands);
 			break;
+		case SMANET_PROPERTY_ID_ERRMSG:
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,s->errmsg,strlen(s->errmsg));
+			break;
+		case SMANET_PROPERTY_ID_DOARRAY:
+			*rval = BOOLEAN_TO_JSVAL(s->doarray);
+			break;
 		default:
 			break;
 		}
@@ -78,27 +86,26 @@ static JSBool smanet_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval
 	return JS_TRUE;
 }
 
-#if 0
 static JSBool smanet_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp) {
 	smanet_session_t *s;
-	int r,prop_id;
+	int prop_id;
 
-	r = 1;
 	s = JS_GetPrivate(cx, obj);
-	if (!s) goto smanet_setprop_done;
+	if (!s) {
+		JS_ReportError(cx, "smanet_setprop: private is null!\n");
+		return JS_FALSE;
+	}
 	if (JSVAL_IS_INT(id)) {
 		prop_id = JSVAL_TO_INT(id);
 		dprintf(dlevel,"smanet_setprop: prop_id: %d", prop_id);
 		switch(prop_id) {
-		default:
+		case SMANET_PROPERTY_ID_DOARRAY:
+			s->doarray = JSVAL_TO_BOOLEAN(*vp);
 			break;
 		}
 	}
-smanet_setprop_done:
-	*vp = BOOLEAN_TO_JSVAL(r);
 	return JS_TRUE;
 }
-#endif
 
 JSClass smanet_class = {
 	"SMANET",		/* Name */
@@ -106,7 +113,7 @@ JSClass smanet_class = {
 	JS_PropertyStub,	/* addProperty */
 	JS_PropertyStub,	/* delProperty */
 	smanet_getprop,		/* getProperty */
-	JS_PropertyStub,	/* setProperty */
+	smanet_setprop,		/* setProperty */
 	JS_EnumerateStub,	/* enumerate */
 	JS_ResolveStub,		/* resolve */
 	JS_ConvertStub,		/* convert */
@@ -150,14 +157,12 @@ static char *js_string(JSContext *cx, jsval val) {
 	return bytes;
 }
 
-#if 0
-/* Create an object of the results? */
 static JSClass js_mr_class = {
 	"SMANETResults",	/* Name */
 	JSCLASS_HAS_PRIVATE,	/* Flags */
 	JS_PropertyStub,	/* addProperty */
 	JS_PropertyStub,	/* delProperty */
-	js_mr_getprop,		/* getProperty */
+	JS_PropertyStub,	/* getProperty */
 	JS_PropertyStub,	/* setProperty */
 	JS_EnumerateStub,	/* enumerate */
 	JS_ResolveStub,		/* resolve */
@@ -165,7 +170,6 @@ static JSClass js_mr_class = {
 	JS_FinalizeStub,	/* finalize */
 	JSCLASS_NO_OPTIONAL_MEMBERS
 };
-#endif
 
 static jsval _mr_to_array(JSContext *cx, smanet_multreq_t *mr, int count) {
 	JSObject *arr,*ea;
@@ -193,6 +197,27 @@ static jsval _mr_to_array(JSContext *cx, smanet_multreq_t *mr, int count) {
 	return OBJECT_TO_JSVAL(arr);
 }
 
+static jsval _mr_to_object(JSContext *cx, smanet_multreq_t *mr, int count) {
+	JSObject *obj;
+	jsval val;
+	int i,flags;
+
+	obj = js_NewObject(cx, &js_mr_class, NULL, NULL, 0);
+
+	flags = JSPROP_ENUMERATE | JSPROP_READONLY;
+	for(i=0; i < count; i++) {
+		dprintf(1,"mr[%d]: value: %f, text: %s\n", i, mr[i].value, mr[i].text);
+		if (mr[i].text) {
+			val = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,mr[i].text));
+		} else {
+			JS_NewNumberValue(cx, mr[i].value, &val);
+		}
+//		dprintf(0,"adding: %s\n", mr[i].name);
+		JS_DefineProperty(cx, obj, mr[i].name, val, JS_PropertyStub, JS_PropertyStub, flags);
+	}
+	return OBJECT_TO_JSVAL(obj);
+}
+
 static smanet_multreq_t *_array_to_mr(JSContext *cx, JSObject *obj, unsigned int *count) {
 	smanet_multreq_t *mr;
 	JSString *str;
@@ -213,7 +238,7 @@ static smanet_multreq_t *_array_to_mr(JSContext *cx, JSObject *obj, unsigned int
 		if (!str) continue;
 		mr[i].name = JS_EncodeString(cx, str);
 		if (!mr[i].name) continue;
-		dprintf(1,"====> element[%d]: %s\n", i, mr[i].name);
+//		dprintf(0,"====> element[%d]: %s\n", i, mr[i].name);
 	}
 
 	return mr;
@@ -275,11 +300,11 @@ static JSBool js_smanet_get(JSContext *cx, JSObject *obj, uintN argc, jsval *arg
 			sprintf(s->errmsg,"SMANET.get: error calling smanet_get_multvalues");
 			goto js_smanet_get_error;
 		}
-		*rval = _mr_to_array(cx,mr,argc);
+		*rval = (s->doarray ? _mr_to_array(cx,mr,argc) : _mr_to_object(cx,mr,argc));
 		for(i=0; i < argc; i++) JS_free(cx, mr[i].name);
 		free(mr);
 	} else {
-//		printf("==> argv[%d]: %s\n", 0,jstypestr(cx,argv[0]));
+		/* Treat a string as a single name */
 		if (JSVAL_IS_STRING(argv[0])) {
 			char *name,*text;
 			double value;
@@ -300,6 +325,8 @@ static JSBool js_smanet_get(JSContext *cx, JSObject *obj, uintN argc, jsval *arg
 			} else {
 				JS_NewDoubleValue(cx, value, rval);
 			}
+
+		/* If object, must be array of strings */
 		} else if (JSVAL_IS_OBJECT(argv[0])) {
 			JSObject *arr;
 			JSClass *classp;
@@ -327,10 +354,9 @@ static JSBool js_smanet_get(JSContext *cx, JSObject *obj, uintN argc, jsval *arg
 			}
 			if (smanet_get_multvalues(s,mr,count)) {
 				free(mr);
-				sprintf(s->errmsg,"SMANET.get: error calling smanet_get_multvalues");
 				goto js_smanet_get_error;
 			}
-			*rval = _mr_to_array(cx,mr,count);
+			*rval = (s->doarray ? _mr_to_array(cx,mr,count) : _mr_to_object(cx,mr,count));
 			for(i=0; i < count; i++) JS_free(cx, mr[i].name);
 			free(mr);
 		} else {
@@ -498,6 +524,8 @@ JSObject *js_InitSMANETClass(JSContext *cx, JSObject *gobj) {
 		{ "dest",SMANET_PROPERTY_ID_DEST,JSPROP_ENUMERATE | JSPROP_READONLY  },
 		{ "timeouts",SMANET_PROPERTY_ID_TIMEOUTS,JSPROP_ENUMERATE | JSPROP_READONLY },
 		{ "commands",SMANET_PROPERTY_ID_COMMANDS,JSPROP_ENUMERATE | JSPROP_READONLY  },
+		{ "errmsg",SMANET_PROPERTY_ID_ERRMSG,JSPROP_ENUMERATE | JSPROP_READONLY },
+		{ "return_array",SMANET_PROPERTY_ID_DOARRAY,JSPROP_ENUMERATE },
 		{0}
 	};
 	JSFunctionSpec smanet_funcs[] = {

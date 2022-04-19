@@ -26,18 +26,18 @@ int become_daemon(void) {
 	pid_t pid;
 
 	/* Fork the process */
-	DLOG(LOG_DEBUG,"become_daemon: forking process...");
+	dprintf(4,"become_daemon: forking process...");
 	pid = fork();
 
 	/* If pid < 0, error */
 	if (pid < 0) {
-		DLOG(LOG_DEBUG|LOG_SYSERR,"become_daemon: fork");
+		log_syserror("become_daemon: fork");
 		return 1;
 	}
 
 	/* If pid > 0, parent */
 	else if (pid > 0) {
-		DLOG(LOG_DEBUG,"become_daemon: parent exiting...");
+		dprintf(4,"become_daemon: parent exiting...");
 		_exit(0);
 	}
 
@@ -49,7 +49,7 @@ int become_daemon(void) {
 	if (pid < 0)
 		return 1;
 	else if (pid != 0) {
-		DLOG(LOG_DEBUG,"become_daemon(2): parent exiting...");
+		dprintf(4,"become_daemon(2): parent exiting...");
 		_exit(0);
 	}
 

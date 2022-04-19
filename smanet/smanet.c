@@ -76,12 +76,12 @@ smanet_session_t *smanet_init(char *transport, char *target, char *topts) {
 
 	dprintf(dlevel,"transport: %s, target: %s, topts: %s\n", transport, target, topts);
 
-	s = calloc(1,sizeof(*s));
+	s = malloc(sizeof(*s));
 	if (!s) {
 		log_write(LOG_SYSERR,"smanet_init: calloc");
 		goto smanet_init_error;
 	}
-//	s->channels = list_create();
+	memset(s,0,sizeof(*s));
 #ifdef SMANET_THREADSAFE
 	pthread_mutex_init(&s->lock, 0);
 #endif

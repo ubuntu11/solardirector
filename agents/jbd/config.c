@@ -689,6 +689,7 @@ static int jbd_set_value(void *ctx, list args, char *errmsg) {
 	dprintf(dlevel,"args count: %d\n", list_count(args));
 	list_reset(args);
 	r = 0;
+	strcpy(errmsg,"unknown");
 	while((argv = list_get_next(args)) != 0) {
 		name = argv[0];
 		value = argv[1];
@@ -698,6 +699,10 @@ static int jbd_set_value(void *ctx, list args, char *errmsg) {
 		if (!p) {
 			sprintf(errmsg,"property %s not found",name);
 			return 1;
+		}
+		if (strcasecmp(value,"default")==0) {
+			if (p->def) value = p->def;
+			else value = "";
 		}
 		if (p->flags & JBD_CONFIG_FLAG_EEPROM) {
 			struct jbd_params *pp;
@@ -745,8 +750,10 @@ static int jbd_set_value(void *ctx, list args, char *errmsg) {
 			r = 0;
 
 		} else {
+			dprintf(1,"updating property...\n");
 			p->len = conv_type(p->type,p->dest,p->dsize,DATA_TYPE_STRING,value,strlen(value));
 			p->dirty = 1;
+			dprintf(1,"writing config...\n");
 			config_write(s->ap->cp);
 		}
 	}
@@ -759,6 +766,112 @@ jbd_set_value_error:
 	return r;
 }
 
+int xor_bits(unsigned x) {
+    return __builtin_parity(x);
+}
+
+static int jbd_charge(void *ctx, list args, char *errmsg) {
+	jbd_session_t *s = ctx;
+	char *arg;
+	int r,bits;
+
+	/* We take 1 arg: start/stop */
+	list_reset(args);
+	arg = list_get_next(args);
+	dprintf(dlevel,"arg: %s\n", arg);
+	if (jbd_get_fetstate(s)) {
+		strcpy(errmsg,"unable to get fetstate");
+		return 1;
+	}
+	dprintf(0,"fetstate: %x\n", s->fetstate);
+	bits = (s->fetstate & JBD_MOS_DISCHARGE ? 0 : JBD_MOS_DISCHARGE);
+	if (strcmp(arg,"start") == 0 || strcasecmp(arg,"on") == 0) {
+		dprintf(0,"bits: %x\n", bits);
+		r = jbd_set_mosfet(s,bits);
+		if (r) strcpy(errmsg,"unable to set mosfet");
+	} else if (strcmp(arg,"stop") == 0 || strcasecmp(arg,"off") == 0) {
+		bits |= JBD_MOS_CHARGE;
+		dprintf(0,"bits: %x\n", bits);
+		r = jbd_set_mosfet(s,bits);
+		if (r) strcpy(errmsg,"unable to set mosfet");
+	} else {
+		strcpy(errmsg,"invalid charge mode");
+		r = 1;
+	}
+	return r;
+}
+
+static int jbd_discharge(void *ctx, list args, char *errmsg) {
+	jbd_session_t *s = ctx;
+	char *arg;
+	int r,bits;
+
+	/* We take 1 arg: start/stop */
+	list_reset(args);
+	arg = list_get_next(args);
+	dprintf(dlevel,"arg: %s\n", arg);
+	if (jbd_get_fetstate(s)) {
+		strcpy(errmsg,"unable to get fetstate");
+		return 1;
+	}
+	dprintf(0,"fetstate: %x\n", s->fetstate);
+	bits = (s->fetstate & JBD_MOS_CHARGE ? 0 : JBD_MOS_CHARGE);
+	if (strcmp(arg,"start") == 0 || strcasecmp(arg,"on") == 0) {
+		bits &= ~JBD_MOS_DISCHARGE;
+		dprintf(0,"bits: %x\n", bits);
+		r = jbd_set_mosfet(s,bits);
+		if (r) strcpy(errmsg,"unable to set mosfet");
+	} else if (strcmp(arg,"stop") == 0 || strcasecmp(arg,"off") == 0) {
+		bits |= JBD_MOS_DISCHARGE;
+		dprintf(0,"bits: %x\n", bits);
+		r = jbd_set_mosfet(s,bits);
+		if (r) strcpy(errmsg,"unable to set mosfet");
+	} else {
+		strcpy(errmsg,"invalid discharge mode");
+		r = 1;
+	}
+	return r;
+}
+
+static int cf_jbd_balance(void *ctx, list args, char *errmsg) {
+	jbd_session_t *s = ctx;
+	char *arg;
+	int r;
+
+	/* We take 1 arg: start/stop */
+	list_reset(args);
+	arg = list_get_next(args);
+	dprintf(0,"arg: %s\n", arg);
+	if (strcmp(arg,"start") == 0 || strcasecmp(arg,"on") == 0) {
+		r = jbd_set_balance(s,JBD_FUNC_BALANCE_EN);
+		if (r) strcpy(errmsg,"unable to set balance");
+		else s->balancing = 1;
+	} else if (strcmp(arg,"stop") == 0 || strcasecmp(arg,"off") == 0) {
+		r = jbd_set_balance(s,0);
+		if (r) strcpy(errmsg,"unable to set balance");
+		else s->balancing = 0;
+	} else if (strcasecmp(arg,"charge") == 0) {
+		r = jbd_set_balance(s,JBD_FUNC_BALANCE_EN | JBD_FUNC_CHG_BALANCE);
+		if (r) strcpy(errmsg,"unable to set balance");
+		else s->balancing = 2;
+	} else {
+		strcpy(errmsg,"invalid balance mode");
+		r = 1;
+	}
+	dprintf(0,"r: %d, balancing: %d\n", r, s->balancing);
+	return r;
+}
+
+static int cf_jbd_reset(void *ctx, list args, char *errmsg) {
+	jbd_session_t *s = ctx;
+
+	if (jbd_reset(s)) {
+		strcpy(errmsg,"unable to reset");
+		return 1;
+	}
+	return 0;
+}
+
 int jbd_agent_init(jbd_session_t *s, int argc, char **argv) {
 	opt_proctab_t jbd_opts[] = {
 		/* Spec, dest, type len, reqd, default val, have */
@@ -766,7 +879,8 @@ int jbd_agent_init(jbd_session_t *s, int argc, char **argv) {
 		OPTS_END
 	};
 	config_property_t jbd_props[] = {
-		{ "transport", DATA_TYPE_STRING, s->transport, sizeof(s->transport)-1, 0, 0 },
+		/* XXX make sure to use null driver as default */
+		{ "transport", DATA_TYPE_STRING, s->transport, sizeof(s->transport)-1, "null", 0 },
 		{ "target", DATA_TYPE_STRING, s->target, sizeof(s->target)-1, 0, 0 },
 		{ "topts", DATA_TYPE_STRING, s->topts, sizeof(s->topts)-1, 0, 0 },
 		{ "flatten", DATA_TYPE_BOOLEAN, &s->flatten, 0, 0, 0 },
@@ -776,12 +890,10 @@ int jbd_agent_init(jbd_session_t *s, int argc, char **argv) {
 	config_function_t jbd_funcs[] = {
 		{ "get", jbd_get_value, s, 1 },
 		{ "set", jbd_set_value, s, 2 },
-//		{ "reset", cf_reset, s, 0 },
-#if 0
-		{ "charge", jbd_set_charge, s, 1 },
-		{ "discharge", jbd_set_dcharge, s, 1 },
-		{ "balance", jbd_set_balance, s, 1 },
-#endif
+		{ "charge", jbd_charge, s, 1 },
+		{ "discharge", jbd_discharge, s, 1 },
+		{ "balance", cf_jbd_balance, s, 1 },
+		{ "reset", cf_jbd_reset, s, 0 },
 		{0}
 	};
 
@@ -793,27 +905,33 @@ int jbd_agent_init(jbd_session_t *s, int argc, char **argv) {
 
 void jbd_config_add_jbd_data(jbd_session_t *s) {
 	/* Only used by JS funcs */
-	uint32_t flags = CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOPUB;
+#define data_flags (CONFIG_FLAG_READONLY | CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOPUB)
 	config_property_t jbd_data_props[] = {
-		{ "name", DATA_TYPE_STRING, s->ap->instance_name, sizeof(s->ap->instance_name), 0, CONFIG_FLAG_READONLY | flags },
-		{ "capacity", DATA_TYPE_FLOAT, &s->data.capacity, 0, 0, CONFIG_FLAG_READONLY | flags },
-		{ "voltage", DATA_TYPE_FLOAT, &s->data.voltage, 0, 0, CONFIG_FLAG_READONLY | flags },
-		{ "current", DATA_TYPE_FLOAT, &s->data.current, 0, 0, CONFIG_FLAG_READONLY | flags },
-		{ "ntemps", DATA_TYPE_INT, &s->data.ntemps, 0, 0, CONFIG_FLAG_READONLY | flags },
-		{ "temps", DATA_TYPE_FLOAT_ARRAY, &s->data.temps, JBD_MAX_TEMPS, 0, CONFIG_FLAG_READONLY | flags },
-		{ "ncells", DATA_TYPE_INT, &s->data.ncells, 0, 0, CONFIG_FLAG_READONLY | flags },
-		{ "cellvolt", DATA_TYPE_FLOAT_ARRAY, &s->data.cellvolt, JBD_MAX_CELLS, 0, CONFIG_FLAG_READONLY | flags },
-		{ "cell_min", DATA_TYPE_FLOAT, &s->data.cell_min, 0, 0, CONFIG_FLAG_READONLY | flags },
-		{ "cell_max", DATA_TYPE_FLOAT, &s->data.cell_max, 0, 0, CONFIG_FLAG_READONLY | flags },
-		{ "cell_diff", DATA_TYPE_FLOAT, &s->data.cell_diff, 0, 0, CONFIG_FLAG_READONLY | flags },
-		{ "cell_avg", DATA_TYPE_FLOAT, &s->data.cell_avg, 0, 0, CONFIG_FLAG_READONLY | flags },
-		{ "cell_total", DATA_TYPE_FLOAT, &s->data.cell_total, 0, 0, CONFIG_FLAG_READONLY | flags },
-		{ "balancebits", DATA_TYPE_INT, &s->data.balancebits, 0, 0, CONFIG_FLAG_READONLY | flags },
+		{ "name", DATA_TYPE_STRING, &s->data.name, sizeof(s->data.name), 0, data_flags },
+		{ "capacity", DATA_TYPE_FLOAT, &s->data.capacity, 0, 0, data_flags },
+		{ "voltage", DATA_TYPE_FLOAT, &s->data.voltage, 0, 0, data_flags },
+		{ "current", DATA_TYPE_FLOAT, &s->data.current, 0, 0, data_flags },
+		{ "ntemps", DATA_TYPE_INT, &s->data.ntemps, 0, 0, data_flags },
+		{ "temps", DATA_TYPE_FLOAT_ARRAY, &s->data.temps, JBD_MAX_TEMPS, 0, data_flags },
+		{ "ncells", DATA_TYPE_INT, &s->data.ncells, 0, 0, data_flags },
+		{ "cellvolt", DATA_TYPE_FLOAT_ARRAY, &s->data.cellvolt, JBD_MAX_CELLS, 0, data_flags },
+		{ "cell_min", DATA_TYPE_FLOAT, &s->data.cell_min, 0, 0, data_flags },
+		{ "cell_max", DATA_TYPE_FLOAT, &s->data.cell_max, 0, 0, data_flags },
+		{ "cell_diff", DATA_TYPE_FLOAT, &s->data.cell_diff, 0, 0, data_flags },
+		{ "cell_avg", DATA_TYPE_FLOAT, &s->data.cell_avg, 0, 0, data_flags },
+		{ "cell_total", DATA_TYPE_FLOAT, &s->data.cell_total, 0, 0, data_flags },
+		{ "balancebits", DATA_TYPE_INT, &s->data.balancebits, 0, 0, data_flags },
 		{0}
 	};
 
-	 /* Add info_props to config */
-	config_add_props(s->ap->cp, "jbd_data", jbd_data_props, flags);
+        /* Set battery name */
+        strcpy(s->data.name,s->ap->instance_name);
+
+	 /* Add data_props to config */
+	config_add_props(s->ap->cp, "jbd_data", jbd_data_props, data_flags);
+
+	/* Get local copy of props */
+	s->data_props = config_get_props(s->ap->cp, "jbd_data");
 }
 
 int jbd_config_add_parms(jbd_session_t *s) {
@@ -993,10 +1111,14 @@ int jbd_config(void *h, int req, ...) {
 		/* Add our internal params to the config */
 		jbd_config_add_parms(s);
 
+		/* Add the data props */
+		jbd_config_add_jbd_data(s);
+
 #ifdef JS
 		/* Init JS */
-		jbd_config_add_jbd_data(s);
 		r = jbd_jsinit(s);
+#else
+		r = 0;
 #endif
 	    }
 	    break;

@@ -15,7 +15,6 @@ extern char *jk_version_string;
 json_value_t *jk_get_info(void *handle) {
 	jk_session_t *s = handle;
 	json_object_t *j;
-	long mem_start;
 
 	dprintf(1,"s: %p\n", s);
 	if (!handle) return 0;
@@ -24,9 +23,6 @@ json_value_t *jk_get_info(void *handle) {
 	if (jk_open(s) < 0) return 0;
 	if (jk_get_hwinfo(s)) return 0;
 //	jk_close(s);
-
-	mem_start = mem_used();
-	dprintf(1,"mem_start: %ld\n",mem_start);
 
 	j = json_create_object();
 	if (!j) return 0;
@@ -41,6 +37,5 @@ json_value_t *jk_get_info(void *handle) {
 
 	config_add_info(s->ap->cp,j);
 
-	dprintf(1,"mem_used: %ld\n",mem_used() - mem_start);
 	return json_object_get_value(j);
 }

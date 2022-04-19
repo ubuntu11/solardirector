@@ -54,7 +54,7 @@ char *stredit(char *string, char *list) {
 	}
 	*dest = '\0';
 	return_info[0] = 0;
-	strncat(return_info,string,sizeof(return_info));
+	strncat(return_info,string,sizeof(return_info)-1);
 	while(1) {
 		func = strele(ele,",",edit_list);
 		if (!strlen(func)) break;

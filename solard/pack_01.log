@@ -1,0 +1,16 @@
+2022-04-18 08:10:00  agent.c(386) agent_init: used: 1992
+2022-04-18 08:10:00  agent.c(407) agent_init: used: 4536
+2022-04-18 08:10:00  agent.c(421) agent_init: used: 4536
+2022-04-18 08:10:00  agent.c(447) agent_init: used: 4536
+2022-04-18 08:10:00  agent.c(451) agent_init: used: 22299
+2022-04-18 08:10:00  warning: using null driver for I/O2022-04-18 08:10:00  agent.c(455) agent_init: used: 40008
+2022-04-18 08:10:00  agent.c(472) agent_init: used: 40058
+2022-04-18 08:10:00  agent.c(479) agent_init: used: 40058
+2022-04-18 08:10:00  agent.c(487) agent_init: used: 40058
+2022-04-18 08:10:00  agent.c(491) agent_init: used: 178814
+2022-04-18 08:10:01  agent.c(495) agent_init: used: 183122
+2022-04-18 08:10:01  main.c(33) main: used: 183122
+2022-04-18 08:10:04  mem: 66016
+2022-04-18 08:10:04  sysmem: 204607
+2022-04-18 08:10:04  mem: 84488
+2022-04-18 08:10:04  sysmem: 205295

@@ -2692,7 +2692,7 @@ static inline jsval js_number_to_jsval(JSContext *cx, double n) {
 #define JS_NUMCONST(n) { #n, NUMBER_TO_JSVAL((n)) }
 #define JS_STRCONST(n) { #n, STRING_TO_JSVAL(JS_NewStringCopyZ(cx,(n))) }
 
-char *jstypestr(JSContext *cx, jsval vp);
+char *jstypestr(JSContext *cx, jsval val);
 int jsval_to_type(int dtype, void *dest, int dsize, JSContext *cx, jsval val);
 jsval type_to_jsval(JSContext *cx, int type, void *src, int len);
 

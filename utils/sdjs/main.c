@@ -102,12 +102,27 @@ int shell(JSContext *cx) {
 	return 0;
 }
 
+typedef JSObject *(js_newobj_t)(JSContext *cx, JSObject *parent, void *priv);
+static void newgobj(JSContext *cx, char *name, js_newobj_t func, void *priv) {
+	JSObject *newobj, *global = JS_GetGlobalObject(cx);
+	jsval newval;
+
+	newobj = func(cx, global, priv);
+	newval = OBJECT_TO_JSVAL(newobj);
+	JS_DefineProperty(cx, global, name, newval, 0, 0, 0);
+}
+
 static int js_init(JSContext *cx, JSObject *parent, void *priv) {
-	jsval agent_val;
+	solard_agent_t *ap = priv;
+//	jsval agent_val;
 
 //	client_jsinit(ap->js,0);
-	agent_val = OBJECT_TO_JSVAL(jsagent_new(cx,parent,priv));
-	JS_DefineProperty(cx, parent, "agent", agent_val, 0, 0, 0);
+	newgobj(cx,"agent",(js_newobj_t *)jsagent_new,ap);
+//	agent_val = OBJECT_TO_JSVAL(jsagent_new(cx,parent,ap));
+//	JS_DefineProperty(cx, parent, "agent", agent_val, 0, 0, 0);
+	JS_DefineProperty(cx, parent, "config", ap->config_val, 0, 0, 0);
+	JS_DefineProperty(cx, parent, "mqtt", ap->mqtt_val, 0, 0, 0);
+	newgobj(cx,"influx",js_influx_new,0);
 	return 0;
 }
 
@@ -164,6 +179,7 @@ int main(int argc, char **argv) {
 	if (!ap) return 1;
 
         smanet_jsinit(ap->js);
+
 //	printf("==> SCRIPT: %s, func: %s\n", script, func);
 	dprintf(1,"script: %s\n", script);
 	if (*script) {

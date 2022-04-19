@@ -15,9 +15,7 @@ LICENSE file in the root directory of this source tree.
 
 #ifdef DEBUG
 #undef DEBUG
-#endif
-#if DEBUG_TYPES
-#define DEBUG 1
+#define DEBUG DEBUG_TYPES
 #endif
 #include "debug.h"
 
@@ -99,6 +97,7 @@ int name2dt(char *name) {
         return DATA_TYPE_UNKNOWN;
 }
 
+#ifdef JS
 #include "jsapi.h"
 #include "jsengine.h"
 static JSBool jstypes_typestr(JSContext *cx, uintN argc, jsval *vp) {
@@ -160,3 +159,4 @@ static int jstypes_init(JSContext *cx, JSObject *parent, void *priv) {
 int types_jsinit(JSEngine *e) {
 	return JS_EngineAddInitFunc(e, "types", jstypes_init, 0);
 }
+#endif

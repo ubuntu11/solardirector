@@ -1,0 +1,16 @@
+. /opt/sd/etc/location.conf
+today=$(date "+%Y-%m-%d")
+results=$(curl -N -n -s "https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}&date=${today}&formatted=0")
+        eval d=$(echo "$results" | jq .results.sunrise 2>/dev/null)
+        if test -z "$d"; then
+                echo "[$(date)] Sunrise is empty!"
+                exit 1
+        fi
+        sunrise_time=$(date -d "$d" "+%Y-%m-%d %H:%M:%S")
+        eval d=$(echo "$results" | jq .results.sunset 2>/dev/null)
+        if test -z "$d"; then
+                echo "[$(date)] Sunset is empty!"
+                exit 1
+        fi
+        sunset_time=$(date -d "$d" "+%Y-%m-%d %H:%M:%S")
+

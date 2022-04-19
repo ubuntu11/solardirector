@@ -169,7 +169,8 @@ enum CURRENT_SOURCE {
 	CURRENT_SOURCE_NONE,
 	CURRENT_SOURCE_CAN,
 	CURRENT_SOURCE_SMANET,
-	CURRENT_SOURCE_CALCULATED
+	CURRENT_SOURCE_CALCULATED,
+	CURRENT_SOURCE_INFLUX,
 };
 
 enum CURRENT_TYPE {
@@ -188,6 +189,7 @@ struct si_current_source {
 			uint8_t size;
 		} can;
 		char name[16];
+		char *query;
 	};
 	float mult;
 };
@@ -195,6 +197,7 @@ typedef struct si_current_source si_current_source_t;
 
 struct si_session {
 	solard_agent_t *ap;
+	float user_soc;
 
 	/* CAN */
 	char can_transport[SOLARD_TRANSPORT_LEN];
@@ -228,7 +231,13 @@ struct si_session {
 	float charge_end_voltage;	/* Voltage to end charging (full voltage) */
 	int charge_mode;
 	float charge_voltage;		/* RO|NOSAVE, charge_voltage */
+	float grid_charge_amps;	
+	float gen_charge_amps;
+	float gen_hold_soc;		/* hold SOC when gen running */
+	float solar_charge_amps;
 	float charge_amps;		/* Charge amps */
+	float min_charge_amps;		/* Charge amps */
+	float max_charge_amps;		/* Charge amps */
 	float discharge_amps;
 	float soc;
 	float soh;
@@ -239,8 +248,26 @@ struct si_session {
 	uint16_t state;
 	char errmsg[128];
 	bool bms_mode;			/* BMS Mode (can connected/10s interval) */
+	bool grid_connected;
+	bool gen_connected;
 	int smanet_added;
 	char notify_path[256];
+	int readonly;
+	int readonly_warn;
+	si_current_source_t input;
+	si_current_source_t output;
+	bool feeding;
+	bool dynfeed;
+	char last_out[128];
+	int disable_si_read;
+	int disable_si_write;
+
+	struct {
+		bool enabled;
+		char name[256];
+		char func[64];
+	} eh;
+#ifdef JS
 	JSPropertySpec *props;
 	JSFunctionSpec *funcs;
 	jsval agent_val;
@@ -248,15 +275,7 @@ struct si_session {
 	jsval data_val;
 	jsval can_val;
 	jsval smanet_val;
-	int interval;
-	int readonly;
-	int readonly_warn;
-	si_current_source_t input;
-	si_current_source_t output;
-//	bool feed;
-	char last_out[128];
-	int disable_si_read;
-	int disable_si_write;
+#endif
 };
 typedef struct si_session si_session_t;
 
@@ -264,6 +283,7 @@ typedef struct si_session si_session_t;
 #define SI_STATE_CHARGING	0x02
 #define SI_STATE_OPEN		0x10
 #define SI_STATE_CAN_INIT	0x20
+#define SI_STATE_STARTED	0x40
 
 #define SI_VOLTAGE_MIN	36.0
 #define SI_VOLTAGE_MAX	64.0
@@ -277,6 +297,10 @@ typedef struct si_session si_session_t;
 
 /* driver */
 extern solard_driver_t si_driver;
+
+/* event */
+int si_event(si_session_t *s, char *name, int type, void *value, int len);
+int si_bool_event(si_session_t *s, char *name, bool value);
 
 /* can */
 int si_can_connect(si_session_t *s);
@@ -295,9 +319,6 @@ int si_smanet_init(si_session_t *s);
 int si_smanet_setup(si_session_t *s);
 int si_smanet_read_data(si_session_t *s);
 
-/* read */
-int si_read_data(si_session_t *s);
-
 /* config */
 int si_agent_init(int argc, char **argv, opt_proctab_t *si_opts, si_session_t *s);
 int si_read_config(si_session_t *s);
@@ -310,17 +331,6 @@ int si_check_params(si_session_t *s);
 
 /* info */
 json_value_t *si_get_info(si_session_t *s);
-
-/* Charging */
-int si_check_config(si_session_t *s);
-void charge_init(si_session_t *s);
-void charge_max_start(si_session_t *s);
-void charge_max_stop(si_session_t *s);
-void charge_stop(si_session_t *s, int rep);
-void charge_start(si_session_t *s, int rep);
-void charge_start_cv(si_session_t *s, int rep);
-void charge_check(si_session_t *s);
-int charge_control(si_session_t *s, int, int);
 
 #define si_isvrange(v) ((v >= SI_VOLTAGE_MIN) && (v  <= SI_VOLTAGE_MAX))
 

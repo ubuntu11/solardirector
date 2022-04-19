@@ -7,6 +7,21 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
+#define DEBUG_COMMON 1
+#define dlevel 4
+
+#ifdef DEBUG
+#undef DEBUG
+#define DEBUG DEBUG_COMMON
+#endif
+#include "debug.h"
+
+#if DEBUG_COMMON_INIT
+#define DPRINTF(format, args...) printf("%s(%d): " format,__FUNCTION__,__LINE__, ## args)
+#else
+#define DPRINTF(format, args...) /* noop */
+#endif
+
 #include <string.h>
 #include <stdlib.h>
 #include <dirent.h>
@@ -23,10 +38,9 @@ char SOLARD_ETCDIR[SOLARD_PATH_MAX];
 char SOLARD_LIBDIR[SOLARD_PATH_MAX];
 char SOLARD_LOGDIR[SOLARD_PATH_MAX];
 
-#define CFG 1
-#define dlevel 4
-
+#ifdef JS
 static int common_jsinit(JSEngine *e);
+#endif
 
 #if defined(__WIN32) && !defined(__WIN64)
 #include <windows.h>
@@ -52,7 +66,6 @@ static int _getcfg(cfg_info_t *cfg, char *section_name, char *dest, char *what, 
 	dprintf(dlevel,"name: %s\n", name);
 
 	r = 1;
-#if CFG
 	p = cfg_get_item(cfg,section_name,name);
 	dprintf(dlevel,"%s p: %p\n", name, p);
 	if (!p) {
@@ -69,7 +82,6 @@ static int _getcfg(cfg_info_t *cfg, char *section_name, char *dest, char *what, 
 	dprintf(dlevel,"dest: %s\n", dest);
 	r = 0;
 _getcfg_err:
-#endif
 	dprintf(dlevel,"returning: %d\n", r);
 	return r;
 }
@@ -147,9 +159,7 @@ int solard_common_init(int argc,char **argv,char *version,opt_proctab_t *add_opt
 	static int help_flag,err_flag;
 	static opt_proctab_t std_opts[] = {
 		{ "-b|run in background",&back_flag,DATA_TYPE_LOGICAL,0,0,"no" },
-#ifdef DEBUG
 		{ "-d:#|set debugging level",&debug,DATA_TYPE_INT,0,0,"0" },
-#endif
 		{ "-e|redirect output to stderr",&err_flag,DATA_TYPE_LOGICAL,0,0,"N" },
 		{ "-h|display program options",&help_flag,DATA_TYPE_LOGICAL,0,0,"N" },
 		{ "-l:%|redirect output to logfile",&logfile,DATA_TYPE_STRING,sizeof(logfile)-1,0,"" },
@@ -167,8 +177,6 @@ int solard_common_init(int argc,char **argv,char *version,opt_proctab_t *add_opt
 	int iResult;
 #endif
 
-//	printf("initializng...\n");
-
 	append_flag = back_flag = verb_flag = help_flag = err_flag = 0;
 
         /* Open the startup log */
@@ -180,10 +188,10 @@ int solard_common_init(int argc,char **argv,char *version,opt_proctab_t *add_opt
 	}
 	log_open(ident,0,log_opts);
 
-	dprintf(dlevel,"common_init: argc: %d, argv: %p, add_opts: %p, log_opts: %x\n", argc, argv, add_opts, log_opts);
+	log_debug("common_init: argc: %d, argv: %p, add_opts: %p, log_opts: %x\n", argc, argv, add_opts, log_opts);
 
 #ifdef __WIN32
-	dprintf(dlevel,"initializng winsock...\n");
+	log_debug("initializng winsock...\n");
 	/* Initialize Winsock */
 	iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
 	if (iResult != 0) {
@@ -196,11 +204,11 @@ int solard_common_init(int argc,char **argv,char *version,opt_proctab_t *add_opt
 	opts = (add_opts ? opt_addopts(std_opts,add_opts) : std_opts);
 
 	/* Init opts */
-	dprintf(dlevel,"init'ing opts: %p\n",opts);
+	log_debug("init'ing opts: %p\n",opts);
 	opt_init(opts);
 
 	/* Process the opts */
-	dprintf(dlevel,"common_init: processing opts...\n");
+	log_debug("common_init: processing opts...\n");
 	error = opt_process(argc,argv,opts);
 	if (vers_flag) {
 		printf("%s\n",version);
@@ -208,14 +216,14 @@ int solard_common_init(int argc,char **argv,char *version,opt_proctab_t *add_opt
 	}
 
 	/* If help flag, display usage and exit */
-	dprintf(dlevel,"common_init: error: %d, help_flag: %d\n",error,help_flag);
+	log_debug("common_init: error: %d, help_flag: %d\n",error,help_flag);
 	if (!error && help_flag) {
 		opt_usage(argv[0],opts);
 		error = 1;
 	}
 
 	/* If add_opts, free malloc'd opts */
-	if (add_opts) mem_free(opts);
+	if (add_opts) free(opts);
 	if (error) return 1;
 
 	/* Set the requested flags */
@@ -288,30 +296,32 @@ int solard_common_init(int argc,char **argv,char *version,opt_proctab_t *add_opt
 
 	cfg = 0;
 	dprintf(dlevel,"configfile: %s\n", configfile);
-#if CFG
 	if (strlen(configfile)) {
 		cfg = cfg_read(configfile);
 		if (!cfg) log_write(LOG_SYSERR,"cfg_read %s",configfile);
 	}
-#endif
 	solard_get_dirs(cfg,"",home,1);
 
-#if CFG
+	dprintf(dlevel,"cfg: %p\n", cfg);
 	if (cfg) cfg_destroy(cfg);
-#endif
 
+	dprintf(dlevel,"done!\n");
 	return 0;
 }
 
-int solard_common_startup(config_t **cp, char *sname, char *configfile,
-			config_property_t *props, config_function_t *funcs,
-			mqtt_session_t **m, mqtt_callback_t *getmsg, void *mctx,
-			char *mqtt_info, mqtt_config_t *mc, int config_from_mqtt,
-			influx_session_t **i, char *influx_info, influx_config_t *ic,
-			JSEngine **js, int rtsize, int stksize, js_outputfunc_t *jsout)
+int solard_common_startup(config_t **cp, char *sname, char *configfile, config_property_t *props, config_function_t *funcs
+#ifdef MQTT
+		,mqtt_session_t **m, char *lwt, mqtt_callback_t *getmsg, void *mctx, char *mqtt_info, int config_from_mqtt
+#endif
+#ifdef INFLUX
+		,influx_session_t **i, char *influx_info
+#endif
+#ifdef JS
+		,JSEngine **js, int rtsize, int stksize, js_outputfunc_t *jsout
+#endif
+	)
 {
-	mqtt_config_t gmc;
-	influx_config_t gic;
+#ifdef MQTT
 	int mqtt_init_done;
 
 	/* Create MQTT session */
@@ -321,29 +331,48 @@ int solard_common_startup(config_t **cp, char *sname, char *configfile,
 		return 1;
 	}
 	dprintf(dlevel,"m: %p\n", *m);
+	dprintf(dlevel,"mqtt_info: %s\n", mqtt_info);
+	if (strlen(mqtt_info)) mqtt_parse_config(*m,mqtt_info);
+	if (lwt && strlen(lwt)) strncpy((*m)->lwt_topic,lwt,sizeof((*m)->lwt_topic)-1);
+#endif
+
+#ifdef INFLUX
+	/* Create InfluxDB session */
+	*i = influx_new();
+	if (!*i) {
+		log_syserror("unable to create InfluxDB session\n");
+		return 1;
+	}
+	dprintf(dlevel,"i: %p\n", *i);
+	dprintf(dlevel,"influx_info: %s\n", influx_info);
+	if (strlen(influx_info)) influx_parse_config(*i, influx_info);
+#endif
 
 	/* Init the config */
 	*cp = config_init(sname, props, funcs);
 	if (!*cp) return 0;
 	common_add_props(*cp, sname);
-	mqtt_add_props(*cp, &gmc, sname, mc);
-	influx_add_props(*cp, &gic, sname, ic);
+#ifdef MQTT
+	mqtt_add_props(*m, *cp, sname);
+#endif
+#ifdef INFLUX
+	influx_add_props(*i, *cp, sname);
+#endif
 
+#ifdef MQTT
 	mqtt_init_done = 0;
 	dprintf(dlevel,"config_from_mqtt: %d, configfile: %s\n", config_from_mqtt, configfile);
 	if (config_from_mqtt) {
-		/* If mqtt info specified on command line, parse it */
-		dprintf(dlevel,"mqtt_info: %s\n", mqtt_info);
-		if (strlen(mqtt_info)) mqtt_parse_config(mc,mqtt_info);
-
 		/* init mqtt */
-		if (mqtt_init(*m, mc)) return 1;
+		if (mqtt_init(*m)) return 1;
 		mqtt_init_done = 1;
 
 		/* read the config */
-//		if (config_from_mqtt(*cp, topic, m)) return 1;
+//		if (config_from_mqtt(*cp,*m)) return 1;
 
-	} else if (strlen(configfile)) {
+	} else
+#endif
+	if (strlen(configfile)) {
 		int fmt;
 		char *p;
 
@@ -358,29 +387,37 @@ int solard_common_startup(config_t **cp, char *sname, char *configfile,
 			return 1;
 		}
 	}
+#ifdef MQTT
+	/* re-apply mqtt_info if specified as commandline takes precedence */
+	if (strlen(mqtt_info)) mqtt_parse_config(*m,mqtt_info);
+#endif
+
+#ifdef INFLUX
+	/* re-apply influx_info if specified as commandline takes precedence */
+	if (strlen(influx_info)) influx_parse_config(*i,influx_info);
+#endif
+
+#ifdef MQTT
+//	mqtt_get_config(*m,*cp);
+#endif
+#ifdef INFLUX
+//	influx_get_config(*i,*cp);
+#endif
 	config_dump(*cp);
 
+#ifdef MQTT
 	/* If MQTT not init, do it now */
-	if (!mqtt_init_done) {
-		dprintf(1,"mqtt_info: %s\n", mqtt_info);
-		if (strlen(mqtt_info)) mqtt_parse_config(mc, mqtt_info);
-
-		if (mqtt_init(*m, mc)) return 1;
-		mqtt_init_done = 1;
-	}
+	if (!mqtt_init_done && mqtt_init(*m)) return 1;
 
 	/* Subscribe to our clientid */
-	sprintf(mqtt_info,"%s/%s/%s",SOLARD_TOPIC_ROOT,SOLARD_TOPIC_CLIENTS,mc->clientid);
+	sprintf(mqtt_info,"%s/%s/%s",SOLARD_TOPIC_ROOT,SOLARD_TOPIC_CLIENTS,(*m)->clientid);
 	mqtt_sub(*m,mqtt_info);
+#endif
 
-	/* Create InfluxDB session */
-	if (strlen(influx_info)) influx_parse_config(ic, influx_info);
-	*i = influx_new(ic);
-	if (!*i) {
-		log_syserror("unable to create InfluxDB session\n");
-		return 1;
-	}
-	dprintf(dlevel,"i: %p\n", *i);
+#ifdef INFLUX
+	/* Connect to the influx server */
+	influx_connect(*i);
+#endif
 
 #ifdef JS
 	*js = JS_EngineInit(rtsize, stksize, jsout);

@@ -22,3 +22,5 @@ dump_results();
 
 // Close it
 sb.close();
+
+exit(0);

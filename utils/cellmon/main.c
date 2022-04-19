@@ -51,7 +51,7 @@ void getpack(cellmon_config_t *conf, char *name, char *data) {
 		return;
 	}
 	dprintf(1,"dumping...\n");
-	battery_dump(&bat,1);
+//	battery_dump(&bat,1);
 	solard_set_state((&bat),BATTERY_STATE_UPDATED);
 	time(&bat.last_update);
 	if (!strlen(bat.name)) return;
@@ -72,13 +72,12 @@ void getpack(cellmon_config_t *conf, char *name, char *data) {
 
 int main(int argc,char **argv) {
 	cellmon_config_t *conf;
-	client_agentinfo_t *ap;
+	client_agentinfo_t *info;
 	solard_message_t *msg;
 	char configfile[256],topic[SOLARD_TOPIC_SIZE];
 //	char target[SOLARD_ROLE_LEN+SOLARD_NAME_LEN+2];
 //	char role[SOLARD_ROLE_LEN];
 //	char name[SOLARD_NAME_LEN];
-	long start;
 //	int web_flag;
 	opt_proctab_t opts[] = {
 		/* Spec, dest, type len, reqd, default val, have */
@@ -103,17 +102,6 @@ int main(int argc,char **argv) {
 	if (!conf->c) return 1;
 	conf->packs = list_create();
 
-#if 0
-	if (!strlen(topic)) {
-		p = cfg_get_item(conf->c->cfg,"cellmon","topic");
-		if (p) strncat(topic,p,sizeof(topic)-1);
-		else sprintf(topic,"%s/%s/+/%s",SOLARD_TOPIC_ROOT,SOLARD_TOPIC_AGENTS,SOLARD_FUNC_DATA);
-	}
-	printf("topic: %s\n", topic);
-
-	if (mqtt_sub(conf->c->m,topic)) return 1;
-#endif
-
 	agents = conf->c->agents;
 	sleep(1);
         if (!list_count(agents)) {
@@ -125,60 +113,23 @@ int main(int argc,char **argv) {
         }
 
 	/* main loop */
-	start = mem_used();
 	while(1) {
 		list_reset(agents);
-		while((ap = list_get_next(agents)) != 0) {
-			dprintf(1,"agent: %s\n", ap->name);
-			p = client_getagentrole(ap);
+		while((info = list_get_next(agents)) != 0) {
+			dprintf(1,"agent: %s\n", info->name);
+			p = client_getagentrole(info);
 			dprintf(1,"p: %s\n", p);
 			if (!p || strcmp(p,SOLARD_ROLE_BATTERY) != 0) continue;
-			dprintf(1,"count: %d\n", list_count(ap->mq));
-			while((msg = list_get_next(ap->mq)) != 0) {
+			dprintf(1,"count: %d\n", list_count(info->mq));
+			while((msg = list_get_next(info->mq)) != 0) {
 				dprintf(1,"getting pack...\n");
 				getpack(conf,msg->name,msg->data);
 				dprintf(1,"adding...\n");
-				list_delete(ap->mq,msg);
+				list_delete(info->mq,msg);
 			}
 		}
 		display(conf);
-		dprintf(1,"used: %ld\n", mem_used() - start);
 		sleep(1);
 	}
-
-#if 0
-	/* main loop */
-	start = mem_used();
-	while(1) {
-		dprintf(1,"count: %d\n", list_count(conf->c->mq));
-		list_reset(conf->c->mq);
-		while((msg = list_get_next(conf->c->mq)) != 0) {
-//			printf("msg: topic: %s, id: %s, len: %d, replyto: %s\n", msg->topic, msg->id, (int)strlen(msg->data), msg->replyto);
-			*role = 0;
-			p = strchr(msg->id,'/');
-			if (p) {
-				strncpy(target,msg->id,sizeof(target)-1);
-				p = strchr(target,'/');
-				if (p) {
-					*p = 0;
-					strncpy(role,target,sizeof(role)-1);
-					strncpy(name,p+1,sizeof(name)-1);
-				}
-			}
-			if (!*role) {
-				strncpy(name,msg->id,sizeof(name)-1);
-				strncpy(role,ap->role,sizeof(role)-1);
-			}
-//			printf("name: %s, role: %s\n", name, role);
-			if (strcmp(role,SOLARD_ROLE_BATTERY) != 0) continue;
-//			printf("getting pack...\n");
-			getpack(conf,msg->name,msg->data);
-			list_delete(conf->c->mq,msg);
-		}
-		display(conf);
-		dprintf(1,"used: %ld\n", mem_used() - start);
-		sleep(1);
-	}
-#endif
 	return 0;
 }

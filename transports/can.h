@@ -15,6 +15,7 @@ struct can_frame {
 #else
 #include <linux/can.h>
 #endif
+typedef struct can_frame can_frame_t;
 
 struct can_config_filter {
 	uint32_t *id;

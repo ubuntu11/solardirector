@@ -10,6 +10,12 @@ LICENSE file in the root directory of this source tree.
 #define DEBUG_CONV 1
 #define dlevel 6
 
+#ifdef DEBUG
+#undef DEBUG
+#define DEBUG DEBUG_CONV
+#endif
+#include "debug.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,14 +26,6 @@ LICENSE file in the root directory of this source tree.
 #include <ctype.h>
 #include "utils.h"
 #include "list.h"
-
-#ifdef DEBUG
-#undef DEBUG
-#endif
-#if DEBUG_CONV
-#define DEBUG 1
-#endif
-#include "debug.h"
 
 #ifdef __WIN32
 #include <inttypes.h>
@@ -159,9 +157,18 @@ int conv_type(int dt,void *d,int dl,int st,void *s,int sl) {
 		case DATA_TYPE_U32_ARRAY:
 		case DATA_TYPE_U64_ARRAY:
 		case DATA_TYPE_F64_ARRAY:
-		case DATA_TYPE_STRING_ARRAY:
 			log_error("**** conv dt: %04x(%s) unhandled st: %04x(%s)\n", dt, typestr(dt), st, typestr(st));
 			break;
+		case DATA_TYPE_STRING_ARRAY:
+		    {
+			char **sa = s;
+			char *p = d;
+
+			*p = 0;
+			for(i=0; i < sl; i++) p += sprintf(p,"%s%s",(i ? "," : ""),sa[i]);
+			return_len = strlen((char *)d);
+		    }
+		    break;
 		case DATA_TYPE_STRING_LIST:
 		    {
 			int first,dlen,slen;

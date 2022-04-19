@@ -154,8 +154,8 @@ void dodump(si_session_t *s, int id) {
 void display_data(si_session_t *s,int mon_flag) {
 	_outpower("Active Grid",s->data.active_grid_l1,s->data.active_grid_l2,s->data.active_grid_l3);
 	_outpower("Active SI",s->data.active_si_l1,s->data.active_si_l2,s->data.active_si_l3);
-	_outpower("Rereactive Grid",s->data.reactive_grid_l1,s->data.reactive_grid_l2,s->data.reactive_grid_l3);
-	_outpower("Active SI",s->data.reactive_si_l1,s->data.reactive_si_l2,s->data.reactive_si_l3);
+	_outpower("Reactive Grid",s->data.reactive_grid_l1,s->data.reactive_grid_l2,s->data.reactive_grid_l3);
+	_outpower("Reactive SI",s->data.reactive_si_l1,s->data.reactive_si_l2,s->data.reactive_si_l3);
 	_outpower("AC1 Voltage",s->data.ac1_voltage_l1,s->data.ac1_voltage_l2,s->data.ac1_voltage_l3);
 	dfloat("AC1 Frequency","%2.2f",s->data.ac1_frequency);
 	dfloat("AC1 Current","%2.2f",s->data.ac1_current);
@@ -248,13 +248,13 @@ void display_data(si_session_t *s,int mon_flag) {
 }
 
 int monitor(si_session_t *s, int interval) {
-    struct tm *tm;
-    time_t t;
+//	struct tm *tm;
+//	time_t t;
 
 
 	while(1) {
-		t = time(NULL);
-		tm = localtime(&t);
+//		t = time(NULL);
+//		tm = localtime(&t);
 		if (si_can_get_data(s)) {
 //		if (si_can_read_data(s,1)) {
 			log_error("unable to read data");

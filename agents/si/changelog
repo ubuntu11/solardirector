@@ -1,0 +1,7 @@
+
+vers	date		what
+1.00	20211016	inital version
+2.00	20220327	version 2 - javascript - pub and charge in js
+2.01	20220402	write direct to influx
+2.02	20220412	dynamic feed - dynamically change charge amps to not use grid
+2.03	20220413	gen_hold_soc - hold the SOC at a % to keep gen from turning off until charge done

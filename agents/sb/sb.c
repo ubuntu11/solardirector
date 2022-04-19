@@ -7,10 +7,9 @@ LICENSE file in the root directory of this source tree.
 */
 
 #include "sb.h"
-
 #define dlevel 1
 
-#define SB_INIT_BUFSIZE 1024
+#define SB_INIT_BUFSIZE 4096
 
 char *gettag(sb_session_t *s, json_value_t *rv) {
 	json_object_t *o;
@@ -236,7 +235,6 @@ static int getresults(sb_session_t *s, json_object_t *o) {
 					strncpy(s->session_id,json_value_get_string(vv),sizeof(s->session_id)-1);
 				} else if (strcmp(oo->names[i],"isLogin") == 0) {
 					json_to_type(DATA_TYPE_BOOLEAN,&bval,sizeof(bval),oo->values[i]);
-//					bval = json_value_get_boolean(oo->values[i]);
 					dprintf(dlevel,"isLogin: %d\n", bval);
 					if (!bval) *s->session_id = 0;
 				} else if (type == JSON_TYPE_OBJECT) {
@@ -268,14 +266,16 @@ static size_t wrfunc(void *ptr, size_t size, size_t nmemb, void *ctx) {
 //	dprintf(dlevel,"newidx: %d\n", newidx);
 	if (newidx > s->bufsize) {
 		char *newbuf;
+		int newsize;
 
-		newbuf = realloc(s->buffer,newidx);
+		newsize = newidx + 1;
+		newbuf = realloc(s->buffer,newsize);
 		if (!newbuf) {
-			log_syserror("wrfunc: realloc(buffer,%d)",newidx);
+			log_syserror("wrfunc: realloc(buffer,%d)",newsize);
 			return 0;
 		}
 		s->buffer = newbuf;
-		s->bufsize = newidx;
+		s->bufsize = newsize;
 	}
 	strcpy(s->buffer + s->bufidx,ptr);
 	s->bufidx = newidx;
@@ -313,17 +313,6 @@ int sb_request(sb_session_t *s, char *func, char *fields) {
 		sb_driver.close(s);
 		return 1;
 	}
-#if 0
-	if (s->bufidx) {
-		register char *p,*p2;
-		p2 = s->buffer;
-		for(p = s->buffer; *p; p++) {
-			if (*p == '\n' || *p == '\r') continue;
-			else if (*p < 0 || *p > 127) continue;
-			*p2++ = *p;
-		}
-	}
-#endif
 
 	/* Parse the buffer */
 	dprintf(1,"bufidx: %d\n", s->bufidx);
@@ -339,25 +328,42 @@ int sb_request(sb_session_t *s, char *func, char *fields) {
 		
 		o = json_value_get_object(s->data);
 		dprintf(dlevel,"count: %d, names[0]: %s\n", o->count, o->names[0]);
-		if (o->count == 1 && strcmp(o->names[0],"result") == 0)
-			return getresults(s,json_value_get_object(s->data));
+		if (o->count == 1 && strcmp(o->names[0],"result") == 0) {
+			if (getresults(s,json_value_get_object(s->data)))
+				return 1;
+		}
 	}
 
 	return 0;
 }
 
+static int curl_init(sb_session_t *s) {
+	struct curl_slist *hs = curl_slist_append(0, "Content-Type: application/json");
+
+	s->curl = curl_easy_init();
+	if (!s->curl) {
+		log_syserror("sb_new: curl_init");
+		return 1;
+	}
+
+//	curl_easy_setopt(s->curl, CURLOPT_VERBOSE, 1L);
+	curl_easy_setopt(s->curl, CURLOPT_SSL_VERIFYPEER, 0L);
+	curl_easy_setopt(s->curl, CURLOPT_SSL_VERIFYHOST, 0L);
+	curl_easy_setopt(s->curl, CURLOPT_HTTPHEADER, hs);
+	curl_easy_setopt(s->curl, CURLOPT_WRITEFUNCTION, wrfunc);
+	curl_easy_setopt(s->curl, CURLOPT_WRITEDATA, s);
+	return 0;
+}
+
 void *sb_new(void *driver, void *driver_handle) {
 	sb_session_t *s;
-	struct curl_slist *hs = curl_slist_append(0, "Content-Type: application/json");
 
 	s = calloc(1,sizeof(*s));
 	if (!s) {
 		log_syserror("sb_new: calloc");
 		return 0;
 	}
-	s->curl = curl_easy_init();
-	if (!s->curl) {
-		log_syserror("sb_new: curl_init");
+	if (curl_init(s)) {
 		free(s);
 		return 0;
 	}
@@ -371,12 +377,6 @@ void *sb_new(void *driver, void *driver_handle) {
 	s->bufsize = SB_INIT_BUFSIZE;
 	s->bufidx = 0;
 	s->results = list_create();
-//	curl_easy_setopt(s->curl, CURLOPT_VERBOSE, 1L);
-	curl_easy_setopt(s->curl, CURLOPT_SSL_VERIFYPEER, 0L);
-	curl_easy_setopt(s->curl, CURLOPT_SSL_VERIFYHOST, 0L);
-	curl_easy_setopt(s->curl, CURLOPT_HTTPHEADER, hs);
-	curl_easy_setopt(s->curl, CURLOPT_WRITEFUNCTION, wrfunc);
-	curl_easy_setopt(s->curl, CURLOPT_WRITEDATA, s);
 
 	return s;
 }
@@ -384,7 +384,7 @@ void *sb_new(void *driver, void *driver_handle) {
 static int sb_destroy(void *handle) {
 	sb_session_t *s = handle;
 
-	list_destroy(s->results);
+	if (s->results) sb_destroy_results(s);
 	free(s->buffer);
 	curl_easy_cleanup(s->curl);
 	free(s);
@@ -414,6 +414,12 @@ int sb_open(void *handle) {
 		json_destroy_object(o);
 	}
 
+	if (!s->curl) curl_init(s);
+        if (!s->curl) {
+                log_syserror("sb_open: curl_init");
+                return 1;
+        }
+
 	*s->session_id = 0;
 	if (sb_request(s,SB_LOGIN,s->login_fields)) return 1;
 	if (!*s->session_id) {
@@ -436,6 +442,9 @@ int sb_close(void *handle) {
 
 	sb_request(s,SB_LOGOUT,"{}");
 	s->connected = 0;
+	solard_clear_state(s,SB_STATE_OPEN);
+	curl_easy_cleanup(s->curl);
+	s->curl = 0;
 	return 0;
 }
 
@@ -445,8 +454,8 @@ static int sb_read(void *handle, uint32_t *control, void *buf, int buflen) {
 	/* Open if not already open */
         if (sb_driver.open(s)) return 1;
 
+	/* Read the values */
 	if (!s->read_fields) s->read_fields = sb_mkfields(0,0);
-
 	if (sb_request(s,SB_ALLVAL,s->read_fields)) return 1;
 	return 0;
 }

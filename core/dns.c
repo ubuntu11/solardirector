@@ -20,6 +20,7 @@ LICENSE file in the root directory of this source tree.
 extern int h_errno;
 #include <ctype.h>
 #endif
+#include <arpa/inet.h>
 
 #define dlevel 4
 
@@ -245,55 +246,56 @@ int os_gethostbyname(char *dest, int destsize, char *name) {
 	return 0;
 }
 #else
+#if 1
 static int _os_gethostbyname(char *addr, int addrsize, char *name) {
-	int rc, err;
-	void *tmp;
-	struct hostent hbuf;
-	struct hostent *result;
-	char *buf;
-	unsigned char *ptr;
-	int len;
+	struct addrinfo *result;
+	struct addrinfo *res;
+	int error;
 
-	dprintf(dlevel,"name: %s\n", name);
+	*addr = 0;
 
-	len = 1024;
-	buf = malloc(len);
-
-os_gethostbyname_again:
-	while ((rc = gethostbyname_r(name, &hbuf, buf, len, &result, &err)) == ERANGE) {
-		len *= 2;
-		tmp = realloc(buf, len);
-		if (!tmp) {
-			log_syserror("rdev_getip: realloc(buf,%d)",len);
-			free(buf);
-			return 1;
-		} else {
-			buf = tmp;
-		}
-	}
-	free(buf);
-
-	dprintf(1,"rc: %d\n", rc);
-	if (rc == TRY_AGAIN)
-		goto os_gethostbyname_again;
-	else if (rc == HOST_NOT_FOUND)
-		return 2;
-	else if (rc == NO_ADDRESS || rc == NO_DATA)
-		return 3;
-	else if (rc || !result)
+	/* resolve the domain name into a list of addresses */
+	error = getaddrinfo(name, NULL, NULL, &result);
+	if (error != 0) {   
+		if (error == EAI_SYSTEM) log_syserror("_os_gethostbyname: getaddrinfo");
+		else log_error("_os_gethostbyname: getaddrinfo: %s\n", gai_strerror(error));
 		return 1;
+	}
 
-	/* not found */
-	dprintf(1,"result->h_addr: %p\n", result->h_addr);
-	if (!result->h_addr) return 2;
+	/* loop over all returned results */
+	for (res = result; res!= NULL; res = res->ai_next) {
+		if (res->ai_family != AF_INET) continue;
+		if (!inet_ntop(res->ai_family,  &((struct sockaddr_in *)res->ai_addr)->sin_addr, addr, addrsize)) continue;
+		break;
+	}
 
-	/* XXX.XXX.XXX.XXX + NULL */
-	if (addrsize < 16) return 1;
-
-	ptr = (unsigned char *) result->h_addr;
-	sprintf(addr,"%d.%d.%d.%d",ptr[0],ptr[1],ptr[2],ptr[3]);
+	freeaddrinfo(result);
 	return 0;
 }
+#else
+int _os_gethostbyname(char *dest, int destsize, char *name) {
+	struct hostent *he;
+	unsigned char *ptr;
+	int r;
+
+	r = 0;
+	he = gethostbyname(name);
+	if (!he) {
+		r = 1;
+		return r;
+	}
+
+	dprintf(1,"he->h_addr: %p\n", he->h_addr);
+	if (!he->h_addr) return 2;
+
+	/* XXX.XXX.XXX.XXX + NULL */
+	if (destsize < 16) return 1;
+
+	ptr = (unsigned char *) he->h_addr;
+	sprintf(dest,"%d.%d.%d.%d",ptr[0],ptr[1],ptr[2],ptr[3]);
+	return 0;
+}
+#endif
 
 static int _os_gethostbyname_init = 0;
 static list nameservers;
@@ -322,7 +324,7 @@ static int do_init(void) {
 		if (!p) continue;
 		else *p = 0;
 		dprintf(dlevel,"line: %s\n", line);
-		if (strcasecmp(line,"search") == 0) {
+		if (strcasecmp(line,"search") == 0 || strcmp(line,"domain") == 0) {
 			s = p + 1;
 			i = 0;
 			while(1) {
@@ -341,7 +343,6 @@ static int do_init(void) {
 int os_gethostbyname(char *addr, int addrsize, char *name) {
 	char temp[128];
 	register char *p;
-	int len;
 
 	dprintf(dlevel,"name: %s\n", name);
 	if (strcmp(name,"localhost") == 0) {
@@ -355,9 +356,8 @@ int os_gethostbyname(char *addr, int addrsize, char *name) {
 	}
 
 	if (!_os_gethostbyname_init) do_init();
-	len = strlen(name);
-	if (len > 1) len--;
-	p = name + len;
+	p = name + strlen(name);
+	while(*p == 0 && p > name) p--;
 	dprintf(dlevel,"p: %c\n", *p);
 	if (*p == '.') return _os_gethostbyname(addr,addrsize,name);
 	list_reset(domains);

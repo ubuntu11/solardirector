@@ -8,6 +8,13 @@ LICENSE file in the root directory of this source tree.
 */
 
 #define DEBUG_UTILS 0
+#define dlevel 6
+
+#ifdef DEBUG
+#undef DEBUG
+#define DEBUG DEBUG_UTILS
+#endif
+#include "debug.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -17,18 +24,11 @@ LICENSE file in the root directory of this source tree.
 #include <stdarg.h>
 #include <stdlib.h>
 #include <unistd.h>
-#ifdef DEBUG
-#undef DEBUG
-#endif
-#define DEBUG DEBUG_UTILS
-#include "utils.h"
-#include "debug.h"
 #ifdef __WIN32
 #include <windows.h>
 #endif
 #include <math.h>
-
-#define dlevel 4
+#include "utils.h"
 
 void _bindump(long offset,void *bptr,int len) {
 	unsigned char *buf = bptr;
@@ -231,18 +231,17 @@ is_ip_error:
 int get_timestamp(char *ts, int tslen, int local) {
 	struct tm *tptr;
 	time_t t;
-//	char temp[32];
 
 	if (!ts || !tslen) return 1;
 
 	/* Fill the tm struct */
 	t = time(NULL);
 	tptr = 0;
-	DPRINTF("local: %d\n", local);
+//	dprintf(2,"local: %d\n", local);
 	if (local) tptr = localtime(&t);
 	else tptr = gmtime(&t);
 	if (!tptr) {
-		DPRINTF("unable to get %s!\n",local ? "localtime" : "gmtime");
+		dprintf(2,"unable to get %s!\n",local ? "localtime" : "gmtime");
 		return 1;
 	}
 
@@ -250,15 +249,11 @@ int get_timestamp(char *ts, int tslen, int local) {
 	if (tptr->tm_mon < 0 || tptr->tm_mon > 11) tptr->tm_mon = 0;
 
 	/* Fill string with yyyymmddhhmmss */
-//	sprintf(temp,"%04d-%02d-%02d %02d:%02d:%02d",
 	snprintf(ts,tslen,"%04d-%02d-%02d %02d:%02d:%02d",
 		1900+tptr->tm_year,tptr->tm_mon+1,tptr->tm_mday,
 		tptr->tm_hour,tptr->tm_min,tptr->tm_sec);
-//	DPRINTF("temp: %s\n", temp);
 
-//	ts[0] = 0;
-//	strncat(ts,temp,tslen);
-	DPRINTF("returning: %s\n", ts);
+	dprintf(2,"returning: %s\n", ts);
 	return 0;
 }
 
@@ -285,10 +280,14 @@ int os_setenv(const char *name, const char *value, int overwrite) {
 }
 
 int os_exists(char *path, char *name) {
-	char temp[1024];
 
-	snprintf(temp,sizeof(temp)-1,"%s/%s",path,name);
-	return (access(temp,0) == 0);
+	if (name) {
+		char temp[1024];
+		snprintf(temp,sizeof(temp)-1,"%s/%s",path,name);
+		return (access(temp,0) == 0);
+	} else {
+		return (access(path,0) == 0);
+	}
 }
 
 bool fequal(float a, float b) {

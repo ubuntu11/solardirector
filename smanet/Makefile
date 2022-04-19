@@ -1,8 +1,7 @@
 
-SMANET=yes
-
 LIBNAME=$(shell basename $(shell pwd))
 SRCS=smanet.c frame.c packet.c command.c channel.c value.c jsfuncs.c
+SMANET=yes
 
 CLEANFILES+=try mktab
 

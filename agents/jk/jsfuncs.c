@@ -281,6 +281,10 @@ int js_init_jk(JSContext *cx, JSObject *parent, void *priv) {
 
 	/* Create the global convenience objects */
 	JS_DefineProperty(cx, global, "data", s->data_val, 0, 0, 0);
+	JS_DefineProperty(cx, global, "agent", s->agent_val, 0, 0, 0);
+	JS_DefineProperty(cx, global, "config", s->ap->config_val, 0, 0, 0);
+	JS_DefineProperty(cx, global, "mqtt", s->ap->mqtt_val, 0, 0, 0);
+	JS_DefineProperty(cx, global, "influx", s->ap->influx_val, 0, 0, 0);
 
 	dprintf(dlevel,"done!\n");
 	return 0;

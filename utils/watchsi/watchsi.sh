@@ -9,15 +9,11 @@ fi
 
 while true
 do
-	data=$(/usr/bin/mosquitto_sub -h localhost -t 'SolarD/Inverter/si/Data' -C 1 -W 22)
+	data=$(/usr/bin/mosquitto_sub -h localhost -t 'SolarD/Agents/si/Data' -C 1 -W 22)
 	if test -z "$data"; then
 		echo "[$(date)] restarting SI"
 		killall si
-	else
-		bv=$(echo "$data" | jq '.battery_voltage')
-		if test $(echo "$bv < 10" | bc -l) -eq 1; then
-			echo "[$(date)] voltage: $bv"
-			killall si
-		fi
+		sleep 1
+		systemctl restart si
 	fi
 done

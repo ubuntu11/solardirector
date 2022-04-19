@@ -68,9 +68,9 @@ static int ip_open(void *handle) {
 	ip_session_t *s = handle;
 	struct sockaddr_in addr;
 	socklen_t sin_size;
-	struct hostent *he;
+//	struct hostent *he;
 	char temp[SOLARD_TARGET_LEN];
-	uint8_t *ptr;
+//	uint8_t *ptr;
 
 	if (s->sock != INVALID_SOCKET) return 0;
 	s->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -79,6 +79,8 @@ static int ip_open(void *handle) {
 		return 1;
 	}
 
+	os_gethostbyname(temp,sizeof(temp),s->target);
+#if 0
 	/* Try to resolve the target */
 	he = (struct hostent *) 0;
 	if (!is_ip(s->target)) {
@@ -90,6 +92,7 @@ static int ip_open(void *handle) {
 		}
 	}
 	if (!he) strcpy(temp,s->target);
+#endif
 	dprintf(dlevel,"temp: %s\n",temp);
 
 	memset(&addr,0,sizeof(addr));

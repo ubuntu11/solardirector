@@ -128,12 +128,12 @@ static int _read_values(smanet_session_t *s, smanet_channel_t *cx) {
 		if (r) return r;
 		if (debug >= smanet_dlevel+1) bindump("values",p->data,p->dataidx);
 		if (p->dataidx == dsize) break;
-		else dprintf(0,"dataidx: %d, dsize: %d\n", p->dataidx, dsize);
+		else dprintf(dlevel,"dataidx: %d, dsize: %d\n", p->dataidx, dsize);
 		p->dataidx = 0;
 	}
 	dprintf(1,"retries: %d\n", retries);
 	if (retries < 0) {
-		log_error("error reading values");
+		sprintf(s->errmsg,"_read_values: retries exhausted");
 		return 1;
 	}
 
@@ -176,7 +176,14 @@ static int _read_values(smanet_session_t *s, smanet_channel_t *cx) {
 			break;
 		case DATA_TYPE_SHORT:
 			v->wval = _getu16(sptr);
+//			dprintf(smanet_dlevel,"wval: %d (%04x)\n", v->wval, v->wval);
 			dprintf(dlevel,"%s: %d\n", c->name, v->wval);
+#if 0
+			if (strcmp(c->name,"TotExtCur") == 0) {
+				bindump("wval",&v->wval,2);
+				printf("%s: %d\n", c->name, v->wval);
+			}
+#endif
 			sptr += 2;
 			break;
 		case DATA_TYPE_LONG:
@@ -554,6 +561,30 @@ int smanet_set_value(smanet_session_t *s, char *name, double val, char *text) {
 	return _write_value(s,c,&v);
 }
 
+int smanet_set_and_verify_option(smanet_session_t *s, char *name, char *value) {
+	int retry;
+	char *text;
+	double d;
+
+	dprintf(dlevel,"name: %s, value: >>%s<<\n", name, value);
+
+	for(retry=0; retry < 3; retry++) {
+		dprintf(dlevel,"setting...retries: %d\n", retry);
+		if (smanet_set_value(s, name, 0, value) == 0) {
+			dprintf(dlevel,"verifying...\n");
+			text = 0;
+			if (smanet_get_value(s,name,&d,&text) == 0) {
+				dprintf(dlevel,"d: %f, text: >>%s<<\n", d, text);
+				if (text && strcmp(text,value) == 0) {
+					dprintf(dlevel,"match!\n");
+					return 0;
+				}
+			}
+		}
+	}
+	return 0;
+}
+
 #if 0
 static double _setval(smanet_value_t *v) {
 }
@@ -609,31 +640,6 @@ int smanet_set_optionbyname(smanet_session_t *s, char *name, char *opt) {
 #endif
 
 #if 0
-#define CHANVAL_INVALID -1
-void TChannel_SetValue(struct _TChannel * me, TNetDevice * dev, double value)
-{
-   switch(me->wCType & 0x000f)
-   {
-      case CH_ANALOG:
-         if (me->wCType & CH_PARA)
-            TChannel_SetRawValue(me, dev, value, 0 );
-         else
-            TChannel_SetRawValue(me, dev, (value - me->fOffset) / me->fGain, 0);
-         break;
-
-      case CH_COUNTER:
-         TChannel_SetRawValue(me, dev, value / me->fGain, 0);
-         break;
-
-      case CH_STATUS:
-      case CH_DIGITAL:
-         TChannel_SetRawValue(me, dev, value, 0 );
-         break;
-
-      default:
-         break;
-   }
-}
 double TChannel_GetValue(TChannel * me, TNetDevice * dev, int iValIndex)
 {
    double dblValue;
@@ -680,49 +686,5 @@ double TChannel_GetValue(TChannel * me, TNetDevice * dev, int iValIndex)
 
    err:
    return 0.0;
-}
-#endif
-
-#if 0
-char *smanet_get_option(smanet_session_t *s, smanet_channel_t *c) {
-	register char *p;
-	register int i;
-
-	if ((c->mask & CH_STATUS) == 0) return 0;
-
-	i = 0;
-	list_reset(c->strings);
-	while((p = list_get_next(c->strings)) != 0) {
-		dprintf(smanet_dlevel,"p: %s\n", p);
-		if (i == c->value.bval) return p;
-		i++;
-	}
-	return 0;
-}
-
-static int _set_value(smanet_value_t *v, double val) {
-	switch(v->type) {
-	case DATA_TYPE_BYTE:
-		v->bval = val;
-		break;
-	case DATA_TYPE_SHORT:
-		v->wval = val;
-		break;
-	case DATA_TYPE_LONG:
-		v->lval = val;
-		break;
-	case DATA_TYPE_FLOAT:
-		v->fval = val;
-		break;
-	case DATA_TYPE_DOUBLE:
-		v->dval = val;
-		break;
-	default:
-		dprintf(smanet_dlevel,"unhandled type!\n");
-		return 1;
-		break;
-	}
-	time(&v->timestamp);
-	return 0;
 }
 #endif

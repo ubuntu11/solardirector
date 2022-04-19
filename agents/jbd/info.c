@@ -61,40 +61,40 @@ int jbd_get_hwinfo(jbd_session_t *s) {
 
 json_value_t *jbd_get_info(jbd_session_t *s) {
 	json_object_t *o;
-	long mem_start;
 	uint8_t data[8];
 	uint16_t val;
 	char tpstr[128];
 	int i,have_info,bytes;
 
-	dprintf(1,"s: %p\n", s);
+	printf("s: %p\n", s);
 	if (!s) return 0;
 
-#if 1
-	/* Get the info */
-	if (jbd_open(s) < 0) return 0;
-	have_info = (jbd_get_hwinfo(s) ? 0 : 1);
+#if 0
+	if (strcmp(s->tp->name,"null") != 0) {
+		/* Get the info */
+		if (jbd_open(s) < 0) return 0;
+		have_info = (jbd_get_hwinfo(s) ? 0 : 1);
 
-	/* Get balance info */
-	if (jbd_eeprom_open(s) < 0) return 0;
-	bytes = jbd_rw(s, JBD_CMD_READ, JBD_REG_FUNCMASK, data, sizeof(data));
-	if (bytes < 0) return 0;
-	val = jbd_getshort(data);
-	dprintf(1,"val: %d\n", val);
-	if (val & JBD_FUNC_CHG_BALANCE)
-		s->balancing = 2;
-	else if (val & JBD_FUNC_BALANCE_EN)
-		s->balancing = 1;
-	else
-		s->balancing = 0;
-	jbd_eeprom_close(s);
+		/* Get balance info */
+		if (jbd_eeprom_open(s) < 0) return 0;
+		bytes = jbd_rw(s, JBD_CMD_READ, JBD_REG_FUNCMASK, data, sizeof(data));
+		if (bytes < 0) return 0;
+		val = jbd_getshort(data);
+		dprintf(1,"val: %d\n", val);
+		if (val & JBD_FUNC_CHG_BALANCE)
+			s->balancing = 2;
+		else if (val & JBD_FUNC_BALANCE_EN)
+			s->balancing = 1;
+		else
+			s->balancing = 0;
+		jbd_eeprom_close(s);
+	}
 #endif
 
-	mem_start = mem_used();
-	dprintf(1,"mem_start: %ld\n",mem_start);
-
 	o = json_create_object();
+	printf("o: %p\n", o);
 	if (!o) return 0;
+#if 0
 	json_object_set_string(o,"agent_name",jbd_driver.name);
 	json_object_set_string(o,"agent_role",SOLARD_ROLE_BATTERY);
 	json_object_set_string(o,"agent_description","JBD BMS Agent");
@@ -111,8 +111,10 @@ json_value_t *jbd_get_info(jbd_session_t *s) {
 		json_object_set_string(o,"device_mfgdate",s->hwinfo.mfgdate);
 		json_object_set_string(o,"device_version",s->hwinfo.version);
 	}
-	config_add_info(s->ap->cp,o);
+	printf("o: %p\n", o);
+//	config_add_info(s->ap->cp,o);
+#endif
 
-	dprintf(1,"mem_used: %ld\n",mem_used() - mem_start);
+	printf("getting value...\n");
 	return json_object_get_value(o);
 }

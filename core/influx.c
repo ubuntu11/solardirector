@@ -12,18 +12,25 @@ LICENSE file in the root directory of this source tree.
 
 #ifdef DEBUG
 #undef DEBUG
-#endif
 #define DEBUG DEBUG_INFLUX
+#endif
 #include "debug.h"
 
 #include "common.h"
 #include "influx.h"
 #include <curl/curl.h>
+#ifdef JS
+#include "jsnum.h" /* for JSDOUBLE_IS_NaN */
+#endif
 
 #define SESSION_ID_SIZE 128
 
 struct influx_session {
-	influx_config_t config;
+	char endpoint[INFLUX_ENDPOINT_SIZE];
+	char database[INFLUX_DATABASE_SIZE];
+	char username[INFLUX_USERNAME_SIZE];
+	char password[INFLUX_PASSWORD_SIZE];
+	bool connected;
 	int errcode;
 	char errmsg[128];
 	CURL *curl;
@@ -34,7 +41,9 @@ struct influx_session {
 	int bufidx;                     /* Current write pos */
 	json_value_t *data;
 	list results;
+#ifdef JS
 	jsval results_val;
+#endif
 	char *login_fields;
 	char *read_fields;
 	char *config_fields;
@@ -43,16 +52,17 @@ struct influx_session {
 };
 typedef struct influx_session influx_session_t;
 
-int influx_parse_config(influx_config_t *conf, char *influx_info) {
+int influx_parse_config(influx_session_t *s, char *influx_info) {
 	dprintf(dlevel,"info: %s\n", influx_info);
-	strncpy(conf->endpoint,strele(0,",",influx_info),sizeof(conf->endpoint)-1);
-	strncpy(conf->database,strele(1,",",influx_info),sizeof(conf->database)-1);
-	strncpy(conf->username,strele(2,",",influx_info),sizeof(conf->username)-1);
-	strncpy(conf->password,strele(3,",",influx_info),sizeof(conf->password)-1);
-	dprintf(dlevel,"endpoint: %s, database: %s, user: %s, pass: %s\n", conf->endpoint, conf->database, conf->username, conf->password);
+	strncpy(s->endpoint,strele(0,",",influx_info),sizeof(s->endpoint)-1);
+	strncpy(s->database,strele(1,",",influx_info),sizeof(s->database)-1);
+	strncpy(s->username,strele(2,",",influx_info),sizeof(s->username)-1);
+	strncpy(s->password,strele(3,",",influx_info),sizeof(s->password)-1);
+	dprintf(dlevel,"endpoint: %s, database: %s, user: %s, pass: %s\n", s->endpoint, s->database, s->username, s->password);
 	return 0;
 }
 
+#if 0
 static size_t getheader(void *ptr, size_t size, size_t nmemb, void *ctx) {
 	influx_session_t *s = ctx;
 	char *version_line = "X-Influxdb-Version";
@@ -68,12 +78,13 @@ static size_t getheader(void *ptr, size_t size, size_t nmemb, void *ctx) {
 		strncpy(s->version,strele(1,": ",line),sizeof(s->version)-1);
 	return bytes;
 }
+#endif
 
 static size_t getdata(void *ptr, size_t size, size_t nmemb, void *ctx) {
 	influx_session_t *s = ctx;
 	int bytes,newidx;
 
-//	printf("data: %s\n",(char *)ptr);
+	if (s->verbose) log_info("data: %s\n",(char *)ptr);
 
 	dprintf(dlevel,"bufsize: %d\n", s->bufsize);
 
@@ -83,12 +94,13 @@ static size_t getdata(void *ptr, size_t size, size_t nmemb, void *ctx) {
 	dprintf(dlevel,"newidx: %d\n", newidx);
 	if (newidx > s->bufsize) {
 		char *newbuf;
+		int newsize;
 
-		dprintf(dlevel,"buffer: %p\n", s->buffer);
-		newbuf = realloc(s->buffer,newidx);
+		newsize = newidx + 1;
+		newbuf = realloc(s->buffer,newsize);
 		dprintf(dlevel,"newbuf: %p\n", newbuf);
 		if (!newbuf) {
-			log_syserror("influx_getdata: realloc(buffer,%d)",newidx);
+			log_syserror("influx_getdata: realloc(buffer,%d)",newsize);
 			return 0;
 		}
 		s->buffer = newbuf;
@@ -100,7 +112,7 @@ static size_t getdata(void *ptr, size_t size, size_t nmemb, void *ctx) {
 	return bytes;
 }
 
-influx_session_t *influx_new(influx_config_t *conf) {
+influx_session_t *influx_new(void) {
 	influx_session_t *s;
 
 	s = calloc(sizeof(*s),1);
@@ -108,8 +120,6 @@ influx_session_t *influx_new(influx_config_t *conf) {
 		log_syserror("influx_new: calloc");
 		return 0;
 	}
-	s->config = *conf;
-	dprintf(dlevel,"endpoint: %s, database: %s\n", conf->endpoint, conf->database);
 
 	s->curl = curl_easy_init();
 	if (!s->curl) {
@@ -117,7 +127,6 @@ influx_session_t *influx_new(influx_config_t *conf) {
 		free(s);
 		return 0;
 	}
-	s->results = list_create();
 
 	/* init data buffer */
 	s->buffer = malloc(1024);
@@ -135,17 +144,12 @@ influx_session_t *influx_new(influx_config_t *conf) {
 	curl_easy_setopt(s->curl, CURLOPT_WRITEFUNCTION, getdata);
 	curl_easy_setopt(s->curl, CURLOPT_WRITEDATA, s);
 
-	if (strlen(conf->username)) {
+	if (strlen(s->username)) {
 		curl_easy_setopt(s->curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-		curl_easy_setopt(s->curl, CURLOPT_USERPWD, conf->username);
+		curl_easy_setopt(s->curl, CURLOPT_USERPWD, s->username);
 		curl_easy_setopt(s->curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-		curl_easy_setopt(s->curl, CURLOPT_USERPWD, conf->password);
+		curl_easy_setopt(s->curl, CURLOPT_USERPWD, s->password);
 	}
-
-	/* Get the version */
-//	influx_ping(s);
-	influx_health(s);
-	dprintf(dlevel,"version: %s\n", s->version);
 
 	return s;
 }
@@ -154,42 +158,93 @@ list influx_get_results(influx_session_t *s) {
 	return s->results;
 }
 
-char *influx_mkendpoint(influx_session_t *s, char *action, char *query) {
-	char *endpoint,*eq,*p;
+char *influx_mkurl(influx_session_t *s, char *action, char *query) {
+	char *url,*eq,*p;
 	int size,db;
 
-	db = 1;
-	if (strcmp(action,"health")==0) db = 0;
+	if (action) {
+		db = 1;
+		if (strcmp(action,"health")==0) db = 0;
+	} else {
+		db = 0;
+	}
+
+	/* default endpoint */
+	if (!strlen(s->endpoint)) strcpy(s->endpoint,"http://localhost:8086");
 
 	size = 0;
-//	if (strncmp(s->endpoint,"http",4) != 0) p += sprintf(p,"https://");
-	size += strlen(s->config.endpoint);
-	size += strlen(action) + 1; /* + "/" */
-	size += strlen(s->config.database) + 4;	/* + "?db=" */
+	size += strlen(s->endpoint);
+	if (action) {
+		size += strlen(action) + 1; /* + "/" */
+		size += strlen(s->database) + 4;	/* + "?db=" */
+	}
 	eq = (query ? curl_easy_escape(s->curl, query, strlen(query)) : 0);
 	if (eq) size += strlen(eq) + 3; /* + "&q=" */
 	dprintf(dlevel,"size: %d\n", size);
-	endpoint = malloc(size+10);
-	if (!endpoint) {
-		log_syserror("influx_mkendpoint: malloc(%d)",size);
+	url = malloc(size+1);
+	dprintf(dlevel,"url: %p\n", url);
+	if (!url) {
+		log_syserror("influx_mkurl: malloc(%d)",size);
 		return 0;
 	}
-	p = endpoint;
-//	if (strncmp(s->endpoint,"http",4) != 0) p += sprintf(p,"https://");
-	p += sprintf(p,"%s/%s",s->config.endpoint,action);
-	if (db) p += sprintf(p,"?db=%s",s->config.database);
+	p = url;
+	p += sprintf(p,"%s",s->endpoint);
+	if (action) {
+		p += sprintf(p,"/%s",action);
+		if (db) p += sprintf(p,"?db=%s",s->database);
+	}
 	if (eq) {
 		p += sprintf(p,"&q=%s",eq);
 		curl_free(eq);
 	}
-	dprintf(dlevel,"endpoint: %s\n", endpoint);
-	return endpoint;
+	dprintf(dlevel,"url: %s\n", url);
+	return url;
 }
 
-static void influx_destroy_results(influx_session_t *s) {
-	s->results_val = 0;
+void influx_destroy_results(influx_session_t *s) {
+	influx_series_t *sp;
+	influx_value_t *vp;
+	int i,j,count;
+
+	if (!s->results) return;
+
+	count = list_count(s->results);
+	dprintf(dlevel,"count: %d\n",count);
+	if (count) {
+	list_reset(s->results);
+	while((sp = list_get_next(s->results)) != 0) {
+		dprintf(0,"sp->columns: %p\n", sp->columns);
+		if (sp->columns) {
+			dprintf(0,"column_count: %d\n", sp->column_count);
+			for(i=0; i < sp->column_count; i++) {
+				dprintf(0,"columns[%d]: %p\n", i, sp->columns[i]);
+				if (!sp->columns[i]) break;
+				free(sp->columns[i]);
+			}
+			free(sp->columns);
+		}
+		dprintf(0,"sp->values: %p\n", sp->values);
+		if (sp->values) {
+			dprintf(0,"value_count: %d\n", sp->value_count);
+			for(i=0; i < sp->value_count; i++) {
+				dprintf(0,"values[%d]: %p\n", i, sp->values[i]);
+				if (!sp->values[i]) break;
+				for(j=0; j < sp->column_count; j++) {
+					vp = &sp->values[i][j];
+					if (vp->data) free(vp->data);
+				}
+				free(sp->values[i]);
+			}
+			free(sp->values);
+		}
+	}
+	}
 	list_destroy(s->results);
 	s->results = 0;
+#ifdef JS
+	s->results_val = 0;
+#endif
+	dprintf(dlevel,"done!\n");
 	return;
 }
 
@@ -212,7 +267,7 @@ static void getval(influx_session_t *s, json_value_t *rv, influx_value_t *vp) {
 		vp->type = DATA_TYPE_DOUBLE;
 		vp->data = malloc(sizeof(double));
 		if (!vp->data) {
-			log_syserror("getval: malloc(%d)",sizeof(double));
+			log_syserror("influx_getval: malloc(%d)",sizeof(double));
 			return;
 		}
 		*((double *)vp->data) = json_value_get_number(rv);
@@ -224,7 +279,7 @@ static void getval(influx_session_t *s, json_value_t *rv, influx_value_t *vp) {
 		vp->len = strlen(p);
 		vp->data = malloc(vp->len+1);
 		if (!vp->data) {
-			log_syserror("_getval: malloc(%d)\n", vp->len+1);
+			log_syserror("influx_getval: malloc(%d)\n", vp->len+1);
 			return;
 		}
 		strcpy((char *)vp->data,p);
@@ -249,7 +304,9 @@ static int getseries(influx_session_t *s, json_array_t *a) {
 		o = json_value_get_object(a->items[i]);
 		dprintf(dlevel,"count: %d\n", o->count);
 		memset(&newseries,0,sizeof(newseries));
+#ifdef JS
 		newseries.convdt = s->convdt;
+#endif
 		columns_array = values_array = 0;
 		for(j=0; j < o->count; j++) {
 			dprintf(dlevel,"o->names[%d]: %s\n", j, o->names[j]);
@@ -303,7 +360,7 @@ static int getseries(influx_session_t *s, json_array_t *a) {
 		dprintf(dlevel,"value count: %d\n", values_array->count);
 		newseries.value_count = values_array->count;
 		dprintf(dlevel,"column_count: %d, value size: %d\n", newseries.column_count, sizeof(influx_value_t));
-		newseries.values = malloc(newseries.value_count * sizeof(influx_value_t *));
+		newseries.values = calloc(newseries.value_count * sizeof(influx_value_t *),1);
 		dprintf(dlevel,"values: %p\n", newseries.values);
 		if (!newseries.values) {
 			sprintf(s->errmsg,"malloc values");
@@ -318,16 +375,12 @@ static int getseries(influx_session_t *s, json_array_t *a) {
 						(int)aa->count,newseries.column_count);
 					return 1;
 				}
-				newseries.values[j] = malloc(aa->count * sizeof(influx_value_t));
+				newseries.values[j] = calloc(aa->count * sizeof(influx_value_t),1);
 				if (!newseries.values[j]) {
 					sprintf(s->errmsg,"malloc values");
 					return 1;
 				}
-				for(k=0; k < aa->count; k++) {
-					dprintf(dlevel,"aa->item[k]: %s\n", json_typestr(json_value_get_type(aa->items[k])));
-					dprintf(dlevel,"pos: %p\n",&newseries.values[j][k]);
-					getval(s,aa->items[k],&newseries.values[j][k]);
-				}
+				for(k=0; k < aa->count; k++) getval(s,aa->items[k],&newseries.values[j][k]);
 			}
 		}
 		list_add(s->results,&newseries,sizeof(newseries));
@@ -335,56 +388,43 @@ static int getseries(influx_session_t *s, json_array_t *a) {
 	return 0;
 }
 
-static int getresults(influx_session_t *s, json_array_t *a) {
-	int i,j,type;
-	json_object_t *o;
-
-	dprintf(dlevel,"count: %d\n", a->count);
-	for(i=0; i < a->count; i++) {
-		type = json_value_get_type(a->items[i]);
-		dprintf(dlevel,"type[%d]: %s\n", i, json_typestr(type));
-		if (json_value_get_type(a->items[i]) != JSON_TYPE_OBJECT) continue;
-		o = json_value_get_object(a->items[i]);
-		dprintf(dlevel,"count: %d\n", o->count);
-		for(j=0; j < o->count; j++) {
-			dprintf(dlevel,"o->names[%d]: %s\n", j, o->names[j]);
-			if (strcmp(o->names[j],"series") == 0 && json_value_get_type(o->values[j]) == JSON_TYPE_ARRAY)
-				getseries(s, json_value_get_array(o->values[j]));
-		}
-	}
-
-	return 0;
-}
-
-int influx_request(influx_session_t *s, char *url, char *fields) {
-	struct curl_slist *hs = curl_slist_append(0, "Content-Type: application/x-www-form-endpointencoded");
+static int influx_request(influx_session_t *s, char *url, int post, char *data) {
+	struct curl_slist *hs = curl_slist_append(0, "Content-Type: application/x-www-form-urlencoded");
 	CURLcode res;
 	int rc,err;
 	char *msg;
 
-	dprintf(dlevel,"url: %s\n", url);
+	dprintf(dlevel,"url: %s, post: %d, data: %s\n", url, post, data);
 
 	influx_destroy_results(s);
-	s->results = list_create();
-	s->bufidx = 0;
+#if 0
+	dprintf(dlevel,"data: %p\n", s->data);
 	if (s->data) {
 		json_destroy_value(s->data);
 		s->data = 0;
 	}
+#endif
+	s->results = list_create();
+	s->bufidx = 0;
 
 	/* Make the request */
+//	s->verbose = 1;
 	curl_easy_setopt(s->curl, CURLOPT_VERBOSE, s->verbose);
 	curl_easy_setopt(s->curl, CURLOPT_URL, url);
 	curl_easy_setopt(s->curl, CURLOPT_HTTPHEADER, hs);
-	if (fields) curl_easy_setopt(s->curl, CURLOPT_POSTFIELDS, fields);
-	else curl_easy_setopt(s->curl, CURLOPT_POST, 0L);
+	curl_easy_setopt(s->curl, CURLOPT_POST, post);
+	if (post && data) curl_easy_setopt(s->curl, CURLOPT_POSTFIELDS, data);
+	dprintf(dlevel,"calling perform...\n");
 	res = curl_easy_perform(s->curl);
+	dprintf(dlevel,"res: %d\n", res);
 	if (res != CURLE_OK) {
-		sprintf(s->errmsg,"influx_request failed: %s\n", curl_easy_strerror(res));
+		sprintf(s->errmsg,"influx_request failed: %s", curl_easy_strerror(res));
+		dprintf(dlevel,"%s\n",s->errmsg);
 		return 1;
 	}
 
 	/* Get the response code */
+	dprintf(dlevel,"getting rc...\n");
 	curl_easy_getinfo(s->curl, CURLINFO_RESPONSE_CODE, &rc);
 	dprintf(dlevel,"rc: %d\n", rc);
 	err = 1;
@@ -434,7 +474,7 @@ int influx_request(influx_session_t *s, char *url, char *fields) {
 	s->data = json_parse(s->buffer);
 	dprintf(dlevel,"data: %p\n", s->data);
 	/* May not be json data? */
-	if (!s->data) return 0;
+	if (!s->data) return err;
 
 	/* If it's results, process it */
 	dprintf(dlevel,"type: %s\n", json_typestr(json_value_get_type(s->data)));
@@ -442,8 +482,29 @@ int influx_request(influx_session_t *s, char *url, char *fields) {
 		json_object_t *o;
 
 		o = json_value_get_object(s->data);
-		if (o->count >= 1 && strcmp(o->names[0],"results") == 0 && json_value_get_type(o->values[0]) == JSON_TYPE_ARRAY)
-			return getresults(s,json_value_get_array(o->values[0]));
+		if (o->count >= 1 && strcmp(o->names[0],"results") == 0 && json_value_get_type(o->values[0]) == JSON_TYPE_ARRAY) {
+			int i,j,type;
+			json_object_t *oo;
+			json_array_t *a = json_value_get_array(o->values[0]);
+
+			dprintf(dlevel,"count: %d\n", a->count);
+			for(i=0; i < a->count; i++) {
+				type = json_value_get_type(a->items[i]);
+				dprintf(dlevel,"type[%d]: %s\n", i, json_typestr(type));
+				if (json_value_get_type(a->items[i]) != JSON_TYPE_OBJECT) continue;
+				oo = json_value_get_object(a->items[i]);
+				dprintf(dlevel,"count: %d\n", oo->count);
+				for(j=0; j < oo->count; j++) {
+					dprintf(dlevel,"oo->names[%d]: %s\n", j, oo->names[j]);
+					if (strcmp(oo->names[j],"series") == 0 && json_value_get_type(oo->values[j]) == JSON_TYPE_ARRAY) {
+						if (getseries(s, json_value_get_array(oo->values[j]))) {
+							influx_destroy_results(s);
+							break;
+						}
+					}
+				}
+			}
+		}
 	}
 
 	return err;
@@ -472,20 +533,20 @@ static void display_results(influx_session_t *s) {
 }
 
 int influx_health(influx_session_t *s) {
-	char *endpoint;
+	char *url;
 	long rc;
 	char *p;
 
-	endpoint = influx_mkendpoint(s,"health",0);
-	dprintf(dlevel,"endpoint: %p\n", endpoint);
-	if (!endpoint) return 1;
-	if (influx_request(s,endpoint,0)) {
-		free(endpoint);
+	url = influx_mkurl(s,"health",0);
+	dprintf(dlevel,"url: %p\n", url);
+	if (!url) return 1;
+	if (influx_request(s,url,0,0)) {
+		free(url);
 		return 1;
 	}
 	curl_easy_getinfo(s->curl, CURLINFO_RESPONSE_CODE, &rc);
 	dprintf(dlevel,"rc: %d\n", rc);
-	free(endpoint);
+	free(url);
 //	if (rc != 200) return(1);
 	dprintf(dlevel,"data: %p\n", s->data);
 	if (!s->data) {
@@ -515,249 +576,234 @@ int influx_health(influx_session_t *s) {
 }
 
 int influx_ping(influx_session_t *s) {
-	char *endpoint;
+	char *url;
 	long rc;
 
-	endpoint = influx_mkendpoint(s,"ping",0);
-	dprintf(dlevel,"endpoint: %p\n", endpoint);
-	if (!endpoint) return 1;
-	curl_easy_setopt(s->curl, CURLOPT_HEADERFUNCTION, getheader);
-	curl_easy_setopt(s->curl, CURLOPT_HEADERDATA, s);
-	if (influx_request(s,endpoint,0)) {
-		free(endpoint);
+	url = influx_mkurl(s,"ping",0);
+	dprintf(dlevel,"url: %p\n", url);
+	if (!url) return 1;
+//	curl_easy_setopt(s->curl, CURLOPT_HEADERFUNCTION, getheader);
+//	curl_easy_setopt(s->curl, CURLOPT_HEADERDATA, s);
+	if (influx_request(s,url,0,0)) {
+		free(url);
 		return 1;
 	}
-	curl_easy_setopt(s->curl, CURLOPT_HEADERFUNCTION, 0);
-	curl_easy_setopt(s->curl, CURLOPT_HEADERDATA, 0);
+//	curl_easy_setopt(s->curl, CURLOPT_HEADERFUNCTION, 0);
+//	curl_easy_setopt(s->curl, CURLOPT_HEADERDATA, 0);
 	curl_easy_getinfo(s->curl, CURLINFO_RESPONSE_CODE, &rc);
 	dprintf(dlevel,"rc: %d\n", rc);
-	free(endpoint);
+	free(url);
 	return (rc == 200 || rc == 204 ? 0 : 1);
 }
 
 int influx_query(influx_session_t *s, char *query) {
-	char *endpoint;
-	char *lcq;
+	char *postcmds[] = { "ALTER", "CREATE", "DELETE", "DROP", "GRANT", "KILL", "REVOKE", "SELECT INTO", 0 };
+	char *url,*lcq,**p;
 	int r,post;
 
-	lcq = stredit(query,"COMPRESS,LOWERCASE");
+	lcq = stredit(query,"COMPRESS,UPPERCASE");
 	dprintf(dlevel,"lcq: %s\n", lcq);
-	if (strstr(lcq,"select into ")) post = 1;
-	else if (strstr(lcq,"select ") || strstr(lcq,"show ")) post = 0;
-	else post = 1;
+	post = 0;
+	for(p = postcmds; *p; p++) {
+		dprintf(dlevel,"p: %s\n", *p);
+		if (strstr(lcq,*p)) {
+			post = 1;
+			break;
+		}
+	}
+	dprintf(dlevel,"post: %d\n", post);
 
-	endpoint = influx_mkendpoint(s,"query",query);
-	dprintf(dlevel,"endpoint: %p\n", endpoint);
-	if (!endpoint) return 1;
-	r = influx_request(s,endpoint,(post ? "" : 0));
+	url = influx_mkurl(s,"query",query);
+	dprintf(dlevel,"url: %p\n", url);
+	if (!url) return 1;
+	dprintf(dlevel,"calling request..\n");
+	r = influx_request(s,url,post,0);
 	dprintf(dlevel,"r: %d\n", r);
 	if (!r && 0) display_results(s);
-	free(endpoint);
+	dprintf(dlevel,"freeing url...\n");
+	free(url);
 	return r;
 }
 
-int influx_write(influx_session_t *s, char *table, char *field, int type, void *ptr, int size) {
-	return 1;
+int influx_connect(influx_session_t *s) {
+	int r;
+
+	r = 1;
+	if (!strlen(s->endpoint)) goto influx_connect_done;
+	if (!strlen(s->database)) goto influx_connect_done;
+	r = influx_query(s,"show measurements");
+influx_connect_done:
+	dprintf(dlevel,"r: %d\n", r);
+	s->connected = (r == 0);
+	influx_destroy_results(s);
+	return r;
 }
+
+int influx_connected(influx_session_t *s) {
+	return s->connected;
+}
+
+int influx_write(influx_session_t *s, char *mm, char *string) {
+	char *url;
+	int r;
+
+	dprintf(dlevel,"mm: %s, string: %s\n", mm, string);
+#if 0
+consistency=[any,one,quorum,all]	Optional, available with InfluxEnterprise clusters only.	Sets the write consistency for the point. InfluxDB assumes that the write consistency is one if you do not specify consistency. See the InfluxEnterprise documentation for detailed descriptions of each consistency option.
+db=<database>	Required	Sets the target database for the write.
+p=<password>	Optional if you haven.t enabled authentication. Required if you.ve enabled authentication.*	Sets the password for authentication if you.ve enabled authentication. Use with the query string parameter u.
+precision=[ns,u,ms,s,m,h]	Optional	Sets the precision for the supplied Unix time values. InfluxDB assumes that timestamps are in nanoseconds if you do not specify precision.**
+rp=<retention_policy_name>	Optional	Sets the target retention policy for the write. InfluxDB writes to the DEFAULT retention policy if you do not specify a retention policy.
+u=<username>	Optional if you haven.t enabled authentication. Required if you.ve enabled authentication.*	Sets the username for authentication if you.ve enabled authentication. The user must have write access to the database. Use with the query string parameter p.
+#endif
+	url = influx_mkurl(s,"write",0);
+	dprintf(dlevel,"url: %p\n", url);
+	if (!url) return 1;
+	dprintf(dlevel,"calling request..\n");
+	r = influx_request(s,url,1,string);
+	dprintf(dlevel,"r: %d\n", r);
+	if (!r && 0) display_results(s);
+	dprintf(dlevel,"freeing url...\n");
+	free(url);
+	return r;
+}
+
+int influx_write_props(influx_session_t *s, char *name, config_property_t *props) {
+	register config_property_t *pp;
+	char value[2048], *string;
+	int strsize,stridx,newidx,len,count;
+
+	dprintf(dlevel,"props: %p\n", props);
+	if (!props) return 1;
+
+	strsize = 1024;
+	string = malloc(strsize);
+	stridx = sprintf(string,"%s ",name);
+	count = 0;
+	for(pp = props; pp->name; pp++) {
+		dprintf(dlevel,"name: %s, type: %x, dest: %p, len: %d\n", pp->name, pp->type, pp->dest, pp->len);
+		len = conv_type(DATA_TYPE_STRING,value,sizeof(value)-1,pp->type,pp->dest,pp->len);
+		dprintf(dlevel,"len: %d, stridx: %d, strsize: %d\n", len, stridx, strsize);
+		/* name=value, if string add 2 for quotes */
+		newidx = stridx + strlen(pp->name) + 1 + len;
+		if (pp->type == DATA_TYPE_STRING) newidx += 2;
+		/* comma */
+		if (count) newidx++;
+		dprintf(dlevel,"newidx: %d\n", newidx);
+		if (newidx > strsize) {
+			char *newstr;
+			int newsize;
+
+			newsize = newidx + 1;
+			newstr = realloc(string,newsize);
+			dprintf(dlevel,"newstr: %p\n", newstr);
+			if (!newstr) {
+				log_syserror("influx_getdata: realloc(string,%d)",newsize);
+				return 0;
+			}
+			string = newstr;
+			strsize = newidx;
+		}
+		if (pp->type == DATA_TYPE_STRING)
+			sprintf(string + stridx, "%s%s=\"%s\"\n", (count ? "," : ""), pp->name, value);
+		else
+			sprintf(string + stridx, "%s%s=%s\n", (count ? "," : ""), pp->name, value);
+		stridx = newidx;
+		count++;
+	}
+	dprintf(dlevel,"string: %s\n", string);
+	len = influx_write(s,name,string);
+	free(string);
+	dprintf(dlevel,"returning: %d\n", len);
+	return len;
+}
+
+int influx_write_json(influx_session_t *s, char *name, json_value_t *rv) {
+	json_object_t *o;
+	char value[2048], *string;
+	int strsize,stridx,newidx,len,count;
+	int i,type;
+
+	if (!rv) return 1;
+
+	if (json_value_get_type(rv) != JSON_TYPE_OBJECT) {
+		sprintf(s->errmsg,"influx_write_json: invalid root value type");
+		return 1;
+	}
+	strsize = 1024;
+	string = malloc(strsize);
+	stridx = sprintf(string,"%s ",name);
+	count = 0;
+	o = json_value_get_object(rv);
+	for(i=0; i < o->count; i++) {
+		type = json_value_get_type(o->values[i]);
+		dprintf(dlevel,"name: %s, type: %x\n", o->names[i], json_typestr(type));
+		len = json_to_type(DATA_TYPE_STRING,value,sizeof(value)-1,o->values[i]);
+		dprintf(dlevel,"len: %d, stridx: %d, strsize: %d\n", len, stridx, strsize);
+		/* name=value, if string add 2 for quotes */
+		newidx = stridx + strlen(o->names[i]) + 1 + len;
+		if (type == JSON_TYPE_STRING) newidx += 2;
+		/* comma */
+		if (count) newidx++;
+		dprintf(dlevel,"newidx: %d\n", newidx);
+		if (newidx > strsize) {
+			char *newstr;
+			int newsize;
+
+			newsize = newidx + 1;
+			newstr = realloc(string,newsize);
+			dprintf(dlevel,"newstr: %p\n", newstr);
+			if (!newstr) {
+				log_syserror("influx_getdata: realloc(string,%d)",newsize);
+				return 0;
+			}
+			string = newstr;
+			strsize = newidx;
+		}
+		if (type == JSON_TYPE_STRING)
+			sprintf(string + stridx, "%s%s=\"%s\"\n", (count ? "," : ""), o->names[i], value);
+		else
+			sprintf(string + stridx, "%s%s=%s\n", (count ? "," : ""), o->names[i], value);
+		stridx = newidx;
+		count++;
+	}
+	dprintf(dlevel,"string: %s\n", string);
+	len = influx_write(s,name,string);
+	free(string);
+	dprintf(dlevel,"returning: %d\n", len);
+	return len;
+}
+
+void influx_add_props(influx_session_t *s, config_t *cp, char *name) {
+	config_property_t influx_private_props[] = {
+		{ "influx_endpoint", DATA_TYPE_STRING, s->endpoint, sizeof(s->endpoint)-1, "http://localhost:8086", 0,
+                        0, 0, 0, 1, (char *[]){ "InfluxDB endpoint" }, 0, 1, 0 },
+		{ "influx_database", DATA_TYPE_STRING, s->database, sizeof(s->database)-1, "", 0,
+                        0, 0, 0, 1, (char *[]){ "InfluxDB database" }, 0, 1, 0 },
+		{ "influx_username", DATA_TYPE_STRING, s->username, sizeof(s->username)-1, "", 0,
+                        0, 0, 0, 1, (char *[]){ "InfluxDB username" }, 0, 1, 0 },
+		{ "influx_password", DATA_TYPE_STRING, s->password, sizeof(s->password)-1, "", 0,
+                        0, 0, 0, 1, (char *[]){ "InfluxDB password" }, 0, 1, 0 },
+		{ 0 }
+	};
 
 #if 0
-/* ic_tags() argument is the measurement tags for influddb */
-/* example: "host=vm1234"   note:the comma & hostname of the virtual machine sending the data */
-/* complex: "host=lpar42,serialnum=987654,arch=power9" note:the comma separated list */
-void ic_tags(char *t)	
-{
-    dprintf(dlevel,"t: %s\n", t);
-    if( influx_tags == (char *) 0) {
-        if( (influx_tags = (char *)malloc(MEGABYTE)) == (char *)-1)
-           error("failed to malloc() tags buffer");
-    }
-
-    strncpy(influx_tags,t,256);
-}
-
-void ic_measure(char *section)
-{
-    ic_check( strlen(section) + strlen(influx_tags) + 3);
-
-    output_char += sprintf(&output[output_char], "%s,%s ", section, influx_tags);
-    strcpy(saved_section, section);
-    first_sub = 1;
-    subended = 0;
-    dprintf(dlevel, "ic_measure(\"%s\") count=%ld\n", section, output_char);
-}
-
-void ic_measureend()
-{
-    ic_check( 4 );
-    remove_ending_comma_if_any();
-    if (!subended) {
-         output_char += sprintf(&output[output_char], "   \n");
-    }
-    subended = 0;
-    dprintf(dlevel, "ic_measureend()\n");
-}
-
-/* Note this added a further tag to the measurement of the "resource_name" */
-/* measurement might be "disks" */
-/* sub might be "sda1", "sdb1", etc */
-void ic_sub(char *resource)
-{
-    int i;
-
-    ic_check( strlen(saved_section) + strlen(influx_tags) +strlen(saved_sub) + strlen(resource) + 9);
-
-    /* remove previously added section */
-    if (first_sub) {
-	for (i = output_char - 1; i > 0; i--) {
-	    if (output[i] == '\n') {
-		output[i + 1] = 0;
-		output_char = i + 1;
-		break;
-	    }
-	}
-    }
-    first_sub = 0;
-
-    /* remove the trailing s */
-    strcpy(saved_sub, saved_section);
-    if (saved_sub[strlen(saved_sub) - 1] == 's') {
-	saved_sub[strlen(saved_sub) - 1] = 0;
-    }
-    output_char += sprintf(&output[output_char], "%s,%s,%s_name=%s ", saved_section, influx_tags, saved_sub, resource);
-    subended = 0;
-    dprintf(dlevel, "ic_sub(\"%s\") count=%ld\n", resource, output_char);
-}
-
-void ic_subend()
-{
-    ic_check( 4 );
-    remove_ending_comma_if_any();
-    output_char += sprintf(&output[output_char], "   \n");
-    subended = 1;
-    dprintf(dlevel, "ic_subend()\n");
-}
-
-void ic_long(char *name, long long value)
-{
-    ic_check( strlen(name) + 16 + 4 );
-    output_char += sprintf(&output[output_char], "%s=%lldi,", name, value);
-    dprintf(dlevel, "ic_long(\"%s\",%lld) count=%ld\n", name, value, output_char);
-}
-
-void ic_double(char *name, double value)
-{
-    ic_check( strlen(name) + 16 + 4 );
-    if (isnan(value) || isinf(value)) { /* not-a-number or infinity */
-	dprintf(dlevel, "ic_double(%s,%.1f) - nan error\n", name, value);
-    } else {
-	output_char += sprintf(&output[output_char], "%s=%.3f,", name, value);
-	dprintf(dlevel, "ic_double(\"%s\",%.1f) count=%ld\n", name, value, output_char);
-    }
-}
-
-void ic_string(char *name, char *value)
-{
-    int i;
-    int len;
-
-    ic_check( strlen(name) + strlen(value) + 4 );
-    len = strlen(value);
-    for (i = 0; i < len; i++) 	/* replace problem characters and with a space */
-	if (value[i] == '\n' || iscntrl(value[i]))
-	    value[i] = ' ';
-    output_char += sprintf(&output[output_char], "%s=\"%s\",", name, value);
-    dprintf(dlevel, "ic_string(\"%s\",\"%s\") count=%ld\n", name, value, output_char);
-}
-
-void ic_push()
-{
-    char header[1024];
-    char result[1024];
-    char buffer[1024 * 8];
-    int ret;
-    int i;
-    int total;
-    int sent;
-    int code;
-
-    if (output_char == 0)	/* nothing to send so skip this operation */
-	return;
-    if (influx_port) {
-	dprintf(dlevel, "ic_push() size=%ld\n", output_char);
-	if (create_socket() == 1) {
-
-	    sprintf(buffer, "POST /write?db=%s&u=%s&p=%s HTTP/1.1\r\nHost: %s:%ld\r\nContent-Length: %ld\r\n\r\n",
-		    influx_database, influx_username, influx_password, influx_hostname, influx_port, output_char);
-	    dprintf(dlevel, "buffer size=%ld\nbuffer=<%s>\n", strlen(buffer), buffer);
-	    if ((ret = write(sockfd, buffer, strlen(buffer))) != strlen(buffer)) {
-			fprintf(stderr, "warning: \"write post to sockfd failed.\" errno=%d\n", errno);
-	    }
-	    total = output_char;
-	    sent = 0;
- 	    dprintf(dlevel, "output size=%d output=\n<%s>\n", total, output);
-	    while (sent < total) {
-		ret = write(sockfd, &output[sent], total - sent);
-		dprintf(dlevel, "written=%d bytes sent=%d total=%d\n", ret, sent, total);
-		if (ret < 0) {
-		    fprintf(stderr, "warning: \"write body to sockfd failed.\" errno=%d\n", errno);
-		    break;
-		}
-		sent = sent + ret;
-	    }
-	    for (i = 0; i < 1024; i++) /* empty the buffer */
-		result[i] = 0;
-	    if ((ret = read(sockfd, result, sizeof(result))) > 0) {
-		result[ret] = 0;
-		dprintf(dlevel, "received bytes=%d data=<%s>\n", ret, result);
-		sscanf(result, "HTTP/1.1 %d", &code);
-		for (i = 13; i < 1024; i++)
-		    if (result[i] == '\r')
-			result[i] = 0;
-		    dprintf(dlevel, "http-code=%d text=%s [204=Success]\n", code, &result[13]);
-		if (code != 204)
-		    dprintf(dlevel, "code %d -->%s<--\n", code, result);
-	    }
-	    close(sockfd);
-	    sockfd = 0;
-	    dprintf(dlevel, "ic_push complete\n");
-	} else {
-	    dprintf(dlevel, "socket create failed\n");
-	}
-    } else error("influx port is not set, bailing out");
-
-    output[0] = 0;
-    output_char = 0;
-}
-#endif
-
-void influx_add_props(config_t *cp, influx_config_t *gconf, char *name, influx_config_t *conf) {
-	config_property_t influx_private_props[] = {
-		{ "influx_endpoint", DATA_TYPE_STRING, conf->endpoint, sizeof(conf->endpoint)-1, "https://localhost:8086", 0,
-                        0, 0, 0, 1, (char *[]){ "InfluxDB endpoint" }, 0, 1, 0 },
-		{ "influx_database", DATA_TYPE_STRING, conf->database, sizeof(conf->database)-1, "", 0,
-                        0, 0, 0, 1, (char *[]){ "InfluxDB database" }, 0, 1, 0 },
-		{ "influx_username", DATA_TYPE_STRING, conf->username, sizeof(conf->username)-1, "", 0,
-                        0, 0, 0, 1, (char *[]){ "InfluxDB username" }, 0, 1, 0 },
-		{ "influx_password", DATA_TYPE_STRING, conf->password, sizeof(conf->password)-1, "", 0,
-                        0, 0, 0, 1, (char *[]){ "InfluxDB password" }, 0, 1, 0 },
-		{ 0 }
-	};
-
 	config_property_t influx_global_props[] = {
-		{ "endpoint", DATA_TYPE_STRING, conf->endpoint, sizeof(conf->endpoint)-1, "https://localhost:8086", 0,
+		{ "endpoint", DATA_TYPE_STRING, s->endpoint, sizeof(s->endpoint)-1, "http://localhost:8086", 0,
                         0, 0, 0, 1, (char *[]){ "InfluxDB endpoint" }, 0, 1, 0 },
-		{ "database", DATA_TYPE_STRING, conf->database, sizeof(conf->database)-1, "", 0,
+		{ "database", DATA_TYPE_STRING, s->database, sizeof(s->database)-1, "", 0,
                         0, 0, 0, 1, (char *[]){ "InfluxDB database" }, 0, 1, 0 },
-		{ "username", DATA_TYPE_STRING, conf->username, sizeof(conf->username)-1, "", 0,
+		{ "username", DATA_TYPE_STRING, s->username, sizeof(s->username)-1, "", 0,
                         0, 0, 0, 1, (char *[]){ "InfluxDB username" }, 0, 1, 0 },
-		{ "password", DATA_TYPE_STRING, conf->password, sizeof(conf->password)-1, "", 0,
+		{ "password", DATA_TYPE_STRING, s->password, sizeof(s->password)-1, "", 0,
                         0, 0, 0, 1, (char *[]){ "InfluxDB password" }, 0, 1, 0 },
 		{ 0 }
 	};
+#endif
 
 	dprintf(dlevel,"name: %s\n", name);
 	config_add_props(cp, name, influx_private_props, 0);
-	config_add_props(cp, "influx", influx_global_props, 0);
+//	config_add_props(cp, "influx", influx_global_props, 0);
 }
 
 /********************************************************************************/
@@ -780,6 +826,7 @@ JSObject *js_values_new(JSContext *cx, JSObject *obj, influx_series_t *sp) {
 
 	/* values is just a multimensional array */
 	values = JS_NewArrayObject(cx, sp->value_count, NULL);
+	dprintf(dlevel,"values: %p\n", values);
 	if (!values) return 0;
 
 	/* Get the time column */
@@ -792,6 +839,7 @@ JSObject *js_values_new(JSContext *cx, JSObject *obj, influx_series_t *sp) {
 	}
 	for(i=0; i < sp->value_count; i++) {
 		vo = JS_NewArrayObject(cx, sp->column_count, NULL);
+		dprintf(dlevel,"vo: %p\n", vo);
 		if (!vo) break;
 		for(j=0; j < sp->column_count; j++) {
 			vp = &sp->values[i][j];
@@ -931,6 +979,7 @@ enum INFLUX_PROPERTY_ID {
 	INFLUX_PROPERTY_ID_RESULTS,
 	INFLUX_PROPERTY_ID_ERRMSG,
 	INFLUX_PROPERTY_ID_CONVDT,
+	INFLUX_PROPERTY_ID_CONNECTED,
 };
 
 static JSBool influx_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
@@ -950,16 +999,16 @@ static JSBool influx_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval
 		dprintf(dlevel,"prop_id: %d\n", prop_id);
 		switch(prop_id) {
 		case INFLUX_PROPERTY_ID_URL:
-			*rval = type_to_jsval(cx,DATA_TYPE_STRING,s->config.endpoint,strlen(s->config.endpoint));
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,s->endpoint,strlen(s->endpoint));
 			break;
 		case INFLUX_PROPERTY_ID_DATABASE:
-			*rval = type_to_jsval(cx,DATA_TYPE_STRING,s->config.database,strlen(s->config.database));
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,s->database,strlen(s->database));
 			break;
 		case INFLUX_PROPERTY_ID_USERNAME:
-			*rval = type_to_jsval(cx,DATA_TYPE_STRING,s->config.username,strlen(s->config.username));
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,s->username,strlen(s->username));
 			break;
 		case INFLUX_PROPERTY_ID_PASSWORD:
-			*rval = type_to_jsval(cx,DATA_TYPE_STRING,s->config.password,strlen(s->config.password));
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,s->password,strlen(s->password));
 			break;
 		case INFLUX_PROPERTY_ID_VERBOSE:
 			dprintf(dlevel,"verbose: %d\n", s->verbose);
@@ -975,6 +1024,9 @@ static JSBool influx_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval
 			break;
 		case INFLUX_PROPERTY_ID_CONVDT:
 			*rval = type_to_jsval(cx,DATA_TYPE_BOOL,&s->convdt,0);
+			break;
+		case INFLUX_PROPERTY_ID_CONNECTED:
+			*rval = type_to_jsval(cx,DATA_TYPE_BOOL,&s->connected,0);
 			break;
 		default:
 			break;
@@ -999,16 +1051,16 @@ static JSBool influx_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp) 
 		dprintf(dlevel,"influx_setprop: prop_id: %d", prop_id);
 		switch(prop_id) {
 		case INFLUX_PROPERTY_ID_URL:
-			jsval_to_type(DATA_TYPE_STRING,s->config.endpoint,sizeof(s->config.endpoint),cx,*vp);
+			jsval_to_type(DATA_TYPE_STRING,s->endpoint,sizeof(s->endpoint),cx,*vp);
 			break;
 		case INFLUX_PROPERTY_ID_DATABASE:
-			jsval_to_type(DATA_TYPE_STRING,s->config.database,sizeof(s->config.database),cx,*vp);
+			jsval_to_type(DATA_TYPE_STRING,s->database,sizeof(s->database),cx,*vp);
 			break;
 		case INFLUX_PROPERTY_ID_USERNAME:
-			jsval_to_type(DATA_TYPE_STRING,s->config.username,sizeof(s->config.username),cx,*vp);
+			jsval_to_type(DATA_TYPE_STRING,s->username,sizeof(s->username),cx,*vp);
 			break;
 		case INFLUX_PROPERTY_ID_PASSWORD:
-			jsval_to_type(DATA_TYPE_STRING,s->config.password,sizeof(s->config.password),cx,*vp);
+			jsval_to_type(DATA_TYPE_STRING,s->password,sizeof(s->password),cx,*vp);
 			break;
 		case INFLUX_PROPERTY_ID_VERBOSE:
 			jsval_to_type(DATA_TYPE_BOOL,&s->verbose,0,cx,*vp);
@@ -1024,7 +1076,7 @@ static JSBool influx_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp) 
 }
 
 static JSClass influx_class = {
-	"Influx",		/* Name */
+	"INFLUX",		/* Name */
 	JSCLASS_HAS_PRIVATE,	/* Flags */
 	JS_PropertyStub,	/* addProperty */
 	JS_PropertyStub,	/* delProperty */
@@ -1087,9 +1139,8 @@ static JSBool js_influx_write(JSContext *cx, uintN argc, jsval *vp) {
 	influx_session_t *s;
 	jsval *argv = vp + 2;
 	int i;
-	char *type,*key,*value;
+	char *type,*key;
 	jsval val;
-	JSClass *classp;
 
 	obj = JS_THIS_OBJECT(cx, vp);
 	if (!obj) return JS_FALSE;
@@ -1103,22 +1154,27 @@ static JSBool js_influx_write(JSContext *cx, uintN argc, jsval *vp) {
 	name = JS_GetStringBytes(JSVAL_TO_STRING(argv[0]));
 	dprintf(dlevel,"name: %s\n", name);
 
-	/* If the 2nd arg is a string, treat it as JSON */
+	/* If the 2nd arg is a string, send it direct */
 	type = jstypestr(cx,argv[1]);
 	dprintf(dlevel,"arg 2 type: %s\n", type);
 	if (strcmp(type,"string") == 0) {
-		value = JS_GetStringBytes(JSVAL_TO_STRING(argv[1]));
+		char *value = JS_GetStringBytes(JSVAL_TO_STRING(argv[1]));
 		dprintf(dlevel,"value: %s\n", value);
+		*vp = INT_TO_JSVAL(influx_write(s,name,value));
+		JS_free(cx,value);
 
 	/* Otherwise it's an object - gets the keys and values */
 	} else if (strcmp(type,"object") == 0) {
+		char *string,temp[2048],value[1536];
+		int index,size,newidx,len;
+
 		rec = JSVAL_TO_OBJECT(argv[1]);
-		classp = JS_GET_CLASS(cx, rec);
-		dprintf(dlevel,"class: %s\n", classp->name);
-		if (strcmp(classp->name,"Object") != 0) goto js_influx_write_usage;
 		ida = JS_Enumerate(cx, rec);
 		dprintf(dlevel,"ida: %p, count: %d\n", ida, ida->length);
 		ids = &ida->vector[0];
+		size = 1024;
+		string = malloc(size);
+		index = sprintf(string,"%s",name);
 		for(i=0; i< ida->length; i++) {
 	//		dprintf(dlevel+1,"ids[%d]: %s\n", i, jstypestr(cx,ids[i]));
 			key = js_string(cx,ids[i]);
@@ -1128,32 +1184,102 @@ static JSBool js_influx_write(JSContext *cx, uintN argc, jsval *vp) {
 				JS_free(cx,key);
 				continue;
 			}
-	//		dprintf(dlevel+1,"val: %s\n",jstypestr(cx,val));
-			value = js_string(cx, val);
-			if (!value) {
-				JS_free(cx,key);
+			jsval_to_type(DATA_TYPE_STRING,&value,sizeof(value)-1,cx,val);
+			dprintf(dlevel,"key: %s, type: %s, value: %s\n", key, jstypestr(cx,val), value);
+			if (JSVAL_IS_NUMBER(val)) {
+				jsdouble d;
+				if (JSVAL_IS_INT(val)) {
+					d = (jsdouble)JSVAL_TO_INT(val);
+					if (JSDOUBLE_IS_NaN(d)) strcpy(value,"0");
+				} else {
+					d = *JSVAL_TO_DOUBLE(val);
+					if (JSDOUBLE_IS_NaN(d)) strcpy(value,"0.0");
+				}
+				len = snprintf(temp,sizeof(temp)-1,"%s=%s",key,value);
+			} else if (JSVAL_IS_STRING(val)) {
+				len = snprintf(temp,sizeof(temp)-1,"%s=\"%s\"",key,value);
+			} else {
+				dprintf(dlevel,"ignoring field %s: unhandled type\n", key);
 				continue;
 			}
-			dprintf(dlevel,"key: %s, value: %s\n", key, value);
+			dprintf(dlevel,"temp: %s\n", temp);
+			/* XXX include comma */
+			newidx = index + len + 1;
+			dprintf(dlevel,"newidx: %d, size: %d\n", newidx, size);
+			if (newidx > size) {
+				char *newstr;
 
+				dprintf(dlevel,"string: %p\n", string);
+				newstr = realloc(string,newidx);
+				dprintf(dlevel,"newstr: %p\n", newstr);
+				if (!newstr) {
+					JS_ReportError(cx,"Influx.write: memory allocation error");
+					JS_free(cx,key);
+					JS_free(cx,value);
+					free(string);
+					return JS_FALSE;
+				}
+				string = newstr;
+				size = newidx;
+			}
+			sprintf(string + index,"%s%s",(i ? "," : " "),temp);
+			index = newidx;
 			JS_free(cx,key);
-			JS_free(cx,value);
+//			JS_free(cx,value);
 		}
+		string[index] = 0;
+		dprintf(dlevel,"string: %s\n", string);
+		*vp = INT_TO_JSVAL(influx_write(s,name,string));
+		free(string);
 	} else {
 		goto js_influx_write_usage;
 	}
     	return JS_TRUE;
 js_influx_write_usage:
-	JS_ReportError(cx,"influx.write requires 2 arguments (measurement:string, rec:object OR rec:string)");
+	JS_ReportError(cx,"Influx.write requires 2 arguments (measurement:string, rec:object OR rec:string)");
 	return JS_FALSE;
 }
 
-JSObject *jsinflux_new(JSContext *cx, JSObject *parent, influx_session_t *i) {
+static JSBool js_influx_ctor(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
+	influx_session_t *s;
+	JSObject *newobj;
+	char *url, *db, *user, *pass;
+
+	printf("argc: %d\n", argc);
+	if (argc < 2) {
+		JS_ReportError(cx, "INFLUX requires 2 arguments (endpoint:string, database:string)");
+		return JS_FALSE;
+	}
+	url = db = user = pass = 0;
+	if (!JS_ConvertArguments(cx, argc, argv, "s s / s s", &url, &db, &user, &pass))
+		return JS_FALSE;
+	dprintf(dlevel,"url: %s, db: %s, user: %s, pass: %s\n", url, db, user, pass);
+
+	s = influx_new();
+	if (!s) {
+		JS_ReportError(cx, "influx_ctor: unable to create new session");
+		return JS_FALSE;
+	}
+	strncpy(s->endpoint,url,sizeof(s->endpoint)-1);
+	strncpy(s->database,db,sizeof(s->database)-1);
+	if (user) strncpy(s->username,user,sizeof(s->username)-1);
+	if (pass) strncpy(s->password,pass,sizeof(s->password)-1);
+	dprintf(dlevel,"endpoint: %s, database: %s, user: %s, pass: %s\n", s->endpoint, s->database, s->username, s->password);
+
+	newobj = js_influx_new(cx,JS_GetGlobalObject(cx),s);
+	JS_SetPrivate(cx,newobj,s);
+	*rval = OBJECT_TO_JSVAL(newobj);
+
+	return JS_TRUE;
+}
+
+JSObject *js_influx_new(JSContext *cx, JSObject *parent, void *priv) {
 	JSPropertySpec influx_props[] = { 
 		{ "endpoint",		INFLUX_PROPERTY_ID_URL,		JSPROP_ENUMERATE },
 		{ "database",		INFLUX_PROPERTY_ID_DATABASE,	JSPROP_ENUMERATE },
 		{ "username",		INFLUX_PROPERTY_ID_USERNAME,	JSPROP_ENUMERATE },
 		{ "password",		INFLUX_PROPERTY_ID_PASSWORD,	JSPROP_ENUMERATE },
+		{ "connected",		INFLUX_PROPERTY_ID_CONNECTED,	JSPROP_ENUMERATE | JSPROP_READONLY },
 		{ "verbose",		INFLUX_PROPERTY_ID_VERBOSE,	JSPROP_ENUMERATE },
 		{ "convert_time",	INFLUX_PROPERTY_ID_CONVDT,	JSPROP_ENUMERATE },
 		{ "results",		INFLUX_PROPERTY_ID_RESULTS,	JSPROP_ENUMERATE | JSPROP_READONLY },
@@ -1163,16 +1289,17 @@ JSObject *jsinflux_new(JSContext *cx, JSObject *parent, influx_session_t *i) {
 	JSFunctionSpec influx_funcs[] = {
 		JS_FN("query",js_influx_query,1,1,0),
 		JS_FN("write",js_influx_write,2,2,0),
-		{ 0 }
 	};
 	JSObject *obj;
 
-	obj = JS_InitClass(cx, parent, 0, &influx_class, 0, 0, influx_props, influx_funcs, 0, 0);
+	dprintf(dlevel,"creating influx class...\n");
+	obj = JS_InitClass(cx, parent, 0, &influx_class, js_influx_ctor, 2, influx_props, influx_funcs, 0, 0);
 	if (!obj) {
 		JS_ReportError(cx,"unable to initialize influx class");
 		return 0;
 	}
-	JS_SetPrivate(cx,obj,i);
+	if (priv) JS_SetPrivate(cx,obj,priv);
+	dprintf(dlevel,"done!\n");
 	return obj;
 }
 #endif

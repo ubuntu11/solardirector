@@ -38,21 +38,22 @@ static JSBool sb_object_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *r
 			*rval = type_to_jsval(cx,DATA_TYPE_STRING,o->label,strlen(o->label));
                         break;
                 case SMA_OBJECT_PROPERTY_ID_PATH:
-		    {
-			JSObject *arr;
-			jsval element;
-			int i,count;
+			if (!o->path_val) {
+				JSObject *arr;
+				jsval element;
+				int i,count;
 
-			for(i=0; i < 8; i++) { if (!o->hier[i]) break; }
-			count = i;
-			arr = JS_NewArrayObject(cx, count, NULL);
-			for(i=0; i < count; i++) {
-				element = type_to_jsval(cx,DATA_TYPE_STRING,o->hier[i],strlen(o->hier[i]));
-				JS_SetElement(cx, arr, i, &element);
+				for(i=0; i < 8; i++) { if (!o->hier[i]) break; }
+				count = i;
+				arr = JS_NewArrayObject(cx, count, NULL);
+				for(i=0; i < count; i++) {
+					element = type_to_jsval(cx,DATA_TYPE_STRING,o->hier[i],strlen(o->hier[i]));
+					JS_SetElement(cx, arr, i, &element);
+				}
+				o->path_val = OBJECT_TO_JSVAL(arr);
 			}
-			*rval = OBJECT_TO_JSVAL(arr);
-		    }
-		    break;
+			*rval = o->path_val;
+			break;
                 case SMA_OBJECT_PROPERTY_ID_UNIT:
 			*rval = type_to_jsval(cx,DATA_TYPE_STRING,o->label,strlen(o->label));
 			break;
@@ -96,7 +97,7 @@ JSObject *js_sb_object_new(JSContext *cx, JSObject *parent, sb_object_t *o) {
 	dprintf(dlevel,"defining %s object\n",sb_object_class.name);
 	obj = JS_InitClass(cx, parent, 0, &sb_object_class, 0, 0, sb_object_props, 0, 0, 0);
 	if (!obj) {
-		JS_ReportError(cx,"unable to initialize %s", sb_object_class.name);
+		JS_ReportError(cx,"unable to initialize %s class", sb_object_class.name);
 		return 0;
 	}
 	JS_SetPrivate(cx,obj,o);
@@ -116,6 +117,7 @@ enum SB_RESULTS_PROPERTY_ID {
 static JSBool sb_results_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 	int prop_id;
 	sb_result_t *res;
+	JSObject *newobj;
 
 	res = JS_GetPrivate(cx,obj);
 	if (!res) return JS_FALSE;
@@ -124,7 +126,16 @@ static JSBool sb_results_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *
 		dprintf(dlevel,"prop_id: %d\n", prop_id);
 		switch(prop_id) {
 		case SB_RESULTS_PROPERTY_ID_OBJECT:
-			*rval = OBJECT_TO_JSVAL(js_sb_object_new(cx,obj,res->obj));
+#if 1
+			if (!res->obj_val) {
+				newobj = js_sb_object_new(cx,obj,res->obj);
+				if (!newobj) return JS_FALSE;
+				res->obj_val = OBJECT_TO_JSVAL(newobj);
+			}
+			*rval = res->obj_val;
+#else
+			*rval = JSVAL_VOID;
+#endif
 			break;
 		case SB_RESULTS_PROPERTY_ID_LOW:
 			*rval = INT_TO_JSVAL(res->low);
@@ -133,32 +144,32 @@ static JSBool sb_results_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *
 			*rval = INT_TO_JSVAL(res->high);
 			break;
 		case SB_RESULTS_PROPERTY_ID_SELECTIONS:
-			*rval = type_to_jsval(cx,DATA_TYPE_STRING_LIST,res->selects,list_count(res->selects));
+			if (!res->selects_val)
+				res->selects_val = type_to_jsval(cx,DATA_TYPE_STRING_LIST,res->selects,list_count(res->selects));
+			*rval = res->selects_val;
 			break;
 		case SB_RESULTS_PROPERTY_ID_VALUES:
-		    {
-			JSObject *arr;
-			jsval element;
-			sb_value_t *vp;
-			char value[1024];
-			int i;
+			if (!res->values_val) {
+				JSObject *arr;
+				jsval element;
+				sb_value_t *vp;
+				char value[1024];
+				int i;
 
-//			printf("value count: %d\n", list_count(res->values));
-			arr = JS_NewArrayObject(cx, list_count(res->values), NULL);
-			i = 0;
-			list_reset(res->values);
-			while((vp = list_get_next(res->values)) != 0) {
-				element = type_to_jsval(cx,vp->type,vp->data,vp->len);
-//				dprintf(dlevel,"type: %s\n", js_typestr(element));
-				*value = 0;
-				conv_type(DATA_TYPE_STRING,value,sizeof(value),vp->type,vp->data,vp->len);
-				dprintf(dlevel,"value: %s\n", value);
-//				element = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,value));
-				JS_SetElement(cx, arr, i++, &element);
+				arr = JS_NewArrayObject(cx, list_count(res->values), NULL);
+				i = 0;
+				list_reset(res->values);
+				while((vp = list_get_next(res->values)) != 0) {
+					element = type_to_jsval(cx,vp->type,vp->data,vp->len);
+					*value = 0;
+					conv_type(DATA_TYPE_STRING,value,sizeof(value),vp->type,vp->data,vp->len);
+					dprintf(dlevel,"value: %s\n", value);
+					JS_SetElement(cx, arr, i++, &element);
+				}
+				res->values_val = OBJECT_TO_JSVAL(arr);
 			}
-			*rval = OBJECT_TO_JSVAL(arr);
-		    }
-		    break;
+			*rval = res->values_val;
+			break;
 		default:
 			dprintf(0,"unhandled id: %d\n", prop_id);
 			*rval = JSVAL_NULL;
@@ -182,7 +193,7 @@ static JSClass sb_results_class = {
 	JSCLASS_NO_OPTIONAL_MEMBERS
 };
 
-JSObject *JSSBResults(JSContext *cx, sb_result_t *res) {
+static JSObject *js_sb_results_new(JSContext *cx, JSObject *parent, sb_result_t *res) {
 	JSPropertySpec sb_results_props[] = {
 		{ "object",SB_RESULTS_PROPERTY_ID_OBJECT,JSPROP_ENUMERATE },
 		{ "low",SB_RESULTS_PROPERTY_ID_LOW,JSPROP_ENUMERATE },
@@ -194,7 +205,7 @@ JSObject *JSSBResults(JSContext *cx, sb_result_t *res) {
 	JSObject *obj;
 
 	dprintf(dlevel,"defining %s object\n",sb_results_class.name);
-	obj = JS_InitClass(cx, JS_GetGlobalObject(cx), 0, &sb_results_class, 0, 0, sb_results_props, 0, 0, 0);
+	obj = JS_InitClass(cx, parent, 0, &sb_results_class, 0, 0, sb_results_props, 0, 0, 0);
 	if (!obj) {
 		JS_ReportError(cx,"unable to initialize %s", sb_results_class.name);
 		return 0;
@@ -218,6 +229,12 @@ static JSBool sb_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 	config_property_t *p;
 
 	s = JS_GetPrivate(cx,obj);
+	dprintf(0,"s: %p\n", s);
+	if (!s) {
+		JS_ReportError(cx,"internal error: private is null!");
+		return JS_FALSE;
+	}
+
 	if(JSVAL_IS_INT(id)) {
 		prop_id = JSVAL_TO_INT(id);
 		dprintf(dlevel,"prop_id: %d\n", prop_id);
@@ -227,18 +244,35 @@ static JSBool sb_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 			break;
 		case SB_PROPERTY_ID_RESULTS:
 		    {
-			JSObject *arr;
-			jsval element;
-			int i;
-
-			arr = JS_NewArrayObject(cx, list_count(s->results), NULL);
-			i = 0;
-			list_reset(s->results);
-			while((res = list_get_next(s->results)) != 0) {
-				element = OBJECT_TO_JSVAL(JSSBResults(cx,res));
-				JS_SetElement(cx, arr, i++, &element);
+			if (!s->results_val) {
+				JSObject *arr,*newres;
+				jsval element;
+				int i,count;
+	
+				count = list_count(s->results);
+				arr = JS_NewArrayObject(cx, count, NULL);
+				if (!arr) {
+                                	JS_ReportError(cx, "unable to allocate results array");
+	                                return JS_FALSE;
+				}
+				i = 0;
+				list_reset(s->results);
+				while((res = list_get_next(s->results)) != 0) {
+					newres = js_sb_results_new(cx,obj,res);
+					if (!newres) {
+	                                	JS_ReportError(cx, "unable to allocate new sb_results object");
+		                                return JS_FALSE;
+					}
+					element = OBJECT_TO_JSVAL(newres);
+					JS_SetElement(cx, arr, i++, &element);
+					if (i > count) {
+	                                	JS_ReportError(cx,"sb_results index elemenet (%d) > count (%d)", i, count);
+		                                return JS_FALSE;
+					}
+				}
+				s->results_val = OBJECT_TO_JSVAL(arr);
 			}
-			*rval = OBJECT_TO_JSVAL(arr);
+			*rval = s->results_val;
 		    }
 		    break;
 		default:
@@ -404,7 +438,7 @@ int js_sb_init(JSContext *cx, JSObject *parent, void *priv) {
 		JS_STRCONST(SB_SETPAR),
 		{ 0 }
 	};
-	JSObject *obj;
+	JSObject *obj, *global = JS_GetGlobalObject(cx);
 	sb_session_t *s = priv;
 
 	dprintf(dlevel,"s->props: %p, cp: %p\n",s->props,s->ap->cp);
@@ -420,9 +454,9 @@ int js_sb_init(JSContext *cx, JSObject *parent, void *priv) {
 	}
 
 	dprintf(dlevel,"Defining %s object\n",sb_class.name);
-	obj = JS_InitClass(cx, JS_GetGlobalObject(cx), 0, &sb_class, 0, 0, s->props, sb_funcs, 0, 0);
+	obj = JS_InitClass(cx, parent, 0, &sb_class, 0, 0, s->props, sb_funcs, 0, 0);
 	if (!obj) {
-		JS_ReportError(cx,"unable to initialize si class");
+		JS_ReportError(cx,"unable to initialize %s class",sb_class.name);
 		return 1;
 	}
 	dprintf(dlevel,"Defining %s aliases\n",sb_class.name);
@@ -431,7 +465,7 @@ int js_sb_init(JSContext *cx, JSObject *parent, void *priv) {
 		return 1;
 	}
 	dprintf(dlevel,"Defining %s constants\n",sb_class.name);
-	if (!JS_DefineConstants(cx, JS_GetGlobalObject(cx), sb_constants)) {
+	if (!JS_DefineConstants(cx, global, sb_constants)) {
 		JS_ReportError(cx,"unable to define constants");
 		return 1;
 	}
@@ -439,6 +473,12 @@ int js_sb_init(JSContext *cx, JSObject *parent, void *priv) {
 
 	/* Get agent jsval */
 	s->agent_val = OBJECT_TO_JSVAL(jsagent_new(cx,obj,s->ap));
+
+	/* Create the global convenience objects */
+	JS_DefineProperty(cx, global, "agent", s->agent_val, 0, 0, 0);
+	JS_DefineProperty(cx, global, "config", s->ap->config_val, 0, 0, 0);
+	JS_DefineProperty(cx, global, "mqtt", s->ap->mqtt_val, 0, 0, 0);
+	JS_DefineProperty(cx, global, "influx", s->ap->influx_val, 0, 0, 0);
 
 	dprintf(dlevel,"done!\n");
 	return 0;

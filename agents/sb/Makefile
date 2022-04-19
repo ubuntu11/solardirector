@@ -1,6 +1,8 @@
 
 PROGNAME=sb
 SRCS=main.c sb.c info.c config.c utils.c strings.c objects.c jsfuncs.c
+SCRIPTS=pub.js
+FILES=objects.json
 
 CURL=yes
 

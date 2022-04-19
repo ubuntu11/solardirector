@@ -8,7 +8,13 @@ LICENSE file in the root directory of this source tree.
 */
 
 #define DEBUG_CFG 0
-#define dlevel 4
+#define dlevel 6
+
+#ifdef DEBUG
+#undef DEBUG
+#define DEBUG DEBUG_CFG
+#endif
+#include "debug.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -17,13 +23,6 @@ LICENSE file in the root directory of this source tree.
 #include <errno.h>
 #include "cfg.h"
 #include "utils.h"
-
-#ifdef DEBUG
-#undef DEBUG
-#endif
-#define DEBUG DEBUG_CFG
-
-#include "debug.h"
 
 CFG_INFO *cfg_create(char *filename) {
 	cfg_info_t *info;
@@ -119,11 +118,11 @@ CFG_ITEM *cfg_section_get_item(CFG_SECTION *section, char *name) {
 	while( (item = list_get_next(section->items)) != 0) {
 		dprintf(dlevel,"item->keyword: %s",item->keyword);
 		if (strcmp(item->keyword,name)==0) {
-			dprintf(dlevel, "found\n");
+			dprintf(dlevel,"found\n");
 			return item;
 		}
 	}
-	dprintf(dlevel, "not found");
+	dprintf(dlevel,"not found\n");
 	return 0;
 }
 
@@ -619,7 +618,29 @@ static int cmpsec(const void *i1, const void *i2) {
 }
 #endif
 
-struct cfg_proctab *cfg_combine_tabs(struct cfg_proctab *tab1, struct cfg_proctab *tab2) {
+struct cfg_proctab *cfg_combine_tabs(struct cfg_proctab *t1, struct cfg_proctab *t2) {
+	cfg_proctab_t *tp,*newt,*ntp;
+	int count,size;
+
+	if (!t1 && t2) return t2;
+	if (t1 && !t2) return t1;
+	if (!t1 && !t2) return 0;
+	count = 0;
+	for(tp=t1; tp->section; tp++) count++;
+	for(tp=t2; tp->section; tp++) count++;
+	size = (count + 1) * sizeof(cfg_proctab_t);
+	dprintf(dlevel,"count: %d,  size: %d\n", count, size);
+	newt = malloc(size);
+	if (!newt) {
+		log_syserror("cfg_combine_tabs: malloc(%d)",size);
+		return 0;
+	}
+	ntp = newt;
+	for(tp=t1; tp->section; tp++) *ntp++ = *tp;
+	for(tp=t2; tp->section; tp++) *ntp++ = *tp;
+	ntp->section = 0;
+	return newt;
+#if 0
 	char *p;
 	struct cfg_proctab *tab,*ent;
 	int count,i,found;
@@ -687,6 +708,7 @@ struct cfg_proctab *cfg_combine_tabs(struct cfg_proctab *tab1, struct cfg_procta
 
 	dprintf(dlevel,"cfg_combine_tabs: returning: %p",tab);
 	return tab;
+#endif
 }
 
 int cfg_write(CFG_INFO *info) {
@@ -694,17 +716,21 @@ int cfg_write(CFG_INFO *info) {
 	CFG_SECTION *section;
 	CFG_ITEM *item;
 
+	dprintf(0,"info: %p\n", info);
 	/* open the file */
-	dprintf(dlevel,"cfg_write: filename: %s", info->filename);
+	dprintf(0,"filename: %s\n", info->filename);
 	fp = fopen(info->filename,"wb+");
+	dprintf(0,"fp: %p\n", fp);
 	if (!fp) return 1;
 
 	/* For each section, write the items out */
 	list_reset(info->sections);
 	while( (section = list_get_next(info->sections)) != 0) {
+		dprintf(0,"section->items: %p\n", section->items);
 		if (!list_count(section->items)) continue;
 
 		/* Write the section name */
+		dprintf(0,"section->name: %s\n", section->name);
 		if (strlen(section->name)) fprintf(fp,"[%s]\n",section->name);
 
 		/* Write the section's data */

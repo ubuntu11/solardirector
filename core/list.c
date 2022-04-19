@@ -9,8 +9,13 @@ LICENSE file in the root directory of this source tree.
 
 #define DEBUG_LIST 0
 #define dlevel 4
+#define THREAD_SAFE 0
 
-#define THREAD_SAFE 1
+#ifdef DEBUG
+#undef DEBUG
+#define DEBUG DEBUG_LIST
+#endif
+#include "debug.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,14 +25,6 @@ LICENSE file in the root directory of this source tree.
 #include <pthread.h>
 #endif
 #include "list.h"
-
-#ifdef DEBUG
-#undef DEBUG
-#endif
-#if DEBUG_LIST
-#define DEBUG 1
-#endif
-#include "debug.h"
 
 /* Define the list item */
 struct _list_item {
@@ -67,7 +64,7 @@ time_t list_updated(list lp) {
 	return upd;
 }
 
-#define _dump(i) DPRINTF("%s: item: %p, prev: %p, next: %p\n", #i, i, i->prev, i->next);
+#define _dump(i) dprintf(dlevel,"%s: item: %p, prev: %p, next: %p\n", #i, i, i->prev, i->next);
 void list_checkitem(list_item ip) {
 	_dump(ip);
 	assert(ip->prev != ip);
@@ -211,15 +208,15 @@ int list_delete(list lp,void *item) {
 	pthread_mutex_lock(&lp->mutex);
 #endif
 
-	DPRINTF("item: %p, first: %p, last: %p, next: %p\n", item, lp->first, lp->last, lp->next);
+	dprintf(dlevel,"item: %p, first: %p, last: %p, next: %p\n", item, lp->first, lp->last, lp->next);
 
 	found = 0;
 	ip = lp->first;
 	while(ip) {
 		list_checkitem(ip);
-		DPRINTF("item: %p, ip->item: %p\n", item, ip->item);
+		dprintf(dlevel,"item: %p, ip->item: %p\n", item, ip->item);
 		if (item == ip->item) {
-			DPRINTF("found\n");
+			dprintf(dlevel,"found\n");
 			prev = ip->prev;        /* Get the pointers */
 			next = ip->next;
 
@@ -236,7 +233,7 @@ int list_delete(list lp,void *item) {
 			/* Was this the next item? */
 			if (ip == lp->next) lp->next = next;
 
-			if (ip->size) free(item); /* Free the item */
+			if (ip->size) free(ip->item); /* Free the item */
 			free(ip);		/* Free the ptr */
 			time(&lp->last_update);
 			found = 1;
@@ -247,8 +244,8 @@ int list_delete(list lp,void *item) {
 #if THREAD_SAFE
 	pthread_mutex_unlock(&lp->mutex);
 #endif
-	DPRINTF("first: %p, last: %p, next: %p\n", lp->first, lp->last, lp->next);
-	DPRINTF("found: %d\n", found);
+	dprintf(dlevel,"first: %p, last: %p, next: %p\n", lp->first, lp->last, lp->next);
+	dprintf(dlevel,"found: %d\n", found);
 	return (found ? 0 : 1);
 }
 
@@ -283,6 +280,10 @@ int list_destroy(list lp) {
 
 	if (!lp) return -1;
 
+#if THREAD_SAFE
+	pthread_mutex_lock(&lp->mutex);
+#endif
+
 	ip = lp->first;                         /* Start at beginning */
 	while(ip) {
 		if (ip->size) free(ip->item);	/* Free the item data */
@@ -290,6 +291,10 @@ int list_destroy(list lp) {
 		free(ip);			/* Free current item */
 		ip = next;                      /* Set current item to next */
 	}
+
+#if THREAD_SAFE
+	pthread_mutex_unlock(&lp->mutex);
+#endif
 	free(lp);				/* Free list */
 	return 0;
 }
@@ -328,27 +333,27 @@ void *list_get_next(list lp) {
 	list_item ip;
 	void *item;
 
-	DPRINTF("lp: %p\n",lp);
+	dprintf(dlevel,"lp: %p\n",lp);
 	if (!lp) return 0;
 
 #if THREAD_SAFE
-	DPRINTF("locking...\n");
+	dprintf(dlevel,"locking...\n");
 	pthread_mutex_lock(&lp->mutex);
 #endif
 
 	item = 0;
-	DPRINTF("lp->next: %p\n",lp->next);
+	dprintf(dlevel,"lp->next: %p\n",lp->next);
 	if (lp->next) {
 		ip = lp->next;
-		DPRINTF("ip->next: %p\n",ip->next);
-		lp->next = ip->next;
 		item = ip->item;
+		lp->next = ip->next;
 	}
 
 #if THREAD_SAFE
-	DPRINTF("unlocking...\n");
+	dprintf(dlevel,"unlocking...\n");
 	pthread_mutex_unlock(&lp->mutex);
 #endif
+	dprintf(dlevel,"returning: %p\n", item);
 	return item;
 }
 
@@ -407,7 +412,7 @@ int list_sort(list lp, list_compare compare, int order) {
 				break;
 			}
 		}
-		DPRINTF("swap: %d\n", swap);
+		dprintf(dlevel,"swap: %d\n", swap);
 		if (swap) {
 			/* LOL dont swap the list_items ... just swap the items */
 			save_item = ip1->item;

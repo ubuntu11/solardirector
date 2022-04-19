@@ -9,8 +9,8 @@ ID=$(shell id -u)
 ifeq ($(ID),0)
 PREFIX?=/usr/local
 else
-#PREFIX?=~
-PREFIX?=/usr/local
+PREFIX?=~
+#PREFIX?=/usr/local
 endif
 ETCDIR?=$(PREFIX)/etc
 BINDIR?=$(PREFIX)/bin
@@ -115,36 +115,43 @@ endif
 current_makefile := $(lastword $(MAKEFILE_LIST))
 SRC_ROOT ?= $(shell echo $$(dirname $(current_makefile)))
 
+# Local system overrides
+ifneq ("$(wildcard /usr/local/lib/make.opts)","")
+include /usr/local/lib/make.opts
+endif
+
+# Deps
+DEPDIR := .deps
+CLEANFILES+=.deps
+DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
+
+FULLCC = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS)
+
+%.o : %.c
+%.o : %.c $(DEPDIR)/%.d | $(DEPDIR)
+	$(FULLCC) -c $<
+
+%.so : %.c
+%.so : %.c $(DEPDIR)/%.d | $(DEPDIR)
+	$(FULLCC) -fPIC -c $< -o $@
+
+$(DEPDIR): ; @mkdir -p $@
+
+DEPFILES := $(SRCS:%.c=$(DEPDIR)/%.d)
+
 # Debugging?
 ifeq ($(DEBUG),yes)
-CFLAGS+=-Wall -DDEBUG -D_DEBUG -g -O0
-#DEBUG_SUFFIX=_debug
+	CFLAGS+=-Wall -DDEBUG -D_DEBUG -g -O0
+#	DEBUG_SUFFIX=_debug
 else
-CFLAGS+=-O2 -pipe
+	CFLAGS+=-O2 -pipe
 endif
 
 ifeq ($(DEBUG_MEM),yes)
-CFLAGS+=-DDEBUG_MEM
-endif
-
-ifeq ($(SHARED),yes)
-ifeq ($(OS),Windows)
-LIBEXT=.dll
-LDADD+=-Wl,--export-all-symbols -Wl,--enable-auto-import
-else
-LIBEXT=.so
-ifneq ($LIBNAME),)
-CFLAGS+=-fPIC
-endif
-endif
-else
-LIBEXT=.a
-endif
-
-ifeq ($(STATIC),yes)
-_DOSTATIC=yes
-else
-_DOSTATIC=no
+	CFLAGS+=-DDEBUG_MEM
+	ifeq ($(MEMWATCH),yes)
+		CFLAGS+=-DMEMWATCH
+	endif
 endif
 
 # Suffixes
@@ -155,14 +162,14 @@ SUFFIX=$(DEBUG_SUFFIX)
 CFLAGS+=-I.
 
 ifeq ($(shell test -d $(INCDIR) && echo yes),yes)
-CFLAGS+=-I$(INCDIR)
+	CFLAGS+=-I$(INCDIR)
 endif
 
 # Uses LIBOS?
 ifeq ($(LIBOS),yes)
-CFLAGS+=-I$(SRC_ROOT)/libos
-LIBS+=-L$(SRC_ROOT)/libos -los$(SUFFIX)
-DEPS+=$(SRC_ROOT)/libos/libos$(SUFFIX)$(LIBEXT)
+	CFLAGS+=-I$(SRC_ROOT)/libos
+	LIBS+=-L$(SRC_ROOT)/libos -los$(SUFFIX)
+	DEPS+=$(SRC_ROOT)/libos/libos$(SUFFIX)$(LIBEXT)
 endif
 
 # Uses VIM?
@@ -188,136 +195,152 @@ endif
 
 # Uses SOAP?
 ifeq ($(SOAP),yes)
-  SOAP_CFLAGS=-DWITH_OPENSSL -DWITH_DOM -DWITH_COOKIES -DWITH_GZIP
-  CFLAGS+=-I$(SRC_ROOT)/soap
-  LIBS+=-L$(SRC_ROOT)/soap -lsoap$(SUFFIX)
-  DEPS+=$(SRC_ROOT)/soap/libsoap$(SUFFIX)$(LIBEXT)
-  LIBS+=-lgsoapssl -lz -lssl -lcrypto -ldl
+	SOAP_CFLAGS=-DWITH_OPENSSL -DWITH_DOM -DWITH_COOKIES -DWITH_GZIP
+	CFLAGS+=-I$(SRC_ROOT)/soap
+	LIBS+=-L$(SRC_ROOT)/soap -lsoap$(SUFFIX)
+	DEPS+=$(SRC_ROOT)/soap/libsoap$(SUFFIX)$(LIBEXT)
+	LIBS+=-lgsoapssl -lz -lssl -lcrypto -ldl
 endif
 
 # Uses ODBC?
 ifeq ($(ODBC),yes)
-ifneq ($(wildcard $(SRC_ROOT)/db),)
-	CFLAGS+=-I$(SRC_ROOT)/db
-	LIBS+=-L$(SRC_ROOT)/db -ldb$(SUFFIX)
-	DEPS+=$(SRC_ROOT)/db/libdb$(SUFFIX)$(LIBEXT)
-else
-	LIBS+=-ldb$(SUFFIX)
-	DEPS+=$(LIBDIR)/libdb$(SUFFIX)$(LIBEXT)
-endif
-ifeq ($(OS),Windows)
-LIBS+=-lodbc32
-else
-LIBS+=-lodbc
-endif
+	ifneq ($(wildcard $(SRC_ROOT)/db),)
+		CFLAGS+=-I$(SRC_ROOT)/db
+		LIBS+=-L$(SRC_ROOT)/db -ldb$(SUFFIX)
+		DEPS+=$(SRC_ROOT)/db/libdb$(SUFFIX)$(LIBEXT)
+	else
+		LIBS+=-ldb$(SUFFIX)
+		DEPS+=$(LIBDIR)/libdb$(SUFFIX)$(LIBEXT)
+	endif
+	ifeq ($(OS),Windows)
+		LIBS+=-lodbc32
+	else
+		LIBS+=-lodbc
+	endif
 endif
 
 # Uses MySQL?
 ifeq ($(MYSQL),yes)
-LIBS+=-lmysqlclient
+	LIBS+=-lmysqlclient
 endif
 
 # Uses libxml?
 ifeq ($(XML),yes)
-CFLAGS+=$(shell xml2-config --cflags)
-LIBS+=$(shell xml2-config --libs)
-endif
-
-ifeq ($(LIBJS),yes)
-CFLAGS+=-I../libjs
-ifeq ($(OS),"Windows")
-CFLAGS+=-DXP_WIN
-else
-CFLAGS+=-DXP_UNIX
-endif
-CFLAGS+=-I$(SRC_ROOT)/libjs
-LIBS+=-L$(SRC_ROOT)/libjs -llibjs$(SUFFIX)
-DEPS+=$(SRC_ROOT)/libjs/libjs$(SUFFIX)$(LIBEXT)
+	CFLAGS+=$(shell xml2-config --cflags)
+	LIBS+=$(shell xml2-config --libs)
 endif
 
 ifeq ($(AV),yes)
-LIBS+=-lavformat -lavcodec -lavutil -lfaac -lfaad -lx264 -lxvidcore -lmp3lame -lvorbis -lvorbisenc -logg -lz -lbz2 -lx264 -l$(PTHREADS) $(AVLIBADD)
+	LIBS+=-lavformat -lavcodec -lavutil -lfaac -lfaad -lx264 -lxvidcore -lmp3lame -lvorbis -lvorbisenc -logg -lz -lbz2 -lx264 -l$(PTHREADS) $(AVLIBADD)
+endif
+
+ifeq ($(STATIC),yes)
+	_DOSTATIC=yes
+else
+	_DOSTATIC=no
 endif
 
 ifeq ($(CURL),yes)
-LIBS+=-lcurl
-_DOSTATIC=no
-ifeq ($(STATIC),yes)
-#LIBS+=$$(pkg-config libcurl --static --libs)
-endif
+	LIBS+=-lcurl
+	ifeq ($(_DOSTATIC),yes)
+		_DOSTATIC=no
+#		LIBS+=-lnghttp2 -lidn2 -lrtmp -lssh2 -lpsl -lssl -lcrypto -lssl -lcrypto
+#		LIBS+=-lffi -lpcre -lpthread -lmount -ldl -lblkid -lresolv -lz -lselinux
+#		CFLAGS+=$(shell pkg-config --cflags --static libcurl)
+#		LIBS+=$(shell pkg-config --libs --static libcurl)
+	endif
 endif
 
 # Uses pthreads? (needed @ end)
 ifeq ($(PTHREADS),yes)
-ifeq ($(OS),Windows)
-#LIBS+=-lwinpthread
-LIBS+=-lpthread
-else
-LIBS+=-lpthread
-endif
+	ifeq ($(OS),Windows)
+#		LIBS+=-lwinpthread
+		LIBS+=-lpthread
+	else
+		LIBS+=-lpthread
+	endif
 endif
 
 ifeq ($(OS),Windows)
-LIBS+=-lws2_32
+	LIBS+=-lws2_32
 endif
 
 
 #####################
 
-ifeq ($(DYNAMIC),yes)
-LDFLAGS+=-rdynamic
-LIBS+=-ldl
-endif
-
-# Static binary?
-ifeq ($(_DOSTATIC),yes)
-#all:
-#	echo $(TARGET)
-
-ifneq "$(findstring linux,$(TARGET))" ""
-LDFLAGS+=-static
-endif
-endif
-
 #
 # End of mods
 #
 
-#OBJS+=$(SRCS:%=%.o)
-OBJS?=$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SRCS)))
-
-#all:
-#	echo $(OBJS)
+OBJS+=$(SRCS:%.c=%.o)
+#OBJS?=$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SRCS)))
 
 .PHONY: _all
+
+##############################
+#
+##################### LIB
+#
+##############################
+
 ifneq ($(LIBNAME),)
-LIB=lib$(LIBNAME)$(SUFFIX)$(LIBEXT)
-_all: $(LIB)
-$(LIB): $(OBJS)
+ALIB=lib$(LIBNAME)$(SUFFIX).a
+CLEANFILES+=$(ALIB)
 ifeq ($(SHARED),yes)
-	echo $(CC)
-	$(CC) $(LDADD) -shared -o $(LIB) $(OBJS) $(LIBS) $(ENDLIBS)
-else
-	$(AR) cr $(LIB) $(OBJS)
-	$(RANLIB) $(LIB)
-endif
 ifeq ($(OS),Windows)
+	SHEXT=.dll
+	SHLDADD+=-Wl,--export-all-symbols -Wl,--enable-auto-import
+else
+	SHEXT=.so
+endif
+SLIB=lib$(LIBNAME)$(SUFFIX)$(SHEXT)
+SOBJS+=$(SRCS:%.c=%.so)
+CLEANFILES+=$(SLIB) $(SOBJS)
+_all: $(ALIB) $(SLIB)
+else
+_all: $(ALIB)
+endif
+
+$(ALIB): $(OBJS)
+	$(AR) cr $(ALIB) $(OBJS)
+	$(RANLIB) $(ALIB)
+
 ifeq ($(SHARED),yes)
-CLEANFILES+=lib$(LIBNAME)$(SUFFIX).a
+$(SLIB): $(SOBJS)
+#	$(CC) $(LDADD) $(SHLDADD) -shared -o $(SLIB) $(SOBJS) $(SHAREDLIBS)
+	$(FULLCC) $(LDADD) $(SHLDADD) -shared -o $(SLIB) $(SOBJS) $(SHAREDLIBS)
 endif
-endif
+
 ifneq ("$(wildcard $(SCRIPTS))","")
 install:
 	mkdir -p $(LIBDIR)/$(LIBNAME)
 	$(INSTALL) -m 755 $(INSTALL_USER) $(SCRIPTS) $(LIBDIR)/$(LIBNAME)
 endif
-endif
+
+else # not LIBNAME
+##############################
+#
+##################### PROG
+#
+##############################
 
 ifneq ($(PROGNAME),)
+var=value
+# Static binary?
+ifeq ($(_DOSTATIC),yes)
+	LDADD+=-static
+else
+	# Dynamic binary?
+	ifeq ($(DYNAMIC),yes)
+		LDADD+=-rdynamic
+		LIBS+=-ldl
+	endif
+endif
 PROG=$(PROGNAME)$(EXE)
 _all: $(PROG)
 $(PROG): $(OBJS) $(DEPS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $(PROG) $(OBJS) $(LIBS) $(ENDLIBS)
+	$(CC) $(CFLAGS) $(LDADD) -o $(PROG) $(OBJS) $(LIBS) $(ENDLIBS)
+#	$(FULLCC) $(LDADD) -o $(PROG) $(OBJS) $(LIBS) $(ENDLIBS)
 
 debug: $(PROG)
 	gdb ./$(PROG)
@@ -338,6 +361,10 @@ ifneq ("$(wildcard $(SCRIPTS))","")
 	mkdir -p $(LIBDIR)/agents/$(PROGNAME)
 	$(INSTALL) -m 755 $(INSTALL_USER) $(SCRIPTS) $(LIBDIR)/agents/$(PROGNAME)
 endif
+ifneq ("$(wildcard $(FILES))","")
+	mkdir -p $(LIBDIR)
+	$(INSTALL) -m 755 $(INSTALL_USER) $(FILES) $(LIBDIR)
+endif
 	mkdir -p $(BINDIR)
 	$(INSTALL) -m 755 $(INSTALL_USER) $(PROG) $(BINDIR)/$(PROG)
 endif
@@ -349,38 +376,21 @@ ifeq ($(ID),0)
 	systemctl daemon-reload
 	systemctl enable $(SERVICE)
 endif
-endif
 release: $(PROG)
 	mkdir -p $(SRC_ROOT)/releases/$(TARGET)
 	$(MAKE) PREFIX=$(SRC_ROOT)/releases/$(TARGET) TARGET=$(TARGET) install
 
+else # not PROGNAME
+all:
+
+endif # PROGNAME
+
+endif # LIBNAME
+
 clean:
 	rm -rf $(LIB) $(PROG) $(OBJS) *.o $(CLEANFILES) __sd_build.h
 
-#
-# Deps
-#
-
-DEPDIR := .deps
-CLEANFILES+=.deps
-DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
-
-FULLCC = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH)
-FULLCPP = $(CPP) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH)
-
-%.o : %.c
-%.o : %.c $(DEPDIR)/%.d | $(DEPDIR)
-	$(FULLCC) -c $<
-
-%.o : %.cpp
-%.o : %.cpp $(DEPDIR)/%.d | $(DEPDIR)
-	$(FULLCPP) -c $<
-
-$(DEPDIR): ; @mkdir -p $@
-
-DEPFILES := $(SRCS:%.c=$(DEPDIR)/%.d)
 $(DEPFILES):
-
 include $(wildcard $(DEPFILES))
 
 #__sd_build.h:

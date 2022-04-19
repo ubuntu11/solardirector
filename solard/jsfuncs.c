@@ -1,4 +1,5 @@
 
+#ifdef JS
 #include "solard.h"
 #include "jsstr.h"
 #include "jsprintf.h"
@@ -6,7 +7,7 @@
 #define dlevel 1
 
 static JSBool agentinfo_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
-	solard_agentinfo_t *info;
+	solard_agent_t *info;
 	int prop_id;
 
 	info = JS_GetPrivate(cx,obj);
@@ -30,7 +31,7 @@ static JSBool agentinfo_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *r
 }
 
 static JSBool agentinfo_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp) {
-	solard_agentinfo_t *info;
+	solard_agent_t *info;
 	int prop_id;
 
 	info = JS_GetPrivate(cx,obj);
@@ -67,7 +68,7 @@ static JSClass agentinfo_class = {
 	JSCLASS_NO_OPTIONAL_MEMBERS
 };
 
-JSObject *JSAgentInfo(JSContext *cx, solard_agentinfo_t *info) {
+JSObject *JSAgentInfo(JSContext *cx, solard_agent_t *info) {
 	JSPropertySpec agentinfo_props[] = { 
 		{0}
 	};
@@ -107,12 +108,12 @@ enum SOLARD_PROPERTY_ID {
 
 static JSBool solard_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 	int prop_id;
-	solard_config_t *conf;
+	solard_instance_t *sd;
 	register int i;
 
-	conf = JS_GetPrivate(cx,obj);
-	dprintf(1,"conf: %p\n", conf);
-	if (!conf) {
+	sd = JS_GetPrivate(cx,obj);
+	dprintf(1,"sd: %p\n", sd);
+	if (!sd) {
 		JS_ReportError(cx, "private is null!");
 		return JS_FALSE;
 	}
@@ -124,39 +125,41 @@ static JSBool solard_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval
 		switch(prop_id) {
 		case SOLARD_PROPERTY_ID_AGENTS:
 			{
-				solard_agentinfo_t *info;
+				solard_agent_t *info;
 				JSObject *rows;
 				jsval node;
 
-				rows = JS_NewArrayObject(cx, list_count(conf->agents), NULL);
+				rows = JS_NewArrayObject(cx, list_count(sd->agents), NULL);
 				i = 0;
-				list_reset(conf->agents);
-				while( (info = list_next(conf->agents)) != 0) {
+				list_reset(sd->agents);
+				while( (info = list_next(sd->agents)) != 0) {
 					node = OBJECT_TO_JSVAL(JSAgentInfo(cx,info));
 					JS_SetElement(cx, rows, i++, &node);
 				}
 				*rval = OBJECT_TO_JSVAL(rows);
 			}
 			break;
+#if 0
 		case SOLARD_PROPERTY_ID_BATTERIES:
 			{
 				solard_battery_t *bp;
 				JSObject *rows;
 				jsval node;
 
-				rows = JS_NewArrayObject(cx, list_count(conf->batteries), NULL);
+				rows = JS_NewArrayObject(cx, list_count(sd->batteries), NULL);
 				i = 0;
-				list_reset(conf->batteries);
-				while( (bp = list_next(conf->batteries)) != 0) {
+				list_reset(sd->batteries);
+				while( (bp = list_next(sd->batteries)) != 0) {
 					node = OBJECT_TO_JSVAL(JSBattery(cx,bp));
 					JS_SetElement(cx, rows, i++, &node);
 				}
 				*rval = OBJECT_TO_JSVAL(rows);
 			}
 			break;
+#endif
 		case SOLARD_PROPERTY_ID_INTERVAL:
-			dprintf(1,"getting interval: %d\n", conf->ap->read_interval);
-			*rval = INT_TO_JSVAL(conf->ap->read_interval);
+			dprintf(1,"getting interval: %d\n", sd->ap->read_interval);
+			*rval = INT_TO_JSVAL(sd->ap->read_interval);
 			break;
 		default:
 			*rval = JSVAL_NULL;
@@ -168,11 +171,11 @@ static JSBool solard_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval
 
 static JSBool solard_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 	int prop_id;
-	solard_config_t *conf;
+	solard_instance_t *sd;
 
-	conf = JS_GetPrivate(cx,obj);
-	dprintf(1,"conf: %p\n", conf);
-	if (!conf) {
+	sd = JS_GetPrivate(cx,obj);
+	dprintf(1,"sd: %p\n", sd);
+	if (!sd) {
 		JS_ReportError(cx, "private is null!");
 		return JS_FALSE;
 	}
@@ -183,7 +186,7 @@ static JSBool solard_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval
 		dprintf(1,"prop_id: %d\n", prop_id);
 		switch(prop_id) {
 		case SOLARD_PROPERTY_ID_INTERVAL:
-			conf->ap->read_interval = JSVAL_TO_INT(*rval);
+			sd->ap->read_interval = JSVAL_TO_INT(*rval);
 			break;
 		default:
 			*rval = JSVAL_NULL;
@@ -210,22 +213,22 @@ static JSClass sd_class = {
 static JSBool jssd_notify(JSContext *cx, uintN argc, jsval *vp) {
 	jsval val;
 	char *str;
-//	solard_config_t *conf;
+//	solard_instance_t *sd;
 	JSObject *obj;
 
 	obj = JS_THIS_OBJECT(cx, vp);
 	if (!obj) return JS_FALSE;
-//	conf = JS_GetPrivate(cx, obj);
+//	sd = JS_GetPrivate(cx, obj);
 
 	JS_SPrintf(cx, JS_GetGlobalObject(cx), argc, JS_ARGV(cx, vp), &val);
 	str = (char *)js_GetStringBytes(cx, JSVAL_TO_STRING(val));
 	dprintf(dlevel,"str: %s\n", str);
-//	sd_notify(conf,"%s",str);
+//	sd_notify(sd,"%s",str);
 	return JS_TRUE;
 }
 
 static int jssd_init(JSContext *cx, JSObject *parent, void *priv) {
-	solard_config_t *conf = priv;
+	solard_instance_t *sd = priv;
 	JSPropertySpec sd_props[] = {
 		{ "name",		SOLARD_PROPERTY_ID_SITE_NAME,	JSPROP_ENUMERATE | JSPROP_READONLY },
 		{ "agents",		SOLARD_PROPERTY_ID_AGENTS,	JSPROP_ENUMERATE },
@@ -239,7 +242,6 @@ static int jssd_init(JSContext *cx, JSObject *parent, void *priv) {
 		{ 0 }
 	};
 	JSAliasSpec sd_aliases[] = {
-		{ "charge_amps", "charge_current" },
 		{ 0 }
 	};
 	JSConstantSpec sd_constants[] = {
@@ -247,19 +249,19 @@ static int jssd_init(JSContext *cx, JSObject *parent, void *priv) {
 	};
 	JSObject *obj,*global = JS_GetGlobalObject(cx);
 
-	dprintf(dlevel,"conf->props: %p, cp: %p\n",conf->props,conf->ap->cp);
-	if (!conf->props) {
-
-		conf->props = config_to_props(conf->ap->cp, "si", sd_props);
-		dprintf(dlevel,"conf->props: %p\n",conf->props);
-		if (!conf->props) {
-			log_error("unable to create props: %s\n", config_get_errmsg(conf->ap->cp));
+	dprintf(dlevel,"sd->props: %p, cp: %p\n",sd->props,sd->ap->cp);
+	if (!sd->props) {
+		/* XXX name must match section in agent_init */
+		sd->props = config_to_props(sd->ap->cp, "solard", sd_props);
+		dprintf(dlevel,"sd->props: %p\n",sd->props);
+		if (!sd->props) {
+			log_error("unable to create props: %s\n", config_get_errmsg(sd->ap->cp));
 			return 0;
 		}
 	}
 
 	dprintf(dlevel,"Defining %s object\n",sd_class.name);
-	obj = JS_InitClass(cx, parent, 0, &sd_class, 0, 0, conf->props, sd_funcs, 0, 0);
+	obj = JS_InitClass(cx, parent, 0, &sd_class, 0, 0, sd->props, sd_funcs, 0, 0);
 	if (!obj) {
 		JS_ReportError(cx,"unable to initialize si class");
 		return 1;
@@ -275,16 +277,17 @@ static int jssd_init(JSContext *cx, JSObject *parent, void *priv) {
 		return 1;
 	}
 	dprintf(dlevel,"done!\n");
-	JS_SetPrivate(cx,obj,conf);
+	JS_SetPrivate(cx,obj,sd);
 
-//	conf->agents_val = OBJECT_TO_JSVAL(jsagent_new(cx,obj,conf->ap));
+//	sd->agents_val = OBJECT_TO_JSVAL(jsagent_new(cx,obj,sd->ap));
 
 	/* Create the global convenience objects */
 	JS_DefineProperty(cx, global, "sd", OBJECT_TO_JSVAL(obj), 0, 0, 0);
-//	JS_DefineProperty(cx, global, "data", conf->data_val, 0, 0, 0);
+//	JS_DefineProperty(cx, global, "data", sd->data_val, 0, 0, 0);
 	return 0;
 }
 
-int solard_jsinit(solard_config_t *conf) {
-	return JS_EngineAddInitFunc(conf->ap->js, "solard", jssd_init, conf);
+int solard_jsinit(solard_instance_t *sd) {
+	return JS_EngineAddInitFunc(sd->ap->js, "solard", jssd_init, sd);
 }
+#endif

@@ -15,7 +15,6 @@ int jk_agent_init(jk_session_t *s, int argc, char **argv) {
 	opt_proctab_t jk_opts[] = {
 		/* Spec, dest, type len, reqd, default val, have */
 		{ "-t::|transport,target,opts",&s->tpinfo,DATA_TYPE_STRING,sizeof(s->tpinfo)-1,0,"" },
-		{ "-T::|override mqtt topic",&s->topic,DATA_TYPE_STRING,sizeof(s->topic)-1,0,"" },
 		{ "-F|flatten arrays",&s->flatten,DATA_TYPE_BOOLEAN,0,0,"N" },
 		OPTS_END
 	};
@@ -23,7 +22,6 @@ int jk_agent_init(jk_session_t *s, int argc, char **argv) {
 		{ "transport", DATA_TYPE_STRING, s->transport, sizeof(s->transport)-1, 0, 0 },
 		{ "target", DATA_TYPE_STRING, s->target, sizeof(s->target)-1, 0, 0 },
 		{ "topts", DATA_TYPE_STRING, s->topts, sizeof(s->topts)-1, 0, 0 },
-		{ "topic", DATA_TYPE_STRING, s->topic, sizeof(s->topic)-1, 0, 0 },
 		{ "flatten", DATA_TYPE_BOOLEAN, &s->flatten, 0, 0, 0 },
 		{ "state", DATA_TYPE_INT, &s->state, 0, 0, CONFIG_FLAG_READONLY | CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOPUB },
 		{0}
@@ -34,11 +32,6 @@ int jk_agent_init(jk_session_t *s, int argc, char **argv) {
 
 	s->ap = agent_init(argc,argv,jk_version_string,jk_opts,&jk_driver,s,jk_props,jk_funcs);
 	if (!s->ap) return 1;
-	dprintf(1,"topic: %s(%d)\n", s->topic, strlen(s->topic));
-	if (!strlen(s->topic)) agent_mktopic(s->topic,sizeof(s->topic)-1,s->ap->instance_name,SOLARD_FUNC_DATA);
-
-	/* Set battery name */
-	strcpy(s->data.name,s->ap->instance_name);
 	return 0;
 }
 
@@ -46,7 +39,7 @@ void jk_config_add_jk_data(jk_session_t *s) {
 	/* Only used by JS funcs */
 	uint32_t flags = CONFIG_FLAG_NOSAVE | CONFIG_FLAG_NOPUB;
 	config_property_t jk_data_props[] = {
-		{ "name", DATA_TYPE_STRING, s->ap->instance_name, sizeof(s->ap->instance_name), 0, CONFIG_FLAG_READONLY | flags },
+		{ "name", DATA_TYPE_STRING, s->data.name, sizeof(s->data.name), 0, CONFIG_FLAG_READONLY | flags },
 		{ "capacity", DATA_TYPE_FLOAT, &s->data.capacity, 0, 0, CONFIG_FLAG_READONLY | flags },
 		{ "voltage", DATA_TYPE_FLOAT, &s->data.voltage, 0, 0, CONFIG_FLAG_READONLY | flags },
 		{ "current", DATA_TYPE_FLOAT, &s->data.current, 0, 0, CONFIG_FLAG_READONLY | flags },
@@ -63,6 +56,9 @@ void jk_config_add_jk_data(jk_session_t *s) {
 		{ "balancebits", DATA_TYPE_INT, &s->data.balancebits, 0, 0, CONFIG_FLAG_READONLY | flags },
 		{0}
 	};
+
+	/* Set battery name */
+	strcpy(s->data.name,s->ap->instance_name);
 
 	 /* Add info_props to config */
 	config_add_props(s->ap->cp, "jk_data", jk_data_props, flags);
@@ -103,10 +99,14 @@ int jk_config(void *h, int req, ...) {
 		/* Add our internal params to the config */
 //		jk_config_add_parms(s);
 
+		/* add data props */
+		jk_config_add_jk_data(s);
+
 #ifdef JS
 		/* Init JS */
-		jk_config_add_jk_data(s);
 		r = jk_jsinit(s);
+#else
+		r = 0;
 #endif
 	    }
 	    break;

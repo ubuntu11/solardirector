@@ -9,6 +9,5 @@ LICENSE file in the root directory of this source tree.
 
 #include "debug.h"
 
-#ifdef DEBUG
+/* individual sources can still enable debug */
 int debug = 0;
-#endif

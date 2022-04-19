@@ -102,15 +102,14 @@ function charge_init() {
 	/* Make sure all our variables are defined */
 	var flags = CONFIG_FLAG_NOPUB | CONFIG_FLAG_NOSAVE;
 	var jstypes = [
-		[ "charge_voltage", DATA_TYPE_FLOAT, 0, flags ],
 		[ "charge_amps_temp_modifier", DATA_TYPE_INT, "1", flags ],
 		[ "charge_amps_soc_modifier", DATA_TYPE_INT, "1", flags ],
 		[ "charge_state", DATA_TYPE_INT, 0, flags ],
-		[ "ExtSrc", DATA_TYPE_STRING, "san", flags ],
+		[ "ExtSrc", DATA_TYPE_STRING, "None", flags ],
 		[ "charge_method", DATA_TYPE_INT, CHARGE_METHOD_CCCV.toString(), 0 ],
 		[ "cv_method", DATA_TYPE_INT, CV_METHOD_AMPS.toString(), 0 ],
 		[ "cv_time", DATA_TYPE_INT, "120", 0 ],
-		[ "cv_cutoff", DATA_TYPE_INT, "30", 0 ],
+		[ "cv_cutoff", DATA_TYPE_FLOAT, "5", 0 ],
 		[ "cv_timeout", DATA_TYPE_BOOL, "true", 0 ],
 	];
 
@@ -126,11 +125,8 @@ function charge_init() {
 	}
 	si.charge_voltage = si.charge_end_voltage;
 	si.charge_amps = si.charge_min_amps;
-	si.charge_mode = 0;
 	si.grid_save = "";
 	si.gen_save = "";
-	if (si.grid_charge_amps <= 0) si.grid_charge_amps = si.charge_max_amps;
-	if (si.gen_charge_amps <= 0) si.gen_charge_amps = si.charge_max_amps;
 	si.ba = [];
 	si.baidx = 0;
 	si.bafull = 0;
@@ -205,10 +201,17 @@ function charge_max_stop() {
 
 function charge_stop(rep) {
 
+//	printf("===> charge_stop\n");
+
+	dprintf(1,"charge_mode: %d\n", si.charge_mode);
 	if (!si.charge_mode) return;
+
+	// Call from C wont have rep set
+	if (typeof(rep) == "undefined") rep = 1;
 
 	if (rep) log_info("*** ENDING CHARGE ***\n");
 	si.charge_mode = 0;
+	config.save();
 
 	/* Need this AFTER ending charge */
 	if (si_check_config()) {
@@ -219,13 +222,17 @@ function charge_stop(rep) {
 	dprintf(1,"charge_end_voltage: %.1f, charge_min_amps: %.1f\n", si.charge_end_voltage, si.charge_min_amps);
 	si.charge_voltage = si.charge_end_voltage;
 	si.charge_amps = si.charge_min_amps;
-//	si.force_charge = 0;
 }
 
 function charge_start(rep) {
 
+//	printf("===> charge_start\n");
+
+	if (typeof(rep) == "undefined") rep = 1;
+	dprintf(1,"data.Run: %d\n", data.Run);
 	if (!data.Run) return;
 
+	dprintf(1,"charge_mode: %d\n", si.charge_mode);
 	if (si.charge_mode) return;
 	if (si_check_config()) {
 		log_error("%s\n",si.errmsg);
@@ -238,6 +245,7 @@ function charge_start(rep) {
 		return;
 	}
 
+	dprintf(1,"charge_at_max: %d\n", si.charge_at_max);
 	if (si.charge_at_max) charge_max_start(s);
 	else si.charge_voltage = si.charge_end_voltage;
 
@@ -246,6 +254,7 @@ function charge_start(rep) {
 
 	if (rep) log_info("*** STARTING CC CHARGE ***\n");
 	si.charge_mode = 1;
+	config.save();
 	si.charge_amps_soc_modifier = 1.0;
 	si.charge_amps_temp_modifier = 1.0;
 //	si.start_temp = data.battery_temp;
@@ -281,6 +290,7 @@ function charge_start_cv(rep) {
 	}
 	if (rep) log_info("*** STARTING CV CHARGE ***\n");
 	si.charge_mode = 2;
+	config.save();
 	si.charge_voltage = si.charge_end_voltage;
 	si.charge_amps = si.charge_max_amps;
 	si.cv_start_time = time();
@@ -425,6 +435,8 @@ function charge_gen_stop() {
 
 function charge_main()  {
 
+//	printf("==> charge_main\n");
+
 	if (typeof(charging_initialized) == "undefined") charge_init();
 
 if (0) {
@@ -564,6 +576,17 @@ if (0) {
 	if (!si.charge_mode) return 0;
 }
 
+	if (typeof(norun_warn) == "undefined") norun_warn = false;
+	if (!data.Run) {
+		if (!norun_warn) {
+			log_info("not running.\n");
+			norun_warn = true;
+		}
+		return 0;
+	} else if (norun_warn) {
+		norun_warn = false;
+	}
+
 	// In case of data errors
 	if (!si_isvrange(data.battery_voltage)) {
 		log_error("battery voltage of range, aborting charge check\n");
@@ -628,7 +651,7 @@ if (0) {
 				var i;
 
 				amps = data.battery_current * -1;
-				dprintf(0,"battery_amps: %f, charge_amps: %f\n", amps, si.charge_amps);
+				dprintf(2,"battery_amps: %f\n", amps);
 
 				/* Amps < 0 (battery drain) will clear the hist */
 				if (amps < 0) {
@@ -637,7 +660,7 @@ if (0) {
 				}
 
 				/* Average the last X amp samples */
-				dprintf(0,"amps: %f, baidx: %d\n", amps, si.baidx);
+				dprintf(2,"baidx: %d\n", si.baidx);
 				si.ba[si.baidx++] = amps;
 				if (si.baidx == SI_MAX_BA) {
 					si.baidx = 0;
@@ -646,11 +669,11 @@ if (0) {
 				if (si.bafull) {
 					amps = 0;
 					for(i=0; i < SI_MAX_BA; i++) {
-						dprintf(0,"ba[%d]: %f\n", i, si.ba[i]);
+						dprintf(3,"ba[%d]: %f\n", i, si.ba[i]);
 						amps += si.ba[i];
 					}
 					avg = amps / SI_MAX_BA;
-					dprintf(0,"avg: %.1f, cv_cutoff: %.1f\n", avg, si.cv_cutoff);
+					dprintf(2,"avg: %.1f, cv_cutoff: %.1f\n", avg, si.cv_cutoff);
 					if (avg < si.cv_cutoff) charge_stop(1);
 				}
 			}

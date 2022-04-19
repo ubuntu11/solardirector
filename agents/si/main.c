@@ -21,7 +21,7 @@ LICENSE file in the root directory of this source tree.
 #define _ST_DEBUG 0
 #endif
 
-char *si_version_string = "2.0-" STRINGIFY(__SD_BUILD);
+char *si_version_string = "2.03-" STRINGIFY(__SD_BUILD);
 
 int main(int argc, char **argv) {
 	char cantpinfo[256];
@@ -77,9 +77,6 @@ int main(int argc, char **argv) {
 	time(&end);
 	diff = end - start;
 	dprintf(1,"--> startup time: %d\n", diff);
-
-//influx_query(s->ap->i, "select value from solar limit 10; select last(value) from solar");
-//return 0;
 
 	/* Go */
 	agent_run(s->ap);

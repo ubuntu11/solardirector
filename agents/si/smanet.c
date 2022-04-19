@@ -233,6 +233,7 @@ static void _addchans(si_session_t *s) {
 	float step;
 	register int i;
 
+	dprintf(dlevel,"adding channels...\n");
 	sec = config_create_section(s->ap->cp,"smanet",0);
 	if (!sec) return;
 
@@ -241,11 +242,12 @@ static void _addchans(si_session_t *s) {
 	smanet_lock(s->smanet);
 #endif
 
+	dprintf(dlevel,"chancount: %d\n", ss->chancount);
 	for(i=0; i < ss->chancount; i++) {
 		c = &ss->chans[i];
 		dprintf(dlevel,"c->mask: %04x, CH_PARA: %04x\n", c->mask, CH_PARA);
 		if ((c->mask & CH_PARA) == 0) continue;
-		dprintf(dlevel+1,"adding chan: %s\n", c->name);
+//		dprintf(dlevel+1,"adding chan: %s\n", c->name);
 		memset(&newp,0,sizeof(newp));
 		newp.name = c->name;
 		newp.flags = SI_CONFIG_FLAG_SMANET;
@@ -335,9 +337,11 @@ static void _addchans(si_session_t *s) {
 	}
 
 	/* Re-create info and publish it */
-	if (s->ap->driver_info) json_destroy_value(s->ap->driver_info);
-	s->ap->driver_info = si_get_info(s);
+	if (s->ap->info) json_destroy_value(s->ap->info);
+	s->ap->info = si_get_info(s);
+#ifdef MQTT
 	agent_pubinfo(s->ap,0);
+#endif
 
 	if (0) {
 		config_section_t *sec;
@@ -364,23 +368,24 @@ int si_smanet_setup(si_session_t *s) {
 //	pthread_t th;
 
 	/* Load channels */
-	if (!strlen(s->smanet_channels_path)) sprintf(s->smanet_channels_path,"%s/%s.dat",SOLARD_LIBDIR,s->smanet->type);
-	if (access(s->smanet_channels_path,0) == 0) {
-		dprintf(1,"loading smanet channels from: %s\n", s->smanet_channels_path);
-		smanet_load_channels(s->smanet,s->smanet_channels_path);
-	} else {
+	if (!strlen(s->smanet_channels_path)) sprintf(s->smanet_channels_path,"%s/%s_channels.json",SOLARD_LIBDIR,s->smanet->type);
+	if (access(s->smanet_channels_path,0)) {
 		log_warning("unable to access smanet_channels_path: %s, not loading!\n", s->smanet_channels_path);
 		return 1;
 	}
 
         /* Add SMANET channels to config */
-        dprintf(1,"smanet: %p\n", s->smanet);
-	dprintf(1,"smanet_channels_path: %s\n", s->smanet_channels_path);
-	if (!strlen(s->smanet_channels_path)) sprintf(s->smanet_channels_path,"%s/%s.dat",SOLARD_LIBDIR,s->smanet->type);
+	if (!strlen(s->smanet_channels_path)) sprintf(s->smanet_channels_path,"%s/%s_channels.json",SOLARD_LIBDIR,s->smanet->type);
 	fixpath(s->smanet_channels_path, sizeof(s->smanet_channels_path)-1);
 	dprintf(1,"smanet_channels_path: %s\n", s->smanet_channels_path);
-	if (smanet_load_channels(s->smanet, s->smanet_channels_path) == 0) _addchans(s);
+	if (smanet_load_channels(s->smanet, s->smanet_channels_path)) {
+		log_error("unable to load SMANET channels: %s\n", s->smanet->errmsg);
+		return 1;
+	}
+	_addchans(s);
+#ifdef JS
 	if (s->ap && s->ap->js) smanet_jsinit(s->ap->js);
+#endif
 
 	s->smanet_added = 1;
 	return 0;

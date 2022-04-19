@@ -6,8 +6,8 @@ GdMod GridCharge
 GdPwrStr 4
 GdPwrStp 3
 GdPwrEna Enable
-GdSocTm1Str 40
-GdSocTm1Stp 45
+GdSocTm1Str 35
+GdSocTm1Stp 65
 GdSocEna Enable
 #GdFrqMin 58
 #GdFrqMax 62
@@ -20,16 +20,16 @@ GnCurNom 112
 GnManStr Auto
 GnAutoEna On
 GnStrMod Autostart
-GnSocTm1Str 35
-GnSocTm1Stp 90
-#GnFrqMin 58
+GnSocTm1Str 34
+GnSocTm1Stp 85
+GnFrqMin 56
 #GnFrqMax 62
 #GnVtgMin 108
 #GnVtgMax 132
 GnStpTmMin 0
 GnCoolTm 0
 # This is .5C
-BatChrgCurMax 560
+#BatChrgCurMax 560
 #AptTmBoost 120
 #AptTmFul 1
 #AptTmEqu 1

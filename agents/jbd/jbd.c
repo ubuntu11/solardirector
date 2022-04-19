@@ -9,6 +9,7 @@ LICENSE file in the root directory of this source tree.
 
 #include "jbd.h"
 #include "transports.h"
+#include <pthread.h>
 
 #define MIN_CMD_LEN 7
 
@@ -41,6 +42,7 @@ int jbd_tp_init(jbd_session_t *s) {
 	}
 
 	/* Find the driver */
+	dprintf(1,"transport: %s\n", s->transport);
 	if (strlen(s->transport)) s->tp = find_driver(jbd_transports,s->transport);
 	dprintf(1,"s->tp: %p\n", s->tp);
 	if (!s->tp) {
@@ -80,7 +82,7 @@ int jbd_tp_init(jbd_session_t *s) {
 	}
 
 	/* Warn if using the null driver */
-	if (strcmp(s->tp->name,"null") == 0) log_warning("using null driver for I/O");
+	if (strcmp(s->tp->name,"null") == 0) log_warning("using null driver for I/O\n");
 
 	/* Open the new driver */
 //	jbd_open(s);
@@ -298,27 +300,57 @@ int jbd_set_mosfet(jbd_session_t *s, int val) {
 
 	dprintf(5,"val: %x\n", val);
 	jbd_putshort(payload,val);
+	if (!solard_check_state(s,JBD_STATE_OPEN) && jbd_open(s)) return 1;
 	if (jbd_eeprom_open(s) < 0) return 1;
 	r = jbd_rw(s, JBD_CMD_WRITE, JBD_REG_MOSFET, payload, sizeof(payload));
 	if (jbd_eeprom_close(s) < 0) return 1;
 	return (r < 0 ? 1 : 0);
 }
 
-int jbd_reset(void *h, int nargs, char **args, char *errmsg) {
-	jbd_session_t *s = h;
+int jbd_get_balance(jbd_session_t *s) {
+	uint8_t payload[2];
+	int r,bits;
+
+	if (!solard_check_state(s,JBD_STATE_OPEN) && jbd_open(s)) return -1;
+	if (jbd_eeprom_open(s) < 0) return -1;
+	r = jbd_rw(s, JBD_CMD_READ, JBD_REG_FUNCMASK, payload, sizeof(payload));
+	dprintf(0,"r: %d\n", r);
+	if (jbd_eeprom_close(s) < 0) return -1;
+	else bits = (jbd_getshort(payload) & (JBD_FUNC_BALANCE_EN | JBD_FUNC_CHG_BALANCE));
+	dprintf(0,"bits: %d\n", bits);
+	return (r < 0 ? -1 : bits);
+}
+
+int jbd_set_balance(jbd_session_t *s, int newbits) {
+	uint8_t payload[2];
+	int r,bits;
+
+	dprintf(5,"newbits: %x\n", newbits);
+
+	if (!solard_check_state(s,JBD_STATE_OPEN) && jbd_open(s)) return 1;
+	if (jbd_eeprom_open(s) < 0) return 1;
+	r = jbd_rw(s, JBD_CMD_READ, JBD_REG_FUNCMASK, payload, sizeof(payload));
+	dprintf(0,"r: %d\n", r);
+	if (r == 2) {
+		bits = jbd_getshort(payload);
+		dprintf(0,"bits: %x\n", bits);
+		bits &= ~(JBD_FUNC_BALANCE_EN | JBD_FUNC_CHG_BALANCE);
+		bits |= newbits;
+		dprintf(0,"bits: %x\n", bits);
+		jbd_putshort(payload,bits);
+		r = jbd_rw(s, JBD_CMD_WRITE, JBD_REG_FUNCMASK, payload, sizeof(payload));
+		dprintf(0,"r: %d\n", r);
+	}
+	if (jbd_eeprom_close(s) < 0) return 1;
+	return (r < 0 ? 1 : 0);
+}
+
+int jbd_reset(jbd_session_t *s) {
 	uint8_t payload[2];
 	uint16_t val;
-	int opened,r;
+	int r;
 
-	dprintf(1,"locking...\n");
-//	pthread_mutex_lock(&s->lock);
-	if (!solard_check_state(s,JBD_STATE_OPEN)) {
-		if (jbd_open(s)) {
-//			pthread_mutex_unlock(&s->lock);
-			return 1;
-		}
-		opened = 1;
-	}
+	if (!solard_check_state(s,JBD_STATE_OPEN) && jbd_open(s)) return 1;
 	val = 0x4321;
 	jbd_putshort(payload,val);
 	r = jbd_rw(s, JBD_CMD_WRITE, JBD_REG_RESET, payload, sizeof(payload));
@@ -327,9 +359,6 @@ int jbd_reset(void *h, int nargs, char **args, char *errmsg) {
 		jbd_putshort(payload,val);
 		r = jbd_rw(s, JBD_CMD_WRITE, JBD_REG_FRESET, payload, sizeof(payload));
 	}
-	if (opened) jbd_close(s);
-	dprintf(1,"unlocking...\n");
-//	pthread_mutex_unlock(&s->lock);
         return r;
 }
 
@@ -552,11 +581,78 @@ int jbd_std_read(jbd_session_t *s) {
 int jbd_get_fetstate(jbd_session_t *s) {
 	int r;
 
+	if (!solard_check_state(s,JBD_STATE_OPEN) && jbd_open(s)) return 1;
+
 	dprintf(2,"transport: %s\n", s->tp->name);
 	if (strncmp(s->tp->name,"can",3)==0) 
 		r = jbd_can_get_fetstate(s);
 	else
 		r = jbd_std_get_fetstate(s);
+	return r;
+}
+
+void *jbd_new(void *transport, void *transport_handle) {
+	jbd_session_t *s;
+
+	s = calloc(1,sizeof(*s));
+	if (!s) {
+		log_syserr("jbd_new: calloc");
+		return 0;
+	}
+//	pthread_mutex_init(&s->lock,0);
+	if (transport && transport_handle) {
+		s->tp = transport;
+		s->tp_handle = transport_handle;
+#if 0
+		if (strcmp(s->tp->name,"can") == 0 &&_can_init(s)) {
+			free(s);
+			return 0;
+		}
+#endif
+	}
+
+	return s;
+}
+
+int jbd_free(void *handle) {
+	jbd_session_t *s = handle;
+
+	if (solard_check_state(s,JBD_STATE_OPEN)) jbd_close(s);
+	if (s->tp->destroy) s->tp->destroy(s->tp_handle);
+	free(s);
+	return 0;
+}
+
+int jbd_open(void *handle) {
+	jbd_session_t *s = handle;
+	int r;
+
+	dprintf(3,"s: %p\n", s);
+
+	r = 0;
+	if (!solard_check_state(s,JBD_STATE_OPEN)) {
+		if (s->tp && s->tp->open(s->tp_handle) == 0)
+			solard_set_state(s,JBD_STATE_OPEN);
+		else
+			r = 1;
+	}
+	dprintf(3,"returning: %d\n", r);
+	return r;
+}
+
+int jbd_close(void *handle) {
+	jbd_session_t *s = handle;
+	int r;
+
+	dprintf(3,"s: %p\n", s);
+	r = 0;
+	if (solard_check_state(s,JBD_STATE_OPEN)) {
+		if (s->tp && s->tp->close(s->tp_handle) == 0)
+			solard_clear_state(s,JBD_STATE_OPEN);
+		else
+			r = 1;
+	}
+	dprintf(3,"returning: %d\n", r);
 	return r;
 }
 
@@ -602,144 +698,18 @@ int jbd_read(void *handle, uint32_t *what, void *buf, int buflen) {
 	if (s->balancing) solard_set_state(s,JBD_STATE_BALANCING);
 	else solard_clear_state(s,JBD_STATE_BALANCING);
 
-	if (agent_script_exists(s->ap,"pub.js")) agent_start_script(s->ap,"pub.js");
-
-	return 0;
-}
-/*
-Copyright (c) 2021, Stephen P. Shoecraft
-All rights reserved.
-
-This source code is licensed under the BSD-style license found in the
-LICENSE file in the root directory of this source tree.
-*/
-
-#include "jbd.h"
-#include <pthread.h>
-
-static void *jbd_can_recv_thread(void *handle) {
-	return 0;
-}
-
-int jbd_get_local_can_data(jbd_session_t *s, int id, uint8_t *data, int datasz) {
-#if 0
-	char what[16];
-	uint16_t mask;
-	int idx,retries,len;
-
-	dprintf(5,"id: %03x, data: %p, len: %d\n", id, data, datasz);
-
-	idx = id - 0x300;
-	mask = 1 << idx;
-	dprintf(5,"mask: %04x, bitmap: %04x\n", mask, s->bitmap);
-	retries=5;
-	while(retries--) {
-		if ((s->bitmap & mask) == 0) {
-			dprintf(5,"bit not set, sleeping...\n");
-			sleep(1);
-			continue;
+#ifndef JS
+#ifdef INFLUX
+	if (influx_connected(s->ap->i)) {
+		json_value_t *v = battery_to_flat_json(&s->data);
+		dprintf(2,"v: %p\n", v);
+		if (v) {
+			influx_write_json(s->ap->i, "battery", v);
+			json_destroy_value(v);
 		}
-		sprintf(what,"%03x", id);
-//		if (debug >= 5) bindump(what,&s->frames[idx],sizeof(struct can_frame));
-		len = (datasz > 8 ? 8 : datasz);
-		memcpy(data,s->frames[idx].data,len);
-		return 0;
 	}
 #endif
-	return 1;
-}
-
-int jbd_get_remote_can_data(jbd_session_t *s, int id, uint8_t *data, int datasz) {
-	return 1;
-}
-
-/* Func for can data that is remote (dont use thread/messages) */
-static int _can_init(jbd_session_t *s) {
-	pthread_attr_t attr;
-	pthread_t th;
-
-	/* Create a detached thread */
-	if (pthread_attr_init(&attr)) {
-		sprintf(s->errmsg,"pthread_attr_init: %s",strerror(errno));
-		goto _can_init_error;
-	}
-	pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
-	if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED)) {
-		sprintf(s->errmsg,"pthread_attr_setdetachstate: %s",strerror(errno));
-		goto _can_init_error;
-	}
-	solard_set_state(s,JBD_STATE_RUNNING);
-	if (pthread_create(&th,&attr,&jbd_can_recv_thread,s)) {
-		sprintf(s->errmsg,"pthread_create: %s",strerror(errno));
-		goto _can_init_error;
-	}
-	s->can_get = jbd_get_local_can_data;
-	return 0;
-_can_init_error:
-	s->can_get = jbd_get_remote_can_data;
-	return 1;
-}
-
-void *jbd_new(void *transport, void *transport_handle) {
-	jbd_session_t *s;
-
-	s = calloc(1,sizeof(*s));
-	if (!s) {
-		log_syserr("jbd_new: calloc");
-		return 0;
-	}
-//	pthread_mutex_init(&s->lock,0);
-	if (transport && transport_handle) {
-		s->tp = transport;
-		s->tp_handle = transport_handle;
-		if (strcmp(s->tp->name,"can") == 0 &&_can_init(s)) {
-			free(s);
-			return 0;
-		}
-	}
-
-	return s;
-}
-
-int jbd_open(void *handle) {
-	jbd_session_t *s = handle;
-	int r;
-
-	dprintf(3,"s: %p\n", s);
-
-	r = 0;
-	if (!solard_check_state(s,JBD_STATE_OPEN)) {
-		if (s->tp && s->tp->open(s->tp_handle) == 0)
-			solard_set_state(s,JBD_STATE_OPEN);
-		else
-			r = 1;
-	}
-	dprintf(3,"returning: %d\n", r);
-	return r;
-}
-
-int jbd_close(void *handle) {
-	jbd_session_t *s = handle;
-	int r;
-
-	dprintf(3,"s: %p\n", s);
-	r = 0;
-	if (solard_check_state(s,JBD_STATE_OPEN)) {
-		if (s->tp && s->tp->close(s->tp_handle) == 0)
-			solard_clear_state(s,JBD_STATE_OPEN);
-		else
-			r = 1;
-	}
-	dprintf(3,"returning: %d\n", r);
-	return r;
-}
-
-int jbd_free(void *handle) {
-	jbd_session_t *s = handle;
-
-	if (solard_check_state(s,JBD_STATE_OPEN)) jbd_close(s);
-	if (s->tp->destroy) s->tp->destroy(s->tp_handle);
-	free(s);
+#endif
 	return 0;
 }
 

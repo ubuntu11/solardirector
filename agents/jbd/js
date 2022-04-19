@@ -1,0 +1,16 @@
+killall jk
+killall jbd
+sleep 1
+cd /tmp
+for i in $(seq 1 14)
+do
+	n=$(printf "%02d" $i)
+	mkdir -p pack_${n}
+	cd pack_${n}
+	if test $i -eq 2; then
+		/opt/sd/bin/jk -b -r 15 -t ip,pack_${n} -n pack_${n} -l /opt/sd/log/pack_${n}.log -a
+	else
+		/opt/sd/bin/jbd -b -r 15 -t ip,pack_${n} -n pack_${n} -l /opt/sd/log/pack_${n}.log -a
+	fi
+	cd ..
+done

@@ -24,7 +24,7 @@ static JSBool class_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval)
 		JS_ReportError(cx,"private is null!");
 		return JS_FALSE;
 	}
-	return config_jsgetprop(cx, obj, id, rval, p->cp, 0);
+	return js_config_common_getprop(cx, obj, id, rval, p->cp, 0);
 }
 
 static JSBool class_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
@@ -36,7 +36,7 @@ static JSBool class_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval)
 		JS_ReportError(cx,"private is null!");
 		return JS_FALSE;
 	}
-	return config_jssetprop(cx, obj, id, rval, p->cp, 0);
+	return js_config_common_setprop(cx, obj, id, rval, p->cp, 0);
 }
 
 static JSClass class_class = {

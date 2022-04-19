@@ -12,12 +12,8 @@ LICENSE file in the root directory of this source tree.
 extern char *sd_version_string;
 
 json_value_t *sd_get_info(void *handle) {
-	solard_config_t *conf = handle;
+	solard_instance_t *sd = handle;
 	json_object_t *j;
-	long mem_start;
-
-	mem_start = mem_used();
-	dprintf(1,"mem_start: %ld\n",mem_start);
 
 	j = json_create_object();
 	if (!j) return 0;
@@ -28,10 +24,7 @@ json_value_t *sd_get_info(void *handle) {
 	json_object_set_string(j,"agent_version",sd_version_string);
 	json_object_set_string(j,"agent_author","Stephen P. Shoecraft");
 
-	dprintf(1,"conf->ap: %p\n", conf->ap);
-	dprintf(1,"conf->ap->cp: %p\n", conf->ap->cp);
-	config_add_info(conf->ap->cp, j);
+	config_add_info(sd->ap->cp, j);
 
-	dprintf(1,"mem_used: %ld\n",mem_used() - mem_start);
 	return json_object_get_value(j);
 }

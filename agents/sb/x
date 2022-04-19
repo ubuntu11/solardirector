@@ -1,0 +1,1544 @@
+===> pub_init
+results.length: 120
+ent[1]: output_power
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_frequency
+vals.length: 1
+val: null
+ent[1]: input_voltage
+vals.length: 3
+val: null
+val: null
+val: null
+ent[1]: input_current
+vals.length: 3
+val: null
+val: null
+val: null
+ent[1]: total_yeild
+vals.length: 1
+val: 3090133
+ent[1]: daily_yeild
+vals.length: 1
+val: 31944
+output_power                  : 0
+output_voltage                : 0
+output_current                : 0
+output_frequency              : 0
+input_voltage                 : 0
+input_current                 : 0
+total_yeild                   : 3090133
+daily_yeild                   : 31944
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 16
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 65
+       number of fast releases: 65
+         total bytes allocated: 536
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 630
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35280
+            standard deviation: 0
+       maximum allocation size: 56
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 16
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 65
+       number of fast releases: 65
+         total bytes allocated: 536
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 630
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35280
+            standard deviation: 0
+       maximum allocation size: 56
+mem: 71640
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 16
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 66
+       number of fast releases: 66
+         total bytes allocated: 536
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 630
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35280
+            standard deviation: 0
+       maximum allocation size: 56
+sysmem: 933193
+results.length: 120
+ent[1]: output_power
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_frequency
+vals.length: 1
+val: null
+ent[1]: input_voltage
+vals.length: 3
+val: null
+val: null
+val: null
+ent[1]: input_current
+vals.length: 3
+val: null
+val: null
+val: null
+ent[1]: total_yeild
+vals.length: 1
+val: 3090133
+ent[1]: daily_yeild
+vals.length: 1
+val: 31944
+output_power                  : 0
+output_voltage                : 0
+output_current                : 0
+output_frequency              : 0
+input_voltage                 : 0
+input_current                 : 0
+total_yeild                   : 3090133
+daily_yeild                   : 31944
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 23
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 125
+       number of fast releases: 125
+         total bytes allocated: 872
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 23
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 125
+       number of fast releases: 125
+         total bytes allocated: 872
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+mem: 72032
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 23
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 126
+       number of fast releases: 126
+         total bytes allocated: 872
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+results.length: 120
+ent[1]: output_power
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_frequency
+vals.length: 1
+val: null
+ent[1]: input_voltage
+vals.length: 3
+val: null
+val: null
+val: null
+ent[1]: input_current
+vals.length: 3
+val: null
+val: null
+val: null
+ent[1]: total_yeild
+vals.length: 1
+val: 3090133
+ent[1]: daily_yeild
+vals.length: 1
+val: 31944
+output_power                  : 0
+output_voltage                : 0
+output_current                : 0
+output_frequency              : 0
+input_voltage                 : 0
+input_current                 : 0
+total_yeild                   : 3090133
+daily_yeild                   : 31944
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 30
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 184
+       number of fast releases: 184
+         total bytes allocated: 1208
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 30
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 184
+       number of fast releases: 184
+         total bytes allocated: 1208
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+mem: 72368
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 30
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 185
+       number of fast releases: 185
+         total bytes allocated: 1208
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+results.length: 120
+ent[1]: output_power
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_frequency
+vals.length: 1
+val: null
+ent[1]: input_voltage
+vals.length: 3
+val: null
+val: null
+val: null
+ent[1]: input_current
+vals.length: 3
+val: null
+val: null
+val: null
+ent[1]: total_yeild
+vals.length: 1
+val: 3090133
+ent[1]: daily_yeild
+vals.length: 1
+val: 31944
+output_power                  : 0
+output_voltage                : 0
+output_current                : 0
+output_frequency              : 0
+input_voltage                 : 0
+input_current                 : 0
+total_yeild                   : 3090133
+daily_yeild                   : 31944
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 37
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 243
+       number of fast releases: 243
+         total bytes allocated: 1544
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 37
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 243
+       number of fast releases: 243
+         total bytes allocated: 1544
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+mem: 72704
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 37
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 244
+       number of fast releases: 244
+         total bytes allocated: 1544
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+results.length: 120
+ent[1]: output_power
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_frequency
+vals.length: 1
+val: null
+ent[1]: input_voltage
+vals.length: 3
+val: null
+val: null
+val: null
+ent[1]: input_current
+vals.length: 3
+val: null
+val: null
+val: null
+ent[1]: total_yeild
+vals.length: 1
+val: 3090133
+ent[1]: daily_yeild
+vals.length: 1
+val: 31944
+output_power                  : 0
+output_voltage                : 0
+output_current                : 0
+output_frequency              : 0
+input_voltage                 : 0
+input_current                 : 0
+total_yeild                   : 3090133
+daily_yeild                   : 31944
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 44
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 302
+       number of fast releases: 302
+         total bytes allocated: 1880
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 44
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 302
+       number of fast releases: 302
+         total bytes allocated: 1880
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+mem: 73040
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 44
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 303
+       number of fast releases: 303
+         total bytes allocated: 1880
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+results.length: 120
+ent[1]: output_power
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_frequency
+vals.length: 1
+val: null
+ent[1]: input_voltage
+vals.length: 3
+val: null
+val: null
+val: null
+ent[1]: input_current
+vals.length: 3
+val: null
+val: null
+val: null
+ent[1]: total_yeild
+vals.length: 1
+val: 3090133
+ent[1]: daily_yeild
+vals.length: 1
+val: 31944
+output_power                  : 0
+output_voltage                : 0
+output_current                : 0
+output_frequency              : 0
+input_voltage                 : 0
+input_current                 : 0
+total_yeild                   : 3090133
+daily_yeild                   : 31944
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 51
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 361
+       number of fast releases: 361
+         total bytes allocated: 2216
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 51
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 361
+       number of fast releases: 361
+         total bytes allocated: 2216
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+mem: 73376
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 51
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 362
+       number of fast releases: 362
+         total bytes allocated: 2216
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+results.length: 120
+ent[1]: output_power
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_frequency
+vals.length: 1
+val: null
+ent[1]: input_voltage
+vals.length: 3
+val: null
+val: null
+val: null
+ent[1]: input_current
+vals.length: 3
+val: null
+val: null
+val: null
+ent[1]: total_yeild
+vals.length: 1
+val: 3090133
+ent[1]: daily_yeild
+vals.length: 1
+val: 31944
+output_power                  : 0
+output_voltage                : 0
+output_current                : 0
+output_frequency              : 0
+input_voltage                 : 0
+input_current                 : 0
+total_yeild                   : 3090133
+daily_yeild                   : 31944
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 58
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 420
+       number of fast releases: 420
+         total bytes allocated: 2552
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 58
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 420
+       number of fast releases: 420
+         total bytes allocated: 2552
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+mem: 73712
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 58
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 421
+       number of fast releases: 421
+         total bytes allocated: 2552
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+results.length: 120
+ent[1]: output_power
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_frequency
+vals.length: 1
+val: null
+ent[1]: input_voltage
+vals.length: 3
+val: null
+val: null
+val: null
+ent[1]: input_current
+vals.length: 3
+val: null
+val: null
+val: null
+ent[1]: total_yeild
+vals.length: 1
+val: 3090133
+ent[1]: daily_yeild
+vals.length: 1
+val: 31944
+output_power                  : 0
+output_voltage                : 0
+output_current                : 0
+output_frequency              : 0
+input_voltage                 : 0
+input_current                 : 0
+total_yeild                   : 3090133
+daily_yeild                   : 31944
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 65
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 479
+       number of fast releases: 479
+         total bytes allocated: 2888
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 65
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 479
+       number of fast releases: 479
+         total bytes allocated: 2888
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+mem: 74048
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 65
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 480
+       number of fast releases: 480
+         total bytes allocated: 2888
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+results.length: 120
+ent[1]: output_power
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_voltage
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_current
+vals.length: 1
+val: null
+ent[1]: output_frequency
+vals.length: 1
+val: null
+ent[1]: input_voltage
+vals.length: 3
+val: null
+val: null
+val: null
+ent[1]: input_current
+vals.length: 3
+val: null
+val: null
+val: null
+ent[1]: total_yeild
+vals.length: 1
+val: 3090133
+ent[1]: daily_yeild
+vals.length: 1
+val: 31944
+output_power                  : 0
+output_voltage                : 0
+output_current                : 0
+output_frequency              : 0
+input_voltage                 : 0
+input_current                 : 0
+total_yeild                   : 3090133
+daily_yeild                   : 31944
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 72
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 538
+       number of fast releases: 538
+         total bytes allocated: 3224
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+
+temp allocation statistics:
+              number of arenas: 0
+         number of allocations: 678
+        number of malloc calls: 36
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 6
+       number of fast releases: 3
+         total bytes allocated: 35824
+            standard deviation: 0
+       maximum allocation size: 1024
+
+stack allocation statistics:
+              number of arenas: 1
+         number of allocations: 72
+        number of malloc calls: 1
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 538
+       number of fast releases: 538
+         total bytes allocated: 3224
+            standard deviation: 0
+       maximum allocation size: 96
+
+properties allocation statistics:
+              number of arenas: 3
+         number of allocations: 631
+        number of malloc calls: 3
+       number of deallocations: 0
+  number of allocation growths: 0
+    number of in-place growths: 0
+ number of realloc'ing growths: 0
+number of released allocations: 0
+       number of fast releases: 0
+         total bytes allocated: 35336
+            standard deviation: 0
+       maximum allocation size: 56
+mem: 74384

@@ -1,9 +1,9 @@
 
 function pub_init() {
 	// Build the map
-	var objmap = [
+	sb_objmap = [
 		// [6380_40451F00] DC Side -> DC measurements -> Voltage
-		[ "6380_40251E00", "input_voltage" ],
+		[ "6380_40451F00", "input_voltage" ],
 		// [6380_40452100] DC Side -> DC measurements -> Current 
 		[ "6380_40452100", "input_current" ],
 		// [6380_40251E00] DC Side -> DC measurements -> Power
@@ -25,15 +25,64 @@ function pub_init() {
 		// [6100_40263F00] AC Side -> Grid measurements -> Power
 		[ "6100_40263F00", "output_power" ],
 		// [6400_00260100] AC Side -> Measured values -> Total yield
-		[ "6400_00260100", "total_yeild" ],
+		[ "6400_00260100", "total_yield" ],
 		// [6400_00262200] AC Side -> Measured values -> Daily yield
-		[ "6400_00262200", "daily_yeild" ]
+		[ "6400_00262200", "daily_yield" ]
 	];
+	sb.agent.read_interval = 5;
+	pub_init_done = true;
 }
 
 function pub_main() {
-	printf("publishing...\n");
-	return 0;
-	sb.agent.config.filename = "sb.json";
-	sb.agent.config.write();
+	include(dirname(script_name)+"/../../core/utils.js");
+	if (typeof(pub_init_done) == "undefined") pub_init_done = false;
+	if (!pub_init_done) pub_init();
+
+	var mydata = {};
+	mydata["name"] = agent.name;
+
+	for(j=0; j < sb_objmap.length; j++) mydata[sb_objmap[j][1]] = 0.0;
+
+	var results = sb.results;
+//	printf("results.length: %d\n", results.length);
+	for(i=0; i < results.length; i++) {
+		var o = results[i].object;
+//		printf("o: %s\n", o);
+		var found = 0;
+		var ent;
+		for(j=0; j < sb_objmap.length; j++) {
+			if (sb_objmap[j][0] == o.key) {
+				ent = sb_objmap[j];
+				found = 1;
+//				printf("found: %s\n", o.key);
+				break;
+			}
+		}
+//		dprintf(0,"found: %d\n", found);
+		if (found) {
+//			printf("ent[1]: %s\n", ent[1]);
+			var v = results[i].values;
+//			dumpobj(v);
+			var val = (v[0] == null ? 0 : v[0]);
+//			printf("v.length: %d\n", v.length);
+			for(j=1; j < v.length; j++) val += (v[j] == null ? 0 : v[j]);
+//			printf("val: %f\n", val);
+			mydata[ent[1]] += val;
+			delete vals;
+		}
+		delete o;
+	}
+
+	j = JSON.stringify(mydata,null,4);
+//	printf("j: %s\n", j);
+	if (mqtt.pub(agent.mktopic(SOLARD_FUNC_DATA),j)) log_error("mqtt.pub: %s\n",mqtt.errmsg);
+	influx.write("sb",mydata);
+//	dumpobj(mydata);
+	var out = sprintf("%d",mydata["output_power"]);
+        if (typeof(last_out) == "undefined") last_out = "";
+        if (out != last_out) printf("%s\n",out);
+        last_out = out;
+	delete mydata;
+	delete results;
+	gc();
 }

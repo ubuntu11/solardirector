@@ -21,13 +21,16 @@ int main(int argc, char **argv) {
 	argv = args;
 #endif
 
+dprintf(0,"used: %d\n", mem_used());
 	/* Init the driver */
 	s = jbd_driver.new(0,0);
 	if (!s) return 1;
 
+dprintf(0,"used: %d\n", mem_used());
 	/* Agent init */
 	if (jbd_agent_init(s,argc,argv)) return 1;
 
+dprintf(0,"used: %d\n", mem_used());
 	/* Main loop */
 	agent_run(s->ap);
 	return 0;

@@ -7,8 +7,8 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#define DEBUG_CAN 0
-#define dlevel 4
+#define DEBUG_CAN 1
+#define dlevel 7
 
 #ifdef DEBUG
 #undef DEBUG
@@ -29,6 +29,7 @@ LICENSE file in the root directory of this source tree.
 #include <linux/can/raw.h>
 #include <sys/time.h>
 #include <sys/signal.h>
+#include <pthread.h>
 
 #define DEFAULT_BITRATE 250000
 #define CAN_INTERFACE_LEN 16
@@ -216,6 +217,7 @@ static void *can_new(void *target, void *topts) {
 	char *p;
 
 	dprintf(dlevel,"target: %s, topts: %s\n", target, topts);
+	if (!target) return 0;
 
 	s = calloc(sizeof(*s),1);
 	if (!s) {
@@ -231,10 +233,11 @@ static void *can_new(void *target, void *topts) {
 		s->bitrate = strtol(p,0,0);
 		if (!s->bitrate) s->bitrate = DEFAULT_BITRATE;
 		p = strele(1,",",(char *)topts);
+		dprintf(dlevel,"filter: %s\n", p);
 		can_parse_filter(s,p);
 		p = strele(2,",",(char *)topts);
-		dprintf(dlevel,"p: %s, s->filters: %p\n", p, s->filters);
-		if (strcmp(p,"yes") == 0 && s->filters) can_start_buffer(s,s->min,s->max);
+		dprintf(dlevel,"buffer: %s\n", p);
+		if ((strcasecmp(p,"yes") == 0 || strcasecmp(p,"true") == 0) && s->filters) can_start_buffer(s,s->min,s->max);
 	}
 	dprintf(dlevel,"interface: %s, bitrate: %d\n",s->interface,s->bitrate);
 
@@ -1066,8 +1069,9 @@ static int can_open(void *handle) {
 			for(i=0; i < s->filters_size / sizeof(struct can_filter); i++) {
 				printf("filter[%d].can_id: %x, can_mask: %x\n", i, s->filters[i].can_id, s->filters[i].can_mask);
 			}
+		}
 #endif
-		dprintf(dlevel,"setting filters...\n");
+		dprintf(dlevel,"setting filters... size: %d\n", s->filters_size);
 		if (setsockopt(s->fd, SOL_CAN_RAW, CAN_RAW_FILTER, s->filters, s->filters_size) < 0) {
 			log_syserror("setsockopt CAN_RAW_FILTER");
 			goto can_open_error;

@@ -1,4 +1,49 @@
 
+
+        if (typeof(last_memused) == "undefined") last_memused = -1;
+        if (memused() != last_memused) {
+                printf("mem: %d\n", memused());
+                last_memused = memused();
+        }
+        if (typeof(last_sysmemused) == "undefined") last_sysmemused = -1;
+        if (sysmemused() != last_sysmemused) {
+                printf("sysmem: %d\n", sysmemused());
+                last_sysmemused = sysmemused();
+        }
+
+
+	si.can_input = si.input_current_source.startsWith("can");
+
+        if (smanet.connected) {
+                var names = [ "ExtCur","ExtCurSlv1","ExtCurSlv2","ExtCurSlv3","TotExtCur","InvCur","InvCurSlv1","InvCurSlv2","InvCurSlv3","TotInvCur" ];
+                var vals = smanet.get(names);
+                printf("vals type: %s\n", vals);
+                dumpobj(vals);
+                influx.write("current",vals);
+        }
+
+        if (0) {
+        include(script_dir+"/../../core/influx.js");
+//      influx.convert_time = 1;
+        var r = influx.query("select last(value) from solar");
+        if (!r) printf("influx error: %s\n", influx.errmsg);
+        influx_dump_results(r);
+        }
+
+        if (typeof(last_memused) == "undefined") last_memused = -1;
+        if (memused() != last_memused) {
+                printf("JS mem: %d\n", memused());
+                last_memused = memused();
+        }
+
+function write_init() {
+        dprintf(1,"disable_si_write: %s\n", si.disable_si_write);
+        if (!si.disable_si_write) {
+                log_warning("disabling si_write!\n");
+                si.disable_si_write = true;
+        }
+}
+
 include("../../core/utils.js");
 function display_results(results) {
 	for(i=0; i < results.length; i++) {
@@ -66,56 +111,3 @@ si.smanet.load_channels("/opt/sd/lib/si_channels.json");
 		}
 		si.agent.influx.write("current",data);
 exit(0);
-
-/*
-Copyright (c) 2022, Stephen P. Shoecraft
-All rights reserved.
-
-This source code is licensed under the BSD-style license found in the
-LICENSE file in the root directory of this source tree.
-*/
-
-include(dirname(script_name)+"/../../core/init.js");
-
-function getshort(data,index) {
-	var s = (data[index] & 0xF0) << 8 | data[index+1] & 0x0F;
-	return s;
-}
-
-function putshort(data,index,num) {
-	var hex = sprintf("%04x",num);
-	data[index++] = "0x" + hex.slice(2,4);
-	data[index++] = "0x" + hex.slice(0,2);
-};
-
-function putlong(data,index,num) {
-	var hex = sprintf("%08x",num);
-//	dprintf(1,"hex: %s\n", hex);
-	data[index++] = "0x" + hex.slice(6,8);
-	data[index++] = "0x" + hex.slice(4,6);
-	data[index++] = "0x" + hex.slice(2,4);
-	data[index++] = "0x" + hex.slice(0,2);
-};
-
-function si_isvrange(v) { return ((v >= SI_VOLTAGE_MIN) && (v  <= SI_VOLTAGE_MAX)) }
-function HOURS(n) { return(n * 3600); }
-function MINUTES(n) { return(n * 60); }
-function float_equals(n1,n2) { return(n1 === n2); }
-
-// info is a global variable (JSON data)
-info = si.info;
-
-function init_main() {
-	// Call init funcs
-	var script_dir = dirname(script_name);
-	var init_funcs = [
-		"charge",
-		"sim",
-//		"read",
-		"write"
-	];
-	for(i=0; i < init_funcs.length; i++) {
-		if (run(script_dir+"/"+init_funcs[i]+".js",init_funcs[i]+"_init"))
-			exit(1);
-	}
-}

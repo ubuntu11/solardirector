@@ -1,12 +1,4 @@
 
-/*
-Copyright (c) 2022, Stephen P. Shoecraft
-All rights reserved.
-
-This source code is licensed under the BSD-style license found in the
-LICENSE file in the root directory of this source tree.
-*/
-
 //include(dirname(script_name)+"/underscore-min.js");
 
 function arrayUnique(array) {
@@ -147,7 +139,20 @@ function chkconf(sec,prop,type,def,flags) {
 	config.add(objname(sec),prop,type,def,flags);
 }
 
-function pct(varval1, varval2) { return 100 - ((val2 / val1)  * 100.0); }
+function pct(val1, val2) {
+//	printf("val1: %f, val2: %f\n", val1,val2);
+	var lv1 = val1;
+	if (lv1 < 0) lv1 *= (-1);
+	var lv2 = val2;
+	if (lv2 < 0) lv2 *= (-1);
+//	printf("lv1: %f, lv2: %f\n", lv1, lv2);
+	if (lv1 > lv2)
+		var d = lv2/lv1;
+	else
+		var d = lv1/lv2;
+//	printf("d: %f\n", d);
+	return 100 - (d * 100.0);
+}
 
 function rtest(obj) { return JSON.parse(JSON.stringify(obj)); }
 
@@ -168,3 +173,12 @@ dumpobj = function(obj) {
                 printf("%-30.30s: %s\n", key, obj[key]);
         }
 }
+
+if (!String.prototype.startsWith) {
+	String.prototype.startsWith = function(searchString, position){
+		position = position || 0;
+		return ((this.substr(position, searchString.length) === searchString) ? true : false);
+	};
+}
+
+time = function() { return systime() >>> 0; }

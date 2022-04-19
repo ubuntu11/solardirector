@@ -604,23 +604,11 @@ enum JSARG_TYPE {
 	JSARG_TYPE_MAX
 };
 
-#if DEBUG
+#if DEBUG_JSPRINTF
 static char *_typenames[JSARG_TYPE_MAX] = { "Char","Short","UChar","UShort","Int","UInt","Double","String" };
 static char *_typestr(int type) {
 	if (type < 0 || type >= JSARG_TYPE_MAX) return "unknown";
 	return _typenames[type];
-}
-
-//static char *_js_typenames[JSTYPE_LIMIT] = { "undefined","object","function","string","number","boolean","null","xml" };
-static char *js_typestr(JSContext *cx, jsval v) {
-	if (JSVAL_IS_OBJECT(v)) return "object";
-	else if (JSVAL_IS_INT(v)) return "int";
-	else if (JSVAL_IS_DOUBLE(v)) return "double";
-	else if (JSVAL_IS_STRING(v)) return "string";
-	else if (JSVAL_IS_BOOLEAN(v)) return "bool";
-	else if (JSVAL_IS_NULL(v)) return "null";
-	else if (JSVAL_IS_VOID(v)) return "void";
-	else return "unknown";
 }
 #endif
 
@@ -635,7 +623,7 @@ static int _getarg(void *dest, JSContext *cx, int *idx, int argc, jsval *argv, e
 	dprintf(dlevel,"idx: %d, argc: %d\n", *idx, argc);
 	if (*idx >= argc) return _error(cx, "at least 1 argument is required");
 
-	dprintf(dlevel,"arg[%d] type: %s\n", *idx, js_typestr(cx, argv[*idx]));
+	dprintf(dlevel,"arg[%d] type: %s\n", *idx, jstypestr(cx, argv[*idx]));
 
 	dprintf(dlevel,"arg type: %d(%s)\n", type, _typestr(type));
 	switch(type) {

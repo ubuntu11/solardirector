@@ -291,8 +291,8 @@ inverter_check_parms_error:
 	return r;
 }
 
+#if 0
 #ifdef JS
-#include "js_solard_inverter.h"
 enum INVERTER_PROPERTY_ID {
 	SOLARD_INVERTER_PROPIDS
 };
@@ -362,4 +362,5 @@ JSObject *JSInverter(JSContext *cx, solard_inverter_t *bp) {
 	dprintf(5,"done!\n");
 	return obj;
 }
+#endif
 #endif

@@ -50,29 +50,6 @@ void agentinfo_pub(solard_config_t *conf, solard_agentinfo_t *info) {
 	json_dumps_r(v,entry,sizeof(entry)-1);
 	sprintf(temp,"%s/%s",SOLARD_FUNC_CONFIG,info->name);
 	agent_pub(conf->ap,temp,entry,1);
-#if 0
-	cfg_proctab_t info_tab[] = { INFO_TAB(0) }, *t;
-	char entry[1024],temp[128],temp2[256];
-	int er;
-
-	*entry = 0;
-	er = sizeof(entry)-1;
-	for(t=info_tab; t->keyword; t++) {
-		conv_type(DATA_TYPE_STRING,&temp,sizeof(temp)-1,t->type,t->dest,t->dlen);
-		if (!strlen(temp)) continue;
-		snprintf(temp2,sizeof(temp2)-1,"%s=%s",t->keyword,temp);
-		dprintf(1,"temp2: %s\n", temp2);
-		if (strlen(entry)) {
-			strncat(entry,",",er);
-			er--;
-		}
-		strncat(entry,temp2,er);
-		er -= strlen(temp2);
-	}
-	dprintf(1,"entry: %s\n", entry);
-	sprintf(temp,"%s/%s",SOLARD_FUNC_CONFIG,info->name);
-	agent_pub(conf->ap,temp,entry,1);
-#endif
 }
 
 void agentinfo_getcfg(cfg_info_t *cfg, char *sname, solard_agentinfo_t *info) {
@@ -122,7 +99,7 @@ solard_agentinfo_t *agentinfo_add(solard_config_t *conf, solard_agentinfo_t *inf
 
 	agentinfo_dump(info);
 
-	dprintf(1,"info: agent: %s, role: %s, name: %s, transport: %s, target: %s\n", info->agent, info->role, info->name, info->transport, info->target);
+	dprintf(1,"agent: name: %s, role: %s, name: %s\n", info->agent, info->role, info->name, info->transport, info->target);
 	if (!strlen(info->agent) || !strlen(info->transport) || !strlen(info->target)) {
 		/* invalid */
 		sprintf(conf->errmsg,"agent is not valid, not adding\n");

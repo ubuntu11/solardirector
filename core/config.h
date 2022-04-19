@@ -49,7 +49,9 @@ struct config_property {
 	int len;			/* actual length of storage */
 	int id;				/* Property ID */
 	int dirty;			/* Has been updated since last write */
+#ifdef JS
 	jsval jsval;			/* JSVal of this property object */
+#endif
 };
 typedef struct config_property config_property_t;
 
@@ -102,10 +104,12 @@ char *config_get_errmsg(config_t *);
 void config_dump(config_t *cp);
 config_property_t *config_combine_props(config_property_t *p1, config_property_t *p2);
 void config_add_props(config_t *, char *, config_property_t *, int flags);
+config_property_t *config_get_props(config_t *, char *);
 config_function_t *config_combine_funcs(config_function_t *f1, config_function_t *f2);
 void config_add_funcs(config_t *, config_function_t *);
 int config_add_info(config_t *, json_object_t *);
 
+int config_parse_json(config_t *cp, json_value_t *v);
 config_section_t *config_get_section(config_t *, char *);
 int config_read(config_t *, char *, enum CONFIG_FILE_FORMAT);
 int config_set_filename(config_t *, char *, enum CONFIG_FILE_FORMAT);
@@ -121,6 +125,8 @@ int config_delete_property(config_t *cp, char *sname, char *name);
 int config_set_property(config_t *cp, char *sname, char *name, int type, void *src, int len);
 config_property_t *config_section_get_property(config_section_t *s, char *name);
 int config_section_get_properties(config_section_t *s, config_property_t *props);
+int config_section_set_property(config_section_t *s, config_property_t *p);
+int config_section_set_properties(config_t *cp, config_section_t *s, config_property_t *props, int add, int flags);
 config_property_t *config_section_add_property(config_t *cp, config_section_t *s, config_property_t *p, int flags);
 config_property_t *config_section_add_props(config_t *cp, config_section_t *s, config_property_t *p);
 
@@ -141,8 +147,8 @@ config_property_t *config_get_propbyid(config_t *cp, int);
 //typedef int (config_process_callback_t)(void *,char *,char *,char *,char *);
 int config_process(config_t *cp, char *req);
 
-
 void config_build_propmap(config_t *cp);
+void config_dump_property(config_property_t *p, int level);
 
 #define CONFIG_GETMAP(cp,id) ((cp && cp->map && id >= 0 && id < cp->map_maxid && cp->map[id]) ? cp->map[id] : 0)
 
@@ -150,10 +156,8 @@ void config_build_propmap(config_t *cp);
 #include "jsapi.h"
 #include "jsengine.h"
 JSPropertySpec *config_to_props(config_t *cp, char *name, JSPropertySpec *add);
-JSBool config_jsgetprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval, config_t *, JSPropertySpec *);
-JSBool config_jssetprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval, config_t *, JSPropertySpec *);
-//JSObject *JSConfig(JSContext *cx, void *priv);
-//int config_jsinit(JSEngine *e, config_t *cp);
+JSBool js_config_common_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval, config_t *, JSPropertySpec *);
+JSBool js_config_common_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval, config_t *, JSPropertySpec *);
 JSObject *jsconfig_new(JSContext *cx, JSObject *parent, config_t *cp);
 #endif
 

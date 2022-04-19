@@ -46,6 +46,9 @@ struct sb_object {
 	bool cnt;
 	bool sumd;
 	struct sb_session *s;				/* Session backptr for JS */
+#ifdef JS
+	jsval path_val;
+#endif
 };
 typedef struct sb_object sb_object_t;
 
@@ -61,7 +64,12 @@ struct sb_result {
 	int low;
 	int high;
 	list selects;
-	list values;			
+	list values;
+#ifdef JS
+	jsval obj_val;
+	jsval selects_val;
+	jsval values_val;
+#endif
 };
 typedef struct sb_result sb_result_t;
 
@@ -90,7 +98,6 @@ struct sb_session {
 	char *config_fields;
 	int errcode;			/* error indicator */
 	char errmsg[256];		/* Error message if errcode !0 */
-	JSPropertySpec *props;
 	int connected;			/* Login succesful, we are connected */
 	char strings_filename[256];
 	sb_string_t *strings;
@@ -104,7 +111,12 @@ struct sb_session {
 	bool norun_flag;
 	bool inc_flag;
 	bool use_internal_strings;
+	bool pub_warned;
+#ifdef JS
 	jsval agent_val;
+	jsval results_val;
+	JSPropertySpec *props;
+#endif
 };
 typedef struct sb_session sb_session_t;
 

@@ -7,6 +7,12 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
+#ifdef DEBUG
+#undef DEBUG
+#endif
+#define dlevel 5
+#include "debug.h"
+
 #include <string.h>
 #include <MQTTClient.h>
 #include <MQTTAsync.h>
@@ -16,62 +22,38 @@ LICENSE file in the root directory of this source tree.
 #include "config.h"
 #include "uuid.h"
 
-#define DEBUG_MQTT 1
-#define dlevel 5
-
-#ifdef DEBUG
-#undef DEBUG
-#endif
-#define DEBUG DEBUG_MQTT
-#include "debug.h"
-
 #define TIMEOUT 10000L
 
-struct mqtt_session {
-	mqtt_config_t config;
-	MQTTClient c;
-	int interval;
-	mqtt_callback_t *cb;
-	void *ctx;
-	MQTTClient_SSLOptions *ssl_opts;
-	list subs;
-	int connected;
-};
-typedef struct mqtt_session mqtt_session_t;
-
-int mqtt_parse_config(mqtt_config_t *conf, char *mqtt_info) {
-	strncpy(conf->host,strele(0,",",mqtt_info),sizeof(conf->host)-1);
-	strncpy(conf->clientid,strele(1,",",mqtt_info),sizeof(conf->clientid)-1);
-	strncpy(conf->username,strele(2,",",mqtt_info),sizeof(conf->username)-1);
-	strncpy(conf->password,strele(3,",",mqtt_info),sizeof(conf->password)-1);
-	dprintf(1,"host: %s, clientid: %s, user: %s, pass: %s\n", conf->host, conf->clientid, conf->username, conf->password);
+int mqtt_parse_config(mqtt_session_t *s, char *mqtt_info) {
+	strncpy(s->host,strele(0,",",mqtt_info),sizeof(s->host)-1);
+	strncpy(s->clientid,strele(1,",",mqtt_info),sizeof(s->clientid)-1);
+	strncpy(s->username,strele(2,",",mqtt_info),sizeof(s->username)-1);
+	strncpy(s->password,strele(3,",",mqtt_info),sizeof(s->password)-1);
+	dprintf(1,"host: %s, clientid: %s, user: %s, pass: %s\n", s->host, s->clientid, s->username, s->password);
 	return 0;
 }
 
-int mqtt_init(mqtt_session_t *m, mqtt_config_t *conf) {
-
-	dprintf(1,"host: %s, clientid: %s, user: %s, pass: %s\n",
-		conf->host, conf->clientid, conf->username, conf->password);
-	if (!strlen(conf->host)) {
+int mqtt_init(mqtt_session_t *s) {
+	if (!strlen(s->host)) {
 		log_write(LOG_WARNING,"mqtt host not specified, using localhost\n");
-		strcpy(conf->host,"localhost");
+		strcpy(s->host,"localhost");
 	}
 
 	/* Create a unique ID for MQTT */
-	if (!strlen(conf->clientid)) {
+	if (!strlen(s->clientid)) {
 		uint8_t uuid[16];
 
 		dprintf(1,"gen'ing MQTT ClientID...\n");
 		uuid_generate_random(uuid);
-		my_uuid_unparse(uuid, conf->clientid);
-		dprintf(4,"clientid: %s\n",conf->clientid);
+		my_uuid_unparse(uuid, s->clientid);
+		dprintf(4,"clientid: %s\n",s->clientid);
 	}
 
 	/* Create a new client */
-	if (mqtt_newclient(m, conf)) return 1;
+	if (mqtt_newclient(s)) return 1;
 
 	/* Connect to the server */
-	if (mqtt_connect(m,20)) return 1;
+	if (mqtt_connect(s,20)) return 1;
 
 	return 0;
 }
@@ -82,12 +64,7 @@ void logProperties(MQTTProperties *props) {
 	dprintf(dlevel,"props->count: %d\n", props->count);
 	for (i = 0; i < props->count; ++i) {
 		int id = props->array[i].identifier;
-#if DEBUG
-		const char* name = MQTTPropertyName(id);
-#endif
-//		char* intformat = "Property name %s value %d";
-
-		dprintf(dlevel,"prop: id: %d, name: %s\n", id, name);
+		dprintf(dlevel,"prop: id: %d, name: %s\n", id, MQTTPropertyName(id));
 		switch (MQTTProperty_getType(id)) {
 		case MQTTPROPERTY_TYPE_BYTE:
 			dprintf(dlevel, "value %d", props->array[i].value.byte);
@@ -157,17 +134,12 @@ mqtt_getmsg_skip:
 	return 1;
 }
 
-int mqtt_newclient(struct mqtt_session *s, mqtt_config_t *config) {
+int mqtt_newclient(mqtt_session_t *s) {
 	MQTTClient_createOptions opts = MQTTClient_createOptions_initializer;
 	int rc;
 
-	/* Set the config */
-	s->config = *config;
-	dprintf(dlevel,"mqtt_config: host: %s, clientid: %s, username: %s, password: %s, lwt: %s\n",
-		s->config.host, s->config.clientid, s->config.username, s->config.password, s->config.lwt_topic);
-
 	opts.MQTTVersion = MQTTVERSION_5;
-	rc = MQTTClient_createWithOptions(&s->c, s->config.host, s->config.clientid, MQTTCLIENT_PERSISTENCE_NONE, NULL, &opts);
+	rc = MQTTClient_createWithOptions(&s->c, s->host, s->clientid, MQTTCLIENT_PERSISTENCE_NONE, NULL, &opts);
 	dprintf(dlevel,"create rc: %d\n", rc);
 	if (rc != MQTTCLIENT_SUCCESS) {
 		log_error("MQTTClient_create failed");
@@ -182,7 +154,7 @@ int mqtt_newclient(struct mqtt_session *s, mqtt_config_t *config) {
 		return 1;
 	}
 #if 0
-	if (strlen(s->config.ssl_key)) {
+	if (strlen(s->ssl_key)) {
 		s->ssl_opts = malloc(sizeof(*s->ssl_opts));
 		if (s->ssl_opts) {
 			s->ssl_opts = MQTTClient_SSLOptions_initializer;
@@ -198,7 +170,7 @@ int mqtt_newclient(struct mqtt_session *s, mqtt_config_t *config) {
 struct mqtt_session *mqtt_new(mqtt_callback_t *cb, void *ctx) {
 	mqtt_session_t *s;
 
-	s = calloc(1,sizeof(*s));
+	s = calloc(sizeof(*s),1);
 	if (!s) {
 		log_write(LOG_SYSERR,"mqtt_new: calloc");
 		return 0;
@@ -231,9 +203,9 @@ int mqtt_connect(mqtt_session_t *s, int interval) {
 	conn_opts.connectTimeout = 3;
 	conn_opts.cleanstart = 1;
 	conn_opts.ssl = s->ssl_opts;
-	dprintf(dlevel,"lwt: %s\n", s->config.lwt_topic);
-	if (strlen(s->config.lwt_topic)) {
-		will_opts.topicName = s->config.lwt_topic;
+	dprintf(dlevel,"lwt: %s\n", s->lwt_topic);
+	if (strlen(s->lwt_topic)) {
+		will_opts.topicName = s->lwt_topic;
 		will_opts.message = "Offline";
 		will_opts.retained = 1;
 		will_opts.qos = 1;
@@ -241,14 +213,14 @@ int mqtt_connect(mqtt_session_t *s, int interval) {
 	}
 
 	s->interval = interval;
-	if (strlen(s->config.username)) {
+	if (strlen(s->username)) {
 #if 0
 	        conn_opts.username = opts.username;
 		conn_opts.password = opts.password;
 #endif
-		conn_opts.username = s->config.username;
-		if (strlen(s->config.password))
-			conn_opts.password = s->config.password;
+		conn_opts.username = s->username;
+		if (strlen(s->password))
+			conn_opts.password = s->password;
 	}
 
 	dprintf(dlevel,"connecting...\n");
@@ -264,8 +236,8 @@ int mqtt_connect(mqtt_session_t *s, int interval) {
 			log_error("MQTTClient_connect: %s\n",p ? p : "cant connect");
 		}
 		return 1;
-	} else if (strlen(s->config.lwt_topic)) {
-		mqtt_pub(s,s->config.lwt_topic,"Online",1,1);
+	} else if (strlen(s->lwt_topic)) {
+		mqtt_pub(s,s->lwt_topic,"Online",1,1);
 	}
 	s->connected = 1;
 	return 0;
@@ -296,30 +268,31 @@ int mqtt_reconnect(mqtt_session_t *s) {
 }
 
 void mqtt_set_lwt(mqtt_session_t *s, char *new_topic) {
-	char *old_topic;
 
-	/* If no change, dont bother */
-	dprintf(dlevel,"old topic: %s, new topic: %s\n", s->config.lwt_topic, new_topic);
-	if (strcmp(s->config.lwt_topic,new_topic) == 0) return;
+	dprintf(dlevel,"old topic: %s, new topic: %s\n", s->lwt_topic, new_topic);
+	if (strcmp(s->lwt_topic,new_topic) != 0) {
+		char old_topic[MQTT_TOPIC_LEN];
+		int doconnect;
 
-	/* Save old topic */
-	old_topic = malloc(strlen(s->config.lwt_topic)+1);
-	if (!old_topic) {
-		log_syserror("mqtt_set_lwt: malloc new topic (%d)", strlen(s->config.lwt_topic)+1);
-		return;
+		/* Save old topic */
+		strcpy(old_topic,s->lwt_topic);
+
+		/* Set new topic */
+		strncpy(s->lwt_topic,new_topic,sizeof(s->lwt_topic)-1);
+
+		/* Clear old topic */
+		mqtt_pub(s,old_topic,0,1,0);
+
+		/* If connected, disconnect so we can delete old topic */
+		dprintf(dlevel,"connected: %d\n", s->connected);
+		doconnect = s->connected;
+		if (s->connected) mqtt_disconnect(s,5);
+
+		/* If was connected, reconnect with new LWT */
+		if (doconnect) mqtt_connect(s,s->interval);
+
 	}
-	strcpy(old_topic,s->config.lwt_topic);
 
-	if (s->connected) {
-		dprintf(dlevel,"disconnecting...\n");
-		mqtt_disconnect(s,5);
-	}
-
-	dprintf(dlevel,"connecting...\n");
-	strncpy(s->config.lwt_topic,new_topic,sizeof(s->config.lwt_topic)-1);
-	mqtt_connect(s,s->interval);
-
-	mqtt_pub(s,old_topic,0,1,0);
 	return;
 }
 
@@ -351,7 +324,7 @@ int mqtt_pub(mqtt_session_t *s, char *topic, char *message, int wait, int retain
 		property.identifier = MQTTPROPERTY_CODE_USER_PROPERTY;
 		property.value.data.data = "replyto";
 		property.value.data.len = strlen(property.value.data.data);
-		property.value.value.data = s->config.clientid;
+		property.value.value.data = s->clientid;
 		property.value.value.len = strlen(property.value.value.data);
 		MQTTProperties_add(&pubmsg.properties, &property);
 //		logProperties(&pubmsg.properties);
@@ -466,23 +439,23 @@ int mqtt_unsubmany(mqtt_session_t *s, int count, char **topic) {
 	return rc;
 }
 
-void mqtt_add_props(config_t *cp, mqtt_config_t *gconf, char *name, mqtt_config_t *conf) {
+void mqtt_add_props(mqtt_session_t *s, config_t *cp, char *name) {
 	config_property_t mqtt_props[] = {
-		{ "host", DATA_TYPE_STRING, conf->host, sizeof(conf->host)-1, "localhost", 0,
+		{ "mqtt_host", DATA_TYPE_STRING, s->host, sizeof(s->host)-1, "localhost", 0,
                         0, 0, 0, 1, (char *[]){ "MQTT host" }, 0, 1, 0 },
-		{ "port", DATA_TYPE_INT, &conf->port, 0, "1883", 0,
+		{ "mqtt_port", DATA_TYPE_INT, &s->port, 0, "1883", 0,
 			0, 0, 0, 1, (char *[]){ "MQTT port" }, 0, 1, 0 },
-		{ "clientid", DATA_TYPE_STRING, conf->clientid, sizeof(conf->clientid)-1, "", 0,
+		{ "mqtt_clientid", DATA_TYPE_STRING, s->clientid, sizeof(s->clientid)-1, "", 0,
                         0, 0, 0, 1, (char *[]){ "MQTT clientid" }, 0, 1, 0 },
-		{ "username", DATA_TYPE_STRING, conf->username, sizeof(conf->username)-1, "", 0,
+		{ "mqtt_username", DATA_TYPE_STRING, s->username, sizeof(s->username)-1, "", 0,
                         0, 0, 0, 1, (char *[]){ "MQTT username" }, 0, 1, 0 },
-		{ "password", DATA_TYPE_STRING, conf->password, sizeof(conf->password)-1, "", 0,
+		{ "mqtt_password", DATA_TYPE_STRING, s->password, sizeof(s->password)-1, "", 0,
                         0, 0, 0, 1, (char *[]){ "MQTT password" }, 0, 1, 0 },
 		{ 0 }
 	};
 	dprintf(1,"adding mqtt...\n");
 
-	config_add_props(cp, "mqtt", mqtt_props, CONFIG_FLAG_NOID);
+	config_add_props(cp, name, mqtt_props, 0);
 #if 0
 	/* Add the mqtt props to the instance config */
 	{
@@ -497,7 +470,7 @@ void mqtt_add_props(config_t *cp, mqtt_config_t *gconf, char *name, mqtt_config_
 			return;
 		}
 		for(i=0; names[i]; i++) {
-			p = config_section_dup_property(s, &mqtt_props[i], names[i]);
+			p = config_section_dup_property(cp, &mqtt_props[i], names[i]);
 			if (!p) continue;
 			dprintf(dlevel,"p->name: %s\n",p->name);
 			config_section_add_property(cp, s, p, CONFIG_FLAG_NOID);
@@ -510,41 +483,21 @@ void mqtt_add_props(config_t *cp, mqtt_config_t *gconf, char *name, mqtt_config_
 #include "jsengine.h"
 
 enum MQTT_PROPERTY_ID {
-	MQTT_PROPERTY_ID_NONE,
 	MQTT_PROPERTY_ID_HOST,
 	MQTT_PROPERTY_ID_PORT,
 	MQTT_PROPERTY_ID_CLIENTID,
 	MQTT_PROPERTY_ID_USERNAME,
-	MQTT_PROPERTY_ID_PASSWORD
+	MQTT_PROPERTY_ID_PASSWORD,
+	MQTT_PROPERTY_ID_ERRMSG,
 };
 
-#if 0
-struct mqtt_session *mqtt_new(mqtt_config_t *conf, mqtt_callback_t *cb, void *ctx) {
-	mqtt_session_t *s;
-	s = calloc(1,sizeof(*s));
-	if (!s) {
-		log_write(LOG_SYSERR,"mqtt_new: calloc");
-		return 0;
-	}
-	memcpy(&s->config,conf,sizeof(*conf));
-	s->cb = cb;
-	s->ctx = ctx;
-	return 0;
-}
-int mqtt_connect(mqtt_session_t *s, int interval) { return 0; }
-int mqtt_disconnect(mqtt_session_t *s, int timeout) { return 0; }
-int mqtt_destroy(mqtt_session_t *s) { return 0; }
-int mqtt_pub(mqtt_session_t *s, char *topic, char *message, int retain) { return 0; }
-int mqtt_sub(mqtt_session_t *s, char *topic) { return 0; }
-#endif
-
 static JSBool mqtt_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
-	mqtt_session_t *m;
+	mqtt_session_t *s;
 	int prop_id;
 
-	m = JS_GetPrivate(cx, obj);
-	dprintf(dlevel,"m: %p\n", m);
-	if (!m) {
+	s = JS_GetPrivate(cx, obj);
+	dprintf(dlevel,"s: %p\n", s);
+	if (!s) {
 		JS_ReportError(cx, "private is null!");
 		return JS_FALSE;
 	}
@@ -555,19 +508,22 @@ static JSBool mqtt_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) 
 		dprintf(dlevel,"prop_id: %d", prop_id);
 		switch(prop_id) {
 		case MQTT_PROPERTY_ID_HOST:
-			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,m->config.host));
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,s->host,strlen(s->host));
 			break;
 		case MQTT_PROPERTY_ID_PORT:
-			*rval = INT_TO_JSVAL(m->config.port);
+			*rval = INT_TO_JSVAL(s->port);
 			break;
 		case MQTT_PROPERTY_ID_CLIENTID:
-			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,m->config.clientid));
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,s->clientid,strlen(s->clientid));
 			break;
 		case MQTT_PROPERTY_ID_USERNAME:
-			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,m->config.username));
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,s->username,strlen(s->username));
 			break;
 		case MQTT_PROPERTY_ID_PASSWORD:
-			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,m->config.password));
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,s->password,strlen(s->password));
+			break;
+		case MQTT_PROPERTY_ID_ERRMSG:
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,s->errmsg,strlen(s->errmsg));
 			break;
 		default:
 			break;
@@ -576,13 +532,35 @@ static JSBool mqtt_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) 
 	return JS_TRUE;
 }
 
-static JSBool mqtt_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
+static JSBool mqtt_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp) {
+	mqtt_session_t *s;
 	int prop_id;
 
+	s = JS_GetPrivate(cx, obj);
+	dprintf(dlevel,"s: %p\n", s);
+	if (!s) {
+		JS_ReportError(cx, "private is null!");
+		return JS_FALSE;
+	}
 	if (JSVAL_IS_INT(id)) {
 		prop_id = JSVAL_TO_INT(id);
 		dprintf(dlevel,"mqtt_setprop: prop_id: %d", prop_id);
 		switch(prop_id) {
+		case MQTT_PROPERTY_ID_HOST:
+			jsval_to_type(DATA_TYPE_STRING,&s->host,sizeof(s->host),cx,*vp);
+			break;
+		case MQTT_PROPERTY_ID_PORT:
+			s->port = JSVAL_TO_INT(*vp);
+			break;
+		case MQTT_PROPERTY_ID_CLIENTID:
+			jsval_to_type(DATA_TYPE_STRING,&s->clientid,sizeof(s->clientid),cx,*vp);
+			break;
+		case MQTT_PROPERTY_ID_USERNAME:
+			jsval_to_type(DATA_TYPE_STRING,&s->username,sizeof(s->username),cx,*vp);
+			break;
+		case MQTT_PROPERTY_ID_PASSWORD:
+			jsval_to_type(DATA_TYPE_STRING,&s->password,sizeof(s->password),cx,*vp);
+			break;
 		default:
 			break;
 		}
@@ -608,10 +586,14 @@ static JSClass mqtt_class = {
 static JSBool mqtt_jspub(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
 	char *topic,*message;
 	int retain;
-	mqtt_session_t *m;
+	mqtt_session_t *s;
 
-	m = JS_GetPrivate(cx, obj);
-
+	s = JS_GetPrivate(cx, obj);
+	dprintf(dlevel,"s: %p\n", s);
+	if (!s) {
+		JS_ReportError(cx, "private is null!");
+		return JS_FALSE;
+	}
 	dprintf(5,"argc: %d\n", argc);
 	if (argc < 2) {
 		JS_ReportError(cx, "not enough parms");
@@ -625,16 +607,18 @@ static JSBool mqtt_jspub(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, 
 	else
 		retain = 0;
 	dprintf(5,"topic: %s, message: %s, retain: %d\n", topic, message, retain);
-        mqtt_pub(m,topic,message,1,retain);
+        mqtt_pub(s,topic,message,1,retain);
     	return JS_TRUE;
 }
 
-JSObject *jsmqtt_new(JSContext *cx, JSObject *parent, mqtt_session_t *m) {
+JSObject *jsmqtt_new(JSContext *cx, JSObject *parent, mqtt_session_t *s) {
 	JSPropertySpec mqtt_props[] = { 
-		{ "host",		MQTT_PROPERTY_ID_HOST,	JSPROP_ENUMERATE | JSPROP_READONLY },
-		{ "port",		MQTT_PROPERTY_ID_PORT,	JSPROP_ENUMERATE | JSPROP_READONLY },
-		{ "clientid",		MQTT_PROPERTY_ID_CLIENTID,	JSPROP_ENUMERATE | JSPROP_READONLY },
-		{ "username",		MQTT_PROPERTY_ID_USERNAME,	JSPROP_ENUMERATE | JSPROP_READONLY },
+		{ "host",		MQTT_PROPERTY_ID_HOST,		JSPROP_ENUMERATE },
+		{ "port",		MQTT_PROPERTY_ID_PORT,		JSPROP_ENUMERATE },
+		{ "clientid",		MQTT_PROPERTY_ID_CLIENTID,	JSPROP_ENUMERATE },
+		{ "username",		MQTT_PROPERTY_ID_USERNAME,	JSPROP_ENUMERATE },
+		{ "password",		MQTT_PROPERTY_ID_PASSWORD,	JSPROP_ENUMERATE },
+		{ "errmsg",		MQTT_PROPERTY_ID_ERRMSG,	JSPROP_ENUMERATE | JSPROP_READONLY },
 		{0}
 	};
 	JSFunctionSpec mqtt_funcs[] = {
@@ -649,7 +633,7 @@ JSObject *jsmqtt_new(JSContext *cx, JSObject *parent, mqtt_session_t *m) {
 		JS_ReportError(cx,"unable to initialize mqtt class");
 		return 0;
 	}
-	JS_SetPrivate(cx,obj,m);
+	JS_SetPrivate(cx,obj,s);
 	dprintf(dlevel,"done!\n");
 	return obj;
 }

@@ -7,6 +7,8 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
+#define dlevel 2
+
 #include "battery.h"
 
 /******************************
@@ -21,7 +23,7 @@ static void _get_arr(void *ctx, char *name,void *dest, int len,json_value_t *v) 
 	int i,type;
 
 	type = json_value_get_type(v);
-	dprintf(6,"type: %d(%s)\n", type, json_typestr(type));
+	dprintf(dlevel,"type: %d(%s)\n", type, json_typestr(type));
 	if (type != JSON_TYPE_ARRAY) return;
  
 	a = json_value_get_array(v);
@@ -49,7 +51,7 @@ static void _set_arr(void *ctx, char *name,void *dest, int len,json_value_t *v) 
 
 	a = json_create_array();
 	if (!a) return;
-	dprintf(1,"len: %d\n", len);
+	dprintf(dlevel,"len: %d\n", len);
 	if (strcmp(name,"temps")==0) {
 		for(i=0; i < len; i++) json_array_add_number(a,bp->temps[i]);
 	} else if (strcmp(name,"cellvolt")==0) {
@@ -70,7 +72,7 @@ static void _flat_arr(void *ctx, char *name,void *dest, int len,json_value_t *v)
 	int i;
 
 	o = json_value_get_object(v);
-	dprintf(1,"len: %d\n", len);
+	dprintf(dlevel,"len: %d\n", len);
 	if (strcmp(name,"temps")==0) {
 		for(i=0; i < len; i++) {
 			sprintf(label,"temp_%02d",i);
@@ -108,21 +110,21 @@ static void _get_state(void *ctx, char *name, void *dest, int len, json_value_t 
 	int i,j;
 
 	p = json_value_get_string(v);
-	dprintf(4,"value: %s\n", p);
+	dprintf(dlevel,"value: %s\n", p);
 	for(i=0; i < 99; i++) {
 		sp = strele(i,",",p);
 		if (!strlen(sp)) break;
-		dprintf(4,"sp: %s\n", sp);
+		dprintf(dlevel,"sp: %s\n", sp);
 		for(j=0; j < NSTATES; j++) {
-			dprintf(4,"states[j].label: %s\n", states[j].label);
+			dprintf(dlevel,"states[j].label: %s\n", states[j].label);
 			if (strcmp(sp,states[j].label) == 0) {
-				dprintf(4,"found\n");
+				dprintf(dlevel,"found\n");
 				bp->state |= states[j].mask;
 				break;
 			}
 		}
 	}
-	dprintf(4,"state: %x\n", bp->state);
+	dprintf(dlevel,"state: %x\n", bp->state);
 }
 
 static void _set_state(void *ctx, char *name, void *dest, int len, json_value_t *v) {
@@ -130,7 +132,7 @@ static void _set_state(void *ctx, char *name, void *dest, int len, json_value_t 
 	char temp[128],*p;
 	int i,j;
 
-	dprintf(1,"state: %x\n", bp->state);
+	dprintf(dlevel,"state: %x\n", bp->state);
 
 	/* States */
 	temp[0] = 0;
@@ -142,7 +144,7 @@ static void _set_state(void *ctx, char *name, void *dest, int len, json_value_t 
 			j++;
 		}
 	}
-	dprintf(1,"temp: %s\n", temp);
+	dprintf(dlevel,"temp: %s\n", temp);
 	json_object_set_string(json_value_get_object(v), name, temp);
 }
 
@@ -169,12 +171,12 @@ static void _set_state(void *ctx, char *name, void *dest, int len, json_value_t 
 static void _dump_arr(void *ctx, char *name,void *dest, int flen,json_value_t *v) {
 	solard_battery_t *bp = dest;
 	char format[16];
-	int i,*dlevel = (int *) v;
+	int i,*level = (int *) v;
 
 #ifdef DEBUG
-	if (debug >= *dlevel) {
+	if (debug >= *level) {
+		dprintf(dlevel,"flen: %d\n", flen);
 #endif
-		dprintf(1,"flen: %d\n", flen);
 		if (strcmp(name,"temps")==0) {
 			sprintf(format,"%%%ds: %%.1f\n",flen);
 			for(i=0; i < bp->ntemps; i++) printf(format,name,bp->temps[i]);
@@ -196,17 +198,17 @@ static void _dump_arr(void *ctx, char *name,void *dest, int flen,json_value_t *v
 static void _dump_state(void *ctx, char *name, void *dest, int flen, json_value_t *v) {
 	solard_battery_t *bp = dest;
 	char format[16];
-	int *dlevel = (int *) v;
+	int *level = (int *) v;
 
 	sprintf(format,"%%%ds: %%d\n",flen);
 #ifdef DEBUG
-	if (debug >= *dlevel) printf(format,name,bp->state);
+	if (debug >= *level) printf(format,name,bp->state);
 #else
 	printf(format,name,bp->state);
 #endif
 }
 
-void battery_dump(solard_battery_t *bp, int dlevel) {
+void battery_dump(solard_battery_t *bp, int level) {
 	json_proctab_t tab[] = { BATTERY_TAB(bp->ntemps,bp->ncells,_dump_arr,_dump_state) }, *p;
 	char format[16],temp[1024];
 	int flen;
@@ -218,13 +220,13 @@ void battery_dump(solard_battery_t *bp, int dlevel) {
 	}
 	flen++;
 	sprintf(format,"%%%ds: %%s\n",flen);
-	dprintf(dlevel,"battery:\n");
+	dprintf(level,"battery:\n");
 	for(p=tab; p->field; p++) {
-		if (p->cb) p->cb(bp,p->field,p->ptr,flen,(void *)&dlevel);
+		if (p->cb) p->cb(bp,p->field,p->ptr,flen,(void *)&level);
 		else {
 			conv_type(DATA_TYPE_STRING,&temp,sizeof(temp)-1,p->type,p->ptr,p->len);
 #ifdef DEBUG
-			if (debug >= dlevel) printf(format,p->field,temp);
+			if (debug >= level) printf(format,p->field,temp);
 #else
 			printf(format,p->field,temp);
 #endif
@@ -248,16 +250,16 @@ int battery_from_json(solard_battery_t *bp, char *str) {
 	json_proctab_t battery_tab[] = { BATTERY_TAB(BATTERY_MAX_TEMPS,BATTERY_MAX_CELLS,_get_arr,_get_state) };
 	json_value_t *v;
 
-	dprintf(1,"parsing...\n");
+	dprintf(dlevel,"parsing...\n");
 	v = json_parse(str);
-	dprintf(1,"v: %p\n", v);
+	dprintf(dlevel,"v: %p\n", v);
 	if (!v) return 1;
 	memset(bp,0,sizeof(*bp));
-	dprintf(1,"getting tab...\n");
+	dprintf(dlevel,"getting tab...\n");
 	json_to_tab(battery_tab,v);
 //	battery_dump(bp,3);
 	json_destroy_value(v);
-	dprintf(1,"done!\n");
+	dprintf(dlevel,"done!\n");
 	return 0;
 };
 
@@ -291,16 +293,16 @@ static JSBool battery_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rva
 	register int i;
 
 	bp = JS_GetPrivate(cx,obj);
-	dprintf(4,"bp: %p\n", bp);
+	dprintf(dlevel,"bp: %p\n", bp);
 	if (!bp) {
 		JS_ReportError(cx, "private is null!");
 		return JS_FALSE;
 	}
 
-	dprintf(4,"is_int: %d\n", JSVAL_IS_INT(id));
+	dprintf(dlevel,"is_int: %d\n", JSVAL_IS_INT(id));
 	if(JSVAL_IS_INT(id)) {
 		prop_id = JSVAL_TO_INT(id);
-		dprintf(4,"prop_id: %d\n", prop_id);
+		dprintf(dlevel,"prop_id: %d\n", prop_id);
 		switch(prop_id) {
 		case BATTERY_PROPERTY_ID_NAME:
 			*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx,bp->name));
@@ -316,7 +318,7 @@ static JSBool battery_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rva
 			JS_NewDoubleValue(cx, bp->current, rval);
 			break;
 		case BATTERY_PROPERTY_ID_NTEMPS:
-			dprintf(4,"ntemps: %d\n", bp->ntemps);
+			dprintf(dlevel,"ntemps: %d\n", bp->ntemps);
 			*rval = INT_TO_JSVAL(bp->ntemps);
 			break;
 		case BATTERY_PROPERTY_ID_TEMPS:
@@ -324,10 +326,10 @@ static JSBool battery_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rva
 				JSObject *rows;
 				jsval val;
 
-//				dprintf(4,"ntemps: %d\n", bp->ntemps);
+//				dprintf(dlevel,"ntemps: %d\n", bp->ntemps);
 				rows = JS_NewArrayObject(cx, bp->ntemps, NULL);
 				for(i=0; i < bp->ntemps; i++) {
-//					dprintf(4,"temps[%d]: %f\n", i, bp->temps[i]);
+//					dprintf(dlevel,"temps[%d]: %f\n", i, bp->temps[i]);
 					JS_NewDoubleValue(cx, bp->temps[i], &val);
 					JS_SetElement(cx, rows, i, &val);
 				}
@@ -335,7 +337,7 @@ static JSBool battery_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rva
 			}
 			break;
 		case BATTERY_PROPERTY_ID_NCELLS:
-			dprintf(4,"ncells: %d\n", bp->ncells);
+			dprintf(dlevel,"ncells: %d\n", bp->ncells);
 			*rval = INT_TO_JSVAL(bp->ncells);
 			break;
 		case BATTERY_PROPERTY_ID_CELLVOLT:
@@ -446,7 +448,7 @@ JSObject *JSBattery(JSContext *cx, solard_battery_t *bp) {
 	};
 	JSObject *obj;
 
-	dprintf(5,"defining %s object\n",battery_class.name);
+	dprintf(dlevel,"defining %s object\n",battery_class.name);
 	obj = JS_InitClass(cx, JS_GetGlobalObject(cx), 0, &battery_class, 0, 0, battery_props, battery_funcs, 0, 0);
 	if (!obj) {
 		JS_ReportError(cx,"unable to initialize battery class");
@@ -455,7 +457,7 @@ JSObject *JSBattery(JSContext *cx, solard_battery_t *bp) {
 
 	/* Pre-create the JSVALs */
 	JS_SetPrivate(cx,obj,bp);
-	dprintf(5,"done!\n");
+	dprintf(dlevel,"done!\n");
 	return obj;
 }
 #endif

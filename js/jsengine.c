@@ -9,8 +9,13 @@ LICENSE file in the root directory of this source tree.
 
 #define DEBUG_JSENGINE 1
 #define dlevel 6
-
 #define SCRIPT_CACHE 1
+
+#ifdef DEBUG
+#undef DEBUG
+#define DEBUG DEBUG_JSENGINE
+#endif
+#include "debug.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -29,12 +34,6 @@ LICENSE file in the root directory of this source tree.
 #include "jsdtracef.h"
 #include "jsobj.h"
 #include "jscntxt.h"
-
-#ifdef DEBUG
-#undef DEBUG
-#endif
-#define DEBUG DEBUG_JSENGINE
-#include "debug.h"
 
 #if SCRIPT_CACHE
 struct _scriptinfo {
@@ -413,7 +412,7 @@ int _JS_EngineExec(JSEngine *e, char *filename, JSContext *cx, char *function_na
 
 	dprintf(dlevel,"cx: %p, global: %p, script: %p\n", cx, JS_GetGlobalObject(cx), script);
 	ok = JS_ExecuteScript(cx, JS_GetGlobalObject(cx), script, &rval);
-	dprintf(dlevel,"%s: ok: %d\n", filename, ok);
+	dprintf(dlevel,"%s: exec ok: %d\n", filename, ok);
 
 	if (ok && function_name) {
 		jsval fval;
@@ -424,6 +423,7 @@ int _JS_EngineExec(JSEngine *e, char *filename, JSContext *cx, char *function_na
 		fval = js_get_function(cx,JS_GetGlobalObject(cx),function_name);
 		dprintf(dlevel,"fval: %s\n", jstypestr(cx,fval));
 		if (fval == JSVAL_NULL) {
+			dprintf(dlevel,"fval is NULL\n");
 			status = 1;
 			goto _JS_EngineExec_done;
 		}

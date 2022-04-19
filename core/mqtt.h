@@ -15,9 +15,6 @@ LICENSE file in the root directory of this source tree.
 /* We use the paho mqtt.c library */
 #include <MQTTClient.h>
 
-struct mqtt_session;
-typedef struct mqtt_session mqtt_session_t;
-
 #define MQTT_HOST_LEN 64
 #define MQTT_USER_LEN 32
 #define MQTT_PASS_LEN 32
@@ -25,6 +22,7 @@ typedef struct mqtt_session mqtt_session_t;
 #define MQTT_TOPIC_LEN 128
 #define MQTT_MAX_MESSAGE_SIZE 262144
 
+#if 0
 struct mqtt_config {
 	char host[MQTT_HOST_LEN];
 	int port;
@@ -34,14 +32,32 @@ struct mqtt_config {
 	char lwt_topic[MQTT_TOPIC_LEN];
 };
 typedef struct mqtt_config mqtt_config_t;
+#endif
 
 typedef void (mqtt_callback_t)(void *, char *, char *, int, char *);
 
+struct mqtt_session {
+	char host[MQTT_HOST_LEN];
+	int port;
+	char clientid[MQTT_CLIENTID_LEN];
+	char username[MQTT_USER_LEN];
+	char password[MQTT_PASS_LEN];
+	char lwt_topic[MQTT_TOPIC_LEN];
+	MQTTClient c;
+	int interval;
+	mqtt_callback_t *cb;
+	void *ctx;
+	MQTTClient_SSLOptions *ssl_opts;
+	list subs;
+	int connected;
+	char errmsg[128];
+};
+typedef struct mqtt_session mqtt_session_t;
+
 struct mqtt_session *mqtt_new(mqtt_callback_t *, void *);
-//int mqtt_add_config(mqtt_session_t *, void *);
-int mqtt_parse_config(mqtt_config_t *conf, char *str);
-int mqtt_init(mqtt_session_t *,mqtt_config_t *);
-int mqtt_newclient(mqtt_session_t *, mqtt_config_t *);
+int mqtt_parse_config(mqtt_session_t *, char *str);
+int mqtt_init(mqtt_session_t *);
+int mqtt_newclient(mqtt_session_t *);
 int mqtt_connect(mqtt_session_t *s, int interval);
 int mqtt_disconnect(mqtt_session_t *s, int timeout);
 int mqtt_destroy(mqtt_session_t *s);
@@ -55,7 +71,7 @@ void mqtt_set_lwt(mqtt_session_t *s, char *new_topic);
 int mqtt_dosend(mqtt_session_t *m, char *topic, char *message);
 int mqtt_fullsend(char *address, char *clientid, char *message, char *topic, char *user, char *pass);
 
-void mqtt_add_props(config_t *, mqtt_config_t *, char *, mqtt_config_t *);
+void mqtt_add_props(mqtt_session_t *, config_t *, char *);
 
 #ifdef JS
 #include "jsapi.h"

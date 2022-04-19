@@ -1,4 +1,13 @@
 
+#define DEBUG_GLOBAL 1
+#define dlevel 6
+
+#ifdef DEBUG
+#undef DEBUG
+#define DEBUG DEBUG_GLOBAL
+#endif
+#include "debug.h"
+
 #include <string.h>
 #include <stdlib.h>
 #ifdef WINDOWS
@@ -24,17 +33,6 @@
 #include "jsarena.h"
 #include "jsgc.h"
 
-#define DEBUG_GLOBAL 1
-#define dlevel 6
-
-#ifdef DEBUG
-#undef DEBUG
-#endif
-#if DEBUG_GLOBAL
-#define DEBUG 1
-#endif
-#include "debug.h"
-
 static int version = 182;
 #define VERSION_MAJOR 1
 #define VERSION_MINOR 8
@@ -53,7 +51,7 @@ static const char *get_script_name(JSContext *cx) {
 	/* Get the currently executing script's name. */
 	fp = JS_GetScriptedCaller(cx, NULL);
 	if (!fp || !fp->script || !fp->script->filename) {
-		dprintf(1,"unable to get current script!\n");
+		dprintf(dlevel,"unable to get current script!\n");
 		return "unknown";
 	}
 	return(fp->script->filename);
@@ -86,7 +84,7 @@ static JSBool js_print(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, js
 	e = JS_GetPrivate(cx, obj);
 
 	for (i = 0; i < argc; i++) {
-//		dprintf(0,"argv[%d]: %s\n", i, jstypestr(cx,argv[i]));
+//		dprintf(dlevel,"argv[%d]: %s\n", i, jstypestr(cx,argv[i]));
 		str = JS_ValueToString(cx, argv[i]);
 		if (!str) return JS_FALSE;
 		bytes = JS_EncodeString(cx, str);
@@ -138,6 +136,7 @@ static JSBool js_load(JSContext *cx, uintN argc, jsval *vp) {
 	return JS_TRUE;
 }
 
+
 static JSBool js_run(JSContext *cx, uintN argc, jsval *vp) {
 	char *name, *func;
 	JSObject *obj;
@@ -173,6 +172,27 @@ static JSBool js_run(JSContext *cx, uintN argc, jsval *vp) {
         return JS_TRUE;
 }
 
+static JSBool js_system(JSContext *cx, uintN argc, jsval *vp) {
+	char *cmd;
+	int r;
+
+	if (argc < 1) {
+		JS_ReportError(cx, "run takes 1 argument (script:string)\n");
+		return JS_FALSE;
+	}
+	cmd = 0;
+	if (!JS_ConvertArguments(cx, argc, JS_ARGV(cx,vp), "s", &cmd)) return JS_FALSE;
+	dprintf(dlevel,"cmd: %s\n", cmd);
+	if (!cmd) {
+		JS_ReportError(cx, "run takes 1 argument (script:string)\n");
+		return JS_FALSE;
+	}
+
+	r = system(cmd);
+	*vp = INT_TO_JSVAL(r);
+        return JS_TRUE;
+}
+
 static JSBool js_exit(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
 
 	dprintf(dlevel,"argc: %d\n", argc);
@@ -195,7 +215,6 @@ static JSBool js_abort(JSContext *cx, uintN argc, jsval *vp) {
 	else exit(0);
 
 }
-
 static JSBool js_sleep(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
 	int r,n;
 
@@ -209,7 +228,7 @@ static JSBool js_sleep(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, js
 	return JS_TRUE;
 }
 
-static JSBool jstime(JSContext *cx, uintN argc, jsval *vp){
+static JSBool js_time(JSContext *cx, uintN argc, jsval *vp){
 	*vp = INT_TO_JSVAL(time(0));
 	return JS_TRUE;
 }
@@ -362,7 +381,13 @@ static JSBool js_gc(JSContext *cx, uintN argc, jsval *vp) {
 }
 
 static JSBool js_memused(JSContext *cx, uintN argc, jsval *vp) {
+//	JS_DumpArenaStats(stdout);
 	*vp = INT_TO_JSVAL(JS_ArenaTotalBytes());
+	return JS_TRUE;
+}
+
+static JSBool js_sysmemused(JSContext *cx, uintN argc, jsval *vp) {
+	*vp = INT_TO_JSVAL(mem_used());
 	return JS_TRUE;
 }
 
@@ -400,6 +425,7 @@ JSObject *JS_CreateGlobalObject(JSContext *cx, void *priv) {
 		JS_FS("error",js_error,0,0,0),
 		JS_FN("load",js_load,1,1,0),
 		JS_FN("include",js_load,1,1,0),
+		JS_FN("system",js_system,1,1,0),
 		JS_FN("run",js_run,1,1,0),
 		JS_FS("sleep",js_sleep,1,0,0),
 		JS_FS("exit",js_exit,1,1,0),
@@ -407,7 +433,7 @@ JSObject *JS_CreateGlobalObject(JSContext *cx, void *priv) {
 		JS_FN("quit",js_abort,0,0,0),
 		JS_FN("readline",ReadLine,0,0,0),
 		JS_FN("timestamp",js_timestamp,0,1,0),
-		JS_FN("time",jstime,0,0,0),
+		JS_FN("systime",js_time,0,0,0),
 		JS_FS("dirname",js_dirname,1,0,0),
 		JS_FS("basename",js_basename,1,0,0),
 		JS_FN("log_info",js_log_info,0,0,0),
@@ -417,6 +443,7 @@ JSObject *JS_CreateGlobalObject(JSContext *cx, void *priv) {
 		JS_FN("gc",js_gc,0,0,0),
 		JS_FN("version",js_version,1,1,0),
 		JS_FN("memused",js_memused,0,0,0),
+		JS_FN("sysmemused",js_sysmemused,0,0,0),
 		JS_FS_END
 	};
 	JSConstantSpec global_const[] = {
@@ -427,54 +454,59 @@ JSObject *JS_CreateGlobalObject(JSContext *cx, void *priv) {
 		{0}
 	};
 	JSAliasSpec global_aliases[] = {
-//		{ "this", "global" },
 		{ 0 },
 	};
 	JSObject *obj;
 
 	/* Create the global object */
-	dprintf(1,"Creating global object...\n");
+	dprintf(dlevel,"Creating global object...\n");
 	if ((obj = JS_NewObject(cx, &global_class, 0, 0)) == 0) {
-		dprintf(1,"error creating global object\n");
+		dprintf(dlevel,"error creating global object\n");
 		goto _create_global_error;
 	}
-	dprintf(1,"Global object: %p\n", obj);
+	dprintf(dlevel,"Global object: %p\n", obj);
 
-	dprintf(1,"Defining global props...\n");
+	dprintf(dlevel,"Defining global props...\n");
 	if(!JS_DefineProperties(cx, obj, global_props)) {
-		dprintf(1,"error defining global properties\n");
+		dprintf(dlevel,"error defining global properties\n");
 		goto _create_global_error;
 	}
 
-	dprintf(1,"Defining global funcs...\n");
+	dprintf(dlevel,"Defining global funcs...\n");
 	if(!JS_DefineFunctions(cx, obj, global_funcs)) {
-		dprintf(1,"error defining global functions\n");
+		dprintf(dlevel,"error defining global functions\n");
 		goto _create_global_error;
 	}
 
-	dprintf(1,"Defining global constants...\n");
+	dprintf(dlevel,"Defining global constants...\n");
 	if(!JS_DefineConstants(cx, obj, global_const)) {
-		dprintf(1,"error defining global constants\n");
+		dprintf(dlevel,"error defining global constants\n");
 		goto _create_global_error;
 	}
 
-	dprintf(1,"Defining global aliases...\n");
+	dprintf(dlevel,"Defining global aliases...\n");
 	if(!JS_DefineAliases(cx, obj, global_aliases)) {
-		dprintf(1,"error defining global aliases\n");
+		dprintf(dlevel,"error defining global aliases\n");
 		goto _create_global_error;
 	}
 
-	dprintf(1,"Setting global private...\n");
+	dprintf(dlevel,"Defining window object...\n");
+	{
+		jsval val = OBJECT_TO_JSVAL(obj);
+		JS_DefineProperty(cx, obj, "window", val, 0, 0, 0);
+	}
+
+	dprintf(dlevel,"Setting global private...\n");
 	JS_SetPrivate(cx,obj,priv);
 
 	/* Add standard classes */
-	dprintf(1,"Adding standard classes...\n");
+	dprintf(dlevel,"Adding standard classes...\n");
 	if(!JS_InitStandardClasses(cx, obj)) {
-		dprintf(1,"error initializing standard classes\n");
+		dprintf(dlevel,"error initializing standard classes\n");
 		goto _create_global_error;
 	}
 
-	dprintf(1,"done!\n");
+	dprintf(dlevel,"done!\n");
 	return obj;
 
 _create_global_error:

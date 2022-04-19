@@ -7,18 +7,18 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
-#include <errno.h>
-#include <time.h>
-#include <stdarg.h>
+#define DEBUG_LOG 0
+
 #ifdef DEBUG
 #undef DEBUG
 #endif
-//#define DEBUG 1
-#include "utils.h"
+#if DEBUG_LOG
+#define DPRINTF(format, args...) printf("%s(%d): " format,__FUNCTION__,__LINE__, ## args)
+#else
+#define DPRINTF(format, args...) /* noop */
+#endif
 #include "debug.h"
+#include "common.h"
 
 FILE *logfp = (FILE *) 0;
 int logopts;
@@ -126,7 +126,6 @@ static int _log_write(int type,char *format,va_list ap) {
 
 	/* Build the rest of the message */
 	DPRINTF("adding message...\n");
-	DPRINTF("format: %p, ap: %p\n", format, ap);
 //	fprintf(logfp,"format: %s",format);
 	vfprintf(logfp,format,ap);
 	va_end(ap);
@@ -134,7 +133,7 @@ static int _log_write(int type,char *format,va_list ap) {
 	/* If it's a system error, concat the system message */
 	if (type & LOG_SYSERR && errstr) {
 		DPRINTF("adding error text...\n");
-		fprintf(logfp,": %s",errstr);
+		fprintf(logfp,": %s\n",errstr);
 	}
 	fflush(logfp);
 

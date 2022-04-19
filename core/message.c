@@ -172,3 +172,84 @@ solard_message_t *solard_message_wait_target(list lp, char *target, int timeout)
 int solard_message_delete(list lp, solard_message_t *msg) {
 	return list_delete(lp, msg);
 }
+
+#ifdef JS
+enum MESSAGE_PROPERTY_ID {
+	MESSAGE_PROPERTY_ID_TOPIC,
+	MESSAGE_PROPERTY_ID_NAME,
+	MESSAGE_PROPERTY_ID_FUNC,
+	MESSAGE_PROPERTY_ID_DATA,
+};
+
+static JSBool message_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
+	solard_message_t *msg;
+	int prop_id;
+
+
+	msg = JS_GetPrivate(cx,obj);
+//	dprintf(dlevel,"msg: %p\n", msg);
+	if (!msg) {
+		JS_ReportError(cx, "message_getprop: internal error: private is null!");
+		return JS_FALSE;
+	}
+//	dprintf(dlevel,"id type: %s\n", jstypestr(cx,id));
+	if(JSVAL_IS_INT(id)) {
+		prop_id = JSVAL_TO_INT(id);
+//		dprintf(dlevel,"prop_id: %d\n", prop_id);
+		switch(prop_id) {
+		case MESSAGE_PROPERTY_ID_TOPIC:
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,msg->topic,strlen(msg->topic));
+			break;
+		case MESSAGE_PROPERTY_ID_NAME:
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,msg->name,strlen(msg->name));
+			break;
+		case MESSAGE_PROPERTY_ID_FUNC:
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,msg->func,strlen(msg->func));
+			break;
+		case MESSAGE_PROPERTY_ID_DATA:
+			*rval = type_to_jsval(cx,DATA_TYPE_STRING,msg->data,strlen(msg->data));
+			break;
+		}
+	}
+	return JS_TRUE;
+}
+
+static JSClass message_class = {
+	"Message",		/* Name */
+	JSCLASS_HAS_PRIVATE,	/* Flags */
+	JS_PropertyStub,	/* addProperty */
+	JS_PropertyStub,	/* delProperty */
+	message_getprop,	/* getProperty */
+	JS_PropertyStub,	/* setProperty */
+	JS_EnumerateStub,	/* enumerate */
+	JS_ResolveStub,		/* resolve */
+	JS_ConvertStub,		/* convert */
+	JS_FinalizeStub,	/* finalize */
+	JSCLASS_NO_OPTIONAL_MEMBERS
+};
+
+JSObject *js_message_new(JSContext *cx, JSObject *parent, solard_message_t *msg) {
+	JSPropertySpec message_props[] = {
+		{ "topic", MESSAGE_PROPERTY_ID_TOPIC, JSPROP_ENUMERATE | JSPROP_READONLY },
+		{ "name", MESSAGE_PROPERTY_ID_NAME, JSPROP_ENUMERATE | JSPROP_READONLY },
+		{ "func", MESSAGE_PROPERTY_ID_FUNC, JSPROP_ENUMERATE | JSPROP_READONLY },
+		{ "data", MESSAGE_PROPERTY_ID_DATA, JSPROP_ENUMERATE | JSPROP_READONLY },
+		{ 0 }
+	};
+	JSFunctionSpec message_funcs[] = {
+//		JS_FN("delete",js_message_delete,0,0,0),
+		{ 0 }
+	};
+	JSObject *obj;
+
+	dprintf(2,"creating %s object\n",message_class.name);
+	obj = JS_InitClass(cx, parent, 0, &message_class, 0, 0, message_props, message_funcs, 0, 0);
+	if (!obj) {
+		JS_ReportError(cx,"unable to initialize %s class", message_class.name);
+		return 0;
+	}
+	JS_SetPrivate(cx,obj,msg);
+	dprintf(2,"done!\n");
+	return 0;
+}
+#endif

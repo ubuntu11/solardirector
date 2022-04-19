@@ -7,24 +7,20 @@ This source code is licensed under the BSD-style license found in the
 LICENSE file in the root directory of this source tree.
 */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include "json.h"
-#include "utils.h"
-
 #define DEBUG_JSON 0
 #define dlevel 6
 
 #ifdef DEBUG
 #undef DEBUG
-#endif
 #define DEBUG DEBUG_JSON
+#endif
 #include "debug.h"
 
-#ifdef DEBUG_MEM
-static int _init = 0;
-#endif
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "json.h"
+#include "utils.h"
 
 #include "parson.c"
 
@@ -167,22 +163,10 @@ int json_array_add_value(json_array_t *,json_value_t *);
 int json_destroy_array(json_array_t *);
 
 json_object_t *json_create_object(void) {
-#if defined(DEBUG_MEM) && !defined(__WIN64)
-	if (!_init) {
-		parson_set_allocation_functions(mem_malloc,mem_free);
-		_init = 1;
-	}
-#endif
 	return (json_object_t *)parson_object(parson_value_init_object());
 }
 
 json_array_t *json_create_array(void) {
-#if defined(DEBUG_MEM) && !defined(__WIN64)
-	if (!_init) {
-		parson_set_allocation_functions(mem_malloc,mem_free);
-		_init = 1;
-	}
-#endif
 	return (json_array_t *)parson_array(parson_value_init_array());
 }
 

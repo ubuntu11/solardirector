@@ -101,6 +101,9 @@ static void *serial_new(void *target, void *topts) {
 #endif
 	strncat(s->target,strele(0,",",(char *)target),sizeof(s->target)-1);
 
+	/* TOPTS:  Baud, data, parity, stop, vmin, vtime */
+	/* Defaults: 9600, 8, N, 1, 0, 5 */
+
 	/* Baud rate */
 	p = strele(0,",",topts);
 	s->speed = atoi(p);

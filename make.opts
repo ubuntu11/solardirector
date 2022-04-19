@@ -1,0 +1,13 @@
+
+# Build options
+DEBUG?=yes
+DEBUG_MEM?=no
+MEMWATCH?=no
+STATIC?=no
+SHARED?=no
+
+# Components
+JS?=no
+MQTT?=no
+INFLUX?=yes
+BLUETOOTH?=no

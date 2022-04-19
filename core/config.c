@@ -12,8 +12,8 @@ LICENSE file in the root directory of this source tree.
 
 #ifdef DEBUG
 #undef DEBUG
-#endif
 #define DEBUG DEBUG_CONFIG
+#endif
 #include "debug.h"
 
 #include "common.h"
@@ -26,6 +26,33 @@ LICENSE file in the root directory of this source tree.
 
 char *config_get_errmsg(config_t *cp) { return cp->errmsg; }
 
+void config_dump_property(config_property_t *p, int level) {
+#if 0
+        char *name;
+        int type;                       /* Data type */
+        void *dest;                     /* Ptr to storage */
+        int dsize;                      /* Size of storage */
+        void *def;                      /* Default value */
+        uint16_t flags;                 /* Flags */
+        char *scope;                    /* Scope (select/range/etc) */
+        int nvalues;                    /* # of scope values */
+        void *values;                   /* Scope values */
+        int nlabels;                    /* # of labels */
+        char **labels;                  /* Labels */
+        char *units;                    /* Units */
+        float scale;                    /* Scale for numerics */
+        int precision;                  /* Decimal places */
+        /* Not exposed */
+        int len;                        /* actual length of storage */
+        int id;                         /* Property ID */
+        int dirty;                      /* Has been updated since last write */
+        jsval jsval;                    /* JSVal of this property object */
+#endif
+	char value[1024];
+	conv_type(DATA_TYPE_STRING,value,sizeof(value),p->type,p->dest,p->len);
+	dprintf(level,"prop: name: %s, id: %d, flags: %02x, def: %s, value: %s\n",p->name, p->id, p->flags, p->def, value);
+}
+
 config_function_t *config_function_get(config_t *cp, char *name) {
 	config_function_t *f;
 
@@ -33,6 +60,7 @@ config_function_t *config_function_get(config_t *cp, char *name) {
 
 	list_reset(cp->funcs);
 	while((f = list_get_next(cp->funcs)) != 0) {
+		dprintf(dlevel,"f->name: %s, name: %s\n", f->name, name);
 		if (strcasecmp(f->name,name) == 0) {
 			dprintf(dlevel,"found\n");
 			return f;
@@ -131,6 +159,32 @@ int config_delete_property(config_t *cp, char *sname, char *name) {
 	return 1;
 }
 
+int config_section_set_property(config_section_t *s, config_property_t *p) {
+	config_property_t *pp;
+
+	if (!s) return 1;
+
+	pp = config_section_get_property(s, p->name);
+	if (!pp) return 1;
+	p->len = conv_type(p->type, p->dest, p->dsize, pp->type, pp->dest, pp->len);
+	return 0;
+}
+
+int config_section_set_properties(config_t *cp, config_section_t *s, config_property_t *props, int add, int flags) {
+	config_property_t *pp;
+
+	if (!s) return 1;
+
+	dprintf(dlevel,"section: %s\n", s->name);
+	for(pp = props; pp->name; pp++) {
+		if (config_section_set_property(s, pp)) {
+			if (!add) return 1;
+			else config_section_add_property(cp, s, pp, flags);
+		}
+	}
+	return 0;
+}
+
 int config_set_property(config_t *cp, char *sname, char *name, int type, void *src, int len) {
 	config_property_t *p;
 
@@ -148,7 +202,6 @@ int config_set_property(config_t *cp, char *sname, char *name, int type, void *s
 			return 1;
 		}
 	}
-//	printf("===> setting prop: name: %s, type: %s\n", p->name, typestr(p->type));
 	p->len = conv_type(p->type,p->dest,p->dsize,type,src,len);
 	p->dirty = 1;
 	return 1;
@@ -176,6 +229,7 @@ config_property_t *config_combine_props(config_property_t *p1, config_property_t
 	if (!p1 && p2) return p2;
 	if (p1 && !p2) return p1;
 	if (!p1 && !p2) return 0;
+	count = 0;
 	for(pp=p1; pp->name; pp++) count++;
 	for(pp=p2; pp->name; pp++) count++;
 	size = (count + 1) * sizeof(config_property_t);
@@ -318,12 +372,33 @@ void config_add_props(config_t *cp, char *section_name, config_property_t *props
 	for(p = props; p->name; p++) config_section_add_property(cp, section, p, flags);
 }
 
+config_property_t *config_get_props(config_t *cp, char *section_name) {
+	config_property_t *props,*p,*pp;
+	config_section_t *section;
+	int count,size;
+
+	if (!cp || !section_name) return 0;
+
+	section = config_get_section(cp,section_name);
+	if (!section) return 0;
+	count = list_count(section->items);
+	size = sizeof(config_property_t) + count + 1;
+	props = malloc(size);
+	if (!props) return 0;
+	pp = props;
+	list_reset(section->items);
+	while((p = list_get_next(section->items)) != 0) *pp++ = *p;
+	pp->name = 0;
+	return props;
+}
+
 config_function_t *config_combine_funcs(config_function_t *f1, config_function_t *f2) {
 	config_function_t *fp,*newf,*nfp;
 	int count,size;
 
 	if (!f1) return f2;
 	if (!f2) return f1;
+	count = 0;
 	for(fp=f1; fp->name; fp++) count++;
 	for(fp=f2; fp->name; fp++) count++;
 	size = (count + 1) * sizeof(config_function_t);
@@ -518,7 +593,7 @@ int config_read_ini(config_t *cp, char *filename) {
 			} else {
 				memset(&newprop,0,sizeof(newprop));
 				newprop.name = malloc(strlen(item->keyword)+1);
-				strncpy(newprop.name,item->keyword,strlen(item->keyword)+1);
+				strncpy(newprop.name,item->keyword,sizeof(newprop.name)-1);
 				newprop.type = DATA_TYPE_STRING;
 				newprop.dest = malloc(strlen(item->value)+1);
 				strcpy(newprop.dest,item->value);
@@ -612,7 +687,7 @@ static config_property_t *_json_to_prop(config_t *cp, config_section_t *sec, cha
 	return p;
 }
 
-static int _config_parse_json(config_t *cp, json_value_t *v) {
+int config_parse_json(config_t *cp, json_value_t *v) {
 	json_object_t *o,*oo;
 	config_section_t *sec;
 //	json_proctab_t *tab;
@@ -696,7 +771,7 @@ int config_read_json(config_t *cp, char *filename) {
 		return 1;
 	}
 
-	r = _config_parse_json(cp,v);
+	r = config_parse_json(cp,v);
 	json_destroy_value(v);
 
 	return r;
@@ -747,10 +822,10 @@ int config_write_ini(config_t *cp) {
 		list_reset(s->items);
 		while((p = list_get_next(s->items)) != 0) {
 			if (p->dest == (void *)0) continue;
-			dprintf(dlevel,"p->flags: %x, dirty: %d\n", p->flags, p->dirty);
+			dprintf(dlevel,"p->name: %s, p->flags: %x, dirty: %d\n", p->name, p->flags, p->dirty);
 			if (solard_check_bit(p->flags,CONFIG_FLAG_NOSAVE)) continue;
 			if (!p->dirty && !solard_check_bit(p->flags,CONFIG_FLAG_FILE)) continue;
-			dprintf(dlevel,"writing: %s\n", p->name);
+			dprintf(dlevel,"getting value...\n");
 			conv_type(DATA_TYPE_STRING,value,sizeof(value)-1,p->type,p->dest,p->len);
 			if (!strlen(value)) continue;
 			dprintf(dlevel,"section: %s, item: %s, value(%d): %s\n", s->name, p->name, strlen(value), value);
@@ -1089,7 +1164,7 @@ static int config_get_value(void *ctx, list args, char *errmsg) {
 
 static int config_set_value(void *ctx, list args, char *errmsg) {
 	config_t *cp = ctx;
-	char **argv;
+	char **argv,*value;
 	config_property_t *p;
 
 	list_reset(args);
@@ -1100,7 +1175,12 @@ static int config_set_value(void *ctx, list args, char *errmsg) {
 			sprintf(errmsg,"property %s not found",argv[0]);
 			return 1;
 		}
-		p->len = conv_type(p->type,p->dest,p->dsize,DATA_TYPE_STRING,argv[1],strlen(argv[1]));
+		value = argv[1];
+                if (strcasecmp(value,"default")==0) {
+                        if (p->def) value = p->def;
+                        else value = "";
+                }
+		p->len = conv_type(p->type,p->dest,p->dsize,DATA_TYPE_STRING,value,strlen(value));
 		p->dirty = 1;
 	}
 	return 0;
@@ -1116,6 +1196,7 @@ static void _addgetset(config_t *cp) {
 		if (strcasecmp(f->name,"get")==0) have_get = 1;
 		if (strcasecmp(f->name,"set")==0) have_set = 1;
 	}
+	dprintf(dlevel,"have_get: %d, have_set: %d\n", have_get, have_set);
 	if (!have_get) {
 		newfunc.name = "get";
 		newfunc.func = config_get_value;
@@ -1456,7 +1537,7 @@ JSFunctionSpec *config_to_funcs(config_t *cp, JSFunctionSpec *add) {
 }
 #endif
 
-JSBool config_jsgetprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval, config_t *cp, JSPropertySpec *props) {
+JSBool js_config_common_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval, config_t *cp, JSPropertySpec *props) {
 	int prop_id;
 	config_property_t *p;
 
@@ -1489,7 +1570,7 @@ JSBool config_jsgetprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval, con
 	return JS_TRUE;
 }
 
-JSBool config_jssetprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp, config_t *cp, JSPropertySpec *props) {
+JSBool js_config_common_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp, config_t *cp, JSPropertySpec *props) {
 	int prop_id;
 	config_property_t *p;
 
@@ -1780,7 +1861,7 @@ static JSBool js_config_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *v
 }
 
 static JSClass config_class = {
-	"SDConfig",		/* Name */
+	"Config",		/* Name */
 	JSCLASS_HAS_PRIVATE,	/* Flags */
 	JS_PropertyStub,	/* addProperty */
 	JS_PropertyStub,	/* delProperty */
@@ -1848,7 +1929,7 @@ static JSBool config_jswrite(JSContext *cx, uintN argc, jsval *vp) {
 	return JS_TRUE;
 }
 
-static JSBool config_jsadd(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
+static JSBool js_config_add(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
 	config_t *cp;
 	char *sname,*name,*def;
 	int type,flags;
@@ -1897,7 +1978,7 @@ static JSBool config_jsadd(JSContext *cx, JSObject *obj, uintN argc, jsval *argv
 	return JS_TRUE;
 }
 
-static JSBool config_jsdel(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
+static JSBool js_config_del(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
 	config_t *cp;
 	char *sname,*name;
 //	config_property_t *p;
@@ -1931,8 +2012,8 @@ JSObject *jsconfig_new(JSContext *cx, JSObject *parent, config_t *cp) {
 		JS_FN("read",config_jsread,1,1,0),
 		JS_FN("write",config_jswrite,0,0,0),
 		JS_FN("save",config_jswrite,0,0,0),
-		JS_FS("add",config_jsadd,8,2,0),
-		JS_FS("delete",config_jsdel,2,2,0),
+		JS_FS("add",js_config_add,8,2,0),
+		JS_FS("delete",js_config_del,2,2,0),
 		{ 0 }
 	};
 	JSConstantSpec config_consts[] = {
