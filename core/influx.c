@@ -213,21 +213,21 @@ void influx_destroy_results(influx_session_t *s) {
 	if (count) {
 	list_reset(s->results);
 	while((sp = list_get_next(s->results)) != 0) {
-		dprintf(0,"sp->columns: %p\n", sp->columns);
+		dprintf(dlevel,"sp->columns: %p\n", sp->columns);
 		if (sp->columns) {
-			dprintf(0,"column_count: %d\n", sp->column_count);
+			dprintf(dlevel,"column_count: %d\n", sp->column_count);
 			for(i=0; i < sp->column_count; i++) {
-				dprintf(0,"columns[%d]: %p\n", i, sp->columns[i]);
+				dprintf(dlevel,"columns[%d]: %p\n", i, sp->columns[i]);
 				if (!sp->columns[i]) break;
 				free(sp->columns[i]);
 			}
 			free(sp->columns);
 		}
-		dprintf(0,"sp->values: %p\n", sp->values);
+		dprintf(dlevel,"sp->values: %p\n", sp->values);
 		if (sp->values) {
-			dprintf(0,"value_count: %d\n", sp->value_count);
+			dprintf(dlevel,"value_count: %d\n", sp->value_count);
 			for(i=0; i < sp->value_count; i++) {
-				dprintf(0,"values[%d]: %p\n", i, sp->values[i]);
+				dprintf(dlevel,"values[%d]: %p\n", i, sp->values[i]);
 				if (!sp->values[i]) break;
 				for(j=0; j < sp->column_count; j++) {
 					vp = &sp->values[i][j];
