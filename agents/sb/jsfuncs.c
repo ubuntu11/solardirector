@@ -295,7 +295,7 @@ static JSBool sb_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 	int ok;
 
 	s = JS_GetPrivate(cx,obj);
-	ok = config_jssetprop(cx, obj, id, rval, s->ap->cp, s->props);
+	ok = js_config_common_setprop(cx, obj, id, rval, s->ap->cp, s->props);
 	return ok;
 }
 

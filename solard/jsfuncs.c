@@ -158,8 +158,8 @@ static JSBool solard_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval
 			break;
 #endif
 		case SOLARD_PROPERTY_ID_INTERVAL:
-			dprintf(1,"getting interval: %d\n", sd->ap->read_interval);
-			*rval = INT_TO_JSVAL(sd->ap->read_interval);
+			dprintf(1,"getting interval: %d\n", sd->ap->interval);
+			*rval = INT_TO_JSVAL(sd->ap->interval);
 			break;
 		default:
 			*rval = JSVAL_NULL;
@@ -186,7 +186,7 @@ static JSBool solard_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval
 		dprintf(1,"prop_id: %d\n", prop_id);
 		switch(prop_id) {
 		case SOLARD_PROPERTY_ID_INTERVAL:
-			sd->ap->read_interval = JSVAL_TO_INT(*rval);
+			sd->ap->interval = JSVAL_TO_INT(*rval);
 			break;
 		default:
 			*rval = JSVAL_NULL;

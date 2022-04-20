@@ -7,7 +7,7 @@ STATIC?=no
 SHARED?=no
 
 # Components
-JS?=no
-MQTT?=no
+JS?=yes
+MQTT?=yes
 INFLUX?=yes
-BLUETOOTH?=no
+BLUETOOTH?=yes

@@ -18,14 +18,14 @@ static JSBool si_data_getprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp)
 	si_session_t *s;
 
 	s = JS_GetPrivate(cx,obj);
-	return config_jsgetprop(cx, obj, id, vp, s->ap->cp, s->data_props);
+	return js_config_common_getprop(cx, obj, id, vp, s->ap->cp, s->data_props);
 }
 
 static JSBool si_data_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *vp) {
 	si_session_t *s;
 
 	s = JS_GetPrivate(cx,obj);
-	return config_jssetprop(cx, obj, id, vp, s->ap->cp, s->data_props);
+	return js_config_common_setprop(cx, obj, id, vp, s->ap->cp, s->data_props);
 }
 
 static JSClass si_data_class = {
@@ -209,7 +209,7 @@ static JSBool si_setprop(JSContext *cx, JSObject *obj, jsval id, jsval *rval) {
 		JS_ReportError(cx,"private is null!");
 		return JS_FALSE;
 	}
-	return config_jssetprop(cx, obj, id, rval, s->ap->cp, 0);
+	return js_config_common_setprop(cx, obj, id, rval, s->ap->cp, 0);
 }
 
 
