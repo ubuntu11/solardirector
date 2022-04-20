@@ -541,7 +541,7 @@ int si_can_read_data(si_session_t *s, int all) {
 	return 0;
 }
 
-#if DISABLE_WRTIE
+#if DISABLE_WRITE
 static int warned = 0;
 #endif
 
